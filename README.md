@@ -1,4 +1,4 @@
-# SharpTools: AI-Powered C# Code Analysis & Modification Engine
+# SharpTools: Roslyn Powered C# Analysis & Modification MCP Server
 
 SharpTools is a robust service designed to empower AI agents with advanced capabilities for understanding, analyzing, and modifying C# codebases. It leverages the .NET Compiler Platform (Roslyn) to provide deep static analysis and precise code manipulation, going far beyond simple text-based operations.
 
@@ -28,30 +28,36 @@ I intend to maintain and improve it for as long as I am using it, and I welcome 
 
 ## Features
 
-*   **Intelligent Code "Map" & "Mini-Map":**
-    *   **Project-Wide Visibility:** SharpTools builds a "map" of your entire project, showing how namespaces, classes, and members are structured. It smartly adjusts the level of detail, allowing the AI to grasp the overall architecture or zoom into specific components without getting lost in the weeds.
-    *   **Contextual Navigation Aids:** As the AI works, SharpTools provides simplified "mini-maps" (like call graphs and dependency trees) showing how the current piece of code connects to others. This helps the AI understand the local context and potential impacts of changes.
-
-*   **Understanding Code, Inside and Out:**
-    *   **Sees Inside Dependencies:** When the AI needs to understand code from an external library (like a NuGet package), SharpTools doesn't just see a black box. It actively tries to find the original source code (using industry standards like SourceLink or embedded PDBs) or, if necessary, decompiles the library to reveal its workings.
-    *   **Handles Imperfect Naming:** AI (and humans!) don't always get names perfectly right. If the AI refers to a class or method with a slight variation (e.g., `Myclass` instead of `MyClass`, or omitting generic details), SharpTools intelligently figures out the correct symbol in your codebase.
-
-*   **Safe and Controlled Code Changes:**
-    *   **Every Change is Versioned:** All code modifications made through SharpTools are automatically committed to a special, timestamped Git branch. This creates a clear audit trail and makes it easy to review or revert any changes.
-    *   **An "Undo" Button for AI:** If a change doesn't go as planned, the AI can easily "undo" the last set of modifications, rolling back to the previous state on its dedicated Git branch.
-    *   **Precise, Surgical Edits:** Rather than rewriting entire files, the AI uses tools to make targeted changes – like adding a single method, renaming a variable, or replacing specific references. This minimizes unintended side effects.
-
-*   **High-Signal, Concise AI Feedback:**
-    *   SharpTools prioritizes clear and efficient communication with the AI. Instead of overwhelming it with raw data, it provides information-dense feedback. For example, after a code modification, the AI receives a precise diff highlighting exactly what was altered, rather than the entire rewritten file. This allows the AI to quickly confirm actions, understand the impact of its operations, and reduces unnecessary token usage.
-
-*   **Proactive Code Quality Assistance:**
-    *   **Immediate Compiler Feedback:** After any code change, SharpTools instantly checks for new compilation errors and reports them back. This is independent of any similar checks the AI platform might have, providing an extra layer of validation.
-    *   **Complexity Alerts:** If the AI generates a method or class that seems overly complex, SharpTools will flag it, encouraging the AI to produce simpler, more maintainable code.
-    *   **Duplicate Code Detection:** When the AI adds new code, SharpTools attempts to detect if it's very similar to existing code, helping to prevent redundancy and keep the codebase cleaner.
-
-*   **Broad Compatibility & Consistency:**
-    *   **Works with Your Projects:** Supports both modern (.NET SDK-style) and older (legacy .csproj) C# solutions, ensuring wide applicability.
-    *   **Respects Your Coding Style:** SharpTools can identify and use your project's `.editorconfig` file to ensure that any code it modifies or adds aligns with your team's established formatting guidelines.
+*   **Dynamic Project Structure Mapping:** Generates a "map" of the solution, detailing namespaces and types, with complexity-adjusted resolution.
+*   **Contextual Navigation Aids:** Provides simplified call graphs and dependency trees for local code understanding.
+*   **Token Efficient Operation** Designed to provide only the highest signal context at every step to keep your agent on track longer without being overwhelmed or requiring summarization.
+    *   All indentation is omitted in returned code, saving roughly 10% of tokens without affecting performance on the smartest models.
+    *   FQN based navigation means the agent rarely needs to read unrelated code.
+*   **FQN Fuzzy Matching:** Intelligently resolves potentially imprecise or incomplete Fully Qualified Names (FQNs) to exact Roslyn symbols.
+*   **Comprehensive Source Resolution:** Retrieves source code for symbols from:
+    *   Local solution files.
+    *   External libraries via SourceLink.
+    *   Embedded PDBs.
+    *   Decompilation (ILSpy-based) as a fallback.
+*   **Precise, Roslyn-Based Modifications:** Enables surgical code changes (add/overwrite/rename/move members, find/replace) rather than simple text manipulation.
+*   **Automated Git Integration:**
+    *   Creates dedicated, timestamped `sharptools/` branches for all modifications.
+    *   Automatically commits every code change with a descriptive message.
+    *   Offers a Git-powered `Undo` for the last modification.
+*   **Concise AI Feedback Loop:**
+    *   Confirms changes with precise diffs instead of full code blocks.
+    *   Provides immediate, in-tool compilation error reports after modifications.
+*   **Proactive Code Quality Analysis:**
+    *   Detects and warns about high code complexity (cyclomatic, cognitive).
+    *   Identifies semantically similar code to flag potential duplicates upon member addition.
+*   **Broad Project Support:**
+    *   Runs on Windows and Linux (and probably Mac)
+    *   Can analyze projects targeting any .NET version, from Framework to Core to 5+
+    *   Compatible with both modern SDK-style and legacy C# project formats.
+    *   Respects `.editorconfig` settings for consistent code formatting.
+*   **MCP Server Interface:** Exposes tools via Model Context Protocol (MCP) through:
+    *   Server-Sent Events (SSE) for remote clients.
+    *   Standard I/O (Stdio) for local process communication.
 
 ## Exposed Tools
 
@@ -104,8 +110,8 @@ SharpTools exposes a variety of "SharpTool_*" functions via MCP. Here's a brief 
 
 ## Prerequisites
 
-*   .NET 8 SDK (or as specified by the project files).
-*   To build and run, ensure you have the necessary MSBuild components. This is typically included with Visual Studio or .NET SDK's workload for "Desktop development with C++" (which includes MSBuild targets even for C# projects) or by installing the Visual Studio Build Tools.
+*   .NET 8+ SDK for running the server
+*   The .NET SDK of your target solution
 
 ## Building
 
@@ -129,13 +135,13 @@ cd SharpTools.SseServer
 dotnet run
 
 # Run with specific options
-dotnet run -- --port 3005 --log-file ./logs/mcp-sse-server.log --log-level Debug --load-solution "/path/to/your/solution.sln"
+dotnet run -- --port 3005 --log-file ./logs/mcp-sse-server.log --log-level Debug
 ```
 Key Options:
 *   `--port <number>`: Port to listen on (default: 3001).
 *   `--log-file <path>`: Path to a log file.
 *   `--log-level <level>`: Minimum log level (Verbose, Debug, Information, Warning, Error, Fatal).
-*   `--load-solution <path>`: Path to a `.sln` file to load on startup.
+*   `--load-solution <path>`: Path to a `.sln` file to load on startup. Useful for manual testing. It is recommended to let the AI run the LoadSolution tool instead, as it returns some useful information.
 
 ### Stdio Server
 
@@ -163,7 +169,7 @@ VSCode Copilot example:
 Key Options:
 *   `--log-directory <path>`: Directory to store log files.
 *   `--log-level <level>`: Minimum log level.
-*   `--load-solution <path>`: Path to a `.sln` file to load on startup.
+*   `--load-solution <path>`: Path to a `.sln` file to load on startup. Useful for manual testing. It is recommended to let the AI run the LoadSolution tool instead, as it returns some useful information.
 
 ## Contributing
 
@@ -171,4 +177,4 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE.md file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
