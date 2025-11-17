@@ -1,532 +1,336 @@
 ---
 type: guide
-purpose: C# development with MCP tools (SharpToolsMCP, Code Graph RAG)
-created: 2025-01-15
-updated: 2025-01-12
-ai-context: Use this when working with C# projects
-tags: [csharp, mcp, roslyn, dotnet, sharptools, debugging, tracing, logs]
+purpose: C# development with SharpTools MCP
+ai-context: Read when working with C# / .NET projects
+created: 2025-01-17
+tags: [csharp, mcp, roslyn, dotnet, sharptools]
 ---
 
-# C# Development with MCP Tools
+# C# Development with SharpTools MCP
 
-You have TWO MCP servers for C# development. Each has specific strengths.
-
-## 🎯 Decision Tree - Which Tool to Use?
-
-```
-Question: What do you need to do?
-
-├─ UNDERSTAND code architecture/concepts?
-│  └─ Code Graph RAG → semantic_search
-│
-├─ SEARCH for C# symbols?
-│  ├─ Need regex search across code?
-│  │  └─ SharpToolsMCP → UltrasharpTool_SearchDefinitions
-│  └─ Need contextual snippets?
-│     └─ SharpToolsMCP → UltrasharpTool_FindReferences
-│
-├─ ANALYZE code quality?
-│  ├─ Formatting issues?
-│  │  └─ SharpToolsMCP → UltrasharpTool_FormatCode (check mode)
-│  ├─ Code style/diagnostics?
-│  │  └─ SharpToolsMCP → UltrasharpTool_AnalyzeCodeStyle
-│  ├─ Complexity metrics?
-│  │  └─ SharpToolsMCP → UltrasharpTool_AnalyzeComplexity
-│  └─ Impact of changes?
-│     └─ Code Graph RAG → analyze_impact
-│
-├─ DEBUG or DIAGNOSE issues?
-│  ├─ Trace code execution flow?
-│  │  └─ SharpToolsMCP → UltrasharpTool_TraceExecution (CFG analysis)
-│  ├─ Find crash/error origin?
-│  │  └─ SharpToolsMCP → UltrasharpTool_TraceBackwards (with stack trace hints)
-│  └─ Analyze log files?
-│     └─ SharpToolsMCP → UltrasharpTool_AnalyzeLogs (5 formats supported)
-│
-├─ MODIFY C# code?
-│  ├─ Format code?
-│  │  └─ SharpToolsMCP → UltrasharpTool_FormatCode (apply mode)
-│  ├─ Fix diagnostics?
-│  │  └─ SharpToolsMCP → UltrasharpTool_ApplyCodeFixes
-│  ├─ Refactor/add/change members?
-│  │  └─ SharpToolsMCP → UltrasharpTool_AddMember/OverwriteMember/RenameSymbol
-│  └─ Note: ALL modifications include automatic linting!
-│
-└─ GET detailed info about symbol?
-   └─ SharpToolsMCP → UltrasharpTool_ViewDefinition (with call graphs)
-```
-
-## 🛠️ Tool 1: SharpToolsMCP - Complete C# Development Suite
-
-### Primary Use Cases
-✅ **Modifying C# code** with automatic linting
-✅ **Code quality** (formatting, linting, auto-fixes)
-✅ **Debugging & diagnostics** (tracing, backtrace, log analysis)
-✅ Deep analysis & navigation
-✅ Creating new C# files
-✅ Source code from external libraries (decompilation, SourceLink)
-✅ Git operations (auto-commit, undo)
-✅ Managing usings and attributes
-
-### 🌟 NEW FEATURE: Automatic Linting on Modifications
-
-**All modification operations now include automatic linting!**
-
-When you call:
-- `UltrasharpTool_AddMember`
-- `UltrasharpTool_OverwriteMember`
-- `UltrasharpTool_RenameSymbol`
-- `UltrasharpTool_FindAndReplace`
-- `UltrasharpTool_MoveMember`
-
-The AI automatically receives a quality check report:
-```
-## 📊 Code Quality Check
-
-❌ **2 error(s)**
-⚠️ **3 warning(s)**
-
-**Top issues:**
-  ❌ **CS0103**: The name 'foo' does not exist in the current context
-     `MyClass.cs:42`
-  ⚠️ **CS8019**: Unnecessary using directive.
-     `MyClass.cs:5`
-
-💡 **Tip:** Use UltrasharpTool_AnalyzeCodeStyle for full analysis
-```
-
-**Benefits:**
-- ✅ Immediate feedback - no separate linting request needed
-- ✅ Fast parallel processing - only modified files checked
-- ✅ Better AI decision making - understands code quality impact instantly
-- ✅ Saves time and API calls
-
-### Available Tool Categories
-
-#### 1️⃣ Solution & Project Tools
-- **UltrasharpTool_LoadSolution** - **ALWAYS start with this** (initializes workspace)
-- **UltrasharpTool_LoadProject** - Get detailed project structure (namespaces → types)
-
-#### 2️⃣ Analysis Tools
-- **UltrasharpTool_GetMembers** - List members of a type with signatures and docs
-- **UltrasharpTool_ViewDefinition** - View source with Roslyn context (call graphs, references)
-- **UltrasharpTool_ListImplementations** - Find all implementations/derived classes
-- **UltrasharpTool_FindReferences** - Find usages with contextual snippets
-- **UltrasharpTool_SearchDefinitions** - Regex search across declarations
-- **UltrasharpTool_AnalyzeComplexity** - Complexity metrics (cyclomatic, cognitive, coupling)
-
-#### 3️⃣ Quality Tools (NEW!)
-- **UltrasharpTool_FormatCode** - Format C# code using CSharpier
-  - Modes: `checkOnly=true` (preview) or `checkOnly=false` (apply)
-  - Supports .cs, .csproj, .xml files
-  - Parallel directory processing
-
-- **UltrasharpTool_AnalyzeCodeStyle** - Lint with Roslyn analyzers
-  - Detects: IDE0005 (unused usings), CS8600 (null checks), CA rules
-  - Filter by severity: Hidden, Info, Warning, Error
-  - Pagination support for large results
-
-- **UltrasharpTool_ApplyCodeFixes** - Auto-fix diagnostics
-  - Modes: `preview=true` (review) or `preview=false` (apply)
-  - Can fix specific diagnostic IDs or "all"
-  - Creates git commit when applying
-
-#### 4️⃣ Modification Tools (with Auto-Linting!)
-- **UltrasharpTool_AddMember** - Add methods, properties, classes, etc.
-- **UltrasharpTool_OverwriteMember** - Modify or delete members
-- **UltrasharpTool_RenameSymbol** - Rename with all references updated
-- **UltrasharpTool_FindAndReplace** - Regex find/replace in symbols or files
-- **UltrasharpTool_MoveMember** - Move members between types/namespaces
-- **UltrasharpTool_Undo** - Revert last change (Git-powered)
-
-**⚠️ ALL modification tools now include automatic linting in response!**
-
-#### 5️⃣ Document Tools
-- **UltrasharpTool_ReadRawFromRoslynDocument** - Read file contents
-- **UltrasharpTool_CreateRoslynDocument** - Create new files
-- **UltrasharpTool_OverwriteRoslynDocument** - Overwrite existing files
-- **UltrasharpTool_ReadTypesFromRoslynDocument** - List types in file
-
-#### 6️⃣ Utility Tools
-- **UltrasharpTool_ManageUsings** - Read/write using directives
-- **UltrasharpTool_ManageAttributes** - Read/write attributes
-- **UltrasharpTool_RequestNewTool** - Request new features
-
-#### 7️⃣ Debugging & Diagnostics Tools (NEW!)
-- **UltrasharpTool_TraceExecution** - Static analysis of code execution flow
-  - Uses Roslyn Control Flow Graph (CFG)
-  - Traces from entry point to optional exit point
-  - Shows: method calls, variable operations, conditionals, object creation
-  - No code execution required (static analysis)
-  - Configurable depth and external call inclusion
-
-- **UltrasharpTool_TraceBackwards** - Reverse tracing from crash/failure point
-  - Uses Roslyn SymbolFinder to build call graphs
-  - Finds all possible call paths leading to crash point
-  - Supports stack trace hints for confidence scoring (up to 100% on perfect match)
-  - Returns multiple paths ranked by likelihood
-  - Ideal for debugging production crashes
-
-- **UltrasharpTool_AnalyzeLogs** - Universal log file analyzer
-  - Auto-detects format: ECS/JSON, PlainText, Logcat, WebServer, XML
-  - Efficient search: keywords, log levels, status codes
-  - Context capture: N lines before/after matches
-  - Two detail levels: Brief (timestamp, level, message, stacktrace, url/path) or Full
-  - Pagination support for large files
-  - Streams large files without loading into memory
-
-### Standard Workflow
-
-```
-1. UltrasharpTool_LoadSolution (once per session)
-   └─ Initializes MSBuild workspace, loads solution
-
-2. UltrasharpTool_LoadProject (optional, for project overview)
-   └─ Get namespace → type structure
-
-3. Analysis & Navigation
-   ├─ UltrasharpTool_ViewDefinition - Understand existing code
-   ├─ UltrasharpTool_GetMembers - See type members
-   └─ UltrasharpTool_FindReferences - Find usages
-
-4. Make Modifications (auto-commits to Git branch)
-   ├─ UltrasharpTool_AddMember - Add new code
-   ├─ UltrasharpTool_OverwriteMember - Change existing
-   └─ UltrasharpTool_RenameSymbol - Rename symbols
-
-5. Code Quality (if needed beyond auto-linting)
-   ├─ UltrasharpTool_FormatCode - Format code
-   ├─ UltrasharpTool_AnalyzeCodeStyle - Full lint check
-   └─ UltrasharpTool_ApplyCodeFixes - Auto-fix issues
-
-6. If Needed: UltrasharpTool_Undo
-   └─ Git-powered undo of last change
-```
-
-### Example Commands
-
-```
-# Load solution
-Load solution from D:/MyProject/MyProject.sln
-
-# Format check
-Check formatting for D:/MyProject/Services/UserService.cs without applying changes
-
-# Format apply
-Format all code in D:/MyProject/Services/ directory
-
-# Lint analysis
-Analyze code style for D:/MyProject/MyProject.sln with severity Warning, skip 0, take 100
-
-# Auto-fix (preview)
-Preview fixable diagnostics in D:/MyProject/MyProject.sln
-
-# Auto-fix (apply)
-Apply fixes for IDE0005 diagnostics in D:/MyProject/MyProject.sln
-
-# Add member (with auto-linting!)
-Add a new method ProcessUser to MyNamespace.UserService class
-
-# View with context
-Show definition of MyNamespace.UserService.ProcessUser with call graphs
-
-# Find references
-Find all references to MyNamespace.IUserService.GetUser
-
-# Trace execution (debugging)
-Trace execution from MyApp.Program.Main to MyApp.Services.UserService.ProcessUser
-
-# Trace backwards (crash analysis)
-Trace backwards from MyApp.Services.DatabaseService.ExecuteQuery with stack trace hints: ["ProcessUser", "Main"]
-
-# Analyze logs
-Analyze D:/logs/production.log for ERROR and EXCEPTION keywords with 10 context lines
-```
-
-### Key Features
-
-**Token Efficiency:**
-- Code returned without indentation (~10% token savings)
-- FQN-based navigation (no need to read entire files)
-- Adaptive detail levels in LoadProject
-
-**Git Integration:**
-- Auto-creates `sharptools/YYYYMMDD-HHMMSS` branches
-- Auto-commits every change with descriptive messages
-- Git-powered Undo
-- Can be disabled with `--disable-git`
-
-**Automatic Linting:**
-- Runs after EVERY modification operation
-- Only lints modified .cs files (fast!)
-- Parallel processing of projects
-- Shows top 10 issues (errors first, then warnings)
-- No separate linting request needed!
-
-**Source Resolution:**
-- Priority: Local files → SourceLink → Embedded PDB → ILSpy decompilation
-- Works with .NET Framework, Core, 5+
-- Supports legacy and SDK-style projects
-
-**FQN Fuzzy Matching:**
-- AI can provide imprecise/incomplete names
-- Service finds best match via Levenshtein distance
-
-### When to Use
-✅ Need to MODIFY C# code (with automatic quality feedback!)
-✅ Need to DEBUG or DIAGNOSE production issues
-✅ Need to TRACE code execution flow or find crash origins
-✅ Need to ANALYZE large log files efficiently
-✅ Need code from external .NET libraries
-✅ Need comprehensive project structure
-✅ Need Git integration for safety
-✅ Need detailed Roslyn context (call graphs, complexity, etc.)
-✅ Need to format, lint, or auto-fix C# code
-✅ **Need immediate feedback on code quality** after modifications
+**Complete MCP suite for C# development: 36+ tools for analysis, modification, debugging, and quality.**
 
 ---
 
-## 🌐 Tool 2: Code Graph RAG - Semantic Understanding
+## 🚀 Quick Start (5 steps)
 
-### Primary Use Cases
-✅ **Natural language queries** ("Where is authentication?", "All database calls")
-✅ **Architectural understanding** across entire codebase
-✅ **Impact analysis** before refactoring
-✅ **Code similarity** detection
-✅ **Cross-cutting concerns** (logging, error handling everywhere)
+### 1. Initialize workspace
+```
+UltrasharpTool_LoadSolution("path/to/project.sln")
+```
+**ALWAYS do this first!** Without it, other tools won't work.
 
-### Key Tools
-- `index` - Index codebase (do FIRST, once per session)
-- `semantic_search` - Search by concept, not exact names
-- `find_similar_code` - Find duplicate/similar patterns
-- `analyze_impact` - Understand what will break
-- `list_entity_relationships` - See how code connects
-- `get_graph_health` - Check index status
+### 2. Understand project structure
+```
+UltrasharpTool_LoadProject(
+    projectName: "MyApp",
+    detailLevel: "TypesAndSignatures"  // or "TypesOnly" for overview
+)
+```
+**30 seconds vs 30 minutes** of manual exploration.
 
-### When to Use
-✅ Starting work on unfamiliar C# codebase
-✅ Need to understand "big picture" architecture
-✅ Searching by concept ("all validation logic")
-✅ **BEFORE major refactoring** (impact analysis)
-✅ Finding code duplication
-✅ After Git branch switch (see [GIT_WORKFLOW.md](./GIT_WORKFLOW.md))
+### 3. Find code (semantic search!)
+```
+UltrasharpTool_FindPotentialDuplicates(
+    targetCode: "async Task<IActionResult> ProcessRequest(HttpContext ctx)",
+    threshold: 0.7
+)
+```
+**Finds by MEANING, not by name!** No FQN needed.
+
+### 4. Modify code (auto-linting included)
+```
+UltrasharpTool_OverwriteMember(
+    fullyQualifiedTargetName: "MyApp.Services.UserService.ValidateEmail",
+    codeSnippet: "/* new implementation */",
+    commitMessage: "Improve email validation"
+)
+```
+**Response includes:** compilation check, linting, quality report.
+
+### 5. Ensure quality
+```
+UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
+UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+```
+**Auto-format + auto-fix** common issues.
 
 ---
 
-## 📋 Standard Workflows
+## ⚡ Performance Comparison
 
-### Workflow 1: Starting Work on C# Solution
+| Task | Manual | With MCP | Speedup |
+|------|--------|----------|---------|
+| Understand project | 20-40 min | 30 sec | **40x** |
+| Find method usage | 5-10 min | 5 sec | **60-120x** |
+| Debug crash | 15-30 min | 15 sec | **60-120x** |
+| Analyze logs | 10-20 min | 5 sec | **120-240x** |
 
+**Bottom line:** Use MCP tools immediately, don't waste time manually.
+
+---
+
+## 🔍 Semantic Search - Your First Tool
+
+**Problem:** "I don't know exact class name, can't use MCP tools"
+**Solution:** Semantic search finds code by MEANING!
+
+### Examples:
+
+**Where are HTTP requests handled?**
 ```
-Step 1: Initialize tools
-- Code Graph RAG: index /path/to/solution
-- SharpToolsMCP: UltrasharpTool_LoadSolution
-
-Step 2: Understand codebase
-- Code Graph RAG: semantic_search "main entry points"
-- Code Graph RAG: list_entity_relationships for key classes
-
-Step 3: Navigate to specific code
-- SharpToolsMCP: UltrasharpTool_SearchDefinitions with regex
-- SharpToolsMCP: UltrasharpTool_ViewDefinition for details
-```
-
-### Workflow 2: Code Quality Check (Before Commit)
-
-```
-Step 1: Format code
-- SharpToolsMCP: UltrasharpTool_FormatCode (checkOnly=true) → see issues
-- SharpToolsMCP: UltrasharpTool_FormatCode (checkOnly=false) → fix formatting
-
-Step 2: Lint code
-- SharpToolsMCP: UltrasharpTool_AnalyzeCodeStyle (severity: Warning)
-- Review diagnostics
-
-Step 3: Auto-fix common issues
-- SharpToolsMCP: UltrasharpTool_ApplyCodeFixes (preview=true) → review
-- SharpToolsMCP: UltrasharpTool_ApplyCodeFixes (preview=false) → fix
-
-Step 4: Check complexity
-- SharpToolsMCP: UltrasharpTool_AnalyzeComplexity
-- Refactor if needed
+FindPotentialDuplicates(
+    targetCode: "async Task<IActionResult> HandleRequest(HttpContext ctx)",
+    threshold: 0.7
+)
+→ Finds all HTTP handlers, even with different names
 ```
 
-### Workflow 3: Major Refactoring (with Auto-Linting!)
-
+**Where are errors logged to database?**
 ```
-Step 1: Impact analysis
-- Code Graph RAG: analyze_impact for target symbol
-
-Step 2: Find all usages
-- SharpToolsMCP: UltrasharpTool_FindReferences (detailed context)
-
-Step 3: Check for similar patterns
-- Code Graph RAG: find_similar_code
-
-Step 4: Make changes (AUTO-LINTING INCLUDED!)
-- SharpToolsMCP: UltrasharpTool_RenameSymbol or UltrasharpTool_OverwriteMember
-  → Response includes automatic quality check!
-- Review linting results in the response
-- Fix any issues immediately
-
-Step 5: Final quality check (if needed)
-- SharpToolsMCP: UltrasharpTool_AnalyzeCodeStyle (full analysis)
-- SharpToolsMCP: UltrasharpTool_FormatCode (final formatting)
+FindPotentialDuplicates(
+    targetCode: "logger.LogError(ex); await db.SaveAsync();",
+    threshold: 0.6
+)
+→ Finds all error logging + DB save patterns
 ```
 
-### Workflow 4: Adding New Feature (with Auto-Linting!)
-
+**Are there duplicate validations?**
 ```
-Step 1: Understand existing code
-- SharpToolsMCP: UltrasharpTool_ViewDefinition for related classes
-
-Step 2: Add new code
-- SharpToolsMCP: UltrasharpTool_AddMember
-  → Response includes automatic quality check!
-- Review errors/warnings in response
-- Fix issues immediately if needed
-
-Step 3: If issues found, fix them
-- SharpToolsMCP: UltrasharpTool_OverwriteMember
-  → Again includes automatic quality check!
-- Iterate until quality check is clean
-
-Step 4: Final verification
-- SharpToolsMCP: UltrasharpTool_FormatCode (apply)
+FindPotentialDuplicates(
+    targetCode: "bool IsValidEmail(string email) { return email.Contains('@'); }",
+    threshold: 0.8
+)
+→ Finds similar validation methods
 ```
 
-### Workflow 5: Debugging Production Crash (NEW!)
+**When to use:**
+- ✅ Unfamiliar codebase
+- ✅ Don't know exact class/method name
+- ✅ Looking for specific functionality
+- ✅ Finding duplicates
 
+---
+
+## 🛠️ Tool Categories
+
+### 1️⃣ Solution & Navigation (ALWAYS start here!)
+- **LoadSolution** - Initialize workspace (**REQUIRED**)
+- **LoadProject** - Get project structure (namespaces → types → members)
+
+### 2️⃣ Search & Analysis
+- **FindPotentialDuplicates** - Semantic search (no FQN needed!)
+- **SearchDefinitions** - Regex search in declarations
+- **FindReferences** - Find usage with context
+- **ViewDefinition** - View source with Roslyn context
+- **GetMembers** - List type members with signatures
+- **AnalyzeComplexity** - Complexity metrics
+
+### 3️⃣ Quality Tools
+- **FormatCode** - CSharpier formatting (check/apply modes)
+- **AnalyzeCodeStyle** - Roslyn linting (IDE/CS/CA rules)
+- **ApplyCodeFixes** - Auto-fix common issues (preview/apply modes)
+
+### 4️⃣ Modification (with auto-linting!)
+- **AddMember** - Add methods, properties, classes
+- **OverwriteMember** - Modify or delete members
+- **RenameSymbol** - Rename with all references updated
+- **FindAndReplace** - Regex find/replace
+- **MoveMember** - Move code between types
+- **Undo** - Revert last change (Git-powered)
+
+**⚠️ All modifications include automatic linting in response!**
+
+### 5️⃣ Debugging & Diagnostics
+- **TraceExecution** - CFG-based execution tracing (all paths)
+- **TraceBackwards** - Reverse CFG (backtrace from crash)
+- **AnalyzeLogs** - Log analysis (**5 formats**, auto-detection)
+- **ExportCallGraph** - Mermaid/DOT visualization
+- **AnalyzePathFeasibility** - Z3 symbolic execution
+
+**Supported log formats:**
+- ✅ ECS/JSON (Elastic Common Schema)
+- ✅ Logcat (Android)
+- ✅ WebServer (Apache/Nginx)
+- ✅ XML (structured logs)
+- ✅ PlainText (custom formats)
+
+---
+
+## 📋 Common Workflows
+
+### Workflow 1: Exploring Unfamiliar Codebase
 ```
-Step 1: Analyze log files
-- SharpToolsMCP: UltrasharpTool_AnalyzeLogs
-  → keywords: ["ERROR", "EXCEPTION", "FATAL"]
-  → levels: ["Error", "Fatal"]
-  → contextBefore: 10, contextAfter: 10
-- Extract stack trace from log entries
+1. LoadSolution("project.sln")
+2. LoadProject(projectName: "MyApp", detailLevel: "TypesOnly")
+3. FindPotentialDuplicates(targetCode: "example of what I'm looking for")
+4. ViewDefinition(fullyQualifiedName: "...")
+5. FindReferences(fullyQualifiedName: "...")
+```
+**Time:** 2-3 minutes vs 1-2 hours manually.
 
-Step 2: Trace backwards from crash point
-- SharpToolsMCP: UltrasharpTool_TraceBackwards
-  → crashPointFqn: "MyNamespace.MyClass.ProblematicMethod"
-  → stackTraceHints: ["MethodA", "MethodB", "Main"]
-- Review all possible call paths (ranked by confidence)
-- Identify entry points leading to crash
+**📖 Details:** [Run.Docs/Guides/Exploring-Codebase.md](../Guides/Exploring-Codebase.md)
 
-Step 3: Trace execution flow (optional)
-- SharpToolsMCP: UltrasharpTool_TraceExecution
-  → entryPointFqn: "MyNamespace.Program.Main"
-  → exitPointFqn: "MyNamespace.MyClass.ProblematicMethod"
-- Understand what operations happen before crash
-- Identify suspicious variable operations or conditionals
+---
 
-Step 4: View code with context
-- SharpToolsMCP: UltrasharpTool_ViewDefinition for crash point
-- SharpToolsMCP: UltrasharpTool_FindReferences for related methods
+### Workflow 2: Debugging Crash
+```
+1. AnalyzeLogs("logs/error.log", keywords: ["NullReferenceException"])
+2. TraceBackwards(fullyQualifiedName: "...", stackTraceHint: "...")
+3. TraceExecution(fullyQualifiedName: "...", maxDepth: 3)
+4. ViewDefinition(fullyQualifiedName: "...")
+5. OverwriteMember(...) // fix the bug
+```
+**Time:** 5-10 minutes vs 1-2 hours manually.
 
-Step 5: Fix and verify
-- Make necessary code changes
-- Auto-linting feedback included in response
-- Test fix thoroughly
+**📖 Details:** [Run.Docs/Guides/Debugging-Crash.md](../Guides/Debugging-Crash.md)
+
+---
+
+### Workflow 3: Refactoring Code
+```
+1. FindPotentialDuplicates(targetCode: "...", threshold: 0.8)
+2. AnalyzeComplexity(fullyQualifiedName: "...", includeMembers: true)
+3. OverwriteMember(...) // simplify/consolidate
+4. FormatCode(path: "src/", checkOnly: false)
+5. AnalyzeCodeStyle(severityFilter: "Warning")
+6. ApplyCodeFixes(diagnosticId: "all", preview: false)
+```
+**Time:** 15-20 minutes vs 2-3 hours manually.
+
+**📖 Details:** [Run.Docs/Guides/Refactoring.md](../Guides/Refactoring.md)
+
+---
+
+### Workflow 4: Code Review
+```
+1. AnalyzeCodeStyle(severityFilter: "Warning")
+2. AnalyzeComplexity(fullyQualifiedName: "NewFeature.Service")
+3. FindPotentialDuplicates(targetCode: "new method", threshold: 0.85)
+4. FormatCode(path: "src/NewFeature/", checkOnly: true)
+5. ApplyCodeFixes(diagnosticId: "all", preview: true)
+```
+**Time:** 5-10 minutes vs 30-60 minutes manually.
+
+**📖 Details:** [Run.Docs/Guides/Code-Review.md](../Guides/Code-Review.md)
+
+---
+
+## ⚠️ Critical Rules
+
+### 1. ALWAYS start with LoadSolution
+```
+❌ WRONG: ViewDefinition(...) // FAIL: workspace not initialized
+✅ RIGHT: LoadSolution("...") → ViewDefinition(...) // Works
 ```
 
-### Workflow 6: Analyzing Large Log Files (NEW!)
-
+### 2. Use semantic search when you don't know FQN
 ```
-Step 1: Auto-detect log format
-- SharpToolsMCP: UltrasharpTool_AnalyzeLogs
-  → filePath: "/logs/production.log"
-  → take: 10 (small sample)
-- Format detected automatically (ECS, PlainText, Logcat, WebServer, XML)
+❌ WRONG: "Need exact class name to use MCP tools"
+✅ RIGHT: FindPotentialDuplicates → get FQN → use other tools
+```
 
-Step 2: Search for specific issues
-- SharpToolsMCP: UltrasharpTool_AnalyzeLogs
-  → keywords: ["OutOfMemoryException", "timeout"]
-  → levels: ["Error"]
-  → statusCodes: [500, 503] (for web logs)
-  → contextBefore: 5, contextAfter: 5
-  → skip: 0, take: 100
+### 3. Don't read code manually if MCP can do it
+```
+❌ WRONG: "Let me read all files to understand structure"
+✅ RIGHT: LoadProject(detailLevel: "TypesAndSignatures") // 30 sec
+```
 
-Step 3: Pagination for more results
-- SharpToolsMCP: UltrasharpTool_AnalyzeLogs
-  → (same parameters)
-  → skip: 100, take: 100 (next page)
+### 4. Trust automatic linting
+```
+✅ Every modification includes:
+   - Compilation check
+   - Roslyn linting
+   - Quality report
 
-Step 4: Detailed analysis
-- Review context lines around errors
-- Extract stack traces
-- Use TraceBackwards with extracted stack traces
+→ Use ApplyCodeFixes or AnalyzeCodeStyle if warnings appear
+```
+
+### 5. Don't skip quality checks
+```
+❌ WRONG: OverwriteMember(...) → commit without checks
+✅ RIGHT:
+   OverwriteMember(...) // auto-linting in response
+   → FormatCode(checkOnly: false)
+   → ApplyCodeFixes(diagnosticId: "all")
+   → Now safe to commit
+```
+
+### 6. Use Git integration
+```
+✅ All modifications automatically:
+   - Create branches: ultrasharptools/YYYYMMDD-HHMMSS
+   - Commit changes
+   - Can revert via Undo
+
+→ Don't fear experimenting!
 ```
 
 ---
 
-## 🚫 Anti-Patterns
+## 🆕 New Features (2025)
 
-❌ Don't skip `UltrasharpTool_LoadSolution` - tools won't work without it
-❌ Don't ignore automatic linting results in modification responses
-❌ Don't format before commit - SharpTools does it automatically
-❌ Don't make major changes without impact analysis (Code Graph RAG)
-❌ Don't ignore Git branches created by SharpToolsMCP
-❌ Don't forget that modifications now include quality checks automatically!
+### ✅ Semantic Search
+- Vector embeddings (768-dim)
+- Finds code by meaning, not name
+- Adaptive vector store (SqliteVec / Vectorlite HNSW)
+- **Use FIRST** when exploring unfamiliar code
 
----
+### ✅ Quality Tools Suite
+- **FormatCode** - CSharpier integration
+- **AnalyzeCodeStyle** - All Roslyn analyzers (IDE, CS, CA)
+- **ApplyCodeFixes** - Auto-fix common issues
+- **Saves 30-60 minutes** on manual fixes
 
-## ⚡ Performance Tips
+### ✅ Advanced Tracing & Debugging
+- **TraceExecution** - CFG-based tracing (all execution paths)
+- **TraceBackwards** - Reverse CFG (find all paths TO crash)
+- **AnalyzePathFeasibility** - Z3 constraint solver
+- **ExportCallGraph** - Mermaid/DOT visualization
+- **SQLite caching** - 5-10x speedup on repeated queries
 
-1. **Index once** (Code Graph RAG) - subsequent queries are <100ms
-2. **Load solution once** (SharpToolsMCP) - don't reload unnecessarily
-3. **Use UltrasharpTool_SearchDefinitions** for regex searches - very fast
-4. **Format in batch** - format entire directory, not file-by-file
-5. **Trust automatic linting** - it's faster than separate quality checks
-6. **Parallel processing** - SharpTools uses Task.WhenAll everywhere
+### ✅ Log Analysis (5 formats)
+- ECS/JSON, Logcat, WebServer, XML, PlainText
+- Auto-detection of format
+- Filtering: log level, keywords, status codes, time range
+- Pagination for large files
+- Automatic statistics
 
----
+### ✅ Automatic Linting
+- **On EVERY code modification**
+- Parallel processing (only modified files)
+- Immediate feedback in tool response
+- Saves API calls (no separate linting request needed)
 
-## 🎓 Key Principles
-
-| Tool | Best For | Speed | Modification | Auto-Linting | Debugging |
-|------|----------|-------|--------------|--------------|-----------|
-| **SharpToolsMCP** | Everything C# | Fast-Medium | Full + Git | ✅ Yes! | ✅ Yes! |
-| **Code Graph RAG** | Semantic understanding | Very Fast | Read-only | ❌ No | ❌ No |
-
-### Golden Rules
-1. **SharpToolsMCP** = Complete C# Suite (modify, format, lint, analyze, debug, + AUTO-LINTING!)
-2. **Code Graph RAG** = Semantic, Architecture, "Why"
-3. **Always start with UltrasharpTool_LoadSolution**
-4. **Modification tools include automatic quality checks** - use them!
-5. **Use debugging tools for production issues** - tracing, logs, backtrace
-
-### Before Every Commit
-```
-1. Make modifications with SharpTools
-   └─ Automatic linting included in response!
-2. Review linting results, fix issues if needed
-3. SharpToolsMCP: UltrasharpTool_FormatCode (apply) - final format
-4. SharpToolsMCP: UltrasharpTool_AnalyzeCodeStyle - final check
-5. Review changes in Git branch
-6. Commit (or merge SharpTools branch)
-```
+### ✅ Git Integration
+- Auto-branches: `ultrasharptools/YYYYMMDD-HHMMSS`
+- Auto-commits after modifications
+- Undo via Git
+- Can disable via `--disable-git`
 
 ---
 
-## 💡 Pro Tips
+## 📖 Detailed Documentation
 
-### Automatic Linting Best Practices
-- ✅ **Trust the auto-lint** - it runs on every modification
-- ✅ **Act on errors immediately** - don't let them accumulate
-- ✅ **Warnings are informational** - fix if reasonable
-- ✅ **Use UltrasharpTool_ApplyCodeFixes** for common issues (unused usings, etc.)
-- ✅ **Format last** - after all code changes are done
+**Level 2 (You are here):** Language-specific guide with examples
+**Level 3:** Detailed workflows and tool guides
 
-### Git Integration Best Practices
-- ✅ SharpTools creates `sharptools/` branches automatically
-- ✅ Each change is a separate commit - easy to review
-- ✅ Use `UltrasharpTool_Undo` if mistake - reverts last commit
-- ✅ Periodically clean up old `sharptools/` branches
-- ✅ Can disable Git with `--disable-git` flag
+### Tool Categories:
+- [Run.Docs/Tools/Solution.md](../Tools/Solution.md) - LoadSolution, LoadProject
+- [Run.Docs/Tools/Analysis.md](../Tools/Analysis.md) - Search, View, Analyze
+- [Run.Docs/Tools/Quality.md](../Tools/Quality.md) - Format, Lint, Auto-fix
+- [Run.Docs/Tools/Modification.md](../Tools/Modification.md) - Add, Modify, Rename
+- [Run.Docs/Tools/Tracing.md](../Tools/Tracing.md) - Debug, Trace, Logs
 
-### Performance Best Practices
-- ✅ Load solution once per session
-- ✅ Use FQN (Fully Qualified Names) for precise targeting
-- ✅ Leverage FQN fuzzy matching - don't worry about exact names
-- ✅ Batch operations when possible (format directories, not files)
-- ✅ Automatic linting is optimized - only modified files checked
+### Workflow Guides:
+- [Run.Docs/Guides/Exploring-Codebase.md](../Guides/Exploring-Codebase.md)
+- [Run.Docs/Guides/Debugging-Crash.md](../Guides/Debugging-Crash.md)
+- [Run.Docs/Guides/Refactoring.md](../Guides/Refactoring.md)
+- [Run.Docs/Guides/Code-Review.md](../Guides/Code-Review.md)
+- [Run.Docs/Guides/Semantic-Search.md](../Guides/Semantic-Search.md)
+
+---
+
+**💡 Remember:** SharpTools MCP is 10-100x faster than manual work.
+
+**Use it FIRST, not as fallback → Save hours every day.**

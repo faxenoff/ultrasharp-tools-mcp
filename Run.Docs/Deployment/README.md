@@ -15,6 +15,157 @@
 
 ---
 
+## ⚠️ Важно: Доступ к файлам в Remote Mode
+
+**Remote MCP Server работает в контейнере и НЕ ИМЕЕТ доступа к файлам на вашей локальной машине!**
+
+### Как это работает?
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Ваша машина (Claude Desktop)                                    │
+│   - Ваш код: D:\MyProject\                                      │
+│   - HTTP/SSE запросы к remote серверу                           │
+└─────────────────┬───────────────────────────────────────────────┘
+                  │
+                  ↓ через сеть (HTTP/SSE)
+┌─────────────────────────────────────────────────────────────────┐
+│ Kubernetes Pod / Docker Container                               │
+│   - Файловая система контейнера (изолирована!)                  │
+│   - НЕТ доступа к D:\MyProject\                                 │
+│   - Доступ ТОЛЬКО к /app/projects/ (mounted volume)             │
+└─────────────────┬───────────────────────────────────────────────┘
+                  │
+                  ↓ volume mount
+┌─────────────────────────────────────────────────────────────────┐
+│ PersistentVolume / NFS / Git Clone                              │
+│   - /app/projects/myproject/ ← клонирован из Git                │
+│   - LoadSolution("/app/projects/myproject/App.sln") работает!   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### ✅ Как предоставить код remote серверу?
+
+**Выберите один из вариантов:**
+
+#### 🥇 Вариант 1: Git Clone (рекомендуется)
+
+**Лучший вариант для большинства случаев.**
+
+```bash
+# В init container или вручную в pod:
+kubectl exec -it ultrasharp-tools-server-xxx -n ultrasharp-tools -- /bin/bash
+cd /app/projects
+git clone https://github.com/mycompany/myproject.git
+```
+
+После этого Claude может использовать:
+```
+LoadSolution("/app/projects/myproject/MyApp.sln")
+```
+
+**Автоматизация через init container:**
+
+```yaml
+# deployment.yaml
+spec:
+  initContainers:
+  - name: git-clone
+    image: alpine/git
+    command: ['sh', '-c']
+    args:
+      - |
+        cd /app/projects
+        if [ ! -d "myproject" ]; then
+          git clone https://github.com/mycompany/myproject.git
+        else
+          cd myproject && git pull
+        fi
+    volumeMounts:
+    - name: projects-storage
+      mountPath: /app/projects
+```
+
+#### 🥈 Вариант 2: NFS/SMB Mount
+
+**Хорошо для shared team storage.**
+
+```yaml
+# pv-nfs.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: projects-nfs-pv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: nfs-server.example.com  # ваш NFS сервер
+    path: "/exported/team-projects"   # папка с проектами
+```
+
+После mount к `/app/projects`:
+```
+LoadSolution("/app/projects/MyApp/MyApp.sln")
+```
+
+#### 🥉 Вариант 3: kubectl cp
+
+**Для быстрого тестирования.**
+
+```bash
+# Скопировать локальный проект в pod
+kubectl cp ./MyLocalProject/ \
+  ultrasharp-tools-server-xxx:/app/projects/MyProject/ \
+  -n ultrasharp-tools
+```
+
+**⚠️ Минусы:** Нужно повторять при каждом изменении кода.
+
+#### 🏅 Вариант 4: Persistent Volume Claim + manual upload
+
+```bash
+# 1. Создать PVC
+kubectl apply -f kubernetes/pvc.yaml
+
+# 2. Создать временный pod для upload
+kubectl run -it --rm upload-pod \
+  --image=alpine \
+  --overrides='{"spec":{"volumes":[{"name":"storage","persistentVolumeClaim":{"claimName":"ultrasharp-data-pvc"}}],"containers":[{"name":"upload","image":"alpine","volumeMounts":[{"name":"storage","mountPath":"/data"}],"stdin":true,"tty":true}]}}' \
+  -- /bin/sh
+
+# 3. В pod: установить rsync/scp и загрузить файлы
+```
+
+### 📋 Checklist перед использованием Remote Mode
+
+- [ ] **Определились с методом доступа** (Git clone / NFS / kubectl cp)
+- [ ] **Создан PersistentVolume** для хранения проектов
+- [ ] **Код загружен** в `/app/projects/` через выбранный метод
+- [ ] **Проверили доступ:** `kubectl exec -it pod -- ls /app/projects/`
+- [ ] **NuGet packages восстановлены** (если нужно)
+- [ ] **Git credentials настроены** (для private repos)
+
+### 🔍 Проверка доступа к файлам
+
+```bash
+# Подключитесь к pod
+kubectl exec -it ultrasharp-tools-server-xxx -n ultrasharp-tools -- /bin/bash
+
+# Проверьте наличие проектов
+ls -la /app/projects/
+
+# Попробуйте найти .sln файлы
+find /app/projects -name "*.sln"
+
+# Проверьте что код есть
+cat /app/projects/myproject/Program.cs
+```
+
+---
+
 ## Требования
 
 ### Локальная Разработка

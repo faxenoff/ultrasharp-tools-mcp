@@ -261,6 +261,184 @@ Claude: Найдено 45 использований в 12 файлах...
 
 ---
 
+## 🔌 **Режимы работы и доступ к файлам**
+
+UltrasharpTools MCP поддерживает два режима работы с **разным доступом к файловой системе**.
+
+### 📍 Local Mode (Stdio) - Для разработчиков
+
+**Для кого:** Индивидуальные разработчики, работающие на своей машине.
+
+**Как работает:**
+```
+Claude Desktop (ваша машина)
+    ↓ запускает локальный процесс через stdio
+UltrasharpTools.MCPServer.exe
+    ↓ ПРЯМОЙ доступ к файловой системе
+Ваши проекты (D:\Projects\, C:\Users\, /home/user/, и т.д.)
+```
+
+**Конфигурация (`claude_desktop_config.json`):**
+```json
+{
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "type": "stdio",
+      "command": "D:/path/to/UltrasharpTools.MCPServer.exe",
+      "args": ["--log-level", "Information"]
+    }
+  }
+}
+```
+
+**Доступ к файлам:**
+- ✅ **Полный доступ** ко всей файловой системе вашей машины
+- ✅ Работает с **локальными путями** (`D:/MyProject/App.sln`, `/home/user/project/`)
+- ✅ Читает/пишет файлы **напрямую**
+- ✅ Использует **локальный Git** репозиторий
+- ✅ NuGet packages из `~/.nuget/packages/`
+
+**Пример использования:**
+```
+Claude: LoadSolution("D:/MyProjects/MyApp/MyApp.sln")
+→ Сервер читает файлы напрямую с вашего диска D:\
+→ Индексирует код, assemblies, references
+→ Готов к работе!
+```
+
+**Преимущества:**
+- ⚡ **Максимальная скорость** - нет сетевых задержек
+- 🎯 **Простая настройка** - один JSON файл
+- 🔒 **Безопасность** - всё локально, ничего не уходит в сеть
+- 💾 **Прямой доступ** - работа с вашими файлами без копирования
+
+**Use case:** Разработка, отладка, рефакторинг на локальной машине.
+
+---
+
+### 🌐 Remote Mode (HTTP/SSE) - Для команд и CI/CD
+
+**Для кого:** Команды разработчиков, CI/CD pipelines, shared environments.
+
+**Как работает:**
+```
+User Machine (Claude Desktop)
+    ↓ HTTP/SSE запросы через сеть
+Remote MCP Server (Kubernetes pod / Docker container)
+    ↓ доступ ТОЛЬКО к mounted volumes
+PersistentVolume (/app/projects/)
+    ← git clone из GitHub/GitLab
+```
+
+**⚠️ ВАЖНО:** Remote сервер **НЕ ИМЕЕТ доступа** к файлам на вашей машине!
+
+**Как предоставить файлы remote серверу?**
+
+**Вариант 1: Git-based workflow (рекомендуется)**
+
+```bash
+# В Kubernetes pod (init container или manual):
+cd /app/projects
+git clone https://github.com/mycompany/myproject.git
+```
+
+Затем Claude использует:
+```
+LoadSolution("/app/projects/myproject/MyApp.sln")
+→ Сервер читает из /app/projects (PersistentVolume внутри pod)
+```
+
+**Вариант 2: NFS/SMB Mount**
+
+```yaml
+# Kubernetes PersistentVolume с NFS
+apiVersion: v1
+kind: PersistentVolume
+spec:
+  nfs:
+    server: nfs-server.example.com
+    path: "/exported/projects"  # ваши проекты на NFS
+```
+
+После mount:
+```
+LoadSolution("/app/projects/MyApp/MyApp.sln")
+→ Читает через NFS mount
+```
+
+**Вариант 3: Direct Volume Copy**
+
+```bash
+# Скопируйте проект в PersistentVolume
+kubectl cp ./MyProject/ pod-name:/app/projects/MyProject/
+```
+
+**Deployment конфигурация:**
+
+```yaml
+# kubernetes/deployment.yaml
+spec:
+  volumes:
+  - name: projects-storage
+    persistentVolumeClaim:
+      claimName: projects-pvc
+
+  containers:
+  - name: ultrasharp-server
+    volumeMounts:
+    - name: projects-storage
+      mountPath: /app/projects  # <-- здесь будут ваши проекты
+```
+
+**Преимущества:**
+- 👥 **Shared access** - вся команда использует один сервер
+- 🔄 **CI/CD integration** - автоматизация code review, analysis
+- 🛡️ **Изоляция** - код анализируется в контейнере
+- 📊 **Масштабируемость** - можно добавить replicas
+
+**Use case:** Team code review server, CI/CD pipelines, shared analysis infrastructure.
+
+**Подробная документация:** [Run.Docs/Deployment/README.md](Run.Docs/Deployment/README.md)
+
+---
+
+### 📊 Сравнение режимов
+
+| Аспект | Local (Stdio) | Remote (HTTP/SSE) |
+|--------|---------------|-------------------|
+| **Доступ к файлам** | ✅ Прямой к вашей ФС | ⚠️ Только mounted volumes |
+| **Где исходники?** | На вашей машине | Git clone в pod/NFS mount |
+| **Скорость** | ⚡ Максимальная | Зависит от network/storage |
+| **Setup сложность** | 🟢 Простой (1 JSON) | 🟡 Средний (Kubernetes/Docker) |
+| **Security** | Локально | Изолированно в контейнере |
+| **Использование** | Один разработчик | Команда / CI/CD |
+| **NuGet packages** | ~/.nuget/packages | Внутри контейнера |
+| **Git operations** | Локальный репозиторий | Git в pod |
+
+---
+
+### 🎯 Какой режим выбрать?
+
+**Используйте Local (Stdio), если:**
+- ✅ Работаете на своей машине
+- ✅ Нужна максимальная скорость
+- ✅ Хотите простую настройку
+- ✅ Работаете с локальными проектами
+
+**Используйте Remote (HTTP/SSE), если:**
+- ✅ Нужен shared server для команды
+- ✅ Интеграция с CI/CD
+- ✅ Код должен быть изолирован
+- ✅ Используете Kubernetes/Docker infrastructure
+
+**Hybrid подход:**
+- **Local** для разработки и отладки
+- **Remote** для code review и CI/CD
+
+**📖 Подробная документация:** [Run.Docs/Setup/Access-Modes.md](Run.Docs/Setup/Access-Modes.md) - детальное руководство по режимам работы с примерами, troubleshooting и FAQ.
+
+---
+
 ## 🎨 **Полный список инструментов (36 tools)**
 
 ### 🔷 Solution Management (2)

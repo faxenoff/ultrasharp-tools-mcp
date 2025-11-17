@@ -1,44 +1,96 @@
-# UltrasharpTools - C# Development MCP Server
+---
+type: guide
+purpose: Quick MCP tools reference for AI assistants
+ai-context: **READ THIS when starting work on ANY project**
+priority: CRITICAL
+tags: [mcp, quick-reference, decision-tree]
+---
 
-**For C# projects, use UltrasharpTools MCP server.**
+# MCP Tools - Quick Reference
 
-## Quick Reference
+**You have multiple MCP servers available. Use them PROACTIVELY, not as last resort.**
 
-**See [MCP_SHARP.md](./MCP_SHARP.md) for complete documentation.**
+## 🎯 Quick Decision: Which MCP to use?
 
-## Key Capabilities
+### Working with C# / .NET project?
+→ **See [MCP_Sharp.md](./MCP_Sharp.md)** - Complete C# development suite
 
-### Code Modification (with Auto-Linting!)
-- ✅ All modification operations include **automatic quality checks**
-- ✅ Add/modify/rename/move members with Roslyn precision
-- ✅ Git integration: auto-branches, commits, undo support
+**SharpTools MCP provides:**
+- ✅ Semantic search (find code by meaning, not name!)
+- ✅ Code modification with auto-linting
+- ✅ Quality tools (formatting, linting, auto-fixes)
+- ✅ Debugging (CFG tracing, backtrace, log analysis)
+- ✅ 36+ specialized tools for C# development
 
-### Code Quality
-- ✅ **FormatCode** - CSharpier formatting
-- ✅ **AnalyzeCodeStyle** - Roslyn analyzers
-- ✅ **ApplyCodeFixes** - Auto-fix common issues
-
-### Debugging & Diagnostics
-- ✅ **TraceExecution** - Static code flow analysis (CFG)
-- ✅ **TraceBackwards** - Backtrace from crash with stack hints
-- ✅ **AnalyzeLogs** - 5 formats (ECS/JSON/Logcat/WebServer/XML)
-
-## Essential Workflow
-
+**Key workflow:**
 ```
-1. UltrasharpTool_LoadSolution (ALWAYS start with this!)
-2. Make modifications → automatic linting included
-3. Review quality feedback → fix issues
-4. FormatCode → AnalyzeCodeStyle → commit
+1. LoadSolution → initialize workspace
+2. FindPotentialDuplicates → semantic search (no FQN needed!)
+3. OverwriteMember → modify code (auto-linting included)
+4. FormatCode + ApplyCodeFixes → ensure quality
 ```
-
-## Critical Rules
-
-- ❌ Don't skip `LoadSolution` - tools require it
-- ❌ Don't ignore automatic linting in responses
-- ✅ Trust auto-linting - runs on every modification
-- ✅ Use Git integration - auto-branches, easy undo
 
 ---
 
-**📖 Complete documentation:** [MCP_SHARP.md](./MCP_SHARP.md)
+### Working with other languages?
+→ Use general-purpose MCP tools (grep, file operations, etc.)
+
+---
+
+## ⚡ Critical Rules
+
+### 1. MCP tools are 10-100x FASTER than manual work
+```
+❌ DON'T: "Let me manually read the codebase to understand it"
+✅ DO: Use MCP tools immediately (30 sec vs 30 min)
+```
+
+### 2. Use MCP tools FIRST, not when "task is specific enough"
+```
+❌ WRONG: "I'll try to figure it out myself first, then use MCP if needed"
+✅ RIGHT: "C# project detected → LoadSolution immediately"
+```
+
+### 3. Semantic search when you don't know exact names
+```
+❌ WRONG: "I need exact class name to use MCP tools"
+✅ RIGHT: "FindPotentialDuplicates → finds by meaning, not name"
+```
+
+### 4. Trust automatic quality checks
+```
+Every code modification includes:
+  ✅ Compilation check
+  ✅ Linting (Roslyn analyzers)
+  ✅ Quality report in response
+```
+
+---
+
+## 📖 Documentation Structure
+
+**Level 1 (You are here):** Quick reference
+**Level 2:** Language-specific guides
+  - [MCP_Sharp.md](./MCP_Sharp.md) - C# / .NET projects
+  - *(Other languages: coming soon)*
+
+**Level 3:** Detailed tool documentation
+  - [Run.Docs/Tools/](../Tools/) - Individual tool guides
+  - [Run.Docs/Guides/](../Guides/) - Workflow examples
+
+---
+
+## 🆕 New Capabilities (2025)
+
+**For C# projects** - see [MCP_Sharp.md](./MCP_Sharp.md):
+- ✅ Semantic code search (vector embeddings)
+- ✅ 5 log formats with auto-detection
+- ✅ CFG-based tracing and backtrace
+- ✅ Quality tools suite (format, lint, auto-fix)
+- ✅ Automatic linting on every modification
+
+---
+
+**💡 Remember:** MCP tools are designed to be your FIRST approach, not fallback.
+
+**Use proactively → Save hours of work.**

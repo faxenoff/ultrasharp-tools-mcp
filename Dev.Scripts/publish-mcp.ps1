@@ -58,7 +58,7 @@ if (Test-Path $mcpOutput) {
     Write-Success "Removed $mcpOutput directory"
 }
 
-# Publish MCPServer (автоматически соберёт UltrasharpTools.Tools)
+# Publish MCPServer (automatically builds UltrasharpTools.Tools)
 Write-Header "Publishing MCPServer with R2R"
 dotnet publish UltrasharpTools.MCPServer/UltrasharpTools.MCPServer.csproj `
     -c $Configuration `
@@ -69,11 +69,96 @@ dotnet publish UltrasharpTools.MCPServer/UltrasharpTools.MCPServer.csproj `
     -p:PublishReadyToRunComposite=false
 
 if ($LASTEXITCODE -eq 0) {
+    # Clean up BuildHost directories
+    $buildHostDirs = Get-ChildItem -Path $mcpOutput -Directory -Filter "BuildHost-*"
+    foreach ($dir in $buildHostDirs) {
+        Remove-Item $dir.FullName -Recurse -Force
+        Write-Success "Removed: $($dir.Name)"
+    }
+
     $mcpSize = (Get-ChildItem $mcpOutput -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
     Write-Success "MCPServer published successfully ($([math]::Round($mcpSize, 2)) MB)"
 } else {
     Write-Error "MCPServer publish failed"
     exit 1
+}
+
+# Copy setup scripts and configs to publish directory
+Write-Header "Organizing Documentation and Scripts"
+
+$runConfigDir = Join-Path $ProjectRoot "Run.Config"
+
+# Create Scripts subdirectory for support scripts
+$scriptsDir = Join-Path $mcpOutput "Scripts"
+if (!(Test-Path $scriptsDir)) {
+    New-Item -ItemType Directory -Path $scriptsDir | Out-Null
+    Write-Success "Created: Scripts/ directory"
+}
+
+# Copy Dev.Scripts contents to Scripts/
+$devScriptsPath = Join-Path $ProjectRoot "Dev.Scripts"
+if (Test-Path $devScriptsPath) {
+    Get-ChildItem -Path $devScriptsPath -File | ForEach-Object {
+        Copy-Item -Path $_.FullName -Destination $scriptsDir -Force
+        Write-Success "Copied to Scripts/: $($_.Name)"
+    }
+}
+
+# Create Config subdirectory for setup and configs
+$configDir = Join-Path $mcpOutput "Config"
+if (!(Test-Path $configDir)) {
+    New-Item -ItemType Directory -Path $configDir | Out-Null
+    Write-Success "Created: Config/ directory"
+}
+
+# Copy setup files to Config/
+$configSetupFiles = @(
+    @{ Source = (Join-Path $ProjectRoot "setup-semantic-embedding.cmd"); Name = "setup-semantic-embedding.cmd" },
+    @{ Source = (Join-Path $runConfigDir "validate-semantic-config.cmd"); Name = "validate-semantic-config.cmd" },
+    @{ Source = (Join-Path $ProjectRoot "SEMANTIC_SETUP_GUIDE.md"); Name = "SEMANTIC_SETUP_GUIDE.md" },
+    @{ Source = (Join-Path $runConfigDir "semantic-config.yaml"); Name = "semantic-config.yaml" }
+)
+
+foreach ($fileInfo in $configSetupFiles) {
+    if (Test-Path $fileInfo.Source) {
+        Copy-Item -Path $fileInfo.Source -Destination (Join-Path $configDir $fileInfo.Name) -Force
+        Write-Success "Copied to Config/: $($fileInfo.Name)"
+    }
+}
+
+# Create Read.me subdirectory for documentation
+$readmeDir = Join-Path $mcpOutput "Read.me"
+if (!(Test-Path $readmeDir)) {
+    New-Item -ItemType Directory -Path $readmeDir | Out-Null
+    Write-Success "Created: Read.me/ directory"
+}
+
+# Copy README files to Read.me/
+$publishReadme = Join-Path $ProjectRoot "PUBLISH_README.md"
+if (Test-Path $publishReadme) {
+    # Main README.md in Read.me/
+    Copy-Item -Path $publishReadme -Destination (Join-Path $readmeDir "README.md") -Force
+    Write-Success "Copied to Read.me/: README.md"
+
+    # Also keep PUBLISH_README.md for reference
+    Copy-Item -Path $publishReadme -Destination (Join-Path $readmeDir "PUBLISH_README.md") -Force
+    Write-Success "Copied to Read.me/: PUBLISH_README.md"
+}
+
+# Copy main README.md from root to Read.me/
+$mainReadme = Join-Path $ProjectRoot "README.md"
+if (Test-Path $mainReadme) {
+    Copy-Item -Path $mainReadme -Destination (Join-Path $readmeDir "README_FULL.md") -Force
+    Write-Success "Copied to Read.me/: README_FULL.md"
+}
+
+# Organize published files
+Write-Header "Organizing Published Files"
+$organizeScript = Join-Path $ProjectRoot "Dev.Scripts/organize-publish.ps1"
+if (Test-Path $organizeScript) {
+    & $organizeScript -PublishDir $mcpOutput
+} else {
+    Write-Info "Organize script not found, skipping file organization"
 }
 
 # Summary
@@ -101,3 +186,13 @@ Write-Host @"
   }
 }
 "@ -ForegroundColor Gray
+
+Write-Host ""
+Write-Header "First Time Setup"
+Write-Info "Configure semantic embedding (required for semantic search):"
+Write-Host "  cd $(Resolve-Path $mcpOutput)" -ForegroundColor Cyan
+Write-Host "  .\Config\setup-semantic-embedding.cmd" -ForegroundColor Cyan
+Write-Host ""
+Write-Info "Or double-click: Config\setup-semantic-embedding.cmd in $mcpOutput" -ForegroundColor Yellow
+Write-Host ""
+Write-Info "Documentation: Read.me\README.md" -ForegroundColor Gray

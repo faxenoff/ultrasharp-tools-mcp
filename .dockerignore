@@ -24,6 +24,8 @@
 # Runtime data
 .ultrasharp/
 Run.Logs/
+Run.Publish/
+Run.Config/
 *.db
 *.db-shm
 *.db-wal
@@ -43,6 +45,9 @@ Run.Docs/
 Dev.Scripts/
 *.ps1
 *.sh
+*.cmd
+publish-mcp-server.cmd
+setup-semantic-embedding.cmd
 
 # Docker
 Dockerfile

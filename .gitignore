@@ -31,7 +31,8 @@ bld/
 publish/
 artifacts/
 Run.Publish
-RUn.Logs
+Run.Logs
+Run.Config/*.json
 
 # Static PGO artifacts
 *.mibc

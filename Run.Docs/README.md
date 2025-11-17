@@ -32,6 +32,7 @@
 ### Setup/ - Инструкции по настройке
 
 Пошаговые инструкции для развертывания:
+- [**Access-Modes.md**](Setup/Access-Modes.md) - ⭐ **Режимы работы и доступ к файлам** (Local vs Remote)
 - [**Embeddings.md**](Setup/Embeddings.md) - Настройка векторных embeddings (Ollama/TEI)
 - [**Docker.md**](Setup/Docker.md) - Docker setup для компонентов
 - [**Requirements.md**](Setup/Requirements.md) - Требования к оборудованию

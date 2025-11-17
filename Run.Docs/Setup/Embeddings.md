@@ -8,19 +8,20 @@
 
 **Windows:**
 ```powershell
-.\setup-embeddings-interactive.ps1
+.\setup-semantic-embedding.cmd
+# или напрямую
+pwsh Dev.Scripts\setup-semantic-embedding.ps1
 ```
 
 **macOS/Linux:**
 ```bash
-chmod +x ./setup-embeddings-interactive.sh
-./setup-embeddings-interactive.sh
+pwsh ./Dev.Scripts/setup-semantic-embedding.ps1
 ```
 
 Скрипт автоматически:
 1. ✅ Определяет GPU capabilities (NVIDIA compute capability)
-2. ✅ Рекомендует оптимальный provider (TEI/Ollama)
-3. ✅ Устанавливает выбранный provider
+2. ✅ Рекомендует оптимальный provider (Ollama/TEI/Memory)
+3. ✅ Создает конфигурацию в Run.Config/semantic-config.json
 4. ✅ Проверяет работоспособность
 
 ---
@@ -60,14 +61,14 @@ chmod +x ./setup-embeddings-interactive.sh
 
 **Windows:**
 ```powershell
-.\setup-embeddings-interactive.ps1
-# Выберите опцию 1
+.\setup-semantic-embedding.cmd
+# Выберите опцию: TEI
 ```
 
-**Unix/macOS/Linux:**
+**macOS/Linux:**
 ```bash
-./setup-embeddings-interactive.sh
-# Выберите опцию 1
+pwsh ./Dev.Scripts/setup-semantic-embedding.ps1
+# Выберите опцию: TEI
 ```
 
 ### Что делает скрипт
@@ -127,14 +128,14 @@ curl -X POST http://localhost:8080/embed \
 
 **Windows:**
 ```powershell
-.\setup-embeddings-interactive.ps1
-# Выберите опцию 2
+.\setup-semantic-embedding.cmd
+# Выберите опцию: Ollama
 ```
 
-**Unix/macOS/Linux:**
+**macOS/Linux:**
 ```bash
-./setup-embeddings-interactive.sh
-# Выберите опцию 2
+pwsh ./Dev.Scripts/setup-semantic-embedding.ps1
+# Выберите опцию: Ollama
 ```
 
 **Вручную:**
@@ -206,24 +207,77 @@ Fallback без ML embeddings. Использует детерминирован
 
 ## ⚙️ Конфигурация
 
-### Auto режим (рекомендуется)
+### Двухуровневая система конфигурации
 
+**Уровень 1: Глобальный конфиг** (`Run.Config/semantic-config.json`)
+- Создается автоматически через `setup-semantic-embedding.ps1`
+- Определяет платформу (Ollama/TEI/Memory)
+- Выбор модели и endpoint
+- **Файл игнорируется в Git** (Run.Config/*.json)
+
+**Уровень 2: Проектный конфиг** (`.sharptools/semantic-config.json` в проекте)
+- Создается автоматически при первой загрузке solution
+- Автоопределяет:
+  - Размер кодовой базы (small/medium/large)
+  - Язык комментариев (english/multilingual)
+  - Выбор vector store (sqlite-vec/vectorlite)
+
+**Сервисы автоконфигурации:**
+- `AutoConfigurationService` — выбор платформы по GPU
+- `CodebaseLanguageDetector` — определение языка кода
+- `CodebaseSizeDetector` — определение размера проекта
+- `EmbeddingConfigValidator` — валидация с health checks
+- `EmbeddingServiceHealthChecker` — проверка доступности TEI/Ollama
+
+### Валидация конфигурации
+
+**Windows:**
+```powershell
+.\validate-semantic-config.cmd
+# или с автоисправлением:
+.\validate-semantic-config.cmd --Fix
+```
+
+**macOS/Linux:**
+```bash
+pwsh ./Dev.Scripts/validate-semantic-config.ps1
+# или с автоисправлением:
+pwsh ./Dev.Scripts/validate-semantic-config.ps1 -Fix
+```
+
+**Что проверяется:**
+1. ✅ Синтаксис JSON конфигурации
+2. ✅ Доступность TEI/Ollama endpoints
+3. ✅ Доступность моделей
+4. ✅ Корректность параметров (timeout, dimension, etc.)
+5. ✅ Права доступа к файлам
+
+### Пример глобального конфига (Run.Config/semantic-config.json)
+
+**Auto режим (рекомендуется):**
 ```json
 {
-  "Embedding": {
-    "Provider": "auto",           // Автодетект GPU → выбор provider
-    "Enabled": true,
-    "AutoDetectGPU": true
+  "embedding": {
+    "platform": "auto",           // Автодетект GPU → выбор provider
+    "architecture": "auto",       // Автодетект архитектуры
+    "ollama": {
+      "endpoint": "http://localhost:11434",
+      "selected_model": "granite-embedding:latest"
+    },
+    "tei": {
+      "endpoint": "http://localhost:8080",
+      "model": "ibm-granite/granite-embedding-english-r2"
+    }
   }
 }
 ```
 
 **Логика автодетекта:**
-1. Проверяет GPU через `nvidia-smi`
+1. Проверяет GPU через `nvidia-smi` или `detect-gpu-architecture.ps1`
 2. Определяет Compute Capability
 3. Выбирает provider:
-   - CC >= 8.0 → TEI (8192 tokens)
-   - CC < 8.0 или нет NVIDIA → Ollama (512 tokens)
+   - Ollama доступен → Ollama (512 tokens)
+   - CC >= 8.0 + Docker → TEI (8192 tokens)
    - Fallback → Memory (no ML)
 
 ### Явное указание provider

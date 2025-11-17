@@ -29,7 +29,7 @@
     <!-- ReadyToRun AOT для ускорения старта (20-50% faster startup) -->
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
-    <PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
+    <PublishReadyToRunEmitSymbols>false</PublishReadyToRunEmitSymbols>
     <PublishReadyToRunUseCrossgen2>true</PublishReadyToRunUseCrossgen2>
 
     <!-- Tiered Compilation: R2R Tier 0 → Optimized JIT Tier 1 (для hot paths) -->
@@ -52,5 +52,18 @@
     <DebugType>embedded</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
+
+  <!-- Clean up PDB files after publish (Release only) -->
+  <!-- Note: BuildHost directories cleaned by publish-mcp.ps1 -->
+  <Target Name="CleanPublishOutput" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <!-- Remove all PDB files (embedded debug info is in DLLs) -->
+      <PdbFiles Include="$(PublishDir)**\*.pdb" />
+    </ItemGroup>
+
+    <Delete Files="@(PdbFiles)" />
+
+    <Message Importance="high" Text="Cleaned up PDB files from publish output" Condition="'@(PdbFiles)' != ''" />
+  </Target>
 
 </Project>

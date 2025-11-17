@@ -12,14 +12,52 @@ SharpTools — это MCP-сервер, предоставляющий AI-аге
 
 ## Команды разработки
 
+### Структура проекта
+
+```
+ultrasharp-tools-mcp/
+├── Dev.Scripts/           # Скрипты разработки (.ps1, .py, .sh)
+├── Dev.Docs/              # Техническая документация
+├── Run.Config/            # Конфигурационные файлы
+├── Run.Publish/           # Артефакты сборки (git ignore)
+└── Run.Logs/              # Логи (git ignore)
+```
+
+**Dev.Scripts/** содержит:
+- `publish-mcp.ps1` — оптимизированная сборка MCPServer
+- `setup-semantic-embedding.ps1` — настройка semantic embedding
+- `detect-gpu-architecture.ps1` — определение GPU архитектуры
+- `convert-tokenizer-to-fast.ps1/.py` — конвертация токенизаторов
+- `setup-tei.ps1/.sh` — запуск TEI Docker контейнера
+- `validate-semantic-config.ps1` — валидация конфигурации
+
+**Run.Config/** содержит:
+- `semantic-config.json` — рабочий конфиг (git ignore)
+- `semantic-config.yaml` — пример конфига
+- `validate-semantic-config.cmd` — Windows launcher
+
 ### Сборка
 
+**Оптимизированная публикация MCPServer:**
 ```bash
-# Сборка всего решения
-dotnet build SharpTools.sln
+# Windows
+publish-mcp-server.cmd
 
-# Сборка в Release режиме
-dotnet build SharpTools.sln -c Release
+# Linux/macOS
+pwsh Dev.Scripts/publish-mcp.ps1
+```
+
+Особенности:
+- ✅ ReadyToRun (R2R) + Dynamic PGO
+- ✅ Удаление PDB файлов (~34 MB)
+- ✅ Удаление BuildHost директорий
+- ✅ Организация Scripts/ и Config/
+- 📦 Результат: `Run.Publish/MCPServer/` (~103 MB)
+
+**Обычная сборка для разработки:**
+```bash
+dotnet build UltrasharpTools.sln
+dotnet build UltrasharpTools.sln -c Release
 ```
 
 ### Запуск серверов
@@ -35,6 +73,30 @@ dotnet run -- --port 3001 --log-file ./logs/server.log --log-level Debug --build
 ```bash
 cd UltrasharpTools.MCPServer
 dotnet run -- --log-directory ./logs --log-level Information
+```
+
+### Semantic Embedding
+
+**Первая настройка:**
+```bash
+# Windows (двойной клик)
+setup-semantic-embedding.cmd
+
+# Или напрямую
+pwsh Dev.Scripts/setup-semantic-embedding.ps1
+```
+
+**Валидация конфигурации:**
+```bash
+validate-semantic-config.cmd
+# или
+pwsh Dev.Scripts/validate-semantic-config.ps1
+```
+
+**Запуск TEI сервера:**
+```bash
+pwsh Dev.Scripts/setup-tei.ps1    # Windows
+./Dev.Scripts/setup-tei.sh        # Linux
 ```
 
 Опции командной строки (обоим серверам):
@@ -59,9 +121,16 @@ dotnet run -- --log-directory ./logs --log-level Information
 - `SemanticSimilarityService` — поиск семантически похожих методов/классов
 - `ComplexityAnalysisService` — анализ цикломатической и когнитивной сложности
 - `SourceResolutionService` — получение исходного кода из SourceLink, embedded PDB, декомпиляции
-- **`FormattingService`** — форматирование кода через CSharpier (новое)
-- **`DiagnosticService`** — анализ через Roslyn analyzers (новое)
-- **`CodeFixService`** — автоматическое применение code fixes (новое)
+- **`FormattingService`** — форматирование кода через CSharpier
+- **`DiagnosticService`** — анализ через Roslyn analyzers
+- **`CodeFixService`** — автоматическое применение code fixes
+- **Semantic Embedding сервисы:**
+  - `SemanticConfigManager` — управление конфигурацией (global + project)
+  - `AutoConfigurationService` — автоопределение платформы (Ollama/TEI/Memory)
+  - `EmbeddingConfigValidator` — валидация с health checks
+  - `CodebaseLanguageDetector` — определение языка кодовой базы (english/multilingual)
+  - `CodebaseSizeDetector` — определение размера (small/medium/large)
+  - `EmbeddingServiceHealthChecker` — проверка доступности TEI/Ollama
 
 **Уровень MCP инструментов** (`UltrasharpTools.Tools/Mcp/Tools/`):
 - `SolutionTools` — `LoadSolution`, `LoadProject`
@@ -152,11 +221,22 @@ Semantic Merge автоматически регистрирует:
 
 ### Важные зависимости
 
+**Основные:**
 - **Microsoft.CodeAnalysis.Workspaces.MSBuild** (5.0.0-2.final) — загрузка .sln файлов
 - **ICSharpCode.Decompiler** (10.0.0.8079-preview1) — декомпиляция при отсутствии исходников
 - **LibGit2Sharp** (0.31.0) — автоматизация Git
 - **ModelContextProtocol** (0.4.0-preview.3) — MCP SDK
-- **CSharpier.Core** (1.2.1) — форматирование C# кода (новое)
+
+**Quality Tools:**
+- **CSharpier.Core** (1.2.1) — форматирование C# кода
+
+**Semantic Embedding:**
+- **Microsoft.SemanticKernel** — векторные операции и embedding
+- **Microsoft.Data.Sqlite** — хранение векторов (sqlite-vec/vectorlite)
+- Поддержка провайдеров:
+  - TEI (Text Embeddings Inference) — HuggingFace, Docker
+  - Ollama — локальный inference (granite-embedding, mxbai-embed-large)
+  - Memory — in-process embedding (экспериментально)
 
 ## Новые возможности: Quality Tools
 

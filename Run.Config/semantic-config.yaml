@@ -1,0 +1,75 @@
+# Global Semantic Embedding Configuration
+# Place this file near the MCP executable
+# Environment variables can override these settings:
+#   SEMANTIC_PLATFORM - embedding platform (tei, ollama, memory)
+#   SEMANTIC_ARCHITECTURE - GPU architecture (auto, cpu, turing, ampere-80, ampere-86, ada, hopper, blackwell)
+#   TEI_ENDPOINT - TEI server endpoint
+#   OLLAMA_ENDPOINT - Ollama server endpoint
+
+embedding:
+  # Platform: tei, ollama, memory
+  platform: tei
+
+  # Architecture: auto, cpu, turing, ampere-80, ampere-86, ada, hopper, blackwell
+  # "auto" - detect on first run
+  architecture: auto
+
+  # TEI (Text Embeddings Inference) settings
+  tei:
+    endpoint: http://localhost:8080
+
+    models:
+      # English-optimized model (fast, small)
+      - id: sentence-transformers/all-MiniLM-L6-v2
+        languages: [english]
+        vector_size: 384
+
+      # Multilingual model
+      - id: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+        languages: [multilingual]
+        vector_size: 384
+
+      # High-quality English model
+      - id: sentence-transformers/all-mpnet-base-v2
+        languages: [english]
+        vector_size: 768
+
+    selected_model: sentence-transformers/all-MiniLM-L6-v2
+
+  # Ollama settings
+  ollama:
+    endpoint: http://localhost:11434
+
+    models:
+      # IBM Granite embedding (English, fast)
+      - id: granite-embedding:latest
+        languages: [english]
+        vector_size: 384
+
+      # High-quality multilingual model
+      - id: mxbai-embed-large:latest
+        languages: [multilingual]
+        vector_size: 1024
+
+      # Nomic Embed (English, efficient)
+      - id: nomic-embed-text:latest
+        languages: [english]
+        vector_size: 768
+
+    selected_model: granite-embedding:latest
+
+  # In-memory settings (experimental)
+  memory:
+    model_path: ./models/embedding
+    vector_size: 384
+
+# Auto-detection settings (first run)
+auto_detection:
+  # Detect GPU architecture automatically
+  gpu_architecture: true
+
+  # Detect codebase language automatically
+  language: true
+
+  # Detect codebase size automatically
+  codebase_size: true

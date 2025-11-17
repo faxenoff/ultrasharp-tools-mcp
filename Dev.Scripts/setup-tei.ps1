@@ -13,7 +13,8 @@ Write-Host ""
 $containerName = "tei-server"
 $model = "ibm-granite/granite-embedding-125m-english"
 $port = 8080
-$imageTag = "ghcr.io/huggingface/text-embeddings-inference:1.2-cuda"
+$baseImage = "ghcr.io/huggingface/text-embeddings-inference"
+$version = "1.8.3"
 
 # Check if container already exists
 $existingContainer = docker ps -a --filter "name=$containerName" --format "{{.Names}}" 2>$null
@@ -59,6 +60,73 @@ if ($existingContainer -eq $containerName) {
     }
 }
 
+# Architecture selection
+Write-Host "========================================"
+Write-Host "GPU Architecture Selection"
+Write-Host "========================================"
+Write-Host ""
+Write-Host "Select your GPU architecture:"
+Write-Host "  1) CPU only (slowest, but works everywhere)"
+Write-Host "  2) NVIDIA Turing (RTX 2000 series, T4)"
+Write-Host "  3) NVIDIA Ampere A100/A30 (default, best compatibility)"
+Write-Host "  4) NVIDIA Ampere A10/A40"
+Write-Host "  5) NVIDIA Ada Lovelace (RTX 4000 series)"
+Write-Host "  6) NVIDIA Hopper (H100)"
+Write-Host "  7) NVIDIA Blackwell (RTX 5000 series) - experimental"
+Write-Host ""
+
+$architecture = Read-Host "Enter choice [1-7] (default: 3)"
+if ([string]::IsNullOrWhiteSpace($architecture)) { $architecture = "3" }
+
+switch ($architecture) {
+    "1" {
+        $imageTag = "${baseImage}:cpu-${version}"
+        $archName = "CPU"
+        $useGpu = $false
+    }
+    "2" {
+        $imageTag = "${baseImage}:turing-${version}"
+        $archName = "Turing (RTX 2000/T4)"
+        $useGpu = $true
+    }
+    "3" {
+        $imageTag = "${baseImage}:${version}"
+        $archName = "Ampere A100/A30"
+        $useGpu = $true
+    }
+    "4" {
+        $imageTag = "${baseImage}:86-${version}"
+        $archName = "Ampere A10/A40"
+        $useGpu = $true
+    }
+    "5" {
+        $imageTag = "${baseImage}:89-${version}"
+        $archName = "Ada Lovelace (RTX 4000)"
+        $useGpu = $true
+    }
+    "6" {
+        $imageTag = "${baseImage}:hopper-${version}"
+        $archName = "Hopper (H100)"
+        $useGpu = $true
+    }
+    "7" {
+        $imageTag = "${baseImage}:${version}"
+        $archName = "Blackwell (RTX 5000) - trying default image"
+        $useGpu = $true
+        Write-Host ""
+        Write-Host "[WARNING] Blackwell not officially supported yet (PR #735 pending)" -ForegroundColor Yellow
+        Write-Host "          Using default image - if it fails, try option 1 (CPU) or 5 (Ada)" -ForegroundColor Yellow
+    }
+    default {
+        Write-Host "[ERROR] Invalid choice" -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host ""
+Write-Host "[INFO] Selected: $archName" -ForegroundColor Cyan
+Write-Host ""
+
 # Pull TEI image
 Write-Host "[INFO] Pulling TEI Docker image..." -ForegroundColor Cyan
 Write-Host "       Image: $imageTag" -ForegroundColor DarkGray
@@ -80,61 +148,52 @@ Write-Host "[INFO] Creating TEI container..." -ForegroundColor Cyan
 Write-Host "       Container name: $containerName" -ForegroundColor DarkGray
 Write-Host "       Model: $model" -ForegroundColor DarkGray
 Write-Host "       Port: $port" -ForegroundColor DarkGray
+Write-Host "       Architecture: $archName" -ForegroundColor DarkGray
 Write-Host ""
 
-# Try with GPU first
-Write-Host "[INFO] Attempting to start with GPU support..." -ForegroundColor Cyan
-$gpuArgs = @(
+# Prepare docker arguments
+$dockerArgs = @(
     "run",
     "-d",
     "--name", $containerName,
-    "--gpus", "all",
     "-p", "${port}:80",
     "-v", "$HOME/.cache/huggingface:/data",
-    "--restart", "unless-stopped",
-    $imageTag,
-    "--model-id", $model,
-    "--max-concurrent-requests", "512",
-    "--max-input-length", "8192"
+    "--restart", "unless-stopped"
 )
 
-docker @gpuArgs 2>&1 | Out-Null
-
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "[OK] TEI started with GPU acceleration" -ForegroundColor Green
+# Add GPU support if selected
+if ($useGpu) {
+    Write-Host "[INFO] Starting with GPU support..." -ForegroundColor Cyan
+    $dockerArgs += "--gpus"
+    $dockerArgs += "all"
 }
 else {
-    Write-Host "[WARNING] GPU start failed, trying CPU mode..." -ForegroundColor Yellow
+    Write-Host "[INFO] Starting in CPU mode..." -ForegroundColor Cyan
+}
 
-    # Remove failed container
-    docker rm $containerName 2>$null
+$dockerArgs += $imageTag
+$dockerArgs += "--model-id"
+$dockerArgs += $model
+$dockerArgs += "--max-concurrent-requests"
+$dockerArgs += "512"
 
-    # Try CPU mode
-    $cpuArgs = @(
-        "run",
-        "-d",
-        "--name", $containerName,
-        "-p", "${port}:80",
-        "-v", "$HOME/.cache/huggingface:/data",
-        "--restart", "unless-stopped",
-        $imageTag,
-        "--model-id", $model,
-        "--max-concurrent-requests", "512",
-        "--max-input-length", "8192"
-    )
+docker @dockerArgs
 
-    docker @cpuArgs
-
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "[OK] TEI started in CPU mode" -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "[WARNING] Running on CPU - performance will be slower" -ForegroundColor Yellow
-        Write-Host "          Consider installing nvidia-container-toolkit for GPU support" -ForegroundColor DarkGray
+if ($LASTEXITCODE -eq 0) {
+    if ($useGpu) {
+        Write-Host "[OK] TEI started with GPU acceleration" -ForegroundColor Green
     }
     else {
-        Write-Host "[ERROR] Failed to start TEI container" -ForegroundColor Red
-        exit 1
+        Write-Host "[OK] TEI started in CPU mode" -ForegroundColor Green
     }
+}
+else {
+    Write-Host "[ERROR] Failed to start TEI container" -ForegroundColor Red
+    if ($useGpu) {
+        Write-Host ""
+        Write-Host "[HINT] If GPU failed, try running the script again and select option 1 (CPU)" -ForegroundColor Yellow
+    }
+    exit 1
 }
 
 Write-Host ""
