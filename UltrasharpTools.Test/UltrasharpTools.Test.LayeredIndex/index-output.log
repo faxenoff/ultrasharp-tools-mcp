@@ -1,0 +1,48 @@
+[02:13:06 INF] === Индексация UltrasharpTools.sln ===
+[02:13:06 INF] LayeredSymbolIndex enabled with 50 max branch deltas
+[02:13:06 INF] GitWorkflowService enabled for git workflow integration
+[02:13:06 INF] Unloading current solution and workspace.
+[02:13:06 INF] [Memory] Before Unload | Heap: 0.0 MB | Working Set: 34.5 MB | GC: Gen0=0, Gen1=0, Gen2=0
+[02:13:06 INF] [Memory] After Unload + GC | Heap: 0.2 MB | Working Set: 34.5 MB | GC: Gen0=1, Gen1=1, Gen2=1
+[02:13:06 INF] Solution unloaded. Caches compacted.
+[02:13:06 INF] Creating MSBuildWorkspace...
+[02:13:07 INF] Loading solution: D:\OneDrive\_mcp\ultrasharp-tools-mcp\UltrasharpTools.sln
+[02:13:07 INF] [Memory] Before Solution Load | Heap: 0.2 MB | Working Set: 57.5 MB | GC: Gen0=1, Gen1=1, Gen2=1
+[02:13:15 INF] Solution loaded successfully with 7 projects.
+[02:13:15 INF] [Memory] After Solution Load | Heap: 5.7 MB | Working Set: 138.8 MB | GC: Gen0=3, Gen1=2, Gen2=1
+[02:13:15 INF] Found 185 runtime assemblies. Filtering relevant ones...
+[02:13:15 INF] Filtered to 173 relevant assemblies (6.5% reduction)
+[02:13:15 INF] Found 37 NuGet assemblies from global packages cache (parallel mode)
+[02:13:15 INF] MetadataLoadContext initialized with 207 distinct search paths.
+[02:13:15 INF] Starting population of reflection type cache (parallel mode)...
+[02:13:15 INF] Reflection type cache population complete (parallel). Cached 25705 types from 207 unique assembly paths processed.
+[02:13:15 INF] [Memory] After Metadata Cache Init | Heap: 21.3 MB | Working Set: 168.0 MB | GC: Gen0=7, Gen1=4, Gen2=3
+[02:13:15 INF] Building fast symbol index from solution...
+[02:13:39 INF] Fast symbol index built: 482099 symbols indexed in 23512ms. Bloom filter: BloomFilter: 577 619 bytes, 21,0 % full, 0,00 % FPR, 7 hashes. Namespaces: 1183
+[02:13:39 INF] Saving 482099 symbols to cache at D:\OneDrive\_mcp\ultrasharp-tools-mcp\UltrasharpTools.Test\UltrasharpTools.Test.LayeredIndex\.ultrasharp\cache\symbols\UltrasharpTools_709EF00E57CCB27E3FAC495C0F201B3A3A035E10265DE89C7A5AF537B0931D3C.symbolcache.json...
+[02:13:39 INF] [Memory] After Symbol Index Build | Heap: 611.6 MB | Working Set: 842.8 MB | GC: Gen0=161, Gen1=79, Gen2=8
+[02:13:39 INF] Building fast symbol index from solution...
+[02:13:44 INF] Fast symbol index built: 482099 symbols indexed in 4800ms. Bloom filter: BloomFilter: 577 619 bytes, 21,0 % full, 0,00 % FPR, 7 hashes. Namespaces: 1183
+[02:13:44 INF] Saving 482099 symbols to cache at D:\OneDrive\_mcp\ultrasharp-tools-mcp\UltrasharpTools.Test\UltrasharpTools.Test.LayeredIndex\.ultrasharp\cache\symbols\UltrasharpTools_709EF00E57CCB27E3FAC495C0F201B3A3A035E10265DE89C7A5AF537B0931D3C.symbolcache.json...
+[02:13:44 INF] LayeredSymbolIndex built successfully
+[02:13:44 INF] [Memory] After Layered Index Build | Heap: 974.5 MB | Working Set: 1205.4 MB | GC: Gen0=223, Gen1=104, Gen2=9
+[02:13:44 INF] FileSystemWatcher initialized for directory: D:\OneDrive\_mcp\ultrasharp-tools-mcp
+[02:13:44 INF] Subscribed to workspace change events for incremental updates
+[02:13:44 INF] ✅ Solution loaded in 37891.3677ms
+[02:13:44 INF] ✅ .ultrasharp directory created: D:\OneDrive\_mcp\ultrasharp-tools-mcp\.ultrasharp
+[02:13:44 INF] Files created: 1
+[02:13:44 INF]   - layered\deltas.db: 12 KB
+[02:13:44 INF] === Testing symbol search ===
+[02:13:44 INF] Current branch: sharptools/20251112.15-01-15
+[02:13:44 WRN] Could not find commits for branches: sharptools/20251112.15-01-15, main
+[02:13:44 INF] Found 5 symbols matching 'SolutionManager'
+[02:13:44 INF]   - UltrasharpTools.Tools.Services.SolutionManager (NamedType)
+[02:13:44 INF]   - UltrasharpTools.Tools.Services.SolutionManager (NamedType)
+[02:13:44 INF]   - UltrasharpTools.Tools.Services.SolutionManager (NamedType)
+[02:13:44 INF]   - UltrasharpTools.Tools.Services.SolutionManager (NamedType)
+[02:13:44 INF]   - UltrasharpTools.Tools.Services.SolutionManager (NamedType)
+[02:13:44 INF] === Индексация завершена ===
+[02:13:44 INF] Unloading current solution and workspace.
+[02:13:44 INF] [Memory] Before Unload | Heap: 974.1 MB | Working Set: 1277.8 MB | GC: Gen0=224, Gen1=105, Gen2=9
+[02:13:47 INF] [Memory] After Unload + GC | Heap: 915.3 MB | Working Set: 1078.9 MB | GC: Gen0=225, Gen1=106, Gen2=10
+[02:13:47 INF] Solution unloaded. Caches compacted.

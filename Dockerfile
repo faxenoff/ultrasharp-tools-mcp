@@ -1,0 +1,114 @@
+# ========================================
+# UltrasharpTools RemoteServer - .NET 10
+# Multi-stage build with optimization
+# Supports Debug/Release via BUILD_CONFIGURATION
+# ========================================
+
+ARG BUILD_CONFIGURATION=Release
+
+# ========================================
+# Stage 1: Build with .NET 10 SDK
+# ========================================
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
+ARG BUILD_CONFIGURATION
+
+WORKDIR /src
+
+# Copy project files and restore dependencies
+COPY ["UltrasharpTools.RemoteServer/UltrasharpTools.RemoteServer.csproj", "UltrasharpTools.RemoteServer/"]
+COPY ["UltrasharpTools.Tools/UltrasharpTools.Tools.csproj", "UltrasharpTools.Tools/"]
+COPY ["UltrasharpTools.sln", "./"]
+
+# Restore with runtime and R2R settings for proper crossgen2 package resolution
+RUN dotnet restore "UltrasharpTools.RemoteServer/UltrasharpTools.RemoteServer.csproj" \
+    --runtime linux-x64 \
+    /p:PublishReadyToRun=true
+
+# Copy all source code
+COPY . .
+
+# Publish with optimizations
+WORKDIR /src/UltrasharpTools.RemoteServer
+RUN dotnet publish "UltrasharpTools.RemoteServer.csproj" \
+    -c ${BUILD_CONFIGURATION} \
+    -o /app/publish \
+    --runtime linux-x64 \
+    --self-contained false \
+    --no-restore \
+    /p:PublishReadyToRun=true \
+    /p:PublishReadyToRunComposite=false \
+    /p:PublishReadyToRunUseCrossgen2=true \
+    /p:CI=true
+
+# ========================================
+# Stage 2: Runtime (ASP.NET distroless)
+# ========================================
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled AS final
+
+# Install git in separate layer (only for non-chiseled variant)
+# Note: Chiseled images are distroless, we'll need regular aspnet for git
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS final-with-git
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# ========================================
+# Final stage: Copy app and configure
+# ========================================
+FROM final-with-git AS runtime
+
+WORKDIR /app
+
+# Environment variables for K8s optimization
+ENV \
+    # ASP.NET Core settings
+    ASPNETCORE_URLS=http://+:3001 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    # .NET Runtime optimization
+    DOTNET_CLI_TELEMETRY_OPTOUT=true \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_USE_POLLING_FILE_WATCHER=true \
+    TMPDIR=/tmp \
+    # GC settings for long-running server
+    DOTNET_gcServer=1 \
+    DOTNET_GCConserveMemory=5 \
+    # ReadyToRun
+    DOTNET_ReadyToRun=1 \
+    # Globalization (enable for C# code analysis)
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
+    # Diagnostics (keep enabled for debugging)
+    DOTNET_EnableDiagnostics=1
+
+# Copy published app from build stage
+COPY --from=build /app/publish .
+
+# Create directories for data, logs, cache with proper permissions
+RUN mkdir -p /app/data /app/logs /app/.ultrasharp && \
+    chmod -R 755 /app
+
+# K8s labels for management
+LABEL \
+    version="1.0.0" \
+    description="UltrasharpTools MCP RemoteServer - Roslyn-based C# code analysis" \
+    maintainer="UltrasharpTools Team" \
+    app.kubernetes.io/name="ultrasharp-tools-server" \
+    app.kubernetes.io/component="mcp-server" \
+    app.kubernetes.io/part-of="ultrasharp-tools"
+
+# Expose port
+EXPOSE 3001
+
+# Health check (requires curl in image)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:3001/health || exit 1
+
+# Run as non-root user (K8s best practice)
+RUN useradd -m -u 1001 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Entry point
+ENTRYPOINT ["dotnet", "stserver.dll"]

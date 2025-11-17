@@ -1,0 +1,53 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+**/.vs/
+**/.vscode/
+**/.idea/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Test/benchmark results
+**/TestResults/
+**/**/BenchmarkDotNet.Artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/
+
+# Runtime data
+.ultrasharp/
+Run.Logs/
+*.db
+*.db-shm
+*.db-wal
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (not needed in image)
+Dev.Docs/
+Run.Docs/
+*.md
+!README.md
+
+# Scripts (not needed in image)
+Dev.Scripts/
+*.ps1
+*.sh
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# CI/CD
+.github/

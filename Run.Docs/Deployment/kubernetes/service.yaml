@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ultrasharp-tools-server
+  labels:
+    app: ultrasharp-tools-server
+    component: mcp-server
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3001
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: ultrasharp-tools-server

@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ultrasharp-tools-server
+  labels:
+    app: ultrasharp-tools-server
+    component: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ultrasharp-tools-server
+  template:
+    metadata:
+      labels:
+        app: ultrasharp-tools-server
+        component: mcp-server
+    spec:
+      containers:
+      - name: ultrasharp-tools
+        image: ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 3001
+          protocol: TCP
+        env:
+        - name: ASPNETCORE_URLS
+          value: "http://+:3001"
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        # Git integration (optional, can be disabled via --disable-git)
+        - name: GIT_AUTHOR_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: ultrasharp-config
+              key: git.author.name
+        - name: GIT_AUTHOR_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: ultrasharp-config
+              key: git.author.email
+        # Logging configuration
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: ultrasharp-config
+              key: log.level
+              optional: true
+        # Build configuration
+        - name: BUILD_CONFIGURATION
+          valueFrom:
+            configMapKeyRef:
+              name: ultrasharp-config
+              key: build.configuration
+              optional: true
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: logs
+          mountPath: /app/logs
+        - name: ultrasharp-cache
+          mountPath: /app/.ultrasharp
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: ultrasharp-data-pvc
+      - name: logs
+        emptyDir: {}
+      - name: ultrasharp-cache
+        emptyDir: {}
+      # Optional: Use imagePullSecrets if using private registry
+      # imagePullSecrets:
+      # - name: ghcr-secret

@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ultrasharp-tools.fullname" . }}
+  labels:
+    {{- include "ultrasharp-tools.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ultrasharp-tools.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ultrasharp-tools.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ultrasharp-tools.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 3001
+          protocol: TCP
+        env:
+        - name: ASPNETCORE_URLS
+          value: "http://+:3001"
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: GIT_AUTHOR_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "ultrasharp-tools.fullname" . }}-config
+              key: git.author.name
+        - name: GIT_AUTHOR_EMAIL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "ultrasharp-tools.fullname" . }}-config
+              key: git.author.email
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "ultrasharp-tools.fullname" . }}-config
+              key: log.level
+        - name: BUILD_CONFIGURATION
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "ultrasharp-tools.fullname" . }}-config
+              key: build.configuration
+        {{- with .Values.config.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        volumeMounts:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          mountPath: /app/data
+        {{- end }}
+        - name: logs
+          mountPath: /app/logs
+        - name: ultrasharp-cache
+          mountPath: /app/.ultrasharp
+        livenessProbe:
+          {{- toYaml .Values.livenessProbe | nindent 12 }}
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 12 }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      {{- if .Values.persistence.enabled }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "ultrasharp-tools.fullname" . }}-data
+      {{- end }}
+      - name: logs
+        emptyDir: {}
+      - name: ultrasharp-cache
+        emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

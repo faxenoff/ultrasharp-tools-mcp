@@ -1,0 +1,16 @@
+apiVersion: v2
+name: ultrasharp-tools
+description: A Helm chart for UltrasharpTools MCP Remote Server
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - mcp
+  - csharp
+  - roslyn
+  - code-analysis
+maintainers:
+  - name: UltrasharpTools Team
+    email: ultrasharp@example.com
+sources:
+  - https://github.com/YOUR_ORG/ultrasharp-tools-mcp

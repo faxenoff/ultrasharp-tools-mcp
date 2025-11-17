@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ultrasharp-config
+  labels:
+    app: ultrasharp-tools-server
+data:
+  # Git configuration for automatic commits
+  git.author.name: "UltrasharpTools Bot"
+  git.author.email: "ultrasharp-bot@example.com"
+
+  # Logging level: Verbose, Debug, Information, Warning, Error, Fatal
+  log.level: "Information"
+
+  # Build configuration: Debug or Release
+  build.configuration: "Debug"
+
+  # Optional: Solution path to load on startup
+  # solution.path: "/path/to/solution.sln"

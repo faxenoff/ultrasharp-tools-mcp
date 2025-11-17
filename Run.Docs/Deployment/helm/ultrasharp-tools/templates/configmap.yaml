@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ultrasharp-tools.fullname" . }}-config
+  labels:
+    {{- include "ultrasharp-tools.labels" . | nindent 4 }}
+data:
+  git.author.name: {{ .Values.config.git.authorName | quote }}
+  git.author.email: {{ .Values.config.git.authorEmail | quote }}
+  log.level: {{ .Values.config.logging.level | quote }}
+  build.configuration: {{ .Values.config.build.configuration | quote }}
+  {{- if .Values.config.solutionPath }}
+  solution.path: {{ .Values.config.solutionPath | quote }}
+  {{- end }}

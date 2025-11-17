@@ -1,0 +1,127 @@
+# Default values for ultrasharp-tools Helm chart
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 3001
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+  hosts:
+    - host: ultrasharp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: ultrasharp-tls
+      hosts:
+        - ultrasharp.example.com
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+persistence:
+  enabled: true
+  storageClassName: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  # existingClaim: ""
+
+config:
+  # Git configuration
+  git:
+    authorName: "UltrasharpTools Bot"
+    authorEmail: "ultrasharp-bot@example.com"
+
+  # Logging configuration
+  logging:
+    level: "Information"  # Verbose, Debug, Information, Warning, Error, Fatal
+
+  # Build configuration
+  build:
+    configuration: "Debug"  # Debug or Release
+
+  # Optional: Solution path to load on startup
+  # solutionPath: "/path/to/solution.sln"
+
+  # Environment variables
+  env: []
+    # - name: CUSTOM_VAR
+    #   value: "custom-value"
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Health check configuration
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3

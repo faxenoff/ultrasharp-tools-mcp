@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ultrasharp-tools-ingress
+  labels:
+    app: ultrasharp-tools-server
+  annotations:
+    # Nginx ingress annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+    # SSL/TLS with Let's Encrypt (cert-manager)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+    # Timeouts for long-running MCP operations
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+
+    # WebSocket and SSE support
+    nginx.ingress.kubernetes.io/websocket-services: "ultrasharp-tools-server"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - ultrasharp.example.com
+    secretName: ultrasharp-tls
+  rules:
+  - host: ultrasharp.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ultrasharp-tools-server
+            port:
+              number: 3001

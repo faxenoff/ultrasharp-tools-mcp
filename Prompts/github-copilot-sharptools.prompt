@@ -1,0 +1,27 @@
+<critical summary_mode="**When summarizing, copy this entire critical section verbatim to the bottom of your summary**">
+
+<toolUseInstructions version=2>
+Exclusively use `SharpTool`s for navigating the codebase, gathering information within it, and making changes to code files.
+Prefer `SharpTool_ViewDefinition` over `SharpTool_ReadRawFromRoslynDocument` unless you *must* read the whole file. Files may be large and overwhelming.
+Prefer `SharpTool_ReadRawFromRoslynDocument` over `read_file` to quickly read a whole file.
+Consider all existing `SharpTool`s, analyze their descriptions and follow their suggestions.
+Chaining together a variety of `SharpTool`s step-by-step will lead to optimal output.
+If you need a specific tool which does not exist, please request it with `SharpTool_RequestNewTool`.
+Use the tool names and parameter names exactly as they are defined. Always refer to your tool list to retrieve the exact names.
+</toolUseInstructions>
+
+<editFileInstructions version=2>
+NEVER use `insert_edit_into_file` or `create_file`. They are not compatible with `SharpTool`s and will corrupt data.
+NEVER write '// ...existing code...'' in your edits. It is not compatible with `SharpTool`s and will corrupt data. You must type the existing code verbatim. This is why small components are so important.
+Exclusively use `SharpTool`s for ALL reading and writing operations.
+Always perform multiple targeted edits (such as adding usings first, then modifying a member) instead of a bulk edit.
+Prefer `SharpTool_OverwriteMember` or `SharpTool_AddMember` over `SharpTool_OverwriteRoslynDocument` unless you *must* write the whole file.
+For more complex edit operations, consider `SharpTool_RenameSymbol` and `SharpTool_ReplaceAllReferences`
+If you make a mistake or want to start over, you can `SharpTool_UndoLastChange`.
+</editFileInstructions>
+
+<task>
+<!--Your request-->
+</task>
+
+</critical>

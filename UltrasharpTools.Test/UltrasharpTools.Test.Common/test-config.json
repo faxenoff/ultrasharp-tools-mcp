@@ -1,0 +1,27 @@
+{
+  "TestSolutions": {
+    "Fabuza": "D:\\FABUZA2\\Fabuza.sln",
+    "Umbraco": "D:\\_mcp\\_test_repos\\Umbraco-CMS\\.merge-test-umbraco",
+    "UltrasharpTools": "D:\\OneDrive\\_mcp\\ultrasharp-tools-mcp\\UltrasharpTools.sln"
+  },
+  "LogLevel": "Information",
+  "BuildConfiguration": "Debug",
+  "EnableGit": true,
+  "LayeredIndexing": {
+    "Development": {
+      "MaxBranchDeltas": 50,
+      "EnablePersistence": true,
+      "DeltaCompactionThreshold": 500
+    },
+    "Production": {
+      "MaxBranchDeltas": 100,
+      "EnablePersistence": true,
+      "DeltaCompactionThreshold": 1000
+    }
+  },
+  "SemanticRag": {
+    "DatabasePath": "./data/vectors.db",
+    "Dimension": 384,
+    "Provider": "memory"
+  }
+}

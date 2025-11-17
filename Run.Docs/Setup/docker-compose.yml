@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # TEI (Text Embeddings Inference) - fastest embedding server
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:1.5
+    container_name: sharptools-tei
+    ports:
+      - "8080:80"
+    environment:
+      # Модель для загрузки
+      - MODEL_ID=ibm-granite/granite-3.0-embedding-125m
+      # Максимальный batch size
+      - MAX_BATCH_SIZE=32
+      # Максимальная длина входа
+      - MAX_INPUT_LENGTH=512
+    volumes:
+      # Кэш моделей HuggingFace
+      - tei-data:/data
+    command:
+      - --model-id
+      - ibm-granite/granite-3.0-embedding-125m
+      - --port
+      - "80"
+      - --pooling
+      - cls
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    # Для GPU поддержки (опционально):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # TEI с малой моделью (для быстрых экспериментов)
+  tei-small:
+    image: ghcr.io/huggingface/text-embeddings-inference:1.5
+    container_name: sharptools-tei-small
+    ports:
+      - "8081:80"
+    environment:
+      - MODEL_ID=ibm-granite/granite-3.0-embedding-30m
+      - MAX_BATCH_SIZE=32
+      - MAX_INPUT_LENGTH=512
+    volumes:
+      - tei-data:/data
+    command:
+      - --model-id
+      - ibm-granite/granite-3.0-embedding-30m
+      - --port
+      - "80"
+      - --pooling
+      - cls
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    profiles:
+      - fast
+
+  # Ollama - easy model management
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sharptools-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      # Хранилище моделей Ollama
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    # Для GPU поддержки (опционально):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Helper service для загрузки Ollama моделей
+  ollama-puller:
+    image: ollama/ollama:latest
+    container_name: sharptools-ollama-puller
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama-data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for Ollama to be ready..."
+        sleep 5
+        echo "Pulling granite-embedding model..."
+        ollama pull ibm/granite-embedding:278m || true
+        echo "Model pull complete!"
+    profiles:
+      - setup
+
+volumes:
+  tei-data:
+    name: sharptools-tei-data
+  ollama-data:
+    name: sharptools-ollama-data
