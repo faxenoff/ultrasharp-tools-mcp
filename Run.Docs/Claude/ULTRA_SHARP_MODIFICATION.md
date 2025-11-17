@@ -32,15 +32,15 @@
 ```bash
 # Starting branch: main
 
-UltrasharpTool_AddMember(...)
+add_member(...)
 # Created branch: sharptools/20251113-140523
 # Commit: "Add method CreateUser to UserService"
 
-UltrasharpTool_RenameSymbol(...)
+rename_symbol(...)
 # Created branch: sharptools/20251113-140612
 # Commit: "Rename oldName to newName"
 
-UltrasharpTool_Undo()
+undo()
 # Rollback last commit, return to sharptools/20251113-140523
 ```
 
@@ -61,20 +61,20 @@ UltrasharpTools.Droid.exe --disable-git
 **Recommended workflow:**
 ```javascript
 // 1. Modification
-UltrasharpTool_AddMember(...)
+add_member(...)
 // Output: "✅ No compilation errors. ⚠️ Consider running FormatCode"
 
 // 2. Formatting
-UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
+format_code(path: "src/", checkOnly: false)
 
 // 3. Linting
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 
 // 4. Auto-fixes
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+apply_code_fixes(diagnosticId: "all", preview: false)
 ```
 
-### 🔙 Undo Mechanism
+### 🔙 undo Mechanism
 
 **How it works:**
 - Stores stack of recent changes
@@ -88,14 +88,14 @@ UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
 
 ---
 
-## UltrasharpTool_AddMember
+## add_member
 
 **Add new member** — method, property, field, nested class to existing type.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_AddMember(
+add_member(
     fullyQualifiedTargetName: "MyNamespace.UserService",
     codeSnippet: `
 /// <summary>
@@ -183,14 +183,14 @@ public bool ValidateUser(User user)
 
 ### Related Tools
 
-- ⬅️ [**GetMembers**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_GetMembers) — view existing members before adding
-- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — see context where adding
-- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#UltrasharpTool_FormatCode) — format after adding
-- ➡️ [**Undo**](#UltrasharpTool_Undo) — rollback if mistake
+- ⬅️ [**GetMembers**](./ULTRA_SHARP_ANALYSIS.md#get_members) — view existing members before adding
+- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — see context where adding
+- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#format_code) — format after adding
+- ➡️ [**Undo**](#undo) — rollback if mistake
 
 ---
 
-## UltrasharpTool_OverwriteMember
+## modify_code
 
 **Replace or delete existing member** — complete replacement of method/property/class definition with new code or deletion.
 
@@ -198,7 +198,7 @@ public bool ValidateUser(User user)
 
 ```javascript
 // Replace
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedMemberName: "MyNamespace.UserService.ValidateEmail",
     newMemberCode: `
 /// <summary>
@@ -213,7 +213,7 @@ private bool ValidateEmail(string email)
 )
 
 // Delete
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedMemberName: "MyNamespace.UserService.ObsoleteMethod",
     newMemberCode: "// Delete ObsoleteMethod",
     commitMessage: "Remove obsolete method"
@@ -269,10 +269,10 @@ public void OldMethod() { ... }`
 2. **Check impact before changing:**
    ```javascript
    // First check where it's used
-   UltrasharpTool_FindReferences("MyClass.MyMethod")
+   find_references("MyClass.MyMethod")
 
    // Then modify
-   UltrasharpTool_OverwriteMember(...)
+   modify_code(...)
    ```
 
 3. **For deletion use correct syntax:**
@@ -286,20 +286,20 @@ public void OldMethod() { ... }`
 
 ### Related Tools
 
-- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — see current definition
-- ⬅️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_FindReferences) — check impact
-- ➡️ [**Undo**](#UltrasharpTool_Undo) — rollback if something went wrong
+- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — see current definition
+- ⬅️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#find_references) — check impact
+- ➡️ [**Undo**](#undo) — rollback if something went wrong
 
 ---
 
-## UltrasharpTool_RenameSymbol
+## rename_symbol
 
 **Rename symbol** — changes name and automatically updates all references in solution.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_RenameSymbol(
+rename_symbol(
     fullyQualifiedSymbolName: "MyNamespace.UserService.ValidateEmail",
     newName: "ValidateEmailFormat",
     commitMessage: "Rename ValidateEmail to ValidateEmailFormat for clarity"
@@ -350,11 +350,11 @@ UltrasharpTool_RenameSymbol(
 1. **Check rename scope:**
    ```javascript
    // First see how many references
-   UltrasharpTool_FindReferences("OldName")
+   find_references("OldName")
    // Output: "147 references in 42 files"
 
    // If many - make sure you want to change everything
-   UltrasharpTool_RenameSymbol("OldName", "NewName", "...")
+   rename_symbol("OldName", "NewName", "...")
    ```
 
 2. **Use descriptive commit messages:**
@@ -368,13 +368,13 @@ UltrasharpTool_RenameSymbol(
 
 ### Related Tools
 
-- ⬅️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_FindReferences) — see scope before renaming
-- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#UltrasharpTool_FormatCode) — format affected files
-- ➡️ [**Undo**](#UltrasharpTool_Undo) — rollback if needed
+- ⬅️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#find_references) — see scope before renaming
+- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#format_code) — format affected files
+- ➡️ [**Undo**](#undo) — rollback if needed
 
 ---
 
-## UltrasharpTool_FindAndReplace
+## find_and_replace
 
 **Regex find/replace** — text replacement in code via regex patterns. Works with FQN (within symbol) or glob paths (in files).
 
@@ -382,7 +382,7 @@ UltrasharpTool_RenameSymbol(
 
 ```javascript
 // Within symbol
-UltrasharpTool_FindAndReplace(
+find_and_replace(
     regexPattern: "Console\\.WriteLine\\((.*)\\)",
     replacementText: "_logger.LogInformation($1)",
     target: "MyNamespace.UserService.ProcessUser",
@@ -390,7 +390,7 @@ UltrasharpTool_FindAndReplace(
 )
 
 // In files (glob)
-UltrasharpTool_FindAndReplace(
+find_and_replace(
     regexPattern: "var\\s+(\\w+)\\s*=\\s*new\\s+List<",
     replacementText: "var $1 = [",
     target: "src/**/*.cs",
@@ -504,20 +504,20 @@ replacementText: "string.IsNullOrWhiteSpace($1)"
 
 ### Related Tools
 
-- ⬅️ [**SearchDefinitions**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_SearchDefinitions) — preview matches
-- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#UltrasharpTool_FormatCode) — format after replacements
-- ➡️ [**Undo**](#UltrasharpTool_Undo) — rollback if something went wrong
+- ⬅️ [**SearchDefinitions**](./ULTRA_SHARP_ANALYSIS.md#search_definitions) — preview matches
+- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#format_code) — format after replacements
+- ➡️ [**Undo**](#undo) — rollback if something went wrong
 
 ---
 
-## UltrasharpTool_MoveMember
+## move_member
 
 **Move member** — moves method/property/field from one type to another type or namespace.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_MoveMember(
+move_member(
     fullyQualifiedMemberName: "MyNamespace.UserService.ValidateEmail",
     fullyQualifiedDestinationTypeOrNamespaceName: "MyNamespace.Validators.EmailValidator",
     commitMessage: "Move email validation to EmailValidator class"
@@ -557,10 +557,10 @@ UltrasharpTool_MoveMember(
 
 1. **Check references before moving:**
    ```javascript
-   UltrasharpTool_FindReferences("UserService.ValidateEmail")
+   find_references("UserService.ValidateEmail")
    // Understand impact
 
-   UltrasharpTool_MoveMember(...)
+   move_member(...)
    // Update call sites manually
    ```
 
@@ -578,20 +578,20 @@ UltrasharpTool_MoveMember(
 
 ### Related Tools
 
-- ⬅️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_FindReferences) — check impact
-- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — see member before moving
-- ➡️ [**Undo**](#UltrasharpTool_Undo) — rollback if needed
+- ⬅️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#find_references) — check impact
+- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — see member before moving
+- ➡️ [**Undo**](#undo) — rollback if needed
 
 ---
 
-## UltrasharpTool_Undo
+## undo
 
 **Rollback last change** — reverts last modification via Git revert.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_Undo()
+undo()
 ```
 
 ### Parameters
@@ -627,21 +627,21 @@ No parameters.
 
 1. **Use immediately if mistake:**
    ```javascript
-   UltrasharpTool_AddMember(...)
+   add_member(...)
    // Output: "ERROR: Compilation failed"
 
-   UltrasharpTool_Undo()
+   undo()
    // Quickly rollback
 
    // Fix and try again
-   UltrasharpTool_AddMember(...) // fixed version
+   add_member(...) // fixed version
    ```
 
 2. **Can rollback multiple changes:**
    ```javascript
-   UltrasharpTool_Undo() // Rollback last
-   UltrasharpTool_Undo() // Rollback second-to-last
-   UltrasharpTool_Undo() // And one more
+   undo() // Rollback last
+   undo() // Rollback second-to-last
+   undo() // And one more
    ```
 
 ---
@@ -652,12 +652,12 @@ No parameters.
 
 ```javascript
 // 1. Analyze current state
-UltrasharpTool_ViewDefinition("MyClass.MyMethod")
-UltrasharpTool_GetMembers("MyClass", false)
-UltrasharpTool_FindReferences("MyClass.MyMethod")
+view_definition("MyClass.MyMethod")
+get_members("MyClass", false)
+find_references("MyClass.MyMethod")
 
 // 2. Modification
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedMemberName: "MyClass.MyMethod",
     newMemberCode: "/* new implementation */",
     commitMessage: "Improve MyMethod performance"
@@ -667,9 +667,9 @@ UltrasharpTool_OverwriteMember(
 // Output: "✅ No compilation errors"
 
 // 4. Quality checks
-UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+format_code(path: "src/", checkOnly: false)
+analyze_code_style(severityFilter: "Warning")
+apply_code_fixes(diagnosticId: "all", preview: false)
 
 // 5. Testing (outside SharpTools)
 // dotnet test
@@ -679,18 +679,18 @@ UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
 // git merge sharptools/20251113-XXX
 
 // 7. If problem - rollback
-UltrasharpTool_Undo()
+undo()
 ```
 
 ### Workflow for Breaking Changes
 
 ```javascript
 // 1. Assess impact
-UltrasharpTool_FindReferences("MyClass.OldMethod")
+find_references("MyClass.OldMethod")
 // Output: "147 references in 42 files" - many!
 
 // 2. Create new method instead of changing old one
-UltrasharpTool_AddMember(
+add_member(
     fullyQualifiedTargetName: "MyClass",
     codeSnippet: `
 [Obsolete("Use NewMethod instead")]
@@ -705,7 +705,7 @@ public void NewMethod() {
 )
 
 // 3. Gradually migrate call sites
-UltrasharpTool_FindAndReplace(
+find_and_replace(
     regexPattern: "\\.OldMethod\\(",
     replacementText: ".NewMethod(",
     target: "src/Module1/**/*.cs",
@@ -715,7 +715,7 @@ UltrasharpTool_FindAndReplace(
 // Repeat for other modules...
 
 // 4. When all migrated - remove old
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedMemberName: "MyClass.OldMethod",
     newMemberCode: "// Delete OldMethod",
     commitMessage: "Remove deprecated OldMethod"

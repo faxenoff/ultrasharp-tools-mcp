@@ -17,11 +17,11 @@
 6. Finally find root cause (maybe)
 
 **MCP approach (5-10 minutes):**
-1. `AnalyzeLogs` → extract stack trace
-2. `TraceBackwards` → find ALL paths to crash
-3. `TraceExecution` → understand flow
-4. `ViewDefinition` → see implementation
-5. `OverwriteMember` → fix bug
+1. `analyze_logs` → extract stack trace
+2. `trace_backwards` → find ALL paths to crash
+3. `trace_execution` → understand flow
+4. `view_definition` → see implementation
+5. `modify_code` → fix bug
 
 **Result:** 12-24x faster, find ALL possible causes (not just one).
 
@@ -70,7 +70,7 @@
 **Goal:** Extract stack trace and error details.
 
 ```csharp
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     logFilePath: "logs/app-2025-01-17.log",
     logLevel: "Error",
     keywords: ["Exception", "Error", "Failed"]
@@ -123,7 +123,7 @@ Warnings: 156
 **Goal:** Find ALL code paths that lead to crash.
 
 ```csharp
-UltrasharpTool_TraceBackwards(
+trace_backwards(
     fullyQualifiedName: "MyApp.Services.UserService.UpdateProfile",
     maxDepth: 5,
     stackTraceHint: "UserController.Update → ValidationService.Validate → UserService.UpdateProfile"
@@ -186,7 +186,7 @@ Estimated frequency: Rare (admin action)
 **Goal:** Understand what happens in UpdateProfile method.
 
 ```csharp
-UltrasharpTool_TraceExecution(
+trace_execution(
     fullyQualifiedName: "MyApp.Services.UserService.UpdateProfile",
     maxDepth: 3
 )
@@ -256,7 +256,7 @@ PATH D: Database exception
 **Goal:** See actual code to confirm suspicions.
 
 ```csharp
-UltrasharpTool_ViewDefinition(
+view_definition(
     fullyQualifiedName: "MyApp.Services.UserService.UpdateProfile"
 )
 ```
@@ -302,7 +302,7 @@ public async Task<User> UpdateProfile(User user)
 **Goal:** Why does repository return null?
 
 ```csharp
-UltrasharpTool_ViewDefinition(
+view_definition(
     fullyQualifiedName: "MyApp.Repositories.UserRepository.UpdateAsync"
 )
 ```
@@ -341,7 +341,7 @@ public async Task<User> UpdateAsync(User user)
 **Goal:** Why does scheduled job trigger this?
 
 ```csharp
-UltrasharpTool_ViewDefinition(
+view_definition(
     fullyQualifiedName: "MyApp.Services.UserSyncService.SyncFromExternalSystem"
 )
 ```
@@ -388,7 +388,7 @@ public async Task SyncFromExternalSystem()
 **Goal:** Add null checks and proper error handling.
 
 ```csharp
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedTargetName: "MyApp.Services.UserService.UpdateProfile",
     codeSnippet: @"
 public async Task<User> UpdateProfile(User user)
@@ -470,7 +470,7 @@ Commit: a7f3e91 "Fix NullReferenceException in UpdateProfile - add null check af
 7. OverwriteMember(...)
    → Fix the bug
 
-8. FormatCode + AnalyzeCodeStyle + ApplyCodeFixes
+8. format_code + AnalyzeCodeStyle + apply_code_fixes
    → Ensure quality
 ```
 
@@ -603,7 +603,7 @@ FindPotentialDuplicates(
 
 ```csharp
 // Refactor to always lock in same order: Inventory → Order → OrderItems
-OverwriteMember(
+modify_code(
     fullyQualifiedTargetName: "OrderRepository.SaveAsync",
     codeSnippet: "/* new implementation with consistent lock order */",
     commitMessage: "Fix deadlock by enforcing consistent lock order (Inventory → Order → OrderItems)"
@@ -624,14 +624,13 @@ OverwriteMember(
 
 ```csharp
 ✅ GOOD:
-TraceBackwards(
+trace_backwards(
     fullyQualifiedName: "UserService.UpdateProfile",
     stackTraceHint: "UserController.Update → ValidationService → UserService.UpdateProfile"
 )
 → Prioritizes matching path, finds it faster
 
-❌ BAD:
-TraceBackwards(
+❌ BAD:trace_backwardss(
     fullyQualifiedName: "UserService.UpdateProfile"
 )
 → Finds all paths equally, harder to identify relevant one
@@ -799,6 +798,6 @@ try {
 
 **💡 Key Takeaway:** Use TraceBackwards to find ALL paths to crash, not just the obvious one.
 
-**Workflow:** AnalyzeLogs → TraceBackwards → TraceExecution → ViewDefinition → Fix
+**Workflow:** AnalyzeLogs → TraceBackwards → trace_execution → ViewDefinition → Fix
 
 **Time saved:** 12-36x faster than manual debugging.

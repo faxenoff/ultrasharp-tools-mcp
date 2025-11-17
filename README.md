@@ -1,4 +1,4 @@
-﻿# UltrasharpTools MCP Server
+# UltrasharpTools MCP Server
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -50,7 +50,7 @@ AI: "Добавляю метод в конец файла..."
 
 **UltrasharpTools с Roslyn:**
 ```
-AI использует AddMember:
+AI использует add_member:
 ✅ Метод добавлен в правильное место класса
 ✅ Автоматически добавлены нужные using System.Linq
 ✅ Код отформатирован через CSharpier
@@ -300,7 +300,7 @@ UltrasharpTools.Droid.exe
 
 **Пример использования:**
 ```
-Claude: LoadSolution("D:/MyProjects/MyApp/MyApp.sln")
+Claude: load_solution("D:/MyProjects/MyApp/MyApp.sln")
 → Сервер читает файлы напрямую с вашего диска D:\
 → Индексирует код, assemblies, references
 → Готов к работе!
@@ -444,66 +444,66 @@ spec:
 ### 🔷 Solution Management (2)
 | Инструмент | Что делает |
 |------------|------------|
-| `LoadSolution` | Загружает .sln и инициализирует Roslyn workspace |
-| `LoadProject` | Детальный обзор структуры проекта (namespaces, types) |
+| `load_solution` | Загружает .sln и инициализирует Roslyn workspace |
+| `load_project` | Детальный обзор структуры проекта (namespaces, types) |
 
 ### 🔍 Analysis Tools (12)
 | Инструмент | Что делает |
 |------------|------------|
-| `GetMembers` | Список членов типа с сигнатурами и XML docs |
-| `ViewDefinition` | Показывает source code символа с контекстом |
-| `ListImplementations` | Находит реализации интерфейса/производные классы |
-| `FindReferences` | Все использования символа в solution |
-| `SearchDefinitions` | Regex поиск по декларациям в коде и assemblies |
-| `ViewCallGraph` | Incoming/outgoing вызовы метода |
-| `ViewInheritanceChain` | Цепочка наследования типа |
-| `GetAllSubtypes` | Рекурсивный список вложенных членов |
-| `ManageUsings` | Чтение/запись using директив |
-| `ManageAttributes` | Чтение/запись атрибутов на декларациях |
-| `AnalyzeComplexity` | Метрики сложности (cyclomatic, cognitive, coupling) |
-| `FindPotentialDuplicates` | Семантический поиск похожего кода |
+| `get_members` | Список членов типа с сигнатурами и XML docs |
+| `view_definition` | Показывает source code символа с контекстом |
+| `list_implementations` | Находит реализации интерфейса/производные классы |
+| `find_references` | Все использования символа в solution |
+| `search_definitions` | Regex поиск по декларациям в коде и assemblies |
+| `view_call_graph` | Incoming/outgoing вызовы метода |
+| `view_inheritance_chain` | Цепочка наследования типа |
+| `get_all_subtypes` | Рекурсивный список вложенных членов |
+| `manage_usings` | Чтение/запись using директив |
+| `manage_attributes` | Чтение/запись атрибутов на декларациях |
+| `analyze_complexity` | Метрики сложности (cyclomatic, cognitive, coupling) |
+| `find_duplicates` | Семантический поиск похожего кода |
 
 ### ✏️ Modification Tools (8)
 | Инструмент | Что делает |
 |------------|------------|
-| `AddMember` | Добавляет member (method/property/field/class) в тип |
-| `OverwriteMember` | Заменяет или удаляет member definition |
-| `RenameSymbol` | Переименовывает символ + все references в solution |
-| `ReplaceAllReferences` | Заменяет все ссылки на символ указанным кодом |
-| `ReplaceAllReferencesByPattern` | Batch переименование по паттерну (wildcards/regex) |
-| `FindAndReplace` | Regex find & replace в коде/файлах |
-| `MoveMember` | Перемещает member между типами/namespaces |
-| `Undo` | Откатывает последнее изменение через Git |
+| `add_member` | Добавляет member (method/property/field/class) в тип |
+| `modify_code` | Заменяет или удаляет member definition |
+| `rename_symbol` | Переименовывает символ + все references в solution |
+| `replace_all_references` | Заменяет все ссылки на символ указанным кодом |
+| `replace_references_by_pattern` | Batch переименование по паттерну (wildcards/regex) |
+| `find_and_replace` | Regex find & replace в коде/файлах |
+| `move_member` | Перемещает member между типами/namespaces |
+| `undo` | Откатывает последнее изменение через Git |
 
 ### ✨ Quality Tools (3)
 | Инструмент | Что делает |
 |------------|------------|
-| `FormatCode` | Форматирование через CSharpier (.cs, .csproj, .xml) |
-| `AnalyzeCodeStyle` | Анализ через Roslyn analyzers (warnings, errors) |
-| `ApplyCodeFixes` | Автоприменение code fixes (unused usings и др.) |
+| `format_code` | Форматирование через CSharpier (.cs, .csproj, .xml) |
+| `analyze_code_style` | Анализ через Roslyn analyzers (warnings, errors) |
+| `apply_code_fixes` | Автоприменение code fixes (unused usings и др.) |
 
 ### 🐛 Debugging & Tracing (5)
 | Инструмент | Что делает |
 |------------|------------|
-| `TraceExecution` | Статическая трассировка через Control Flow Graph |
-| `TraceBackwards` | Обратная трассировка от точки краша (с кешем 5-10x) |
-| `AnalyzePathFeasibility` | Symbolic execution с Z3 solver (null checks, div by zero) |
-| `ExportCallGraph` | Экспорт графа (DOT/Mermaid/GraphML) |
-| `AnalyzeLogs` | Анализ логов (ECS/JSON, PlainText, Logcat, XML) |
+| `trace_execution` | Статическая трассировка через Control Flow Graph |
+| `trace_backwards` | Обратная трассировка от точки краша (с кешем 5-10x) |
+| `analyze_path_feasibility` | Symbolic execution с Z3 solver (null checks, div by zero) |
+| `export_call_graph` | Экспорт графа (DOT/Mermaid/GraphML) |
+| `analyze_logs` | Анализ логов (ECS/JSON, PlainText, Logcat, XML) |
 
 ### 📄 Document Tools (4)
 | Инструмент | Что делает |
 |------------|------------|
-| `ReadRawFromRoslynDocument` | Читает файл (без indentation для экономии токенов) |
-| `CreateRoslynDocument` | Создаёт новый файл с контентом |
-| `OverwriteRoslynDocument` | Перезаписывает существующий файл |
-| `ReadTypesFromRoslynDocument` | Список types и members в файле |
+| `read_file` | Читает файл (без indentation для экономии токенов) |
+| `create_file` | Создаёт новый файл с контентом |
+| `overwrite_file` | Перезаписывает существующий файл |
+| `list_file_entities` | Список types и members в файле |
 
 ### 📦 Package & Misc (2)
 | Инструмент | Что делает |
 |------------|------------|
-| `AddOrModifyNugetPackage` | Добавляет/обновляет NuGet пакет в проект |
-| `RequestNewTool` | Запрос новых инструментов (логируется для review) |
+| `add_package` | Добавляет/обновляет NuGet пакет в проект |
+| `request_new_tool` | Запрос новых инструментов (логируется для review) |
 
 **📖 Подробная документация**: [Run.Docs/Tools/](Run.Docs/Tools/) - примеры, best practices, workflows для каждого инструмента.
 
@@ -743,9 +743,9 @@ dotnet run
 - ⚡ ReadyToRun (R2R) - AOT для 50% faster startup
 
 **✨ Новые возможности:**
-- Quality Tools - FormatCode (CSharpier), AnalyzeCodeStyle, ApplyCodeFixes
+- Quality Tools - format_code (CSharpier), AnalyzeCodeStyle, ApplyCodeFixes
 - Semantic Merge - умное 3-way слияние с movement/rename detection
-- Advanced Tracing - TraceExecution, TraceBackwards, AnalyzePathFeasibility (Z3)
+- Advanced Tracing - trace_execution, TraceBackwards, AnalyzePathFeasibility (Z3)
 - Auto-linting integration - автоматическая проверка после модификаций
 
 **🏗️ Infrastructure:**

@@ -1,4 +1,4 @@
-﻿# UltrasharpTools MCP - Режимы доступа к файлам
+# UltrasharpTools MCP - Режимы доступа к файлам
 
 **Полное руководство по работе с файлами в Local и Remote режимах.**
 
@@ -106,11 +106,10 @@ UltrasharpTools MCP поддерживает два режима работы, �
 
 ### Доступ к файлам
 
-**Что происходит при LoadSolution:**
+**Что происходит при load_solution:**
 
 ```csharp
-// Claude запрашивает:
-LoadSolution("D:/MyProjects/MyApp/MyApp.sln")
+// Claude запрашивает:load_solutionn("D:/MyProjects/MyApp/MyApp.sln")
 
 // Droid.exe (работает локально):
 1. Читает D:/MyProjects/MyApp/MyApp.sln (прямой file read)

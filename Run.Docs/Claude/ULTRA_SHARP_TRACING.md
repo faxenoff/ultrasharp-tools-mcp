@@ -16,14 +16,14 @@
 
 ---
 
-## UltrasharpTool_TraceExecution
+## trace_execution
 
 **Forward tracing** — from entry point to exit point.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_TraceExecution(
+trace_execution(
     entryPointFqn: "TestTracing.UserService.ProcessUser",
     exitPointFqn: "TestTracing.DatabaseService.SaveUser",  // optional
     maxDepth: 10,
@@ -70,16 +70,16 @@ UltrasharpTool_TraceExecution(
 1. **Start with small depth:**
    ```javascript
    // ✅ First shallow trace
-   UltrasharpTool_TraceExecution(entryPointFqn: "UserService.ProcessUser", maxDepth: 5)
+   trace_execution(entryPointFqn: "UserService.ProcessUser", maxDepth: 5)
 
    // If need more details
-   UltrasharpTool_TraceExecution(entryPointFqn: "UserService.ProcessUser", maxDepth: 15)
+   trace_execution(entryPointFqn: "UserService.ProcessUser", maxDepth: 15)
    ```
 
 2. **Use exitPoint for focus:**
    ```javascript
    // Trace only to specific point
-   UltrasharpTool_TraceExecution(
+   trace_execution(
        entryPointFqn: "UserController.Post",
        exitPointFqn: "DatabaseService.SaveUser"
    )
@@ -88,21 +88,21 @@ UltrasharpTool_TraceExecution(
 3. **Disable external calls if not needed:**
    ```javascript
    // Only your code
-   UltrasharpTool_TraceExecution(
+   trace_execution(
        entryPointFqn: "...",
        includeExternalCalls: false
    )
    ```
 
-4. **Combine with ViewDefinition:**
+4. **Combine with view_definition:**
    ```javascript
    // Trace shows what's called
-   UltrasharpTool_TraceExecution(entryPointFqn: "ProcessUser")
+   trace_execution(entryPointFqn: "ProcessUser")
    // Output: "Calls ValidateUser, CreateUser, SaveUser"
 
    // ViewDefinition shows details of each
-   UltrasharpTool_ViewDefinition("UserService.ValidateUser")
-   UltrasharpTool_ViewDefinition("UserService.CreateUser")
+   view_definition("UserService.ValidateUser")
+   view_definition("UserService.CreateUser")
    ```
 
 ### Performance
@@ -119,21 +119,21 @@ UltrasharpTool_TraceExecution(
 
 ### Related Tools
 
-- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — view entry point before trace
-- ➡️ [**TraceBackwards**](#UltrasharpTool_TraceBackwards) — reverse direction
-- ➡️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_FindReferences) — where entry point is called
-- ➡️ [**AnalyzeLogs**](#UltrasharpTool_AnalyzeLogs) — find entry point in production logs
+- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — view entry point before trace
+- ➡️ [**TraceBackwards**](#trace_backwards) — reverse direction
+- ➡️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#find_references) — where entry point is called
+- ➡️ [**AnalyzeLogs**](#analyze_logs) — find entry point in production logs
 
 ---
 
-## UltrasharpTool_TraceBackwards
+## trace_backwards
 
 **Backward tracing** — from crash/error point to possible entry points.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_TraceBackwards(
+trace_backwards(
     crashPointFqn: "TestTracing.UserService.ThrowInvalidUserException",
     startPointFqn: "TestTracing.Program.Main",  // optional
     stackTraceHints: [
@@ -186,7 +186,7 @@ UltrasharpTool_TraceBackwards(
 1. **ALWAYS use stack trace hints:**
    ```javascript
    // ✅ With hints - accurate results
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
        crashPointFqn: "OrderService.ProcessOrder",
        stackTraceHints: [
            "at OrderService.ProcessOrder",
@@ -196,35 +196,35 @@ UltrasharpTool_TraceBackwards(
    )
 
    // ⚠️ Without hints - may have many false positives
-   UltrasharpTool_TraceBackwards(crashPointFqn: "OrderService.ProcessOrder")
+   trace_backwards(crashPointFqn: "OrderService.ProcessOrder")
    ```
 
 2. **Start with small maxPaths:**
    ```javascript
    // First top 5 most likely
-   UltrasharpTool_TraceBackwards(..., maxPaths: 5)
+   trace_backwards(..., maxPaths: 5)
 
    // If not found - increase
-   UltrasharpTool_TraceBackwards(..., maxPaths: 10)
+   trace_backwards(..., maxPaths: 10)
    ```
 
 3. **Specify startPoint if known:**
    ```javascript
    // If you know entry point
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
        crashPointFqn: "...",
        startPointFqn: "MyController.Post"
    )
    ```
 
-4. **Combine with AnalyzeLogs:**
+4. **Combine with analyze_logs:**
    ```javascript
    // 1. Find crash in production logs
-   UltrasharpTool_AnalyzeLogs(filePath: "prod.log", levels: ["Fatal"])
+   analyze_logs(filePath: "prod.log", levels: ["Fatal"])
    // Output: stack trace
 
    // 2. Trace backwards with stack trace hints
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
        crashPointFqn: "...",
        stackTraceHints: [/* from logs */]
    )
@@ -264,14 +264,14 @@ UltrasharpTool_TraceBackwards(
 
 ### Related Tools
 
-- ⬅️ [**AnalyzeLogs**](#UltrasharpTool_AnalyzeLogs) — get stack trace from production logs
-- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — view crash point before trace
-- ➡️ [**TraceExecution**](#UltrasharpTool_TraceExecution) — forward direction for logic understanding
-- ➡️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_FindReferences) — all references (not just call paths)
+- ⬅️ [**AnalyzeLogs**](#analyze_logs) — get stack trace from production logs
+- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — view crash point before trace
+- ➡️ [**TraceExecution**](#trace_execution) — forward direction for logic understanding
+- ➡️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#find_references) — all references (not just call paths)
 
 ---
 
-## UltrasharpTool_AnalyzeLogs
+## analyze_logs
 
 **Log analysis with auto-format detection** — search for errors, exceptions, HTTP errors in production logs without loading entire file into memory.
 
@@ -279,7 +279,7 @@ UltrasharpTool_TraceBackwards(
 
 ```javascript
 // Basic search
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "D:/Logs/application.log",
     levels: ["Error", "Fatal"],
     keywords: null,
@@ -292,7 +292,7 @@ UltrasharpTool_AnalyzeLogs(
 )
 
 // Search for HTTP errors
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "D:/Logs/access.log",
     levels: null,
     keywords: null,
@@ -302,7 +302,7 @@ UltrasharpTool_AnalyzeLogs(
 )
 
 // Search by keywords
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "D:/Logs/app.log",
     levels: null,
     keywords: ["NullReferenceException", "OutOfMemory", "Timeout"],
@@ -398,20 +398,20 @@ UltrasharpTool_AnalyzeLogs(
 1. **Start with specific filters:**
    ```javascript
    // ✅ Good - focused search
-   UltrasharpTool_AnalyzeLogs(
+   analyze_logs(
        filePath: "app.log",
        levels: ["Error", "Fatal"],
        keywords: ["NullReferenceException"]
    )
 
    // ⚠️ Too broad - many results
-   UltrasharpTool_AnalyzeLogs(filePath: "app.log", levels: ["Info"])
+   analyze_logs(filePath: "app.log", levels: ["Info"])
    ```
 
 2. **Use context to understand errors:**
    ```javascript
    // See what happened before/after error
-   UltrasharpTool_AnalyzeLogs(
+   analyze_logs(
        filePath: "app.log",
        levels: ["Error"],
        contextBefore: 10,
@@ -419,14 +419,14 @@ UltrasharpTool_AnalyzeLogs(
    )
    ```
 
-3. **Combine with TraceBackwards:**
+3. **Combine with trace_backwards:**
    ```javascript
    // 1. Find error in logs
-   UltrasharpTool_AnalyzeLogs(filePath: "prod.log", levels: ["Fatal"])
+   analyze_logs(filePath: "prod.log", levels: ["Fatal"])
    // Output: stack trace lines
 
    // 2. Trace backwards in code
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
        crashPointFqn: "UserService.ProcessUser",
        stackTraceHints: [/* stack trace from logs */]
    )
@@ -435,10 +435,10 @@ UltrasharpTool_AnalyzeLogs(
 4. **Use pagination for large results:**
    ```javascript
    // First page
-   UltrasharpTool_AnalyzeLogs(..., skip: 0, take: 100)
+   analyze_logs(..., skip: 0, take: 100)
 
    // Next page
-   UltrasharpTool_AnalyzeLogs(..., skip: 100, take: 100)
+   analyze_logs(..., skip: 100, take: 100)
    ```
 
 ### Performance
@@ -455,9 +455,9 @@ UltrasharpTool_AnalyzeLogs(
 
 ### Related Tools
 
-- ➡️ [**TraceBackwards**](#UltrasharpTool_TraceBackwards) — analyze crash points found in logs
-- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — view methods mentioned in stack trace
-- ➡️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_FindReferences) — find where error-prone methods are called
+- ➡️ [**TraceBackwards**](#trace_backwards) — analyze crash points found in logs
+- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — view methods mentioned in stack trace
+- ➡️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#find_references) — find where error-prone methods are called
 
 ---
 
@@ -465,7 +465,7 @@ UltrasharpTool_AnalyzeLogs(
 
 ```javascript
 // 1. Find crash in production logs
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "D:/Logs/production.log",
     levels: ["Fatal", "Error"],
     keywords: ["Exception"],
@@ -480,7 +480,7 @@ UltrasharpTool_AnalyzeLogs(
 //   at BackgroundJob.Run()
 
 // 2. Trace backwards with stack trace hints
-UltrasharpTool_TraceBackwards(
+trace_backwards(
     crashPointFqn: "OrderService.ProcessOrder",
     stackTraceHints: [
         "at OrderService.ProcessOrder",
@@ -492,11 +492,11 @@ UltrasharpTool_TraceBackwards(
 // Output: Shows all paths leading to crash with confidence scores
 
 // 3. View crash point implementation
-UltrasharpTool_ViewDefinition("OrderService.ProcessOrder")
+view_definition("OrderService.ProcessOrder")
 // Understand what caused NullReferenceException
 
 // 4. Fix the issue
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedMemberName: "OrderService.ProcessOrder",
     newMemberCode: "/* fixed implementation */",
     commitMessage: "Fix null reference in ProcessOrder"

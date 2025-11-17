@@ -15,7 +15,7 @@ public static class MiscTools {
         "tool-requests.json");
 
     //TODO: Convert into `CreateIssue` for feature requests and bug reports combined
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(RequestNewTool), Idempotent = true, ReadOnly = false, Destructive = false, OpenWorld = false),
+    [McpServerTool(Name = "request_new_tool", Idempotent = true, ReadOnly = false, Destructive = false, OpenWorld = false),
     Description("Allows requesting a new tool to be added to the UltrasharpTools MCP server. Logs the request for review.")]
     public static async Task<string> RequestNewTool(
         ILogger<MiscToolsLogCategory> logger,

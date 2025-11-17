@@ -20,7 +20,7 @@ public static partial class TraceTools
 /// Uses static analysis (Control Flow Graph) - does not execute code.
 /// </summary>
 [McpServerTool(
-Name = ToolHelpers.SharpToolPrefix + nameof(TraceExecution),
+Name = "trace_execution",
 Idempotent = true,
 ReadOnly = true,
 Destructive = false,
@@ -247,7 +247,7 @@ return result;
 /// Shows all possible call paths from entry points to the crash.
 /// </summary>
 [McpServerTool(
-Name = ToolHelpers.SharpToolPrefix + nameof(TraceBackwards),
+Name = "trace_backwards",
 Idempotent = true,
 ReadOnly = true,
 Destructive = false,
@@ -478,7 +478,7 @@ return formatted;
 /// Exports call graph visualization from backtrace result.
 /// </summary>
 [McpServerTool(
-Name = ToolHelpers.SharpToolPrefix + nameof(ExportCallGraph),
+Name = "export_call_graph",
 Idempotent = true,
 ReadOnly = true,
 Destructive = false,
@@ -594,7 +594,7 @@ cancellationToken
 /// Analyzes path feasibility using symbolic execution. Detects dead code, null references, division by zero, and other potential issues.
 /// </summary>
 [McpServerTool(
-Name = ToolHelpers.SharpToolPrefix + nameof(AnalyzePathFeasibility),
+Name = "analyze_path_feasibility",
 Idempotent = true,
 ReadOnly = true,
 Destructive = false,

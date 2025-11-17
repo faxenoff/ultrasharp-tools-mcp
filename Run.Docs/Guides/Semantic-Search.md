@@ -20,10 +20,10 @@
 
 ---
 
-## 🔧 Tool: FindPotentialDuplicates
+## 🔧 Tool: find_duplicates
 
 ```csharp
-UltrasharpTool_FindPotentialDuplicates(
+find_duplicates(
     targetCode: string,      // Example of what you're looking for
     threshold: double,       // Similarity threshold (0.0-1.0)
     skip: int = 0,          // Pagination: skip N results
@@ -68,8 +68,7 @@ grep -r "Controller" .
 
 **Semantic search:**
 ```csharp
-FindPotentialDuplicates(
-    targetCode: "async Task<IActionResult> HandleRequest(HttpContext context)",
+FindPotefind_duplicatesrgetCode: "async Task<IActionResult> HandleRequest(HttpContext context)",
     threshold: 0.7
 )
 ```
@@ -333,10 +332,10 @@ var results = FindPotentialDuplicates(
 ViewDefinition(fullyQualifiedName: "UserRepository.SaveAsync");
 
 // Step 3: Find all usages
-FindReferences(fullyQualifiedName: "UserRepository.SaveAsync");
+find_references(fullyQualifiedName: "UserRepository.SaveAsync");
 
 // Step 4: Analyze complexity
-AnalyzeComplexity(fullyQualifiedName: "UserRepository.SaveAsync");
+analyze_complexity(fullyQualifiedName: "UserRepository.SaveAsync");
 ```
 
 ---

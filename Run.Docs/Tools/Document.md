@@ -33,14 +33,14 @@
 
 ---
 
-## UltrasharpTool_ReadRawFromRoslynDocument
+## read_file
 
 **Чтение файла целиком** — возвращает полное содержимое файла без отступов (token efficient).
 
 ### Использование
 
 ```javascript
-UltrasharpTool_ReadRawFromRoslynDocument(
+read_file(
 filePath: "D:/MyProject/src/Services/UserService.cs"
 )
 ```
@@ -115,8 +115,8 @@ public async Task<User> GetUserByIdAsync(int userId)
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Нужен только один класс из файла → `ViewDefinition`
-- Нужен список типов → `ReadTypesFromRoslynDocument`
+- Нужен только один класс из файла → `view_definition`
+- Нужен список типов → `list_file_entities`
 - Файл очень большой (>1000 строк) → используйте ViewDefinition для конкретных символов
 
 ### Best Practices
@@ -124,17 +124,17 @@ public async Task<User> GetUserByIdAsync(int userId)
 1. **Для .cs файлов предпочитайте ViewDefinition:**
    ```javascript
    // ❌ Плохо - читаем весь файл (500 строк)
-   UltrasharpTool_ReadRawFromRoslynDocument("UserService.cs")
+   read_file("UserService.cs")
 
    // ✅ Хорошо - читаем только нужный класс
-   UltrasharpTool_ViewDefinition("MyNamespace.UserService")
+   view_definition("MyNamespace.UserService")
    ```
 
 2. **Для конфигураций - ReadRaw идеален:**
    ```javascript
    // ✅ Хорошо
-   UltrasharpTool_ReadRawFromRoslynDocument("appsettings.json")
-   UltrasharpTool_ReadRawFromRoslynDocument("MyProject.csproj")
+   read_file("appsettings.json")
+   read_file("MyProject.csproj")
    ```
 
 3. **Используйте абсолютные пути:**
@@ -158,20 +158,20 @@ public async Task<User> GetUserByIdAsync(int userId)
 
 ### Связанные инструменты
 
-- ➡️ [**ReadTypesFromRoslynDocument**](#UltrasharpTool_readtypesfromroslyndocument) — для навигации по типам в файле
-- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — для чтения конкретного символа
-- ➡️ [**OverwriteRoslynDocument**](#UltrasharpTool_overwriteroslyndocument) — для перезаписи файла
+- ➡️ [**ReadTypesFromRoslynDocument**](#list_file_entities) — для навигации по типам в файле
+- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — для чтения конкретного символа
+- ➡️ [**OverwriteRoslynDocument**](#overwrite_file) — для перезаписи файла
 
 ---
 
-## UltrasharpTool_ReadTypesFromRoslynDocument
+## list_file_entities
 
 **Структурная карта файла** — возвращает иерархию типов и их членов в конкретном файле.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_ReadTypesFromRoslynDocument(
+list_file_entities(
 filePath: "D:/MyProject/src/Services/UserService.cs"
 )
 ```
@@ -231,8 +231,8 @@ Types found: 2
     - public UserServiceException(string message) : base(message)
       FQN: MyProject.Services.UserServiceException..ctor(string)
 
-💡 Use UltrasharpTool_ViewDefinition with FQN to see source code
-💡 Example: UltrasharpTool_ViewDefinition("MyProject.Services.UserService.GetUserByIdAsync")
+💡 Use view_definition with FQN to see source code
+💡 Example: view_definition("MyProject.Services.UserService.GetUserByIdAsync")
 ```
 
 ### Когда использовать
@@ -254,30 +254,30 @@ Types found: 2
 ### Когда НЕ использовать
 
 ❌ **НЕ нужен если:**
-- Знаете FQN типа → `ViewDefinition` напрямую
-- Нужен весь файл целиком → `ReadRawFromRoslynDocument`
-- Нужна реализация метода → `ViewDefinition`
+- Знаете FQN типа → `view_definition` напрямую
+- Нужен весь файл целиком → `read_file`
+- Нужна реализация метода → `view_definition`
 
 ### Best Practices
 
 1. **Используйте для multi-class файлов:**
    ```javascript
    // Файл содержит UserService, UserServiceException, UserServiceExtensions
-   UltrasharpTool_ReadTypesFromRoslynDocument("UserService.cs")
+   list_file_entities("UserService.cs")
    // Получаем FQN всех трёх типов
 
    // Затем смотрим детали каждого
-   UltrasharpTool_ViewDefinition("MyProject.Services.UserService")
-   UltrasharpTool_ViewDefinition("MyProject.Services.UserServiceException")
+   view_definition("MyProject.Services.UserService")
+   view_definition("MyProject.Services.UserServiceException")
    ```
 
-2. **Альтернатива LoadProject:**
+2. **Альтернатива load_project:**
    ```javascript
    // Вместо LoadProject для всего проекта
-   UltrasharpTool_LoadProject("MyProject.Core")  // Все файлы
+   load_project("MyProject.Core")  // Все файлы
 
    // Можно использовать ReadTypes для конкретного файла
-   UltrasharpTool_ReadTypesFromRoslynDocument("UserService.cs")  // Один файл
+   list_file_entities("UserService.cs")  // Один файл
    ```
 
 ### Производительность
@@ -287,20 +287,20 @@ Types found: 2
 
 ### Связанные инструменты
 
-- ⬅️ [**LoadProject**](SOLUTION_TOOLS.md#UltrasharpTool_loadproject) — для overview всего проекта
-- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — детали конкретного типа
+- ⬅️ [**LoadProject**](SOLUTION_TOOLS.md#load_project) — для overview всего проекта
+- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — детали конкретного типа
 - ➡️ [**GetMembers**](ANALYSIS_TOOLS.md#UltrasharpTool_getmembers) — члены конкретного типа
 
 ---
 
-## UltrasharpTool_CreateRoslynDocument
+## create_file
 
 **Создание нового файла** — создаёт новый файл с указанным содержимым.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_CreateRoslynDocument(
+create_file(
 filePath: "D:/MyProject/src/Validators/EmailValidator.cs",
 content: `
 using System;
@@ -368,8 +368,8 @@ File successfully added to project.
 Branch: sharptools/20251113-150234
 Commit: d4e9f23 "Add EmailValidator class"
 
-💡 Use UltrasharpTool_ViewDefinition to verify the new type
-💡 Example: UltrasharpTool_ViewDefinition("MyProject.Validators.EmailValidator")
+💡 Use view_definition to verify the new type
+💡 Example: view_definition("MyProject.Validators.EmailValidator")
 ```
 
 ### Когда использовать
@@ -392,8 +392,8 @@ Commit: d4e9f23 "Add EmailValidator class"
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Добавляете в существующий класс → `AddMember`
-- Файл уже существует → `OverwriteRoslynDocument` (но осторожно!)
+- Добавляете в существующий класс → `add_member`
+- Файл уже существует → `overwrite_file` (но осторожно!)
 - Создаёте partial class в существующем файле → используйте новый файл
 
 ### Best Practices
@@ -431,7 +431,7 @@ Commit: d4e9f23 "Add EmailValidator class"
    ```javascript
    // CreateRoslynDocument вернёт ошибку если файл существует
    // Используйте Glob для проверки:
-   UltrasharpTool_SearchDefinitions("EmailValidator")
+   search_definitions("EmailValidator")
    // Если нашли - файл существует
    ```
 
@@ -452,8 +452,8 @@ ERROR: File already exists: D:/MyProject/src/Services/UserService.cs
 ```
 **Решение:**
 - Используйте другое имя файла
-- Или используйте `OverwriteRoslynDocument` (⚠️ ОСТОРОЖНО - перезапишет файл!)
-- Или используйте `AddMember` для добавления в существующий тип
+- Или используйте `overwrite_file` (⚠️ ОСТОРОЖНО - перезапишет файл!)
+- Или используйте `add_member` для добавления в существующий тип
 
 #### ❌ Ошибка: "Compilation error in new file"
 ```
@@ -468,12 +468,12 @@ ERROR: Compilation failed
 ### Связанные инструменты
 
 - ➡️ [**AddMember**](MODIFICATION_TOOLS.md#UltrasharpTool_addmember) — если хотите добавить в существующий класс
-- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — проверьте созданный файл
-- ➡️ [**FormatCode**](QUALITY_TOOLS.md#UltrasharpTool_formatcode) — отформатируйте после создания
+- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — проверьте созданный файл
+- ➡️ [**FormatCode**](QUALITY_TOOLS.md#format_code) — отформатируйте после создания
 
 ---
 
-## UltrasharpTool_OverwriteRoslynDocument
+## overwrite_file
 
 **⚠️ Перезапись файла целиком** — полностью заменяет содержимое существующего файла.
 
@@ -483,7 +483,7 @@ ERROR: Compilation failed
 
 **Используйте:**
 - ✅ Только для non-code файлов (json, xml, config)
-- ✅ После `ReadRawFromRoslynDocument` для сохранения modified content
+- ✅ После `read_file` для сохранения modified content
 - ✅ Когда уверены что нужно заменить весь файл
 
 **НЕ используйте:**
@@ -495,14 +495,14 @@ ERROR: Compilation failed
 
 ```javascript
 // 1. Сначала читаем
-UltrasharpTool_ReadRawFromRoslynDocument(
+read_file(
 filePath: "D:/MyProject/appsettings.json"
 )
 
 // 2. Модифицируем content вне SharpTools
 
 // 3. Записываем обратно
-UltrasharpTool_OverwriteRoslynDocument(
+overwrite_file(
 filePath: "D:/MyProject/appsettings.json",
 content: `{
 "ConnectionStrings": {
@@ -556,8 +556,8 @@ Old content is available in Git history.
 Branch: sharptools/20251113-151045
 Commit: a8f7e34 "Update connection string in appsettings.json"
 
-💡 Use UltrasharpTool_Undo to restore old content
-💡 Use ReadRawFromRoslynDocument to verify new content
+💡 Use undo to restore old content
+💡 Use read_file to verify new content
 ```
 
 ### Когда использовать
@@ -580,10 +580,10 @@ Commit: a8f7e34 "Update connection string in appsettings.json"
 ### Когда НЕ использовать
 
 ❌ **НИКОГДА не используйте для:**
-- Изменения одного метода в .cs → `OverwriteMember`
-- Добавления члена в класс → `AddMember`
-- Переименования → `RenameSymbol`
-- Regex замены → `FindAndReplace`
+- Изменения одного метода в .cs → `modify_code`
+- Добавления члена в класс → `add_member`
+- Переименования → `rename_symbol`
+- Regex замены → `find_and_replace`
 - Любых точечных изменений кода
 
 ### Best Practices
@@ -591,30 +591,30 @@ Commit: a8f7e34 "Update connection string in appsettings.json"
 1. **ВСЕГДА читайте перед записью:**
    ```javascript
    // ✅ ПРАВИЛЬНО
-   UltrasharpTool_ReadRawFromRoslynDocument(filePath: "config.json")
+   read_file(filePath: "config.json")
    // Модифицируем content
-   UltrasharpTool_OverwriteRoslynDocument(filePath: "config.json", content: modified, ...)
+   overwrite_file(filePath: "config.json", content: modified, ...)
 
    // ❌ ОПАСНО - не знаем что было в файле
-   UltrasharpTool_OverwriteRoslynDocument(filePath: "config.json", content: ..., ...)
+   overwrite_file(filePath: "config.json", content: ..., ...)
    ```
 
 2. **Используйте Undo если ошиблись:**
    ```javascript
-   UltrasharpTool_OverwriteRoslynDocument(...)
+   overwrite_file(...)
    // Ой, ошибка!
 
-   UltrasharpTool_Undo()
+   undo()
    // Восстановили старый content
    ```
 
 3. **Для .cs файлов предпочитайте Symbol Tools:**
    ```javascript
    // ❌ Плохо - перезаписываем весь файл
-   UltrasharpTool_OverwriteRoslynDocument("UserService.cs", newContent, ...)
+   overwrite_file("UserService.cs", newContent, ...)
 
    // ✅ Хорошо - изменяем только нужный метод
-   UltrasharpTool_OverwriteMember("UserService.MyMethod", newMethodCode, ...)
+   modify_code("UserService.MyMethod", newMethodCode, ...)
    ```
 
 ### Типичные ошибки
@@ -624,7 +624,7 @@ Commit: a8f7e34 "Update connection string in appsettings.json"
 ERROR: File not found: D:/MyProject/config.json
 ```
 **Решение:**
-- Используйте `CreateRoslynDocument` для новых файлов
+- Используйте `create_file` для новых файлов
 - Проверьте путь
 
 #### ❌ Ошибка: "Compilation failed after overwrite"
@@ -633,14 +633,14 @@ ERROR: Compilation failed
 - Multiple errors (файл поврежден)
 ```
 **Решение:**
-- `UltrasharpTool_Undo` немедленно!
+- `undo` немедленно!
 - Используйте Symbol Tools вместо OverwriteRoslynDocument
 
 ### Связанные инструменты
 
-- ⬅️ [**ReadRawFromRoslynDocument**](#UltrasharpTool_readrawfromroslyndocument) — ОБЯЗАТЕЛЬНО перед overwrite
-- ➡️ [**Undo**](MODIFICATION_TOOLS.md#UltrasharpTool_undo) — если что-то пошло не так
-- ➡️ [**CreateRoslynDocument**](#UltrasharpTool_createroslyndocument) — для новых файлов
+- ⬅️ [**ReadRawFromRoslynDocument**](#read_file) — ОБЯЗАТЕЛЬНО перед overwrite
+- ➡️ [**Undo**](MODIFICATION_TOOLS.md#undo) — если что-то пошло не так
+- ➡️ [**CreateRoslynDocument**](#create_file) — для новых файлов
 
 ---
 
@@ -648,7 +648,7 @@ ERROR: Compilation failed
 
 ```javascript
 // 1. Читаем текущее содержимое
-UltrasharpTool_ReadRawFromRoslynDocument(
+read_file(
 filePath: "D:/MyProject/appsettings.json"
 )
 // Output: { "ConnectionStrings": {...}, "Logging": {...} }
@@ -657,14 +657,14 @@ filePath: "D:/MyProject/appsettings.json"
 //    Например, парсим JSON, изменяем, сериализуем обратно
 
 // 3. Записываем обратно
-UltrasharpTool_OverwriteRoslynDocument(
+overwrite_file(
 filePath: "D:/MyProject/appsettings.json",
 content: modifiedJson,
 commitMessage: "Update database connection string"
 )
 
 // 4. Проверяем
-UltrasharpTool_ReadRawFromRoslynDocument(
+read_file(
 filePath: "D:/MyProject/appsettings.json"
 )
 // Verify changes
@@ -674,11 +674,11 @@ filePath: "D:/MyProject/appsettings.json"
 
 ```javascript
 // 1. Проверяем что класс не существует
-UltrasharpTool_SearchDefinitions("EmailValidator")
+search_definitions("EmailValidator")
 // Output: "No matches"
 
 // 2. Создаём файл
-UltrasharpTool_CreateRoslynDocument(
+create_file(
 filePath: "D:/MyProject/src/Validators/EmailValidator.cs",
 content: `
 using System;
@@ -698,13 +698,13 @@ commitMessage: "Add EmailValidator class"
 )
 
 // 3. Проверяем
-UltrasharpTool_ViewDefinition("MyProject.Validators.EmailValidator")
+view_definition("MyProject.Validators.EmailValidator")
 
 // 4. Форматируем
-UltrasharpTool_FormatCode(path: "D:/MyProject/src/Validators/EmailValidator.cs", checkOnly: false)
+format_code(path: "D:/MyProject/src/Validators/EmailValidator.cs", checkOnly: false)
 
 // 5. Проверяем quality
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 ```
 
 ---

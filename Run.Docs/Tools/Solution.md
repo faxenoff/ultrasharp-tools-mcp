@@ -1,4 +1,4 @@
-﻿# Инструменты работы с Solution
+# Инструменты работы с Solution
 
 **Точка входа для всех операций с C# проектами.** Загружает .sln файл, инициализирует MSBuildWorkspace и предоставляет структурную карту проекта для навигации.
 
@@ -11,14 +11,14 @@
 
 ---
 
-## UltrasharpTool_LoadSolution
+## load_solution
 
 **Критически важный инструмент** — инициализирует MSBuildWorkspace и загружает .sln файл. Без него другие инструменты работать не будут.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_LoadSolution(
+load_solution(
     solutionPath: "D:/MyProject/MyProject.sln"
 )
 ```
@@ -75,7 +75,7 @@ Solution loaded successfully: MyProject.sln
 ✅ Workspace ready
 🌳 Git integration enabled (branch: sharptools/20251113-143022)
 
-💡 Next: Use UltrasharpTool_LoadProject to explore project structure
+💡 Next: Use load_project to explore project structure
 ```
 
 ### Когда использовать
@@ -103,21 +103,21 @@ Solution loaded successfully: MyProject.sln
 1. **Всегда первый вызов:**
    ```javascript
    // ✅ Правильно
-   UltrasharpTool_LoadSolution("D:/MyProject/MyProject.sln")
-   UltrasharpTool_LoadProject("MyProject.Core")
-   UltrasharpTool_ViewDefinition("MyNamespace.MyClass")
+   load_solution("D:/MyProject/MyProject.sln")
+   load_project("MyProject.Core")
+   view_definition("MyNamespace.MyClass")
 
-   // ❌ Неправильно - LoadSolution пропущен
-   UltrasharpTool_ViewDefinition("MyNamespace.MyClass") // ERROR: Solution not loaded
+   // ❌ Неправильно - load_solution пропущен
+   view_definition("MyNamespace.MyClass") // ERROR: Solution not loaded
    ```
 
 2. **Используйте абсолютные пути:**
    ```javascript
    // ✅ Правильно
-   UltrasharpTool_LoadSolution("D:/Projects/MyApp/MyApp.sln")
+   load_solution("D:/Projects/MyApp/MyApp.sln")
 
    // ❌ Плохо - относительные пути могут не работать
-   UltrasharpTool_LoadSolution("../MyApp.sln")
+   load_solution("../MyApp.sln")
    ```
 
 3. **Проверяйте build configuration:**
@@ -185,21 +185,21 @@ Large project (1M LOC):     355k symbols in 21.7 сек
 
 ### Связанные инструменты
 
-- ➡️ [**LoadProject**](#UltrasharpTool_loadproject) — следующий шаг после LoadSolution
-- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — просмотр кода после загрузки
-- ➡️ [**SearchDefinitions**](ANALYSIS_TOOLS.md#UltrasharpTool_searchdefinitions) — поиск по индексу
-- ➡️ [**Undo**](MODIFICATION_TOOLS.md#UltrasharpTool_undo) — работает с Git, созданным при LoadSolution
+- ➡️ [**LoadProject**](#load_project) — следующий шаг послеload_solutionn
+- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — просмотр кода после загрузки
+- ➡️ [**SearchDefinitions**](ANALYSIS_TOOLS.md#search_definitions) — поиск по индексу
+- ➡️ [**Undo**](MODIFICATION_TOOLS.md#UltrasharpTool_undo) — работает с Git, созданным прload_solutionon
 
 ---
 
-## UltrasharpTool_LoadProject
+## load_project
 
 **Структурная карта проекта** — возвращает иерархию namespaces → types для навигации и понимания архитектуры.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_LoadProject(
+load_project(
     projectName: "MyProject.Core"
 )
 ```
@@ -283,8 +283,8 @@ MyProject.Core.Services
 │  ├─ GetUserAsync(int id) : Task<User>
 │  └─ CreateUserAsync(string name, string email) : Task<int>
 
-💡 Use UltrasharpTool_ViewDefinition with FQN to see full source code
-💡 Example: UltrasharpTool_ViewDefinition("MyProject.Core.Domain.Entities.User")
+💡 Use view_definition with FQN to see full source code
+💡 Example: view_definition("MyProject.Core.Domain.Entities.User")
 ```
 
 ### Когда использовать
@@ -312,27 +312,27 @@ MyProject.Core.Services
 1. **Используйте для first-time exploration:**
    ```javascript
    // ✅ Правильный workflow для нового проекта
-   UltrasharpTool_LoadSolution("D:/MyProject/MyProject.sln")
-   UltrasharpTool_LoadProject("MyProject.Core")       // Получаем обзор
-   UltrasharpTool_ViewDefinition("MyProject.Core.Services.UserService") // Детали
+   load_solution("D:/MyProject/MyProject.sln")
+   load_project("MyProject.Core")       // Получаем обзор
+   view_definition("MyProject.Core.Services.UserService") // Детали
    ```
 
 2. **Точное имя проекта:**
    ```javascript
    // ✅ Правильно - имя проекта из .sln
-   UltrasharpTool_LoadProject("MyProject.Core")
+   load_project("MyProject.Core")
 
    // ❌ Неправильно
-   UltrasharpTool_LoadProject("MyProject.Core.csproj")  // Без расширения!
-   UltrasharpTool_LoadProject("src/MyProject.Core")     // Без пути!
+   load_project("MyProject.Core.csproj")  // Без расширения!
+   load_project("src/MyProject.Core")     // Без пути!
    ```
 
 3. **Используйте для документации:**
    ```javascript
    // Создайте архитектурную документацию
-   UltrasharpTool_LoadProject("MyProject.API")      // Controllers
-   UltrasharpTool_LoadProject("MyProject.Core")     // Business Logic
-   UltrasharpTool_LoadProject("MyProject.Data")     // Data Access
+   load_project("MyProject.API")      // Controllers
+   load_project("MyProject.Core")     // Business Logic
+   load_project("MyProject.Data")     // Data Access
    ```
 
 ### Типичные ошибки
@@ -348,7 +348,7 @@ ERROR: Project 'MyProject.Core' not found in solution
 
 #### ❌ Ошибка: "LoadSolution must be called first"
 ```
-ERROR: Solution not loaded. Call UltrasharpTool_LoadSolution first.
+ERROR: Solution not loaded. Call load_solution first.
 ```
 **Решение:**
 - Сначала вызовите LoadSolution
@@ -377,10 +377,10 @@ else
 
 ### Связанные инструменты
 
-- ⬅️ [**LoadSolution**](#UltrasharpTool_loadsolution) — обязательно вызвать перед LoadProject
-- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — детальный просмотр типа
-- ➡️ [**GetMembers**](ANALYSIS_TOOLS.md#UltrasharpTool_getmembers) — получить все члены типа
-- ➡️ [**SearchDefinitions**](ANALYSIS_TOOLS.md#UltrasharpTool_searchdefinitions) — поиск по regex
+- ⬅️ [**LoadSolution**](#load_solution) — обязательно вызвать перед LoadProject
+- ➡️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — детальный просмотр типа
+- ➡️ [**GetMembers**](ANALYSIS_TOOLS.md#get_members) — получить все члены типа
+- ➡️ [**SearchDefinitions**](ANALYSIS_TOOLS.md#search_definitions) — поиск по regex
 
 ---
 
@@ -390,51 +390,51 @@ else
 
 ```javascript
 // 1. Загружаем solution
-UltrasharpTool_LoadSolution("D:/MyProject/MyProject.sln")
+load_solution("D:/MyProject/MyProject.sln")
 
 // 2. Смотрим структуру основных проектов
-UltrasharpTool_LoadProject("MyProject.API")      // Entry point
-UltrasharpTool_LoadProject("MyProject.Core")     // Business logic
-UltrasharpTool_LoadProject("MyProject.Data")     // Data access
+load_project("MyProject.API")      // Entry point
+load_project("MyProject.Core")     // Business logic
+load_project("MyProject.Data")     // Data access
 
 // 3. Детальный анализ интересующих типов
-UltrasharpTool_ViewDefinition("MyProject.API.Controllers.UserController")
-UltrasharpTool_GetMembers("MyProject.Core.Services.UserService", includePrivateMembers: false)
+view_definition("MyProject.API.Controllers.UserController")
+get_members("MyProject.Core.Services.UserService", includePrivateMembers: false)
 ```
 
 ### Анализ незнакомой feature
 
 ```javascript
 // 1. Загружаем solution
-UltrasharpTool_LoadSolution("D:/LegacyApp/LegacyApp.sln")
+load_solution("D:/LegacyApp/LegacyApp.sln")
 
 // 2. Ищем entry point по названию
-UltrasharpTool_SearchDefinitions("OrderProcessing")
+search_definitions("OrderProcessing")
 
 // 3. Смотрим структуру найденного проекта
-UltrasharpTool_LoadProject("LegacyApp.Orders")
+load_project("LegacyApp.Orders")
 
 // 4. Анализируем найденные типы
-UltrasharpTool_ViewDefinition("LegacyApp.Orders.OrderProcessor")
-UltrasharpTool_FindReferences("LegacyApp.Orders.OrderProcessor.ProcessOrder")
+view_definition("LegacyApp.Orders.OrderProcessor")
+find_references("LegacyApp.Orders.OrderProcessor.ProcessOrder")
 ```
 
 ### Подготовка к рефакторингу
 
 ```javascript
 // 1. Загружаем solution
-UltrasharpTool_LoadSolution("D:/Refactoring/MyApp.sln")
+load_solution("D:/Refactoring/MyApp.sln")
 
 // 2. Получаем overview всех проектов
-UltrasharpTool_LoadProject("MyApp.Core")
-UltrasharpTool_LoadProject("MyApp.Services")
-UltrasharpTool_LoadProject("MyApp.Data")
+load_project("MyApp.Core")
+load_project("MyApp.Services")
+load_project("MyApp.Data")
 
 // 3. Ищем дублирующуюся логику
-UltrasharpTool_SearchDefinitions("ValidateUser")
+search_definitions("ValidateUser")
 
 // 4. Анализируем complexity
-UltrasharpTool_AnalyzeComplexity(scope: "project", target: "MyApp.Core")
+analyze_complexity(scope: "project", target: "MyApp.Core")
 ```
 
 ---
@@ -443,7 +443,7 @@ UltrasharpTool_AnalyzeComplexity(scope: "project", target: "MyApp.Core")
 
 ### Кэширование
 
-**Что кэшируется после LoadSolution:**
+**Что кэшируется посload_solutionion:**
 - ✅ MSBuildWorkspace (singleton)
 - ✅ Solution (до следующего LoadSolution)
 - ✅ Compilation для каждого проекта (LRU cache, 10 items)
@@ -482,14 +482,14 @@ Large project (50+ projects):     1.5-3 GB
 2. **Не перезагружайте solution без необходимости:**
    ```javascript
    // ❌ Плохо - ненужная перезагрузка
-   UltrasharpTool_LoadSolution(...)
-   UltrasharpTool_AddMember(...)
-   UltrasharpTool_LoadSolution(...)  // НЕ НУЖНО!
+   load_solution(...)
+   add_member(...)
+   load_solution(...)  // НЕ НУЖНО!
 
    // ✅ Хорошо - solution обновляется автоматически
-   UltrasharpTool_LoadSolution(...)
-   UltrasharpTool_AddMember(...)
-   UltrasharpTool_ViewDefinition(...) // Видит изменения
+   load_solution(...)
+   add_member(...)
+   view_definition(...) // Видит изменения
    ```
 
 3. **Используйте правильный log level:**
@@ -516,7 +516,7 @@ cd UltrasharpTools.Droid
 dotnet run -- --log-level Debug
 
 # 2. Через MCP вызовите
-UltrasharpTool_LoadSolution(solutionPath: "D:/YourProject/YourProject.sln")
+load_solution(solutionPath: "D:/YourProject/YourProject.sln")
 
 # 3. Проверьте логи
 # Должны увидеть:
@@ -530,7 +530,7 @@ UltrasharpTool_LoadSolution(solutionPath: "D:/YourProject/YourProject.sln")
 
 ```javascript
 // После успешного LoadSolution
-UltrasharpTool_LoadProject(projectName: "YourProject.Core")
+load_project(projectName: "YourProject.Core")
 
 // Проверьте:
 // - Вывод содержит namespaces
@@ -566,7 +566,7 @@ UltrasharpTools.Droid.exe \
 ```
 
 **Опции:**
-- `--load-solution <path>` — загрузить .sln при старте (опционально, лучше через UltrasharpTool_LoadSolution)
+- `--load-solution <path>` — загрузить .sln при старте (опционально, лучше через load_solution)
 - `--build-configuration <config>` — Debug или Release (default: Debug)
 - `--disable-git` — отключить Git интеграцию
 - `--log-level <level>` — Verbose, Debug, Information, Warning, Error, Fatal

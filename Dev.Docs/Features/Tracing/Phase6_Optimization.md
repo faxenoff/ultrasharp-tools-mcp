@@ -1,4 +1,4 @@
-﻿# Phase 6: Performance Optimizations - Summary
+# Phase 6: Performance Optimizations - Summary
 
 **Дата:** 2025-01-13
 **Статус:** ✅ Полностью завершена (3/3 задач)
@@ -13,7 +13,7 @@ Phase 6 фокусируется на критических оптимизац�
 
 ## Реализованные оптимизации
 
-### 1. ✅ Variant A: TraceBackwards Full Cache (commits fde6082, 75b2588)
+### 1. ✅ Variant A: trace_backwards Full Cache (commits fde6082, 75b2588)
 **Время:** ~8 часов
 **Статус:** Полностью реализовано
 
@@ -331,7 +331,7 @@ public int Divide(int a, int b)
 }
 
 // Analysis result:
-UltrasharpTool_AnalyzePathFeasibility("MyNamespace.MyClass.Divide", maxDepth=5)
+analyze_path_feasibility("MyNamespace.MyClass.Divide", maxDepth=5)
 
 // Output:
 // Path 1 (FEASIBLE): b > 0 → return a / b
@@ -471,7 +471,7 @@ dotnet run -- \
 
 | Вариант | Статус | Время (план) | Время (факт) | ROI | Speedup |
 |---------|--------|--------------|--------------|-----|---------|
-| **Variant A: TraceBackwards Full Cache** | ✅ Готово | 8-12ч | 8ч | **Very High** | **5-10x** |
+| **Variant A:trace_backwardss Full Cache** | ✅ Готово | 8-12ч | 8ч | **Very High** | **5-10x** |
 | **Variant B: Symbolic Execution Completion** | ✅ Готово | 6-8ч | 6ч | **High** | N/A (feature completion) |
 | **Variant C: FastSymbolIndex Cache** | ✅ Готово | 4-6ч | 4ч | **Very High** | **6-10x** |
 
@@ -718,7 +718,7 @@ if (_z3Cache.TryGetValue(constraintHash, out var cachedResult))
 **Статус:** ✅ **PHASE 6 COMPLETE** - All optimizations implemented, tested, and documented.
 
 **Total effort:** 18 hours (100% of planned 18-26 hours)
-**Total speedup:** 5-10x for TraceBackwards, 6-10x for symbol indexing
+**Total speedup:** 5-10x fotrace_backwardsds, 6-10x for symbol indexing
 **Documentation:** 2300+ lines across 6 documents
 
 **См. также:**

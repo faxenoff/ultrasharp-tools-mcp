@@ -1,4 +1,4 @@
-﻿# CLAUDE.md
+# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -101,7 +101,7 @@ pwsh Dev.Scripts/setup-tei.ps1    # Windows
 
 Опции командной строки (обоим серверам):
 - `--log-level <level>` — уровень логирования (Verbose, Debug, Information, Warning, Error, Fatal)
-- `--load-solution <path>` — путь к .sln файлу для загрузки при старте (опционально, лучше использовать UltrasharpTool_LoadSolution)
+- `--load-solution <path>` — путь к .sln файлу для загрузки при старте (опционально, лучше использовать load_solution)
 - `--build-configuration <config>` — конфигурация сборки (Debug/Release)
 - `--disable-git` — отключить Git интеграцию
 
@@ -133,19 +133,19 @@ pwsh Dev.Scripts/setup-tei.ps1    # Windows
   - `EmbeddingServiceHealthChecker` — проверка доступности TEI/Ollama
 
 **Уровень MCP инструментов** (`UltrasharpTools.Tools/Mcp/Tools/`):
-- `SolutionTools` — `LoadSolution`, `LoadProject`
-- `AnalysisTools` — `GetMembers`, `ViewDefinition`, `FindReferences`, `SearchDefinitions`, `AnalyzeComplexity`
-- `ModificationTools` — `AddMember`, `OverwriteMember`, `RenameSymbol`, `FindAndReplace`, `MoveMember`, `Undo`
-- `DocumentTools` — `ReadRawFromRoslynDocument`, `CreateRoslynDocument`, `OverwriteRoslynDocument`
-- **`QualityTools`** — `FormatCode`, `AnalyzeCodeStyle`, `ApplyCodeFixes` (новое)
+- `SolutionTools` — `load_solution`, `load_project`
+- `AnalysisTools` — `get_members`, `view_definition`, `find_references`, `search_definitions`, `analyze_complexity`
+- `ModificationTools` — `add_member`, `modify_code`, `rename_symbol`, `find_and_replace`, `move_member`, `undo`
+- `DocumentTools` — `read_file`, `create_file`, `overwrite_file`
+- **`QualityTools`** — `format_code`, `analyze_code_style`, `apply_code_fixes` (новое)
 
 ### Поток работы
 
-1. **Инициализация**: AI вызывает `UltrasharpTool_LoadSolution` с путём к .sln файлу
-2. **Навигация**: `UltrasharpTool_LoadProject` возвращает карту проекта (namespaces → types), адаптивную по сложности
-3. **Анализ**: Используя FQN, AI читает определения (`ViewDefinition`), члены типов (`GetMembers`), референсы (`FindReferences`)
-4. **Модификация**: `AddMember`, `OverwriteMember`, `RenameSymbol` — каждое изменение коммитится в Git
-5. **Откат**: `UltrasharpTool_Undo` откатывает последнее изменение через Git
+1. **Инициализация**: AI вызывает `load_solution` с путём к .sln файлу
+2. **Навигация**: `load_project` возвращает карту проекта (namespaces → types), адаптивную по сложности
+3. **Анализ**: Используя FQN, AI читает определения (`view_definition`), члены типов (`get_members`), референсы (`find_references`)
+4. **Модификация**: `add_member`, `modify_code`, `rename_symbol` — каждое изменение коммитится в Git
+5. **Откат**: `undo` откатывает последнее изменение через Git
 
 ### Особенности реализации
 
@@ -156,12 +156,12 @@ pwsh Dev.Scripts/setup-tei.ps1    # Windows
 **Token Efficiency**:
 - Весь код возвращается без отступов (экономия ~10% токенов)
 - Навигация по FQN вместо полного чтения файлов
-- Адаптивный уровень детализации в `LoadProject` (DetailLevel enum)
+- Адаптивный уровень детализации в `load_project` (DetailLevel enum)
 
 **Git Integration**:
 - Каждое изменение создаёт ветку `sharptools/YYYYMMDD-HHMMSS`
 - Автоматические коммиты с описанием изменения
-- `Undo` откатывает последний коммит
+- `undo` откатывает последний коммит
 - Можно отключить через `--disable-git`
 
 **Source Resolution**:
@@ -240,7 +240,7 @@ Semantic Merge автоматически регистрирует:
 
 ## Новые возможности: Quality Tools
 
-### FormatCode — Форматирование кода
+### format_code — Форматирование кода
 Использует **CSharpier** для автоматического форматирования C# кода согласно единому стилю.
 
 **Возможности:**
@@ -251,12 +251,12 @@ Semantic Merge автоматически регистрирует:
 
 **Пример использования:**
 ```
-UltrasharpTool_FormatCode(
+format_code(
     path: "D:/MyProject/src",
     checkOnly: true  // Сначала проверяем
 )
 // Затем применяем:
-UltrasharpTool_FormatCode(
+format_code(
     path: "D:/MyProject/src",
     checkOnly: false  // Применяет форматирование
 )
@@ -273,7 +273,7 @@ UltrasharpTool_FormatCode(
 
 **Пример использования:**
 ```
-UltrasharpTool_AnalyzeCodeStyle(
+analyze_code_style(
     solutionPath: "D:/MyProject/MyProject.sln",
     severityFilter: "Warning",  // Info, Warning, Error
     skip: 0,
@@ -297,13 +297,13 @@ UltrasharpTool_AnalyzeCodeStyle(
 **Пример использования:**
 ```
 // Сначала preview:
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     solutionPath: "D:/MyProject/MyProject.sln",
     diagnosticId: "IDE0005",  // или "all"
     preview: true
 )
 // Затем применяем:
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     solutionPath: "D:/MyProject/MyProject.sln",
     diagnosticId: "IDE0005",
     preview: false  // Создаст git commit
@@ -314,10 +314,10 @@ UltrasharpTool_ApplyCodeFixes(
 
 Типичный workflow для улучшения качества кода:
 
-1. **Анализ**: `UltrasharpTool_AnalyzeCodeStyle` — находим проблемы
-2. **Автоисправление**: `UltrasharpTool_ApplyCodeFixes` — исправляем что возможно автоматически
-3. **Форматирование**: `UltrasharpTool_FormatCode` — приводим код к единому стилю
-4. **Повторный анализ**: `UltrasharpTool_AnalyzeCodeStyle` — проверяем результат
+1. **Анализ**: `analyze_code_style` — находим проблемы
+2. **Автоисправление**: `apply_code_fixes` — исправляем что возможно автоматически
+3. **Форматирование**: `format_code` — приводим код к единому стилю
+4. **Повторный анализ**: `analyze_code_style` — проверяем результат
 
 Все изменения автоматически коммитятся в Git (если не отключено).
 

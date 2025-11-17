@@ -1,4 +1,4 @@
-﻿# Incremental Indexing: Architecture Analysis & Implementation Plan
+# Incremental Indexing: Architecture Analysis & Implementation Plan
 
 ## 🏗️ Architecture Analysis
 
@@ -129,7 +129,7 @@ Changed → Schedule ReloadSolutionFromDiskAsync() with debounce
 #### Scenario 1: Internal Modification (AddMember, OverwriteMember)
 ```csharp
 // User calls MCP tool:
-UltrasharpTool_AddMember(typeName: "MyClass", memberCode: "public void Foo() {}")
+add_member(typeName: "MyClass", memberCode: "public void Foo() {}")
   ↓
 CodeModificationService.ApplyChangesAsync()
   ↓
@@ -421,7 +421,7 @@ private void RebuildLookupStructures() {
 
 **Files to modify:**
 - `SolutionManager.cs` - Add SubscribeToWorkspaceChanges()
-- Test with Droid + LoadSolution + AddMember
+- Test with Droid + load_solution + AddMember
 
 **Success criteria:**
 - Log entries show WorkspaceChangeKind.DocumentChanged after AddMember
@@ -506,10 +506,10 @@ private void RebuildLookupStructures() {
 **Goal:** Validate performance and correctness
 
 **Tasks:**
-1. ✅ Benchmark: 1 file → UpdateDocument → SearchDefinitions
+1. ✅ Benchmark: 1 file → UpdateDocument → search_definitions
 2. ✅ Benchmark: 10 files → Batch update → SearchDefinitions
 3. ✅ Benchmark: 100 files → Fallback to full rebuild
-4. ✅ Test: AddMember → instant search
+4. ✅ Test: add_member → instant search
 5. ✅ Test: External edit → auto-reload → index updated
 6. ✅ Test: Project file change → full rebuild
 7. ✅ Test: Concurrent updates (multiple AddMember calls)
@@ -540,8 +540,7 @@ private void RebuildLookupStructures() {
 Scenario: Add 1 method to MyClass
 
 AddMember                     200ms   ✅
-FastSymbolIndex               STALE   ❌
-SearchDefinitions("NewMethod") 5-10s  ⚠️ (Roslyn fallback)
+FastSymbolIndex               STALE   ❌search_definitionss("NewMethod") 5-10s  ⚠️ (Roslyn fallback)
 Manual ReloadSolution         33s     ⚠️
 SearchDefinitions("NewMethod") <1s    ✅ (from index)
 
@@ -673,7 +672,7 @@ sseserver.exe \
 ### Performance Targets
 - [ ] 1 file update: <500ms (current: 33s)
 - [ ] 10 file batch: <3s (current: 33s)
-- [ ] SearchDefinitions after AddMember: <1s (current: 5-10s fallback)
+- [ search_definitionsns after AddMember: <1s (current: 5-10s fallback)
 - [ ] Memory overhead: <10% increase (tombstones + pending queue)
 
 ### Correctness Targets

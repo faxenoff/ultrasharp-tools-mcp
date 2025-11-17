@@ -1,4 +1,4 @@
-﻿# Layered Branch-Aware Indexing для Overlord
+# Layered Branch-Aware Indexing для Overlord
 
 ## 🎯 Проблема: Multi-Client Branch Isolation
 
@@ -659,8 +659,8 @@ public async Task RebaseDeltaAsync(string branch) {
 **Problem:** Multiple clients modifying same branch simultaneously
 
 ```
-Client A: AddMember("Foo") → delta.AddedSymbols["Foo"] = ...
-Client B: AddMember("Bar") → delta.AddedSymbols["Bar"] = ...
+Client A: add_member("Foo") → delta.AddedSymbols["Foo"] = ...
+Client B:add_memberr("Bar") → delta.AddedSymbols["Bar"] = ...
 
 Risk: Lost updates if not synchronized
 ```

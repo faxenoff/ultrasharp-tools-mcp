@@ -16,13 +16,13 @@ tags: [csharp, mcp, roslyn, dotnet, sharptools]
 
 ### 1. Initialize workspace
 ```
-UltrasharpTool_LoadSolution("path/to/project.sln")
+load_solution("path/to/project.sln")
 ```
 **ALWAYS do this first!** Without it, other tools won't work.
 
 ### 2. Understand project structure
 ```
-UltrasharpTool_LoadProject(
+load_project(
     projectName: "MyApp",
     detailLevel: "TypesAndSignatures"  // or "TypesOnly" for overview
 )
@@ -31,7 +31,7 @@ UltrasharpTool_LoadProject(
 
 ### 3. Find code (semantic search!)
 ```
-UltrasharpTool_FindPotentialDuplicates(
+find_duplicates(
     targetCode: "async Task<IActionResult> ProcessRequest(HttpContext ctx)",
     threshold: 0.7
 )
@@ -40,7 +40,7 @@ UltrasharpTool_FindPotentialDuplicates(
 
 ### 4. Modify code (auto-linting included)
 ```
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedTargetName: "MyApp.Services.UserService.ValidateEmail",
     codeSnippet: "/* new implementation */",
     commitMessage: "Improve email validation"
@@ -50,8 +50,8 @@ UltrasharpTool_OverwriteMember(
 
 ### 5. Ensure quality
 ```
-UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+format_code(path: "src/", checkOnly: false)
+apply_code_fixes(diagnosticId: "all", preview: false)
 ```
 **Auto-format + auto-fix** common issues.
 
@@ -88,7 +88,7 @@ FindPotentialDuplicates(
 
 **Where are errors logged to database?**
 ```
-FindPotentialDuplicates(
+find_duplicates(
     targetCode: "logger.LogError(ex); await db.SaveAsync();",
     threshold: 0.6
 )
@@ -190,7 +190,7 @@ FindPotentialDuplicates(
 ### Workflow 3: Refactoring Code
 ```
 1. FindPotentialDuplicates(targetCode: "...", threshold: 0.8)
-2. AnalyzeComplexity(fullyQualifiedName: "...", includeMembers: true)
+2. analyze_complexity(fullyQualifiedName: "...", includeMembers: true)
 3. OverwriteMember(...) // simplify/consolidate
 4. FormatCode(path: "src/", checkOnly: false)
 5. AnalyzeCodeStyle(severityFilter: "Warning")
@@ -204,7 +204,7 @@ FindPotentialDuplicates(
 
 ### Workflow 4: Code Review
 ```
-1. AnalyzeCodeStyle(severityFilter: "Warning")
+1. analyze_code_style(severityFilter: "Warning")
 2. AnalyzeComplexity(fullyQualifiedName: "NewFeature.Service")
 3. FindPotentialDuplicates(targetCode: "new method", threshold: 0.85)
 4. FormatCode(path: "src/NewFeature/", checkOnly: true)
@@ -220,8 +220,8 @@ FindPotentialDuplicates(
 
 ### 1. ALWAYS start with LoadSolution
 ```
-❌ WRONG: ViewDefinition(...) // FAIL: workspace not initialized
-✅ RIGHT: LoadSolution("...") → ViewDefinition(...) // Works
+❌ WRONG: view_definition(...) // FAIL: workspace not initialized
+✅ RIGHT: load_solution("...") → ViewDefinition(...) // Works
 ```
 
 ### 2. Use semantic search when you don't know FQN
@@ -233,7 +233,7 @@ FindPotentialDuplicates(
 ### 3. Don't read code manually if MCP can do it
 ```
 ❌ WRONG: "Let me read all files to understand structure"
-✅ RIGHT: LoadProject(detailLevel: "TypesAndSignatures") // 30 sec
+✅ RIGHT: load_project(detailLevel: "TypesAndSignatures") // 30 sec
 ```
 
 ### 4. Trust automatic linting
@@ -248,7 +248,7 @@ FindPotentialDuplicates(
 
 ### 5. Don't skip quality checks
 ```
-❌ WRONG: OverwriteMember(...) → commit without checks
+❌ WRONG: modify_code(...) → commit without checks
 ✅ RIGHT:
    OverwriteMember(...) // auto-linting in response
    → FormatCode(checkOnly: false)
@@ -261,7 +261,7 @@ FindPotentialDuplicates(
 ✅ All modifications automatically:
    - Create branches: ultrasharptools/YYYYMMDD-HHMMSS
    - Commit changes
-   - Can revert via Undo
+   - Can revert via undo
 
 → Don't fear experimenting!
 ```

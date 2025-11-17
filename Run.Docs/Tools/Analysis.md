@@ -17,14 +17,14 @@
 
 ---
 
-## UltrasharpTool_GetMembers
+## get_members
 
 **Быстрый overview API типа** — возвращает все члены (methods, properties, fields, events) с сигнатурами и XML документацией.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_GetMembers(
+get_members(
 fullyQualifiedTypeName: "MyNamespace.MyClass",
 includePrivateMembers: false
 )
@@ -103,7 +103,7 @@ FQN: MyProject.Services.UserService.Logger
 private readonly IUserRepository _repository
 FQN: MyProject.Services.UserService._repository
 
-💡 Use UltrasharpTool_ViewDefinition with FQN to see implementation
+💡 Use view_definition with FQN to see implementation
 ```
 
 ### Когда использовать
@@ -127,34 +127,34 @@ FQN: MyProject.Services.UserService._repository
 ### Когда НЕ использовать
 
 ❌ **НЕ нужен если:**
-- Нужна реализация метода → `ViewDefinition`
-- Нужно найти где используется → `FindReferences`
-- Нужно найти все классы похожей структуры → `SearchDefinitions`
+- Нужна реализация метода → `view_definition`
+- Нужно найти где используется → `find_references`
+- Нужно найти все классы похожей структуры → `search_definitions`
 
 ### Best Practices
 
 1. **Начинайте с includePrivateMembers: false:**
    ```javascript
    // ✅ Сначала смотрим public API
-   UltrasharpTool_GetMembers("MyNamespace.MyClass", includePrivateMembers: false)
+   get_members("MyNamespace.MyClass", includePrivateMembers: false)
 
    // ✅ Потом, если нужно, private детали
-   UltrasharpTool_GetMembers("MyNamespace.MyClass", includePrivateMembers: true)
+   get_members("MyNamespace.MyClass", includePrivateMembers: true)
    ```
 
 2. **Используйте FQN из вывода:**
    ```javascript
    // ✅ GetMembers возвращает точные FQN для других инструментов
-   UltrasharpTool_GetMembers("MyClass", false)
+   get_members("MyClass", false)
    // Output: "FQN: MyNamespace.MyClass.MyMethod(int, string)"
 
-   UltrasharpTool_ViewDefinition("MyNamespace.MyClass.MyMethod(int, string)")
+   view_definition("MyNamespace.MyClass.MyMethod(int, string)")
    ```
 
 3. **Для интерфейсов - найдите реализации:**
    ```javascript
-   UltrasharpTool_GetMembers("IUserService", false)  // См членов интерфейса
-   UltrasharpTool_ListImplementations("IUserService") // Найти реализации
+   get_members("IUserService", false)  // См членов интерфейса
+   list_implementations("IUserService") // Найти реализации
    ```
 
 ### Типичные ошибки
@@ -175,20 +175,20 @@ ERROR: Type 'MyClass' not found
 
 ### Связанные инструменты
 
-- ➡️ [**ViewDefinition**](#UltrasharpTool_viewdefinition) — см. реализацию члена
-- ➡️ [**ListImplementations**](#UltrasharpTool_listimplementations) — для интерфейсов/базовых классов
-- ➡️ [**FindReferences**](#UltrasharpTool_findreferences) — где используется член
+- ➡️ [**ViewDefinition**](#view_definition) — см. реализацию члена
+- ➡️ [**ListImplementations**](#list_implementations) — для интерфейсов/базовых классов
+- ➡️ [**FindReferences**](#find_references) — где используется член
 
 ---
 
-## UltrasharpTool_ViewDefinition
+## view_definition
 
 **Полный исходный код символа** — возвращает определение класса, метода, свойства с контекстной информацией (call graph, type references).
 
 ### Использование
 
 ```javascript
-UltrasharpTool_ViewDefinition(
+view_definition(
 fullyQualifiedSymbolName: "MyNamespace.MyClass.MyMethod"
 )
 ```
@@ -297,7 +297,7 @@ return userId;
    Context:
    await _userService.CreateUserAsync(row.Name, row.Email);
 
-💡 Use UltrasharpTool_FindReferences for complete list of all 15 callers
+💡 Use find_references for complete list of all 15 callers
 ```
 
 ### Когда использовать
@@ -325,38 +325,38 @@ return userId;
 ### Когда НЕ использовать
 
 ❌ **НЕ нужен если:**
-- Нужен только список членов → `GetMembers`
-- Нужны все места использования → `FindReferences`
-- Ищете паттерн в коде → `SearchDefinitions`
+- Нужен только список членов → `get_members`
+- Нужны все места использования → `find_references`
+- Ищете паттерн в коде → `search_definitions`
 
 ### Best Practices
 
 1. **Используйте call graph для навигации:**
    ```javascript
    // ViewDefinition показывает что метод вызывает
-   UltrasharpTool_ViewDefinition("UserService.CreateUserAsync")
+   view_definition("UserService.CreateUserAsync")
    // Output: "Calls: UserService.ValidateUserAsync"
 
    // Переходим к вызываемому методу
-   UltrasharpTool_ViewDefinition("UserService.ValidateUserAsync")
+   view_definition("UserService.ValidateUserAsync")
    ```
 
 2. **Для классов - начинайте с GetMembers:**
    ```javascript
    // ✅ Сначала обзор
-   UltrasharpTool_GetMembers("MyClass", false)
+   get_members("MyClass", false)
 
    // ✅ Затем детали интересующего члена
-   UltrasharpTool_ViewDefinition("MyClass.InterestingMethod")
+   view_definition("MyClass.InterestingMethod")
    ```
 
 3. **Используйте incoming calls как отправную точку:**
    ```javascript
-   UltrasharpTool_ViewDefinition("MyClass.ComplexMethod")
+   view_definition("MyClass.ComplexMethod")
    // Output: "Incoming calls: CallerA, CallerB, CallerC"
 
    // Анализируем как вызывается
-   UltrasharpTool_FindReferences("MyClass.ComplexMethod")
+   find_references("MyClass.ComplexMethod")
    ```
 
 ### Производительность
@@ -397,20 +397,20 @@ WARNING: Source code not available for external symbol
 
 ### Связанные инструменты
 
-- ⬅️ [**GetMembers**](#UltrasharpTool_getmembers) — сначала см список членов
-- ➡️ [**FindReferences**](#UltrasharpTool_findreferences) — все места использования
+- ⬅️ [**GetMembers**](#get_members) — сначала см список членов
+- ➡️ [**FindReferences**](#find_references) — все места использования
 - ➡️ [**TraceExecution**](TRACING_TOOLS.md#UltrasharpTool_traceexecution) — детальный trace выполнения
 
 ---
 
-## UltrasharpTool_ListImplementations
+## list_implementations
 
 **Поиск наследников** — находит все реализации интерфейса, абстрактного метода или производные классы.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_ListImplementations(
+list_implementations(
 fullyQualifiedSymbolName: "MyNamespace.IUserRepository"
 )
 ```
@@ -457,8 +457,8 @@ Implementations of: MyProject.Data.IUserRepository
    FQN: MyProject.Tests.Mocks.MockUserRepository
    Access: internal class
 
-💡 Use UltrasharpTool_ViewDefinition to see implementation details
-💡 Example: UltrasharpTool_ViewDefinition("MyProject.Data.SqlUserRepository")
+💡 Use view_definition to see implementation details
+💡 Example: view_definition("MyProject.Data.SqlUserRepository")
 ```
 
 ### Когда использовать
@@ -481,25 +481,25 @@ Implementations of: MyProject.Data.IUserRepository
 ### Когда НЕ использовать
 
 ❌ **НЕ нужен для:**
-- Поиска где используется тип → `FindReferences`
-- Просмотра реализации конкретного класса → `ViewDefinition`
+- Поиска где используется тип → `find_references`
+- Просмотра реализации конкретного класса → `view_definition`
 
 ### Best Practices
 
 1. **Анализируйте найденные реализации:**
    ```javascript
    // 1. Находим все реализации
-   UltrasharpTool_ListImplementations("IUserService")
+   list_implementations("IUserService")
 
    // 2. Смотрим каждую реализацию
-   UltrasharpTool_ViewDefinition("UserService")
-   UltrasharpTool_ViewDefinition("CachedUserService")
-   UltrasharpTool_ViewDefinition("MockUserService")
+   view_definition("UserService")
+   view_definition("CachedUserService")
+   view_definition("MockUserService")
    ```
 
 2. **Для базовых классов - проверьте всю иерархию:**
    ```javascript
-   UltrasharpTool_ListImplementations("BaseController")
+   list_implementations("BaseController")
    // Найдёт: UserController, OrderController, ProductController
 
    // Проверьте каждый на консистентность
@@ -507,11 +507,11 @@ Implementations of: MyProject.Data.IUserRepository
 
 3. **Комбинируйте с AnalyzeComplexity:**
    ```javascript
-   UltrasharpTool_ListImplementations("IService")
+   list_implementations("IService")
    // Output: ServiceA, ServiceB, ServiceC
 
-   UltrasharpTool_AnalyzeComplexity(scope: "class", target: "ServiceA")
-   UltrasharpTool_AnalyzeComplexity(scope: "class", target: "ServiceB")
+   analyze_complexity(scope: "class", target: "ServiceA")
+   analyze_complexity(scope: "class", target: "ServiceB")
    // Найдите самую сложную реализацию для рефакторинга
    ```
 
@@ -522,20 +522,20 @@ Implementations of: MyProject.Data.IUserRepository
 
 ### Связанные инструменты
 
-- ➡️ [**ViewDefinition**](#UltrasharpTool_viewdefinition) — см реализацию найденного класса
-- ➡️ [**FindReferences**](#UltrasharpTool_findreferences) — где используется интерфейс
-- ➡️ [**AnalyzeComplexity**](#UltrasharpTool_analyzecomplexity) — сравнить сложность реализаций
+- ➡️ [**ViewDefinition**](#view_definition) — см реализацию найденного класса
+- ➡️ [**FindReferences**](#find_references) — где используется интерфейс
+- ➡️ [**AnalyzeComplexity**](#analyze_complexity) — сравнить сложность реализаций
 
 ---
 
-## UltrasharpTool_FindReferences
+## find_references
 
 **Поиск всех использований** — находит все места где используется символ (метод, свойство, класс, etc.) с контекстом кода.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_FindReferences(
+find_references(
 fullyQualifiedSymbolName: "MyNamespace.MyClass.MyMethod"
 )
 ```
@@ -630,25 +630,25 @@ await Assert.ThrowsAsync<ArgumentException>(
 ### Когда НЕ использовать
 
 ❌ **НЕ нужен если:**
-- Нужна только реализация → `ViewDefinition`
-- Нужен call graph одного метода → `ViewDefinition` (показывает top 3)
-- Ищете общий паттерн → `SearchDefinitions`
+- Нужна только реализация → `view_definition`
+- Нужен call graph одного метода → `view_definition` (показывает top 3)
+- Ищете общий паттерн → `search_definitions`
 
 ### Best Practices
 
 1. **Проверяйте перед breaking changes:**
    ```javascript
    // Хотим изменить сигнатуру метода
-   UltrasharpTool_FindReferences("UserService.CreateUser")
+   find_references("UserService.CreateUser")
    // Видим 47 references - много работы!
 
    // Может лучше создать новый метод?
-   UltrasharpTool_AddMember("UserService", "CreateUserV2(...)")
+   add_member("UserService", "CreateUserV2(...)")
    ```
 
 2. **Для анализа паттернов использования:**
    ```javascript
-   UltrasharpTool_FindReferences("IUserRepository.GetByIdAsync")
+   find_references("IUserRepository.GetByIdAsync")
    // Смотрим контекст каждого использования
    // Находим anti-patterns (N+1 queries, etc.)
    ```
@@ -656,10 +656,10 @@ await Assert.ThrowsAsync<ArgumentException>(
 3. **Комбинируйте с TraceBackwards:**
    ```javascript
    // Нашли баг в методе
-   UltrasharpTool_FindReferences("ProblematicMethod")
+   find_references("ProblematicMethod")
    // Видим все call sites
 
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
    crashPointFqn: "ProblematicMethod",
    stackTraceHints: [...]
    )
@@ -689,20 +689,20 @@ WARNING: Found 5000+ references, showing first 1000
 
 ### Связанные инструменты
 
-- ⬅️ [**ViewDefinition**](#UltrasharpTool_viewdefinition) — см реализацию символа
-- ➡️ [**TraceBackwards**](TRACING_TOOLS.md#UltrasharpTool_tracebackwards) — полный call path
+- ⬅️ [**ViewDefinition**](#view_definition) — см реализацию символа
+- ➡️ [**TraceBackwards**](TRACING_TOOLS.md#trace_backwards) — полный call path
 - ➡️ [**RenameSymbol**](MODIFICATION_TOOLS.md#UltrasharpTool_renamesymbol) — переименовать везде
 
 ---
 
-## UltrasharpTool_SearchDefinitions
+## search_definitions
 
 **Regex поиск по определениям** — ищет паттерны в сигнатурах, именах типов/методов, декларациях. Работает как в исходниках, так и в compiled assemblies.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_SearchDefinitions(
+search_definitions(
 regexPattern: ".*UserService.*"
 )
 ```
@@ -762,8 +762,8 @@ Found 12 matches
    Assembly: FluentValidation.dll
    FQN: FluentValidation.Validators.EmailValidator
 
-💡 Use UltrasharpTool_ViewDefinition to see full source code
-💡 Example: UltrasharpTool_ViewDefinition("MyProject.Services.UserService.ValidateEmail")
+💡 Use view_definition to see full source code
+💡 Example: view_definition("MyProject.Services.UserService.ValidateEmail")
 ```
 
 ### Когда использовать
@@ -791,8 +791,8 @@ Found 12 matches
 ### Когда НЕ использовать
 
 ❌ **НЕ нужен если:**
-- Знаете точный FQN → `ViewDefinition`
-- Ищете использования символа → `FindReferences`
+- Знаете точный FQN → `view_definition`
+- Ищете использования символа → `find_references`
 - Нужен полный текстовый поиск в коде → используйте grep/IDE
 
 ### Best Practices
@@ -800,29 +800,29 @@ Found 12 matches
 1. **Используйте конкретные паттерны:**
    ```javascript
    // ❌ Слишком общий - много результатов
-   UltrasharpTool_SearchDefinitions("User")
+   search_definitions("User")
 
    // ✅ Конкретный - нужные результаты
-   UltrasharpTool_SearchDefinitions("class.*UserService")
-   UltrasharpTool_SearchDefinitions("async.*User.*Repository")
+   search_definitions("class.*UserService")
+   search_definitions("async.*User.*Repository")
    ```
 
 2. **Для поиска naming violations:**
    ```javascript
    // Найти async методы без "Async" суффикса
-   UltrasharpTool_SearchDefinitions("async Task.*(?!Async)\\(")
+   search_definitions("async Task.*(?!Async)\\(")
 
    // Найти public методы начинающиеся с "_"
-   UltrasharpTool_SearchDefinitions("public.*\\s_\\w+\\(")
+   search_definitions("public.*\\s_\\w+\\(")
    ```
 
 3. **Комбинируйте с AnalyzeComplexity:**
    ```javascript
    // Найти все "Service" классы
-   UltrasharpTool_SearchDefinitions("class.*Service")
+   search_definitions("class.*Service")
 
    // Проанализировать сложность каждого
-   UltrasharpTool_AnalyzeComplexity(scope: "class", target: "UserService")
+   analyze_complexity(scope: "class", target: "UserService")
    ```
 
 ### Regex паттерны (примеры)
@@ -858,13 +858,13 @@ Found 12 matches
 
 ### Связанные инструменты
 
-- ➡️ [**ViewDefinition**](#UltrasharpTool_viewdefinition) — см детали найденного
-- ➡️ [**FindReferences**](#UltrasharpTool_findreferences) — где используется найденный символ
-- ➡️ [**AnalyzeComplexity**](#UltrasharpTool_analyzecomplexity) — проанализировать найденные методы
+- ➡️ [**ViewDefinition**](#view_definition) — см детали найденного
+- ➡️ [**FindReferences**](#find_references) — где используется найденный символ
+- ➡️ [**AnalyzeComplexity**](#analyze_complexity) — проанализировать найденные методы
 
 ---
 
-## UltrasharpTool_ManageUsings
+## manage_usings
 
 **Управление using directives** — чтение и запись using statements в файле.
 
@@ -872,14 +872,14 @@ Found 12 matches
 
 ```javascript
 // Чтение
-UltrasharpTool_ManageUsings(
+manage_usings(
 operation: "read",
 codeToWrite: "None",
 filePath: "D:/MyProject/src/Services/UserService.cs"
 )
 
 // Запись
-UltrasharpTool_ManageUsings(
+manage_usings(
 operation: "write",
 codeToWrite: "using System;\nusing System.Linq;\nusing MyProject.Domain;",
 filePath: "D:/MyProject/src/Services/UserService.cs"
@@ -930,7 +930,7 @@ using MyProject.Data.Interfaces;
 ### Когда НЕ использовать
 
 ❌ **Используйте вместо:**
-- [**ApplyCodeFixes**](QUALITY_TOOLS.md#UltrasharpTool_applycodefixes) — для удаления unused usings (автоматически)
+- [**ApplyCodeFixes**](QUALITY_TOOLS.md#apply_code_fixes) — для удаления unused usings (автоматически)
 - [**FormatCode**](QUALITY_TOOLS.md#UltrasharpTool_formatcode) — для упорядочивания
 
 ### Best Practices
@@ -938,34 +938,34 @@ using MyProject.Data.Interfaces;
 1. **Сначала read, потом write:**
    ```javascript
    // ✅ Правильно - сохраняем существующие
-   UltrasharpTool_ManageUsings(operation: "read", codeToWrite: "None", filePath: "...")
+   manage_usings(operation: "read", codeToWrite: "None", filePath: "...")
    // Output: using System; using System.Linq;
 
    // Добавляем новый using
-   UltrasharpTool_ManageUsings(
+   manage_usings(
    operation: "write",
    codeToWrite: "using System;\nusing System.Linq;\nusing MyProject.NewNamespace;",
    filePath: "..."
    )
    ```
 
-2. **Лучше используйте ApplyCodeFixes:**
+2. **Лучше используйте apply_code_fixes:**
    ```javascript
    // ❌ Ручное управление usings
-   UltrasharpTool_ManageUsings(...)
+   manage_usings(...)
 
    // ✅ Автоматическое удаление unused
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005")
+   apply_code_fixes(diagnosticId: "IDE0005")
    ```
 
 ### Связанные инструменты
 
-- ➡️ [**ApplyCodeFixes**](QUALITY_TOOLS.md#UltrasharpTool_applycodefixes) — автоудаление unused usings
+- ➡️ [**ApplyCodeFixes**](QUALITY_TOOLS.md#apply_code_fixes) — автоудаление unused usings
 - ➡️ [**FormatCode**](QUALITY_TOOLS.md#UltrasharpTool_formatcode) — упорядочивание usings
 
 ---
 
-## UltrasharpTool_ManageAttributes
+## manage_attributes
 
 **Управление атрибутами** — чтение и запись attributes на декларациях (class, method, property, etc.).
 
@@ -973,14 +973,14 @@ using MyProject.Data.Interfaces;
 
 ```javascript
 // Чтение
-UltrasharpTool_ManageAttributes(
+manage_attributes(
 operation: "read",
 codeToWrite: "None",
 targetDeclaration: "MyNamespace.MyClass.MyMethod"
 )
 
 // Запись
-UltrasharpTool_ManageAttributes(
+manage_attributes(
 operation: "write",
 codeToWrite: "[Obsolete(\"Use NewMethod instead\")]\n[EditorBrowsable(EditorBrowsableState.Never)]",
 targetDeclaration: "MyNamespace.MyClass.MyMethod"
@@ -1030,29 +1030,29 @@ Attributes on: MyProject.API.Controllers.UserController.GetUser
 1. **Сначала read, потом write:**
    ```javascript
    // Read current
-   UltrasharpTool_ManageAttributes(operation: "read", codeToWrite: "None", targetDeclaration: "...")
+   manage_attributes(operation: "read", codeToWrite: "None", targetDeclaration: "...")
 
    // Write updated
-   UltrasharpTool_ManageAttributes(operation: "write", codeToWrite: "[Existing]\n[NewAttribute]", ...)
+   manage_attributes(operation: "write", codeToWrite: "[Existing]\n[NewAttribute]", ...)
    ```
 
 2. **Полный список атрибутов:**
    ```javascript
    // ❌ Плохо - потеряете существующие
-   UltrasharpTool_ManageAttributes(operation: "write", codeToWrite: "[NewAttribute]", ...)
+   manage_attributes(operation: "write", codeToWrite: "[NewAttribute]", ...)
 
    // ✅ Хорошо - сохраняете все
-   UltrasharpTool_ManageAttributes(operation: "write", codeToWrite: "[Existing1]\n[Existing2]\n[NewAttribute]", ...)
+   manage_attributes(operation: "write", codeToWrite: "[Existing1]\n[Existing2]\n[NewAttribute]", ...)
    ```
 
 ### Связанные инструменты
 
-- ⬅️ [**ViewDefinition**](#UltrasharpTool_viewdefinition) — см текущие attributes
+- ⬅️ [**ViewDefinition**](#view_definition) — см текущие attributes
 - ➡️ [**OverwriteMember**](MODIFICATION_TOOLS.md#UltrasharpTool_overwritemember) — для больших изменений
 
 ---
 
-## UltrasharpTool_AnalyzeComplexity
+## analyze_complexity
 
 **Анализ метрик сложности** — вычисляет cyclomatic complexity, cognitive complexity, coupling, inheritance depth, method statistics.
 
@@ -1060,19 +1060,19 @@ Attributes on: MyProject.API.Controllers.UserController.GetUser
 
 ```javascript
 // Анализ метода
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
 scope: "method",
 target: "MyNamespace.MyClass.MyMethod"
 )
 
 // Анализ класса
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
 scope: "class",
 target: "MyNamespace.MyClass"
 )
 
 // Анализ проекта
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
 scope: "project",
 target: "MyProject.Core"
 )
@@ -1217,7 +1217,7 @@ Instability: 0.65   (Efferent / (Afferent + Efferent))
 
 1. **Регулярно анализируйте весь проект:**
    ```javascript
-   UltrasharpTool_AnalyzeComplexity(scope: "project", target: "MyProject.Core")
+   analyze_complexity(scope: "project", target: "MyProject.Core")
    // Найдите top 20 hotspots
    // Создайте план рефакторинга
    ```
@@ -1225,13 +1225,13 @@ Instability: 0.65   (Efferent / (Afferent + Efferent))
 2. **Измеряйте до и после рефакторинга:**
    ```javascript
    // Before
-   UltrasharpTool_AnalyzeComplexity(scope: "method", target: "ComplexMethod")
+   analyze_complexity(scope: "method", target: "ComplexMethod")
    // CC: 25, CogC: 38
 
    // Refactor...
 
    // After
-   UltrasharpTool_AnalyzeComplexity(scope: "method", target: "RefactoredMethod")
+   analyze_complexity(scope: "method", target: "RefactoredMethod")
    // CC: 8, CogC: 12 ✅
    ```
 
@@ -1249,8 +1249,8 @@ Instability: 0.65   (Efferent / (Afferent + Efferent))
 
 ### Связанные инструменты
 
-- ⬅️ [**ViewDefinition**](#UltrasharpTool_viewdefinition) — см код сложного метода
-- ⬅️ [**SearchDefinitions**](#UltrasharpTool_searchdefinitions) — найти все методы для анализа
+- ⬅️ [**ViewDefinition**](#view_definition) — см код сложного метода
+- ⬅️ [**SearchDefinitions**](#search_definitions) — найти все методы для анализа
 - ➡️ [**OverwriteMember**](MODIFICATION_TOOLS.md#UltrasharpTool_overwritemember) — рефакторинг сложного метода
 
 ---
@@ -1274,29 +1274,29 @@ Instability: 0.65   (Efferent / (Afferent + Efferent))
 
 ```javascript
 // 1. Быстрый обзор публичного API
-UltrasharpTool_GetMembers("MyNamespace.UserService", includePrivateMembers: false)
+get_members("MyNamespace.UserService", includePrivateMembers: false)
 
 // 2. Детали интересующего метода
-UltrasharpTool_ViewDefinition("MyNamespace.UserService.CreateUser")
+view_definition("MyNamespace.UserService.CreateUser")
 
 // 3. Где этот метод используется
-UltrasharpTool_FindReferences("MyNamespace.UserService.CreateUser")
+find_references("MyNamespace.UserService.CreateUser")
 
 // 4. Проверить сложность
-UltrasharpTool_AnalyzeComplexity(scope: "class", target: "MyNamespace.UserService")
+analyze_complexity(scope: "class", target: "MyNamespace.UserService")
 ```
 
 ### Подготовка к рефакторингу
 
 ```javascript
 // 1. Найти самые сложные методы в проекте
-UltrasharpTool_AnalyzeComplexity(scope: "project", target: "MyProject.Core")
+analyze_complexity(scope: "project", target: "MyProject.Core")
 
 // 2. Детали самого сложного метода
-UltrasharpTool_ViewDefinition("MyProject.Services.ComplexMethod")
+view_definition("MyProject.Services.ComplexMethod")
 
 // 3. Все места где используется
-UltrasharpTool_FindReferences("MyProject.Services.ComplexMethod")
+find_references("MyProject.Services.ComplexMethod")
 
 // 4. План рефакторинга...
 ```
@@ -1305,32 +1305,32 @@ UltrasharpTool_FindReferences("MyProject.Services.ComplexMethod")
 
 ```javascript
 // 1. Посмотреть контракт интерфейса
-UltrasharpTool_GetMembers("IUserRepository", includePrivateMembers: false)
+get_members("IUserRepository", includePrivateMembers: false)
 
 // 2. Найти все реализации
-UltrasharpTool_ListImplementations("IUserRepository")
+list_implementations("IUserRepository")
 
 // 3. Сравнить реализации по сложности
-UltrasharpTool_AnalyzeComplexity(scope: "class", target: "SqlUserRepository")
-UltrasharpTool_AnalyzeComplexity(scope: "class", target: "InMemoryUserRepository")
+analyze_complexity(scope: "class", target: "SqlUserRepository")
+analyze_complexity(scope: "class", target: "InMemoryUserRepository")
 
 // 4. Детали конкретной реализации
-UltrasharpTool_ViewDefinition("SqlUserRepository.GetByIdAsync")
+view_definition("SqlUserRepository.GetByIdAsync")
 ```
 
 ### Поиск дублирующейся логики
 
 ```javascript
 // 1. Найти все методы содержащие "Validate"
-UltrasharpTool_SearchDefinitions(".*Validate.*Email.*")
+search_definitions(".*Validate.*Email.*")
 
 // 2. Посмотреть реализацию каждого
-UltrasharpTool_ViewDefinition("UserService.ValidateEmail")
-UltrasharpTool_ViewDefinition("EmailValidator.ValidateEmailFormat")
+view_definition("UserService.ValidateEmail")
+view_definition("EmailValidator.ValidateEmailFormat")
 
 // 3. Найти где используются
-UltrasharpTool_FindReferences("UserService.ValidateEmail")
-UltrasharpTool_FindReferences("EmailValidator.ValidateEmailFormat")
+find_references("UserService.ValidateEmail")
+find_references("EmailValidator.ValidateEmailFormat")
 
 // 4. Решить какой оставить, объединить дублирующуюся логику
 ```
@@ -1339,16 +1339,16 @@ UltrasharpTool_FindReferences("EmailValidator.ValidateEmailFormat")
 
 ```javascript
 // 1. Проверить публичный API
-UltrasharpTool_GetMembers("NewFeature.NewService", includePrivateMembers: false)
+get_members("NewFeature.NewService", includePrivateMembers: false)
 
 // 2. Проверить реализацию ключевых методов
-UltrasharpTool_ViewDefinition("NewFeature.NewService.ProcessData")
+view_definition("NewFeature.NewService.ProcessData")
 
 // 3. Проверить сложность
-UltrasharpTool_AnalyzeComplexity(scope: "class", target: "NewFeature.NewService")
+analyze_complexity(scope: "class", target: "NewFeature.NewService")
 
 // 4. Проверить naming conventions
-UltrasharpTool_SearchDefinitions("NewFeature.*(?!Async).*async Task")
+search_definitions("NewFeature.*(?!Async).*async Task")
 ```
 
 ---

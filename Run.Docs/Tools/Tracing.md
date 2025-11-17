@@ -14,14 +14,14 @@
 
 SharpTools включает три мощных инструмента для анализа потока выполнения кода:
 
-## UltrasharpTool_TraceExecution
+## trace_execution
 
 **Прямой трейсинг** — от точки входа к точке выхода.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_TraceExecution(
+trace_execution(
     entryPointFqn: "TestTracing.UserService.ProcessUser",
     exitPointFqn: "TestTracing.DatabaseService.SaveUser",  // опционально
     maxDepth: 10,
@@ -98,9 +98,9 @@ Execution Trace: TestTracing.UserService.ProcessUser
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Нужно найти КТО вызывает метод → `FindReferences` или `TraceBackwards`
-- Ищете конкретный баг в одном методе → `ViewDefinition`
-- Нужна реализация без execution flow → `ViewDefinition`
+- Нужно найти КТО вызывает метод → `find_references` или `trace_backwards`
+- Ищете конкретный баг в одном методе → `view_definition`
+- Нужна реализация без execution flow → `view_definition`
 - Код использует много reflection/dynamic → TraceExecution не увидит
 
 ### Best Practices
@@ -108,16 +108,16 @@ Execution Trace: TestTracing.UserService.ProcessUser
 1. **Начинайте с малой глубины:**
    ```javascript
    // ✅ Сначала shallow trace
-   UltrasharpTool_TraceExecution(entryPointFqn: "UserService.ProcessUser", maxDepth: 5)
+   trace_execution(entryPointFqn: "UserService.ProcessUser", maxDepth: 5)
 
    // Если нужно больше деталей
-   UltrasharpTool_TraceExecution(entryPointFqn: "UserService.ProcessUser", maxDepth: 15)
+   trace_execution(entryPointFqn: "UserService.ProcessUser", maxDepth: 15)
    ```
 
 2. **Используйте exitPoint для фокусировки:**
    ```javascript
    // Trace только до конкретной точки
-   UltrasharpTool_TraceExecution(
+   trace_execution(
        entryPointFqn: "UserController.Post",
        exitPointFqn: "DatabaseService.SaveUser"
    )
@@ -126,7 +126,7 @@ Execution Trace: TestTracing.UserService.ProcessUser
 3. **Отключайте external calls если не нужны:**
    ```javascript
    // Только ваш код
-   UltrasharpTool_TraceExecution(
+   trace_execution(
        entryPointFqn: "...",
        includeExternalCalls: false
    )
@@ -135,12 +135,12 @@ Execution Trace: TestTracing.UserService.ProcessUser
 4. **Комбинируйте с ViewDefinition:**
    ```javascript
    // Trace показывает что вызывается
-   UltrasharpTool_TraceExecution(entryPointFqn: "ProcessUser")
+   trace_execution(entryPointFqn: "ProcessUser")
    // Output: "Calls ValidateUser, CreateUser, SaveUser"
 
    // ViewDefinition показывает детали каждого
-   UltrasharpTool_ViewDefinition("UserService.ValidateUser")
-   UltrasharpTool_ViewDefinition("UserService.CreateUser")
+   view_definition("UserService.ValidateUser")
+   view_definition("UserService.CreateUser")
    ```
 
 ### Производительность
@@ -157,21 +157,21 @@ Execution Trace: TestTracing.UserService.ProcessUser
 
 ### Связанные инструменты
 
-- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — посмотрите entry point перед trace
-- ➡️ [**TraceBackwards**](#UltrasharpTool_tracebackwards) — обратное направление
+- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — посмотрите entry point перед trace
+- ➡️ [**TraceBackwards**](#trace_backwards) — обратное направление
 - ➡️ [**FindReferences**](ANALYSIS_TOOLS.md#UltrasharpTool_findreferences) — где вызывается entry point
 - ➡️ [**AnalyzeLogs**](LOG_ANALYSIS_TOOLS.md) — найти entry point в production logs
 
 ---
 
-## UltrasharpTool_TraceBackwards
+## trace_backwards
 
 **Обратный трейсинг** — от точки падения/ошибки к возможным точкам входа.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_TraceBackwards(
+trace_backwards(
     crashPointFqn: "TestTracing.UserService.ThrowInvalidUserException",
     startPointFqn: "TestTracing.Program.Main",  // опционально
     stackTraceHints: [
@@ -255,9 +255,9 @@ Path #1 (Confidence: 90%, Depth: 4)
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Нужен forward trace (что делает метод) → `TraceExecution`
-- Нужны все references (не только call paths) → `FindReferences`
-- Ищете реализацию метода → `ViewDefinition`
+- Нужен forward trace (что делает метод) → `trace_execution`
+- Нужны все references (не только call paths) → `find_references`
+- Ищете реализацию метода → `view_definition`
 - Нет stack trace hints → результаты могут быть неточными
 
 ### Best Practices
@@ -265,7 +265,7 @@ Path #1 (Confidence: 90%, Depth: 4)
 1. **ВСЕГДА используйте stack trace hints:**
    ```javascript
    // ✅ С hints - точные результаты
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
        crashPointFqn: "OrderService.ProcessOrder",
        stackTraceHints: [
            "at OrderService.ProcessOrder",
@@ -275,22 +275,22 @@ Path #1 (Confidence: 90%, Depth: 4)
    )
 
    // ⚠️ Без hints - может быть много false positives
-   UltrasharpTool_TraceBackwards(crashPointFqn: "OrderService.ProcessOrder")
+   trace_backwards(crashPointFqn: "OrderService.ProcessOrder")
    ```
 
 2. **Начните с малого maxPaths:**
    ```javascript
    // Сначала top 5 наиболее вероятных
-   UltrasharpTool_TraceBackwards(..., maxPaths: 5)
+   trace_backwards(..., maxPaths: 5)
 
    // Если не нашли - увеличьте
-   UltrasharpTool_TraceBackwards(..., maxPaths: 10)
+   trace_backwards(..., maxPaths: 10)
    ```
 
 3. **Укажите startPoint если знаете:**
    ```javascript
    // Если знаете entry point
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
        crashPointFqn: "...",
        startPointFqn: "MyController.Post"
    )
@@ -299,11 +299,11 @@ Path #1 (Confidence: 90%, Depth: 4)
 4. **Комбинируйте с AnalyzeLogs:**
    ```javascript
    // 1. Найти crash в production logs
-   UltrasharpTool_AnalyzeLogs(filePath: "prod.log", levels: ["Fatal"])
+   analyze_logs(filePath: "prod.log", levels: ["Fatal"])
    // Output: stack trace
 
    // 2. Trace backwards с stack trace hints
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
        crashPointFqn: "...",
        stackTraceHints: [/* из логов */]
    )
@@ -351,20 +351,20 @@ Path #1 (Confidence: 90%, Depth: 4)
 ### Связанные инструменты
 
 - ⬅️ [**AnalyzeLogs**](LOG_ANALYSIS_TOOLS.md) — получить stack trace из production logs
-- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — посмотрите crash point перед trace
-- ➡️ [**TraceExecution**](#UltrasharpTool_traceexecution) — прямое направление для понимания логики
+- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — посмотрите crash point перед trace
+- ➡️ [**TraceExecution**](#trace_execution) — прямое направление для понимания логики
 - ➡️ [**FindReferences**](ANALYSIS_TOOLS.md#UltrasharpTool_findreferences) — все references (не только call paths)
 
 ---
 
-## UltrasharpTool_AnalyzePathFeasibility
+## analyze_path_feasibility
 
 **Символьное выполнение (Symbolic Execution)** — анализ всех возможных путей выполнения с проверкой выполнимости условий через Z3 SMT solver.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_AnalyzePathFeasibility(
+analyze_path_feasibility(
     entryPointFqn: "TestTracing.Calculator.Divide",
     exitPointFqn: "TestTracing.Calculator.ThrowException",  // опционально
     maxDepth: 10,
@@ -483,8 +483,8 @@ Infeasibility Reason: Contradictory constraints (y == 0 AND y != 0)
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Нужен просто trace выполнения → `TraceExecution`
-- Нужны caller paths → `TraceBackwards`
+- Нужен просто trace выполнения → `trace_execution`
+- Нужны caller paths → `trace_backwards`
 - Метод слишком большой (>50 строк) → разбейте на части
 - Много reflection/dynamic → symbolic execution не увидит
 
@@ -493,12 +493,12 @@ Infeasibility Reason: Contradictory constraints (y == 0 AND y != 0)
 1. **Начинайте с малых методов:**
    ```javascript
    // ✅ Хорошо - маленький метод
-   UltrasharpTool_AnalyzePathFeasibility(
+   analyze_path_feasibility(
        entryPointFqn: "Calculator.Add"  // 5-10 строк
    )
 
    // ⚠️ Плохо - большой метод
-   UltrasharpTool_AnalyzePathFeasibility(
+   analyze_path_feasibility(
        entryPointFqn: "OrderProcessor.ProcessOrder"  // 200 строк, 50 веток
    )
    ```
@@ -506,7 +506,7 @@ Infeasibility Reason: Contradictory constraints (y == 0 AND y != 0)
 2. **Используйте initialConstraints для фокусировки:**
    ```javascript
    // Проверить только сценарий с отрицательными числами
-   UltrasharpTool_AnalyzePathFeasibility(
+   analyze_path_feasibility(
        entryPointFqn: "Calculator.Sqrt",
        initialConstraints: { "x": "x < 0" }
    )
@@ -515,19 +515,19 @@ Infeasibility Reason: Contradictory constraints (y == 0 AND y != 0)
 3. **Ограничьте maxDepth для производительности:**
    ```javascript
    // Быстрый анализ
-   UltrasharpTool_AnalyzePathFeasibility(..., maxDepth: 5)
+   analyze_path_feasibility(..., maxDepth: 5)
 
    // Глубокий анализ (медленно)
-   UltrasharpTool_AnalyzePathFeasibility(..., maxDepth: 20)
+   analyze_path_feasibility(..., maxDepth: 20)
    ```
 
 4. **Комбинируйте с TraceExecution:**
    ```javascript
    // 1. Понять поток выполнения
-   UltrasharpTool_TraceExecution(entryPointFqn: "ProcessOrder")
+   trace_execution(entryPointFqn: "ProcessOrder")
 
    // 2. Проверить feasibility критичных методов
-   UltrasharpTool_AnalyzePathFeasibility(entryPointFqn: "ValidatePayment")
+   analyze_path_feasibility(entryPointFqn: "ValidatePayment")
    ```
 
 ### Производительность
@@ -572,9 +572,9 @@ Infeasibility Reason: Contradictory constraints (y == 0 AND y != 0)
 
 ### Связанные инструменты
 
-- ⬅️ [**TraceExecution**](#UltrasharpTool_traceexecution) — понять что делает метод перед анализом
-- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — посмотреть код метода
-- ➡️ [**TraceBackwards**](#UltrasharpTool_tracebackwards) — найти откуда вызывается проблемный path
+- ⬅️ [**TraceExecution**](#trace_execution) — понять что делает метод перед анализом
+- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — посмотреть код метода
+- ➡️ [**TraceBackwards**](#trace_backwards) — найти откуда вызывается проблемный path
 - ➡️ [**OverwriteMember**](MODIFICATION_TOOLS.md) — исправить найденные issues
 
 ### Технология
@@ -598,7 +598,7 @@ Infeasibility Reason: Contradictory constraints (y == 0 AND y != 0)
 
 ## Сравнение инструментов
 
-| Характеристика | TraceExecution | TraceBackwards | AnalyzePathFeasibility |
+| Характеристика | trace_execution | trace_backwards | AnalyzePathFeasibility |
 |----------------|----------------|----------------|------------------------|
 | **Направление** | Forward (вперёд) | Backward (назад) | Forward (все пути) |
 | **От** | Entry point | Crash point | Entry point |
@@ -618,7 +618,7 @@ Infeasibility Reason: Contradictory constraints (y == 0 AND y != 0)
 ### Отладка падения приложения
 
 1. У вас есть exception с stack trace
-2. Запускаете `TraceBackwards` с crash point и stack trace hints
+2. Запускаете `trace_backwards` с crash point и stack trace hints
 3. Получаете все возможные пути, отсортированные по вероятности
 4. Видите где именно вызывается проблемный метод
 
@@ -626,20 +626,20 @@ Infeasibility Reason: Contradictory constraints (y == 0 AND y != 0)
 
 1. Хотите понять как работает feature
 2. Находите entry point (например, API endpoint handler)
-3. Запускаете `TraceExecution` с этого entry point
+3. Запускаете `trace_execution` с этого entry point
 4. Видите полный поток выполнения с ветвлениями и вызовами
 
 ### Анализ производительности
 
 1. Нашли медленный метод через profiler
-2. Используете `TraceBackwards` чтобы найти где он вызывается
+2. Используете `trace_backwards` чтобы найти где он вызывается
 3. Видите все места вызова и можете оптимизировать
 
 ---
 
 ## Ограничения
 
-### TraceExecution
+###trace_executionn
 - ⚠️ Не выполняет код (статический анализ)
 - ⚠️ Сложности с dynamic, reflection
 - ⚠️ Виртуальные вызовы требуют дополнительной логики
@@ -666,21 +666,21 @@ dotnet build
 
 **Forward trace:**
 ```
-UltrasharpTool_TraceExecution(
+trace_execution(
     entryPointFqn: "TestTracing.Program.Main"
 )
 ```
 
 **Backward trace:**
 ```
-UltrasharpTool_TraceBackwards(
+trace_backwards(
     crashPointFqn: "TestTracing.UserService.ThrowInvalidUserException"
 )
 ```
 
 **Symbolic execution:**
 ```
-UltrasharpTool_AnalyzePathFeasibility(
+analyze_path_feasibility(
     entryPointFqn: "TestTracing.Calculator.Divide",
     maxDepth: 10
 )

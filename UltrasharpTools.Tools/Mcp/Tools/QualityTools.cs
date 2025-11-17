@@ -15,7 +15,7 @@ public class QualityToolsLogCategory { }
 [McpServerToolType]
 public static partial class QualityTools
 {
-[McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(FormatCode), Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
+[McpServerTool(Name = "format_code", Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
 [Description("Formats C# code files using CSharpier. Supports .cs, .csproj, and .xml files. Can check formatting without applying changes.")]
 public static async Task<object> FormatCode(
 IFormattingService formattingService,
@@ -107,7 +107,7 @@ errors = result.Errors.Count
 }, logger, nameof(FormatCode), cancellationToken);
 }
 
-[McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(AnalyzeCodeStyle), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+[McpServerTool(Name = "analyze_code_style", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
 [Description("Analyzes C# code using Roslyn analyzers to find code style issues, warnings, and errors. Returns diagnostics grouped by severity.")]
 public static async Task<object> AnalyzeCodeStyle(
 IDiagnosticService diagnosticService,
@@ -194,7 +194,7 @@ column = d.Diagnostic.Location.GetLineSpan().StartLinePosition.Character + 1
 }, logger, nameof(AnalyzeCodeStyle), cancellationToken);
 }
 
-[McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ApplyCodeFixes), Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
+[McpServerTool(Name = "apply_code_fixes", Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
 [Description("Automatically applies code fixes for Roslyn diagnostics. Supports common issues like unused usings (IDE0005, CS8019) and more. Creates a git commit if not in preview mode.")]
 public static async Task<object> ApplyCodeFixes(
 ICodeFixService codeFixService,

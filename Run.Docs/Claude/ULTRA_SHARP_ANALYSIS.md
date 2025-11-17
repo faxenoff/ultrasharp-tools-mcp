@@ -21,14 +21,14 @@
 
 ---
 
-## UltrasharpTool_GetMembers
+## get_members
 
 **Quick API overview** — returns all members (methods, properties, fields, events) with signatures and XML documentation.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_GetMembers(
+get_members(
     fullyQualifiedTypeName: "MyNamespace.MyClass",
     includePrivateMembers: false
 )
@@ -63,20 +63,20 @@ For each member:
 
 ### Related Tools
 
-- ➡️ [**ViewDefinition**](#UltrasharpTool_ViewDefinition) — see member implementation
-- ➡️ [**ListImplementations**](#UltrasharpTool_ListImplementations) — for interfaces/base classes
-- ➡️ [**FindReferences**](#UltrasharpTool_FindReferences) — where member is used
+- ➡️ [**ViewDefinition**](#view_definition) — see member implementation
+- ➡️ [**ListImplementations**](#list_implementations) — for interfaces/base classes
+- ➡️ [**FindReferences**](#find_references) — where member is used
 
 ---
 
-## UltrasharpTool_ViewDefinition
+## view_definition
 
 **Full source code of symbol** — returns definition of class, method, property with contextual information (call graph, type references).
 
 ### Usage
 
 ```javascript
-UltrasharpTool_ViewDefinition(
+view_definition(
     fullyQualifiedSymbolName: "MyNamespace.MyClass.MyMethod"
 )
 ```
@@ -141,20 +141,20 @@ ViewDefinition can retrieve code from multiple sources:
 
 ### Related Tools
 
-- ⬅️ [**GetMembers**](#UltrasharpTool_GetMembers) — see member list first
-- ➡️ [**FindReferences**](#UltrasharpTool_FindReferences) — all usage locations
-- ➡️ [**TraceExecution**](./ULTRA_SHARP_TRACING.md#UltrasharpTool_TraceExecution) — detailed execution trace
+- ⬅️ [**GetMembers**](#get_members) — see member list first
+- ➡️ [**FindReferences**](#find_references) — all usage locations
+- ➡️ [**TraceExecution**](./ULTRA_SHARP_TRACING.md#trace_execution) — detailed execution trace
 
 ---
 
-## UltrasharpTool_ListImplementations
+## list_implementations
 
 **Find descendants** — finds all interface implementations, abstract method implementations, or derived classes.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_ListImplementations(
+list_implementations(
     fullyQualifiedSymbolName: "MyNamespace.IUserRepository"
 )
 ```
@@ -201,20 +201,20 @@ UltrasharpTool_ListImplementations(
 
 ### Related Tools
 
-- ➡️ [**ViewDefinition**](#UltrasharpTool_ViewDefinition) — see found class implementation
-- ➡️ [**FindReferences**](#UltrasharpTool_FindReferences) — where interface is used
-- ➡️ [**AnalyzeComplexity**](#UltrasharpTool_AnalyzeComplexity) — compare implementation complexity
+- ➡️ [**ViewDefinition**](#view_definition) — see found class implementation
+- ➡️ [**FindReferences**](#find_references) — where interface is used
+- ➡️ [**AnalyzeComplexity**](#analyze_complexity) — compare implementation complexity
 
 ---
 
-## UltrasharpTool_FindReferences
+## find_references
 
 **Find all usages** — finds all locations where symbol (method, property, class, etc.) is used with code context.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_FindReferences(
+find_references(
     fullyQualifiedSymbolName: "MyNamespace.MyClass.MyMethod"
 )
 ```
@@ -261,20 +261,20 @@ For each usage location:
 
 ### Related Tools
 
-- ⬅️ [**ViewDefinition**](#UltrasharpTool_ViewDefinition) — see symbol implementation
-- ➡️ [**TraceBackwards**](./ULTRA_SHARP_TRACING.md#UltrasharpTool_TraceBackwards) — full call path
-- ➡️ [**RenameSymbol**](./ULTRA_SHARP_MODIFICATION.md#UltrasharpTool_RenameSymbol) — rename everywhere
+- ⬅️ [**ViewDefinition**](#view_definition) — see symbol implementation
+- ➡️ [**TraceBackwards**](./ULTRA_SHARP_TRACING.md#trace_backwards) — full call path
+- ➡️ [**RenameSymbol**](./ULTRA_SHARP_MODIFICATION.md#rename_symbol) — rename everywhere
 
 ---
 
-## UltrasharpTool_SearchDefinitions
+## search_definitions
 
 **Regex search through definitions** — searches for patterns in signatures, type/method names, declarations. Works in both source code and compiled assemblies.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_SearchDefinitions(
+search_definitions(
     regexPattern: ".*UserService.*"
 )
 ```
@@ -341,13 +341,13 @@ For each match:
 
 ### Related Tools
 
-- ➡️ [**ViewDefinition**](#UltrasharpTool_ViewDefinition) — see details of found item
-- ➡️ [**FindReferences**](#UltrasharpTool_FindReferences) — where found symbol is used
-- ➡️ [**AnalyzeComplexity**](#UltrasharpTool_AnalyzeComplexity) — analyze found methods
+- ➡️ [**ViewDefinition**](#view_definition) — see details of found item
+- ➡️ [**FindReferences**](#find_references) — where found symbol is used
+- ➡️ [**AnalyzeComplexity**](#analyze_complexity) — analyze found methods
 
 ---
 
-## UltrasharpTool_ManageUsings
+## manage_usings
 
 **Manage using directives** — read and write using statements in file.
 
@@ -355,14 +355,14 @@ For each match:
 
 ```javascript
 // Read
-UltrasharpTool_ManageUsings(
+manage_usings(
     operation: "read",
     codeToWrite: "None",
     filePath: "D:/MyProject/src/Services/UserService.cs"
 )
 
 // Write
-UltrasharpTool_ManageUsings(
+manage_usings(
     operation: "write",
     codeToWrite: "using System;\nusing System.Linq;\nusing MyProject.Domain;",
     filePath: "D:/MyProject/src/Services/UserService.cs"
@@ -397,20 +397,20 @@ UltrasharpTool_ManageUsings(
 **Better use ApplyCodeFixes instead:**
 ```javascript
 // ❌ Manual using management
-UltrasharpTool_ManageUsings(...)
+manage_usings(...)
 
 // ✅ Automatic unused removal
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005")
+apply_code_fixes(diagnosticId: "IDE0005")
 ```
 
 ### Related Tools
 
-- ➡️ [**ApplyCodeFixes**](./ULTRA_SHARP_QUALITY.md#UltrasharpTool_ApplyCodeFixes) — auto-remove unused usings
-- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#UltrasharpTool_FormatCode) — organize usings
+- ➡️ [**ApplyCodeFixes**](./ULTRA_SHARP_QUALITY.md#apply_code_fixes) — auto-remove unused usings
+- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#format_code) — organize usings
 
 ---
 
-## UltrasharpTool_ManageAttributes
+## manage_attributes
 
 **Manage attributes** — read and write attributes on declarations (class, method, property, etc.).
 
@@ -418,14 +418,14 @@ UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005")
 
 ```javascript
 // Read
-UltrasharpTool_ManageAttributes(
+manage_attributes(
     operation: "read",
     codeToWrite: "None",
     targetDeclaration: "MyNamespace.MyClass.MyMethod"
 )
 
 // Write
-UltrasharpTool_ManageAttributes(
+manage_attributes(
     operation: "write",
     codeToWrite: "[Obsolete(\"Use NewMethod instead\")]\n[EditorBrowsable(EditorBrowsableState.Never)]",
     targetDeclaration: "MyNamespace.MyClass.MyMethod"
@@ -464,11 +464,11 @@ UltrasharpTool_ManageAttributes(
 **Always read first, then write:**
 ```javascript
 // ✅ Correct - preserve existing
-UltrasharpTool_ManageAttributes(operation: "read", codeToWrite: "None", targetDeclaration: "...")
+manage_attributes(operation: "read", codeToWrite: "None", targetDeclaration: "...")
 // Output: [Existing1]\n[Existing2]
 
 // Add new attribute
-UltrasharpTool_ManageAttributes(
+manage_attributes(
     operation: "write",
     codeToWrite: "[Existing1]\n[Existing2]\n[NewAttribute]",
     targetDeclaration: "..."
@@ -477,12 +477,12 @@ UltrasharpTool_ManageAttributes(
 
 ### Related Tools
 
-- ⬅️ [**ViewDefinition**](#UltrasharpTool_ViewDefinition) — see current attributes
-- ➡️ [**OverwriteMember**](./ULTRA_SHARP_MODIFICATION.md#UltrasharpTool_OverwriteMember) — for larger changes
+- ⬅️ [**ViewDefinition**](#view_definition) — see current attributes
+- ➡️ [**OverwriteMember**](./ULTRA_SHARP_MODIFICATION.md#modify_code) — for larger changes
 
 ---
 
-## UltrasharpTool_AnalyzeComplexity
+## analyze_complexity
 
 **Analyze complexity metrics** — calculates cyclomatic complexity, cognitive complexity, coupling, inheritance depth, method statistics.
 
@@ -490,19 +490,19 @@ UltrasharpTool_ManageAttributes(
 
 ```javascript
 // Analyze method
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
     scope: "method",
     target: "MyNamespace.MyClass.MyMethod"
 )
 
 // Analyze class
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
     scope: "class",
     target: "MyNamespace.MyClass"
 )
 
 // Analyze project
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
     scope: "project",
     target: "MyProject.Core"
 )
@@ -583,9 +583,9 @@ UltrasharpTool_AnalyzeComplexity(
 
 ### Related Tools
 
-- ⬅️ [**ViewDefinition**](#UltrasharpTool_ViewDefinition) — see complex method code
-- ⬅️ [**SearchDefinitions**](#UltrasharpTool_SearchDefinitions) — find all methods to analyze
-- ➡️ [**OverwriteMember**](./ULTRA_SHARP_MODIFICATION.md#UltrasharpTool_OverwriteMember) — refactor complex method
+- ⬅️ [**ViewDefinition**](#view_definition) — see complex method code
+- ⬅️ [**SearchDefinitions**](#search_definitions) — find all methods to analyze
+- ➡️ [**OverwriteMember**](./ULTRA_SHARP_MODIFICATION.md#modify_code) — refactor complex method
 
 ---
 
@@ -608,29 +608,29 @@ UltrasharpTool_AnalyzeComplexity(
 
 ```javascript
 // 1. Quick public API overview
-UltrasharpTool_GetMembers("MyNamespace.UserService", includePrivateMembers: false)
+get_members("MyNamespace.UserService", includePrivateMembers: false)
 
 // 2. Details of interesting method
-UltrasharpTool_ViewDefinition("MyNamespace.UserService.CreateUser")
+view_definition("MyNamespace.UserService.CreateUser")
 
 // 3. Where this method is used
-UltrasharpTool_FindReferences("MyNamespace.UserService.CreateUser")
+find_references("MyNamespace.UserService.CreateUser")
 
 // 4. Check complexity
-UltrasharpTool_AnalyzeComplexity(scope: "class", target: "MyNamespace.UserService")
+analyze_complexity(scope: "class", target: "MyNamespace.UserService")
 ```
 
 ### Preparing for Refactoring
 
 ```javascript
 // 1. Find most complex methods in project
-UltrasharpTool_AnalyzeComplexity(scope: "project", target: "MyProject.Core")
+analyze_complexity(scope: "project", target: "MyProject.Core")
 
 // 2. Details of most complex method
-UltrasharpTool_ViewDefinition("MyProject.Services.ComplexMethod")
+view_definition("MyProject.Services.ComplexMethod")
 
 // 3. All places where it's used
-UltrasharpTool_FindReferences("MyProject.Services.ComplexMethod")
+find_references("MyProject.Services.ComplexMethod")
 
 // 4. Refactoring plan...
 ```
@@ -639,32 +639,32 @@ UltrasharpTool_FindReferences("MyProject.Services.ComplexMethod")
 
 ```javascript
 // 1. View interface contract
-UltrasharpTool_GetMembers("IUserRepository", includePrivateMembers: false)
+get_members("IUserRepository", includePrivateMembers: false)
 
 // 2. Find all implementations
-UltrasharpTool_ListImplementations("IUserRepository")
+list_implementations("IUserRepository")
 
 // 3. Compare implementations by complexity
-UltrasharpTool_AnalyzeComplexity(scope: "class", target: "SqlUserRepository")
-UltrasharpTool_AnalyzeComplexity(scope: "class", target: "InMemoryUserRepository")
+analyze_complexity(scope: "class", target: "SqlUserRepository")
+analyze_complexity(scope: "class", target: "InMemoryUserRepository")
 
 // 4. Specific implementation details
-UltrasharpTool_ViewDefinition("SqlUserRepository.GetByIdAsync")
+view_definition("SqlUserRepository.GetByIdAsync")
 ```
 
 ### Finding Duplicate Logic
 
 ```javascript
 // 1. Find all methods containing "Validate"
-UltrasharpTool_SearchDefinitions(".*Validate.*Email.*")
+search_definitions(".*Validate.*Email.*")
 
 // 2. View each implementation
-UltrasharpTool_ViewDefinition("UserService.ValidateEmail")
-UltrasharpTool_ViewDefinition("EmailValidator.ValidateEmailFormat")
+view_definition("UserService.ValidateEmail")
+view_definition("EmailValidator.ValidateEmailFormat")
 
 // 3. Find where they're used
-UltrasharpTool_FindReferences("UserService.ValidateEmail")
-UltrasharpTool_FindReferences("EmailValidator.ValidateEmailFormat")
+find_references("UserService.ValidateEmail")
+find_references("EmailValidator.ValidateEmailFormat")
 
 // 4. Decide which to keep, consolidate duplicate logic
 ```
@@ -673,16 +673,16 @@ UltrasharpTool_FindReferences("EmailValidator.ValidateEmailFormat")
 
 ```javascript
 // 1. Check public API
-UltrasharpTool_GetMembers("NewFeature.NewService", includePrivateMembers: false)
+get_members("NewFeature.NewService", includePrivateMembers: false)
 
 // 2. Check key method implementation
-UltrasharpTool_ViewDefinition("NewFeature.NewService.ProcessData")
+view_definition("NewFeature.NewService.ProcessData")
 
 // 3. Check complexity
-UltrasharpTool_AnalyzeComplexity(scope: "class", target: "NewFeature.NewService")
+analyze_complexity(scope: "class", target: "NewFeature.NewService")
 
 // 4. Check naming conventions
-UltrasharpTool_SearchDefinitions("NewFeature.*(?!Async).*async Task")
+search_definitions("NewFeature.*(?!Async).*async Task")
 ```
 
 ---

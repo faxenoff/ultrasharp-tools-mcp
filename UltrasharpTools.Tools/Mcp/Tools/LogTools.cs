@@ -18,7 +18,7 @@ public static partial class LogTools
 /// Analyzes log files with automatic format detection and efficient searching.
 /// </summary>
 [McpServerTool(
-Name = ToolHelpers.SharpToolPrefix + nameof(AnalyzeLogs),
+Name = "analyze_logs",
 Idempotent = true,
 ReadOnly = true,
 Destructive = false,

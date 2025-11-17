@@ -1,4 +1,4 @@
-﻿# Three-Layer Architecture Extension
+# Three-Layer Architecture Extension
 
 ## 🔄 Extended Design: Multi-Layer Architecture
 
@@ -48,7 +48,7 @@ Developer B (same feature/auth branch):
 │  Layer 2: Working Directory (uncommitted, read-write)           │
 │  - Per-client/session: Client A, Client B, etc.                 │
 │  - NOT shared between clients (even in same branch!)            │
-│  - Updated on EVERY code modification (AddMember, etc.)         │
+│  - Updated on EVERY code modification (add_member, etc.)         │
 │  - ~1-10 MB per client                                          │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -75,7 +75,7 @@ public class WorkingDirectoryDelta {
     public string BranchName { get; init; }     // Which branch this is for
 
     // Uncommitted changes (NOT in git)
-    // Mutable - updated on every AddMember/OverwriteMember
+    // Mutable - updated on every AddMember/modify_code
     public ConcurrentDictionary<string, SymbolIndexEntry> AddedSymbols { get; }
     public ConcurrentDictionary<string, SymbolIndexEntry> ModifiedSymbols { get; }
     public ConcurrentBag<string> DeletedSymbolIds { get; }
@@ -312,10 +312,10 @@ var clientId = HttpContext.Connection.Id;
 **User Experience:**
 ```
 Before:
-  AddMember → 33s reload → SearchDefinitions
+ add_memberr → 33s reload → SearchDefinitions
 
 After:
-  AddMember → Layer 2 update (instant) → SearchDefinitions (5ms)
+add_memberer → Layer 2 update (instant) → search_definitions (5ms)
 ```
 
 ---

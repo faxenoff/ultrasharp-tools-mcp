@@ -1,4 +1,4 @@
-﻿# UltrasharpTools Overlord - Deployment Guide
+# UltrasharpTools Overlord - Deployment Guide
 
 Полное руководство по развертыванию UltrasharpTools MCP Remote Server в Kubernetes кластере.
 
@@ -40,7 +40,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │ PersistentVolume / NFS / Git Clone                              │
 │   - /app/projects/myproject/ ← клонирован из Git                │
-│   - LoadSolution("/app/projects/myproject/App.sln") работает!   │
+│   - load_solution("/app/projects/myproject/App.sln") работает!   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

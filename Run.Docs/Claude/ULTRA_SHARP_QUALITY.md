@@ -21,39 +21,39 @@
 **Important:** All modification operations **automatically** include quality checks:
 
 ```javascript
-UltrasharpTool_AddMember(...)
+add_member(...)
 // Automatically:
 // 1. ✅ Syntax check
 // 2. ✅ Compilation check
 // 3. ⚠️ Warning if formatting needed
 // 4. 📊 Code style warnings report
 
-UltrasharpTool_OverwriteMember(...)
+modify_code(...)
 // Same - automatic checks
 
-UltrasharpTool_RenameSymbol(...)
+rename_symbol(...)
 // Also with automatic checks
 ```
 
 **Recommended workflow:**
 ```javascript
 // 1. Modification (with automatic checks)
-UltrasharpTool_AddMember(...)
+add_member(...)
 // Output: "✅ No errors. ⚠️ Consider running FormatCode"
 
 // 2. Formatting
-UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
+format_code(path: "src/", checkOnly: false)
 
 // 3. Detailed analysis
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 
 // 4. Automatic fixes
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+apply_code_fixes(diagnosticId: "all", preview: false)
 ```
 
 ---
 
-## UltrasharpTool_FormatCode
+## format_code
 
 **Automatic formatting** — formats C# code to consistent style via CSharpier.
 
@@ -61,13 +61,13 @@ UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
 
 ```javascript
 // Check without changes
-UltrasharpTool_FormatCode(
+format_code(
     path: "D:/MyProject/src/Services",
     checkOnly: true
 )
 
 // Apply formatting
-UltrasharpTool_FormatCode(
+format_code(
     path: "D:/MyProject/src/Services",
     checkOnly: false
 )
@@ -159,29 +159,29 @@ public class UserService
 1. **Check first, then apply:**
    ```javascript
    // ✅ Correct - see what will change
-   UltrasharpTool_FormatCode(path: "src/", checkOnly: true)
+   format_code(path: "src/", checkOnly: true)
    // Output: "12 files need formatting"
 
-   UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
+   format_code(path: "src/", checkOnly: false)
    // Apply
    ```
 
 2. **Format directories, not files:**
    ```javascript
    // ✅ Good - entire directory
-   UltrasharpTool_FormatCode(path: "src/Services/", checkOnly: false)
+   format_code(path: "src/Services/", checkOnly: false)
 
    // ⚠️ Acceptable but inefficient - one file at a time
-   UltrasharpTool_FormatCode(path: "src/Services/UserService.cs", checkOnly: false)
+   format_code(path: "src/Services/UserService.cs", checkOnly: false)
    ```
 
 3. **Integrate into workflow:**
    ```javascript
    // After changes
-   UltrasharpTool_OverwriteMember(...)
-   UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
-   UltrasharpTool_AnalyzeCodeStyle(...)
-   UltrasharpTool_ApplyCodeFixes(...)
+   modify_code(...)
+   format_code(path: "src/", checkOnly: false)
+   analyze_code_style(...)
+   apply_code_fixes(...)
    ```
 
 ### Performance
@@ -192,20 +192,20 @@ public class UserService
 
 ### Related Tools
 
-- ➡️ [**AnalyzeCodeStyle**](#UltrasharpTool_AnalyzeCodeStyle) — analyze after formatting
-- ➡️ [**ApplyCodeFixes**](#UltrasharpTool_ApplyCodeFixes) — automatic fixes
+- ➡️ [**AnalyzeCodeStyle**](#analyze_code_style) — analyze after formatting
+- ➡️ [**ApplyCodeFixes**](#apply_code_fixes) — automatic fixes
 - ⬅️ **Modification Tools** — formatting after modifications
 
 ---
 
-## UltrasharpTool_AnalyzeCodeStyle
+## analyze_code_style
 
 **Code quality analysis** — runs Roslyn analyzers to find code style issues, warnings, errors.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_AnalyzeCodeStyle(
+analyze_code_style(
     solutionPath: "D:/MyProject/MyProject.sln",
     severityFilter: "Warning",
     skip: 0,
@@ -259,7 +259,7 @@ UltrasharpTool_AnalyzeCodeStyle(
 ### When to Use
 
 ✅ **After modifications:**
-- After AddMember/OverwriteMember
+- After AddMember/modify_code
 - After refactoring
 - Before commit
 
@@ -278,46 +278,46 @@ UltrasharpTool_AnalyzeCodeStyle(
 1. **Start with Errors, then Warnings:**
    ```javascript
    // First critical
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Error")
+   analyze_code_style(severityFilter: "Error")
 
    // Then warnings
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+   analyze_code_style(severityFilter: "Warning")
 
    // Info optional
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Info")
+   analyze_code_style(severityFilter: "Info")
    ```
 
 2. **Use pagination for large projects:**
    ```javascript
    // First page
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning", skip: 0, take: 100)
+   analyze_code_style(severityFilter: "Warning", skip: 0, take: 100)
 
    // Second page
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning", skip: 100, take: 100)
+   analyze_code_style(severityFilter: "Warning", skip: 100, take: 100)
    ```
 
 3. **Automate fixes:**
    ```javascript
    // Analysis
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+   analyze_code_style(severityFilter: "Warning")
    // Output: "28 auto-fixable warnings"
 
    // Auto-fixes
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+   apply_code_fixes(diagnosticId: "all", preview: false)
 
    // Re-analyze
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+   analyze_code_style(severityFilter: "Warning")
    // Output: "15 warnings" (only manual fixes)
    ```
 
 4. **Track progress:**
    ```javascript
    // Baseline
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+   analyze_code_style(severityFilter: "Warning")
    // "147 warnings"
 
    // After work
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+   analyze_code_style(severityFilter: "Warning")
    // "98 warnings" - 33% improvement!
    ```
 
@@ -335,13 +335,13 @@ UltrasharpTool_AnalyzeCodeStyle(
 
 ### Related Tools
 
-- ⬅️ [**FormatCode**](#UltrasharpTool_FormatCode) — format before analysis
-- ➡️ [**ApplyCodeFixes**](#UltrasharpTool_ApplyCodeFixes) — auto-fix found issues
-- ⬅️ [**AnalyzeComplexity**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_AnalyzeComplexity) — complexity metrics
+- ⬅️ [**FormatCode**](#format_code) — format before analysis
+- ➡️ [**ApplyCodeFixes**](#apply_code_fixes) — auto-fix found issues
+- ⬅️ [**AnalyzeComplexity**](./ULTRA_SHARP_ANALYSIS.md#analyze_complexity) — complexity metrics
 
 ---
 
-## UltrasharpTool_ApplyCodeFixes
+## apply_code_fixes
 
 **Automatic fixes** — applies Roslyn code fixes for diagnostics.
 
@@ -349,14 +349,14 @@ UltrasharpTool_AnalyzeCodeStyle(
 
 ```javascript
 // Preview mode (see what will change)
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     solutionPath: "D:/MyProject/MyProject.sln",
     diagnosticId: "IDE0005",
     preview: true
 )
 
 // Apply mode (apply changes)
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     solutionPath: "D:/MyProject/MyProject.sln",
     diagnosticId: "IDE0005",
     preview: false
@@ -421,29 +421,29 @@ UltrasharpTool_ApplyCodeFixes(
 1. **ALWAYS preview before apply:**
    ```javascript
    // ✅ CORRECT
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005", preview: true)
+   apply_code_fixes(diagnosticId: "IDE0005", preview: true)
    // See what will change
 
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005", preview: false)
+   apply_code_fixes(diagnosticId: "IDE0005", preview: false)
    // Apply
 
    // ❌ DANGEROUS - don't know what will change
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+   apply_code_fixes(diagnosticId: "all", preview: false)
    ```
 
 2. **Fix one diagnostic at a time:**
    ```javascript
    // ✅ Good - controllable
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005", preview: false)
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "CS8019", preview: false)
+   apply_code_fixes(diagnosticId: "IDE0005", preview: false)
+   apply_code_fixes(diagnosticId: "CS8019", preview: false)
 
    // ⚠️ Careful - many changes at once
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+   apply_code_fixes(diagnosticId: "all", preview: false)
    ```
 
 3. **Verify after apply:**
    ```javascript
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005", preview: false)
+   apply_code_fixes(diagnosticId: "IDE0005", preview: false)
 
    // Check compilation
    // Output: "✅ Compilation: Success"
@@ -452,15 +452,15 @@ UltrasharpTool_ApplyCodeFixes(
    // dotnet test
 
    // Re-analyze
-   UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+   analyze_code_style(severityFilter: "Warning")
    ```
 
 4. **Use Undo if something's wrong:**
    ```javascript
-   UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0028", preview: false)
+   apply_code_fixes(diagnosticId: "IDE0028", preview: false)
    // Oops, this broke code!
 
-   UltrasharpTool_Undo()
+   undo()
    // Reverted
    ```
 
@@ -496,9 +496,9 @@ diagnosticId: "all"
 
 ### Related Tools
 
-- ⬅️ [**AnalyzeCodeStyle**](#UltrasharpTool_AnalyzeCodeStyle) — find what needs fixing
-- ⬅️ [**FormatCode**](#UltrasharpTool_FormatCode) — format before fixes
-- ➡️ [**Undo**](./ULTRA_SHARP_MODIFICATION.md#UltrasharpTool_Undo) — rollback if something's wrong
+- ⬅️ [**AnalyzeCodeStyle**](#analyze_code_style) — find what needs fixing
+- ⬅️ [**FormatCode**](#format_code) — format before fixes
+- ➡️ [**Undo**](./ULTRA_SHARP_MODIFICATION.md#undo) — rollback if something's wrong
 
 ---
 
@@ -508,31 +508,31 @@ diagnosticId: "all"
 
 ```javascript
 // 1. Formatting
-UltrasharpTool_FormatCode(path: "src/", checkOnly: true)
+format_code(path: "src/", checkOnly: true)
 // Output: "12 files need formatting"
 
-UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
+format_code(path: "src/", checkOnly: false)
 // Applied formatting
 
 // 2. Analysis
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 // Output: "43 warnings, 28 auto-fixable"
 
 // 3. Automatic fixes
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005", preview: true)
+apply_code_fixes(diagnosticId: "IDE0005", preview: true)
 // See what will change
 
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "IDE0005", preview: false)
+apply_code_fixes(diagnosticId: "IDE0005", preview: false)
 // Applied unused usings fix
 
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: true)
+apply_code_fixes(diagnosticId: "all", preview: true)
 // See other fixes
 
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+apply_code_fixes(diagnosticId: "all", preview: false)
 // Applied all
 
 // 4. Re-analyze
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 // Output: "15 warnings" - only manual fixes remain
 
 // 5. Manual fixes (outside SharpTools)
@@ -540,8 +540,8 @@ UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
 // Fix manually via IDE or modification tools
 
 // 6. Final check
-UltrasharpTool_FormatCode(path: "src/", checkOnly: true)
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+format_code(path: "src/", checkOnly: true)
+analyze_code_style(severityFilter: "Warning")
 // All clean ✅
 ```
 
@@ -549,7 +549,7 @@ UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
 
 ```javascript
 // 1. Modification
-UltrasharpTool_AddMember(
+add_member(
     fullyQualifiedTargetName: "UserService",
     codeSnippet: "...",
     commitMessage: "Add ValidateEmail method"
@@ -557,15 +557,15 @@ UltrasharpTool_AddMember(
 // Output: "✅ No errors. ⚠️ Consider formatting"
 
 // 2. Quality checks (automatic workflow)
-UltrasharpTool_FormatCode(
+format_code(
     path: "src/Services/UserService.cs",
     checkOnly: false
 )
 
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 // Check new warnings
 
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+apply_code_fixes(diagnosticId: "all", preview: false)
 // Fix any auto-fixable issues
 
 // 3. Done ✅
@@ -577,18 +577,18 @@ UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
 # In CI/CD pipeline
 
 # 1. Check formatting
-UltrasharpTool_FormatCode(path: "src/", checkOnly: true)
+format_code(path: "src/", checkOnly: true)
 # If returned "files need formatting" - FAIL BUILD
 
 # 2. Analysis
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Error")
+analyze_code_style(severityFilter: "Error")
 # If errors exist - FAIL BUILD
 
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 # Report warnings (but don't fail)
 
 # 3. Can auto-fix (optional)
-# UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+# apply_code_fixes(diagnosticId: "all", preview: false)
 # Create PR with fixes
 ```
 

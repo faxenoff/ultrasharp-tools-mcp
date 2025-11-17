@@ -29,7 +29,7 @@ public class ModificationToolsLogCategory { }
 
 [McpServerToolType]
 public static class ModificationTools {
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(AddMember), Idempotent = false, Destructive = false, OpenWorld = false, ReadOnly = false)]
+    [McpServerTool(Name = "add_member", Idempotent = false, Destructive = false, OpenWorld = false, ReadOnly = false)]
     [Description("Adds one or more new member definitions (Property, Field, Method, inner Class, etc.) to a specified type. Code is parsed, inserted, and formatted. Definition can include xml documentation and attributes. Writing small components produces cleaner code, so you can use this to break up large components, in addition to adding new functionality.")]
     public static async Task<string> AddMember(
         ISolutionManager solutionManager,
@@ -234,7 +234,7 @@ public static class ModificationTools {
             return !typeSymbol.GetMembers(memberName).Any(m => !m.IsImplicitlyDeclared);
         }
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(OverwriteMember), Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
+    [McpServerTool(Name = "modify_code", Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
     [Description("Replaces the definition of an existing member or type with new C# code, or deletes it. Code is parsed and formatted. Code can contain multiple new members, update the existing member, and/or replace it with a new one.")]
     public static async Task<string> OverwriteMember(
         ISolutionManager solutionManager,
@@ -360,7 +360,7 @@ public static class ModificationTools {
             }
         }, logger, nameof(OverwriteMember), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(RenameSymbol), Idempotent = true, Destructive = true, OpenWorld = false, ReadOnly = false),
+    [McpServerTool(Name = "rename_symbol", Idempotent = true, Destructive = true, OpenWorld = false, ReadOnly = false),
     Description("Renames a symbol (variable, method, property, type) and updates all references. Changes are formatted.")]
     public static async Task<string> RenameSymbol(
         ISolutionManager solutionManager,
@@ -456,7 +456,7 @@ public static class ModificationTools {
         return SyntaxFacts.IsValidIdentifier(name);
     }
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ReplaceAllReferences), Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
+    [McpServerTool(Name = "replace_all_references", Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
     [Description("Surgically replaces all references to a symbol with new C# code across the solution. Perfect for systematic API upgrades - e.g., replacing all Console.WriteLine() calls with Logger.Info(). Supports filtering by file patterns, syntax node types, and excluding comments.")]
     public static async Task<string> ReplaceAllReferences(
         ISolutionManager solutionManager,
@@ -744,7 +744,7 @@ public static class ModificationTools {
         }, logger, nameof(ReplaceAllReferences), cancellationToken);
     }
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ReplaceAllReferencesByPattern), Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
+    [McpServerTool(Name = "replace_references_by_pattern", Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
     [Description("Batch rename symbols matching a pattern. Supports wildcards (* and ?), regex, and filters by symbol kind, namespace, and file patterns. Perfect for systematic refactoring like test* → nonmod*.")]
     public static async Task<string> ReplaceAllReferencesByPattern(
         ISolutionManager solutionManager,
@@ -1084,7 +1084,7 @@ public static class ModificationTools {
         }
     }
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(Undo), Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
+    [McpServerTool(Name = "undo", Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
     [Description($"Reverts the last applied change to the solution. You can undo all consecutive changes you have made. Returns a diff of the change that was undone.")]
     public static async Task<string> Undo(
         ISolutionManager solutionManager,
@@ -1106,7 +1106,7 @@ public static class ModificationTools {
 
         }, logger, nameof(Undo), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(FindAndReplace), Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
+    [McpServerTool(Name = "find_and_replace", Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
     [Description("Every developer's favorite. Use this for all small edits (code tweaks, usings, namespaces, interface implementations, attributes, etc.) instead of rewriting large members or types.")]
     public static async Task<string> FindAndReplace(
         ISolutionManager solutionManager,
@@ -1325,7 +1325,7 @@ public static class ModificationTools {
             }
         }, logger, nameof(FindAndReplace), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(MoveMember), Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
+    [McpServerTool(Name = "move_member", Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
     [Description("Moves a member (property, field, method, nested type, etc.) from one type/namespace to another. The member is removed from the source location and added to the destination.")]
     public static async Task<string> MoveMember(
                         ISolutionManager solutionManager,

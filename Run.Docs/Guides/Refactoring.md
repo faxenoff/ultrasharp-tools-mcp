@@ -17,12 +17,12 @@
 6. Miss many improvement opportunities
 
 **MCP approach (15-20 minutes):**
-1. `FindPotentialDuplicates` → find all duplicates automatically
-2. `AnalyzeComplexity` → identify high-complexity code
-3. `OverwriteMember` → refactor with auto-linting
-4. `FormatCode` → consistent style
-5. `ApplyCodeFixes` → auto-fix warnings
-6. `AnalyzeCodeStyle` → verify improvements
+1. `find_duplicates` → find all duplicates automatically
+2. `analyze_complexity` → identify high-complexity code
+3. `modify_code` → refactor with auto-linting
+4. `format_code` → consistent style
+5. `apply_code_fixes` → auto-fix warnings
+6. `analyze_code_style` → verify improvements
 
 **Result:** 6-12x faster, more thorough, measurable improvements.
 
@@ -86,7 +86,7 @@
 **Goal:** Identify duplicate or similar code.
 
 ```csharp
-UltrasharpTool_FindPotentialDuplicates(
+find_duplicates(
     targetCode: @"
 bool ValidateEmail(string email)
 {
@@ -146,7 +146,7 @@ Found 5 duplicates/similar methods (threshold: 0.8):
 **Goal:** Find complex code that needs simplification.
 
 ```csharp
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
     fullyQualifiedName: "MyApp.Services",
     includeMembers: true
 )
@@ -236,7 +236,7 @@ public async Task<OrderResult> ProcessOrder(CreateOrderRequest request)
 
 **Create simplified version:**
 ```csharp
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedTargetName: "MyApp.Services.OrderService.ProcessOrder",
     codeSnippet: @"
 public async Task<OrderResult> ProcessOrder(CreateOrderRequest request)
@@ -306,7 +306,7 @@ Commit: b8d4f21 "Refactor ProcessOrder: extract methods to reduce complexity"
 **Create each helper method:**
 
 ```csharp
-UltrasharpTool_AddMember(
+add_member(
     fullyQualifiedTargetName: "MyApp.Services.OrderService",
     codeSnippet: @"
 private async Task<ValidationResult> ValidateOrder(CreateOrderRequest request)
@@ -339,7 +339,7 @@ private async Task<ValidationResult> ValidateOrder(CreateOrderRequest request)
 
 **Create shared validation utility:**
 ```csharp
-UltrasharpTool_AddMember(
+add_member(
     fullyQualifiedTargetName: "MyApp.Utilities.EmailValidator",
     codeSnippet: @"
 /// <summary>
@@ -367,19 +367,19 @@ public static bool IsValidEmail(string email)
 **Replace all duplicates:**
 ```csharp
 // Replace UserValidator.ValidateEmailFormat
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedTargetName: "MyApp.Validators.UserValidator.ValidateEmailFormat",
     codeSnippet: "public bool ValidateEmailFormat(string email) => EmailValidator.IsValidEmail(email);"
 )
 
 // Replace RegistrationService.CheckEmail
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedTargetName: "MyApp.Services.RegistrationService.CheckEmail",
     codeSnippet: "private bool CheckEmail(string email) => EmailValidator.IsValidEmail(email);"
 )
 
-// Or better: use RenameSymbol to update all references
-UltrasharpTool_FindReferences(
+// Or better: use rename_symbol to update all references
+find_references(
     fullyQualifiedName: "UserValidator.ValidateEmailFormat"
 )
 // Then replace call sites directly
@@ -394,7 +394,7 @@ UltrasharpTool_FindReferences(
 **Goal:** Ensure consistent code style.
 
 ```csharp
-UltrasharpTool_FormatCode(
+format_code(
     path: "D:/Projects/MyApp/MyApp.Services",
     checkOnly: true
 )
@@ -415,7 +415,7 @@ Files needing formatting: 8
 
 **Apply formatting:**
 ```csharp
-UltrasharpTool_FormatCode(
+format_code(
     path: "D:/Projects/MyApp/MyApp.Services",
     checkOnly: false
 )
@@ -440,7 +440,7 @@ Commit: c9e8a42 "Format code with CSharpier (8 files)"
 **Goal:** Find and fix remaining issues.
 
 ```csharp
-UltrasharpTool_AnalyzeCodeStyle(
+analyze_code_style(
     solutionPath: "D:/Projects/MyApp/MyApp.sln",
     severityFilter: "Warning"
 )
@@ -467,7 +467,7 @@ Manual fixes required: 6 warnings
 
 **Auto-fix:**
 ```csharp
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     solutionPath: "D:/Projects/MyApp/MyApp.sln",
     diagnosticId: "all",
     preview: true
@@ -490,7 +490,7 @@ Files affected:
 
 **Apply:**
 ```csharp
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     solutionPath: "D:/Projects/MyApp/MyApp.sln",
     diagnosticId: "all",
     preview: false
@@ -518,7 +518,7 @@ Remaining warnings: 6 (manual fixes required)
 **Goal:** Measure improvement after refactoring.
 
 ```csharp
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
     fullyQualifiedName: "MyApp.Services",
     includeMembers: true
 )
@@ -557,7 +557,7 @@ Maintainability Index: 64 → 82  ✅ (+28%)
 
 **Code style verification:**
 ```csharp
-UltrasharpTool_AnalyzeCodeStyle(
+analyze_code_style(
     solutionPath: "D:/Projects/MyApp/MyApp.sln",
     severityFilter: "Warning"
 )
@@ -580,7 +580,7 @@ Remaining: 6 (manual review needed)
 1. FindPotentialDuplicates(targetCode: "...", threshold: 0.8)
    → Identify duplicate code
 
-2. AnalyzeComplexity(fullyQualifiedName: "...", includeMembers: true)
+2. analyze_complexity(fullyQualifiedName: "...", includeMembers: true)
    → Find high-complexity methods
 
 3. ViewDefinition(fullyQualifiedName: "HighComplexityMethod")
@@ -612,12 +612,10 @@ Remaining: 6 (manual review needed)
 ### 1. Start with Metrics
 
 ```csharp
-✅ BEFORE refactoring:
-AnalyzeComplexity(...)  → Baseline: cyclomatic=28
+✅ BEFORE refactoring:analyze_complexityy(...)  → Baseline: cyclomatic=28
 AnalyzeCodeStyle(...)   → Baseline: 43 warnings
 
-✅ AFTER refactoring:
-AnalyzeComplexity(...)  → Result: cyclomatic=6 (-78%)
+✅ AFTER refactoringanalyze_complexityty(...)  → Result: cyclomatic=6 (-78%)
 AnalyzeCodeStyle(...)   → Result: 6 warnings (-86%)
 
 → Measurable improvement!
@@ -674,7 +672,7 @@ var before = AnalyzeComplexity(...);
 OverwriteMember(...);
 
 // After
-var after = AnalyzeComplexity(...);
+var afteranalyze_complexityity(...);
 
 // Compare
 Console.WriteLine($"Complexity: {before.Cyclomatic} → {after.Cyclomatic}");
@@ -700,7 +698,7 @@ AnalyzeComplexity(
 // ProcessOrder: Cyclomatic=35, Cognitive=58, Lines=234
 
 // Find duplicates
-FindPotentialDuplicates(
+find_duplicates(
     targetCode: "validate user permissions for order access",
     threshold: 0.75
 )
@@ -718,7 +716,7 @@ FindPotentialDuplicates(
 // Extract: ValidateOrder, CheckPermissions, CalculatePricing,
 //          ProcessPayment, UpdateInventory, SendNotifications
 
-OverwriteMember(
+modify_code(
     fullyQualifiedTargetName: "OrderService.ProcessOrder",
     codeSnippet: "/* simplified with extracted methods */"
 )
@@ -753,7 +751,7 @@ OverwriteMember(...)  // × 4 locations
 FormatCode(path: "Services/", checkOnly: false)
 
 // Analyze
-AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 // Result: 28 warnings
 
 // Auto-fix

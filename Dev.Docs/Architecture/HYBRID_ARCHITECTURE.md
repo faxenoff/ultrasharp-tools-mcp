@@ -1,4 +1,4 @@
-﻿# Hybrid Architecture: ultrasharp-tools-droid
+# Hybrid Architecture: ultrasharp-tools-droid
 
 **Lightweight local client + Powerful remote server**
 
@@ -188,7 +188,7 @@ UltrasharpTools.Droid/
 4. **MCP Bridge:**
    ```csharp
    // Перенаправляет MCP requests на server
-   Claude → droid: FindPotentialDuplicates(...)
+   Claude → droid: find_duplicates(...)
    droid → server: POST /mcp/findDuplicates
    server → droid: results
    droid → Claude: results
@@ -218,8 +218,7 @@ UltrasharpTools.Droid/
 2. **Cross-Project Search:**
    ```csharp
    // Поиск дубликатов во ВСЕХ проектах команды
-   FindPotentialDuplicates(
-       targetCode: "...",
+   FindPotefind_duplicates targetCode: "...",
        threshold: 0.7,
        scope: "all_team_projects" // ← НОВОЕ!
    )
@@ -309,7 +308,7 @@ UltrasharpTools.Droid/
   "id": 1,
   "method": "tools/call",
   "params": {
-    "name": "UltrasharpTool_FindPotentialDuplicates",
+    "name": "find_duplicates",
     "arguments": {
       "targetCode": "async Task ProcessAsync() { ... }",
       "threshold": 0.7,

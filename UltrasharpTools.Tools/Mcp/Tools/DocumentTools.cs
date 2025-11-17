@@ -18,7 +18,7 @@ public static class DocumentTools {
 
     private static string previousFilePathWarned = string.Empty;
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ReadRawFromRoslynDocument), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false),
+    [McpServerTool(Name = "read_file", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false),
     Description("Reads the content of a file in the solution or referenced directories. Omits indentation to save tokens.")]
     public static async Task<string> ReadRawFromRoslynDocument(
         ISolutionManager solutionManager,
@@ -72,7 +72,7 @@ public static class DocumentTools {
             }
         }, logger, nameof(ReadRawFromRoslynDocument), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(CreateRoslynDocument), Idempotent = true, ReadOnly = false, Destructive = false, OpenWorld = false),
+    [McpServerTool(Name = "create_file", Idempotent = true, ReadOnly = false, Destructive = false, OpenWorld = false),
             Description("Creates a new document file with the specified content. Returns error if the file already exists.")]
     public static async Task<string> CreateRoslynDocument(
                 ISolutionManager solutionManager,
@@ -154,8 +154,8 @@ public static class DocumentTools {
             }
         }, logger, nameof(CreateRoslynDocument), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(OverwriteRoslynDocument), Idempotent = true, ReadOnly = false, Destructive = true, OpenWorld = false),
-    Description($"Overwrites an existing document file with the specified content. You must use {ToolHelpers.SharpToolPrefix}{nameof(ReadRawFromRoslynDocument)} first.")]
+    [McpServerTool(Name = "overwrite_file", Idempotent = true, ReadOnly = false, Destructive = true, OpenWorld = false),
+    Description($"Overwrites an existing document file with the specified content. You must use 'read_file' first.")]
     public static async Task<string> OverwriteRoslynDocument(
         ISolutionManager solutionManager,
         IDocumentOperationsService documentOperations,
@@ -287,7 +287,7 @@ public static class DocumentTools {
             _ => false
         };
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ReadTypesFromRoslynDocument), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "list_file_entities", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Returns a comprehensive tree of types (classes, interfaces, structs, etc.) and their members from a specified file. Use this to enter the more powerful 'type' domain from the 'file' domain.")]
     public static async Task<object> ReadTypesFromRoslynDocument(
                 ISolutionManager solutionManager,

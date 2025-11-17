@@ -1,4 +1,4 @@
-﻿# Code Models Selection Guide
+# Code Models Selection Guide
 
 **Лучшие модели для semantic code analysis на мощной GPU конфигурации (48GB VRAM, 256GB RAM).**
 
@@ -10,7 +10,7 @@
 
 ### 1. **Embedding Models** (векторизация для семантического поиска)
 - Преобразуют код в vectors
-- Используются для FindPotentialDuplicates, semantic search
+- Используются для find_duplicates, semantic search
 - Быстрые (inference < 100ms per text)
 - Малый размер (< 2GB)
 

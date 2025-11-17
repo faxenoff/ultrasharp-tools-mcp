@@ -7,7 +7,7 @@
 
 ## Обзор
 
-Phase 5 фокусируется на улучшении существующих трассировочных инструментов (`TraceExecution` и `TraceBackwards`) для расширенных сценариев debugging и анализа кода.
+Phase 5 фокусируется на улучшении существующих трассировочных инструментов (`trace_execution` и `trace_backwards`) для расширенных сценариев debugging и анализа кода.
 
 ## Реализованные улучшения
 
@@ -36,7 +36,7 @@ Phase 5 фокусируется на улучшении существующи�
 
 **Пример использования:**
 ```
-UltrasharpTool_TraceExecution(
+trace_execution(
     entryPointFqn: "MyApp.Calculator.Divide",
     traceAllPaths: true,  // Enable multiple paths mode
     maxPaths: 10          // Limit to 10 paths max
@@ -51,7 +51,7 @@ UltrasharpTool_TraceExecution(
 
 ---
 
-### 2. ✅ TraceBackwards: Fuzzy Stack Trace Matching (commit 8cf0694)
+### 2. ✅ trace_backwards: Fuzzy Stack Trace Matching (commit 8cf0694)
 **Время:** ~6 часов
 **Статус:** Полностью реализовано
 

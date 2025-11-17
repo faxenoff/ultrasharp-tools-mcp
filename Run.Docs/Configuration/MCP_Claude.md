@@ -24,7 +24,7 @@ tags: [mcp, quick-reference, decision-tree]
 
 **Key workflow:**
 ```
-1. LoadSolution → initialize workspace
+1. load_solution → initialize workspace
 2. FindPotentialDuplicates → semantic search (no FQN needed!)
 3. OverwriteMember → modify code (auto-linting included)
 4. FormatCode + ApplyCodeFixes → ensure quality

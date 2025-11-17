@@ -1,4 +1,4 @@
-﻿# UltrasharpTools Performance Testing Report
+# UltrasharpTools Performance Testing Report
 
 **Дата тестирования:** 2025-01-14
 **Тестируемая кодовая база:** SharpTools.sln (собственный проект)
@@ -173,7 +173,7 @@
 - ✅ Обратная трассировка выполнена
 - **Total paths:** 1
 - **Max depth reached:** 2 (shallow call chain)
-- **Reached entry point:** ✅ Yes (TraceTools.AnalyzePathFeasibility)
+- **Reached entry point:** ✅ Yes (TraceTools.analyze_path_feasibility)
 
 **Производительность (COLD):**
 - **Время выполнения:** ~2-3 сек (cache MISS, вызовы SymbolFinder)
@@ -205,12 +205,12 @@
 - **No SymbolFinder calls:** Location data загружена из кеша
 
 **Вывод:** **Phase 6 Variant A оптимизация работает отлично!**
-Warm cache даёт ожидаемое ускорение 5-10x для повторных запросов TraceBackwards.
+Warm cache даёт ожидаемое ускорение 5-10x для повторных запросов trace_backwards.
 
 ### 3.3 AnalyzePathFeasibility
 **Статус:** ⚠️ **Не доступен через MCP**
 
-**Ошибка:** `Error: No such tool available: mcp__ultrasharp-tools-mcp__UltrasharpTool_AnalyzePathFeasibility`
+**Ошибка:** `Error: No such tool available: mcp__ultrasharp-tools-mcp__analyze_path_feasibility`
 
 **Причина:** Инструмент реализован в TraceTools.cs, но не зарегистрирован в MCP server или есть проблема с naming.
 
@@ -416,8 +416,8 @@ The system cannot find the file specified.
 ### Low Priority
 
 6. **Extend warm cache coverage**
-   - Consider caching FindReferences fully (currently partial)
-   - Add cache for SearchDefinitions
+   - Consider caching find_references fully (currently partial)
+   - Add cache for search_definitions
    - Implement LRU eviction for memory-constrained environments
 
 ---
@@ -426,10 +426,10 @@ The system cannot find the file specified.
 
 | Category | Tool | Status | Performance | Notes |
 |----------|------|--------|-------------|-------|
-| **Solution** | LoadSolution | ✅ Pass | 3-5s (warm) | Variant C working |
-| **Solution** | LoadProject | ✅ Pass | < 1s | Large output (11k tokens) |
-| **Analysis** | GetMembers | ✅ Pass | < 200ms | Fast |
-| **Analysis** | ViewDefinition | ✅ Pass | < 300ms | Complete source |
+| **Solution** | load_solution | ✅ Pass | 3-5s (warm) | Variant C working |
+| **Solution** | load_project | ✅ Pass | < 1s | Large output (11k tokens) |
+| **Analysis** | get_members | ✅ Pass | < 200ms | Fast |
+| **Analysis** | view_definition | ✅ Pass | < 300ms | Complete source |
 | **Analysis** | FindReferences | ✅ Pass | 200-400ms (warm) | Cache available |
 | **Analysis** | SearchDefinitions | ✅ Pass | 800ms-1.5s | Comprehensive |
 | **Tracing** | TraceExecution | ✅ Pass | 1-2s | CFG analysis |
@@ -459,11 +459,11 @@ The system cannot find the file specified.
 
 | Operation | Time | Cache | Notes |
 |-----------|------|-------|-------|
-| LoadSolution (cold) | 30-35s | MISS | First time |
+|load_solutionn (cold) | 30-35s | MISS | First time |
 | LoadSolution (warm) | 3-5s | HIT | **6-10x faster** |
-| TraceBackwards (cold) | 2-3s | MISS | SymbolFinder calls |
+|trace_backwardss (cold) | 2-3s | MISS | SymbolFinder calls |
 | TraceBackwards (warm) | 0.4-0.6s | HIT | **5-7x faster** |
-| FindReferences | 0.2-2s | Mixed | Depends on cache |
+|find_referencess | 0.2-2s | Mixed | Depends on cache |
 | GetMembers | < 200ms | N/A | Always fast |
 | ViewDefinition | < 300ms | N/A | Always fast |
 | SearchDefinitions | 0.8-1.5s | N/A | Solution-wide search |
@@ -493,7 +493,7 @@ The system cannot find the file specified.
 
 4. **Tracing tools функциональны:**
    - TraceExecution даёт детальную CFG трассировку
-   - TraceBackwards находит call paths с confidence scoring
+   trace_backwardsds находит call paths с confidence scoring
    - Cache делает повторные вызовы быстрыми
 
 ### ⚠️ Issues to Address
@@ -513,8 +513,7 @@ The system cannot find the file specified.
 ### 🚀 Performance Achievement
 
 **Key metric:** Cache optimizations deliver **5-10x speedup** для критических операций:
-- Solution loading: 30s → 3-5s
-- TraceBackwards: 2-3s → 400-600ms
+- Solution loading: 30s → 3-5strace_backwardsrds: 2-3s → 400-600ms
 
 **Production readiness:** ✅ High - все core features работают, performance excellent с cache.
 
@@ -587,7 +586,7 @@ The system cannot find the file specified.
 
 **Проблема:**
 ```
-Error: No such tool available: mcp__ultrasharp-tools-mcp__UltrasharpTool_AnalyzePathFeasibility
+Error: No such tool available: mcp__ultrasharp-tools-mcp__analyze_path_feasibility
 ```
 
 **Исследование:**
@@ -597,7 +596,7 @@ Error: No such tool available: mcp__ultrasharp-tools-mcp__UltrasharpTool_Analyze
 - ✅ Проект полностью пересобран без ошибок
 
 **Причина:**
-- MCP сервер был запущен до добавления инструмента AnalyzePathFeasibility
+- MCP сервер был запущен до добавления инструментanalyze_path_feasibilityty
 - Сервер использует старую версию assembly из памяти
 
 **Решение:**
@@ -609,7 +608,7 @@ Error: No such tool available: mcp__ultrasharp-tools-mcp__UltrasharpTool_Analyze
 ### 13.3. LoadProject Output Size (ОТЛОЖЕНО)
 
 **Проблема:**
-- Вывод LoadProject составляет ~11,000 токенов для проекта со 100 файлами
+- Выводload_projectt составляет ~11,000 токенов для проекта со 100 файлами
 - Может быть слишком большим для сложных проектов
 
 **Анализ:**

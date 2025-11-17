@@ -9,17 +9,17 @@ UltrasharpTools provides deep C# code understanding through Roslyn APIs, enablin
 ### Essential Workflow
 
 ```
-1. UltrasharpTool_LoadSolution("path/to/solution.sln")
+1. load_solution("path/to/solution.sln")
    → Loads workspace, returns project list
 
-2. UltrasharpTool_LoadProject("ProjectName")
+2. load_project("ProjectName")
    → Returns comprehensive type map (namespaces → types)
 
 3. Use FQN (Fully Qualified Names) for everything:
-   - UltrasharpTool_ViewDefinition(fqn)
-   - UltrasharpTool_GetMembers(fqn)
-   - UltrasharpTool_FindReferences(fqn)
-   - UltrasharpTool_OverwriteMember(fqn, newCode)
+   - view_definition(fqn)
+   - get_members(fqn)
+   - find_references(fqn)
+   - modify_code(fqn, newCode)
 ```
 
 ### Key Principles
@@ -32,7 +32,7 @@ UltrasharpTools provides deep C# code understanding through Roslyn APIs, enablin
 **Auto-Git Integration**
 - Every modification creates `sharptools/YYYYMMDD-HHMMSS` branch
 - Auto-commits with descriptive messages
-- Use `UltrasharpTool_Undo` to rollback last change
+- Use `undo` to rollback last change
 - Disable with `--disable-git` flag
 
 **Token Efficiency**
@@ -46,7 +46,7 @@ UltrasharpTools provides deep C# code understanding through Roslyn APIs, enablin
 |----------|---------|-----------|
 | **Solution** | Load & navigate | LoadSolution, LoadProject |
 | **Analysis** | Code understanding | ViewDefinition, GetMembers, FindReferences |
-| **Modification** | Code changes | OverwriteMember, AddMember, RenameSymbol |
+| **Modification** | Code changes | modify_code, AddMember, RenameSymbol |
 | **Quality** | Formatting & fixes | FormatCode, AnalyzeCodeStyle, ApplyCodeFixes |
 | **Document** | File operations | ReadRawFromRoslynDocument, OverwriteRoslynDocument |
 | **Tracing** | Debugging | TraceExecution, TraceBackwards, AnalyzeLogs |
@@ -64,7 +64,7 @@ For comprehensive tool documentation and advanced usage, see:
 1. LoadSolution → get projects
 2. LoadProject → get type map
 3. ViewDefinition → understand implementations
-4. FindReferences → see usage patterns
+4. find_references → see usage patterns
 ```
 
 ### Refactor Code
@@ -72,14 +72,14 @@ For comprehensive tool documentation and advanced usage, see:
 1. ViewDefinition → read current code
 2. OverwriteMember → apply changes (auto-commits)
 3. FormatCode → cleanup style
-4. AnalyzeCodeStyle → verify quality
+4. analyze_code_style → verify quality
 ```
 
 ### Debug Issues
 ```
 1. TraceExecution → follow execution path
 2. AnalyzeLogs → extract structured data
-3. ViewDefinition → examine suspect code
+3. view_definition → examine suspect code
 4. OverwriteMember → apply fix
 ```
 
@@ -97,7 +97,7 @@ For comprehensive tool documentation and advanced usage, see:
 ## Best Practices
 
 ✅ **DO**:
-- Start with LoadSolution + LoadProject
+- Start with load_solution + LoadProject
 - Use FQN for all symbol operations
 - Check AnalyzeCodeStyle before committing
 - Use FormatCode for consistency

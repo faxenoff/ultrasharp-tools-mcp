@@ -80,7 +80,7 @@
 **Статус:** 🟡 Частично реализовано (отключено)
 **Приоритет:** Средний
 
-#### 4.1 UltrasharpTool_GetAllSubtypes
+#### 4.1 get_all_subtypes
 **Описание:** Recursively lists all nested members of a type
 
 **Требуется:**
@@ -90,7 +90,7 @@
 
 **Оценка времени:** 2-4 часа
 
-#### 4.2 UltrasharpTool_ViewInheritanceChain
+#### 4.2 view_inheritance_chain
 **Описание:** Shows the inheritance hierarchy for a type
 
 **Требуется:**
@@ -100,7 +100,7 @@
 
 **Оценка времени:** 2-3 часа
 
-#### 4.3 UltrasharpTool_ViewCallGraph
+#### 4.3 view_call_graph
 **Описание:** Displays incoming and outgoing calls for a method
 
 **Требуется:**
@@ -110,7 +110,7 @@
 
 **Оценка времени:** 4-6 часов
 
-#### 4.4 UltrasharpTool_FindPotentialDuplicates
+#### 4.4 find_duplicates
 **Описание:** Finds semantically similar methods or classes
 
 **Требуется:**
@@ -120,7 +120,7 @@
 
 **Оценка времени:** 2-4 часа
 
-#### 4.5 UltrasharpTool_ReplaceAllReferences
+#### 4.5 replace_all_references
 **Описание:** Replaces all references to a symbol with specified C# code
 
 **Требуется:**
@@ -131,7 +131,7 @@
 
 **Оценка времени:** 6-8 часов
 
-#### 4.6 UltrasharpTool_AddOrModifyNugetPackage
+#### 4.6 add_package
 **Статус:** ✅ Реализовано (2025-01-13, commit 35a5420)
 **Описание:** Adds or updates a NuGet package reference with automatic restore and reload
 
@@ -148,7 +148,7 @@
 
 ---
 
-### 5. Улучшения TraceExecution
+### 5. Улучшения trace_execution
 
 **Статус:** ✅ Базовая версия реализована
 **Приоритет:** Средний
@@ -214,7 +214,7 @@
 
 ---
 
-### 6. Улучшения TraceBackwards
+### 6. Улучшения trace_backwards
 
 **Статус:** ✅ Базовая версия реализована
 **Приоритет:** Средний
@@ -449,7 +449,7 @@
 **Приоритет:** Очень низкий
 **Описание:** Некоторые функции имеют "quirky" behaviour
 
-#### 13.1 Newline handling в OverwriteMember
+#### 13.1 Newline handling в modify_code
 **Описание:** Removing newlines before and after overwritten members создаёт неконсистентное форматирование
 
 **Требуется:**
@@ -492,10 +492,10 @@
 4. ✅ AddOrModifyNugetPackage с auto-reload (commit 35a5420)
 
 ### Phase 2: Включение отключённых инструментов ✅ ЗАВЕРШЕНО (2025-01-13, commit 0117eea)
-4. ✅ UltrasharpTool_FindPotentialDuplicates
-5. ✅ UltrasharpTool_ViewInheritanceChain
-6. ✅ UltrasharpTool_GetAllSubtypes
-7. ✅ UltrasharpTool_ViewCallGraph
+4. ✅ find_duplicates
+5. ✅ view_inheritance_chain
+6. ✅ get_all_subtypes
+7. ✅ view_call_graph
 
 ### Phase 3: Улучшение TraceBackwards (1-2 недели)
 8. ✅ Кэширование call graph
@@ -507,7 +507,7 @@
 12. ✅ SIMD Optimizations (если SemanticSimilarity bottleneck)
 
 ### Phase 5: Advanced Tracing (долгосрочно)
-13. ✅ TraceExecution: Multiple paths
+13. ✅trace_executionn: Multiple paths
 14. ✅ IDE Integration (VS Code extension)
 15. ✅ Interactive mode
 

@@ -1,4 +1,4 @@
-﻿# UltrasharpTools: Отчёт об улучшениях
+# UltrasharpTools: Отчёт об улучшениях
 
 ## Обзор
 
@@ -109,10 +109,10 @@
 
 ```bash
 # Проверка форматирования
-UltrasharpTool_FormatCode(path: "/src", checkOnly: true)
+format_code(path: "/src", checkOnly: true)
 
 # Применение форматирования
-UltrasharpTool_FormatCode(path: "/src", checkOnly: false)
+format_code(path: "/src", checkOnly: false)
 ```
 
 **Возможности:**
@@ -125,7 +125,7 @@ UltrasharpTool_FormatCode(path: "/src", checkOnly: false)
 Анализ качества кода через Roslyn Analyzers (CA, IDE, CS диагностики).
 
 ```bash
-UltrasharpTool_AnalyzeCodeStyle(
+analyze_code_style(
     solutionPath: "MySolution.sln",
     severityFilter: "Warning",
     skip: 0,
@@ -144,14 +144,14 @@ UltrasharpTool_AnalyzeCodeStyle(
 
 ```bash
 # Preview fixes
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     solutionPath: "MySolution.sln",
     diagnosticId: "IDE0005",
     preview: true
 )
 
 # Apply fixes
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     solutionPath: "MySolution.sln",
     diagnosticId: "IDE0005",
     preview: false
@@ -166,11 +166,11 @@ UltrasharpTool_ApplyCodeFixes(
 #### Auto-Linting Integration
 
 **Все инструменты модификации** теперь автоматически проверяют качество:
-- `AddMember` → linting после добавления
-- `OverwriteMember` → linting после замены
-- `RenameSymbol` → linting после переименования
-- `FindAndReplace` → linting после замены
-- `MoveMember` → linting после перемещения
+- `add_member` → linting после добавления
+- `modify_code` → linting после замены
+- `rename_symbol` → linting после переименования
+- `find_and_replace` → linting после замены
+- `move_member` → linting после перемещения
 
 **LintingResult format:**
 ```json
@@ -231,7 +231,7 @@ UltrasharpTool_ApplyCodeFixes(
 
 **Пример использования:**
 ```bash
-UltrasharpTool_SemanticMerge(
+SemanticMerge(
     basePath: "base/MyClass.cs",
     leftPath: "feature/MyClass.cs",
     rightPath: "main/MyClass.cs",
@@ -257,7 +257,7 @@ UltrasharpTool_SemanticMerge(
 Статический трейсинг выполнения метода с отслеживанием переменных.
 
 ```bash
-UltrasharpTool_TraceExecution(
+trace_execution(
     fullyQualifiedName: "MyApp.Services.UserService.CreateUser",
     maxDepth: 3,
     trackDataFlow: true
@@ -274,7 +274,7 @@ UltrasharpTool_TraceExecution(
 Обратный трейсинг от точки краша к source.
 
 ```bash
-UltrasharpTool_TraceBackwards(
+trace_backwards(
     crashLocation: "MyClass.cs:142",
     exceptionType: "NullReferenceException",
     maxDepth: 5
@@ -291,7 +291,7 @@ UltrasharpTool_TraceBackwards(
 Символьное выполнение через Z3 Theorem Prover.
 
 ```bash
-UltrasharpTool_AnalyzePathFeasibility(
+analyze_path_feasibility(
     fullyQualifiedName: "MyApp.Validator.IsValid",
     conditions: ["input.Age < 0", "input.Name == null"]
 )

@@ -285,7 +285,7 @@ ParserFactory.Register(new XmlParser());
 ### Инструменты
 ```csharp
 // 1. Создать merge session
-UltrasharpTool_CreateMergeSession(
+CreateMergeSession(
     solutionPath: "...",
     baseBranch: "main",
     branchA: "feature/auth",
@@ -293,21 +293,21 @@ UltrasharpTool_CreateMergeSession(
 )
 
 // 2. Индексация
-UltrasharpTool_IndexMergeVersions(sessionId)
+IndexMergeVersions(sessionId)
 // → Indexed 1250 units (96% Fast Path)
 
 // 3. Анализ
-UltrasharpTool_AnalyzeMergeConflicts(sessionId)
+AnalyzeMergeConflicts(sessionId)
 // → Found 3 conflicts, 45 auto-mergeable changes
 
 // 4. Выполнить merge
-UltrasharpTool_PerformSemanticMerge(
+PerformSemanticMerge(
     sessionId,
     strategy: "IntentPreserving"
 )
 
 // 5. Разрешить конфликт
-UltrasharpTool_ResolveMergeConflict(
+ResolveMergeConflict(
     sessionId,
     conflictId,
     resolution: "CombineBoth"

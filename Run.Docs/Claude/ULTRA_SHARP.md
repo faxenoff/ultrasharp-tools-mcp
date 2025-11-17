@@ -49,16 +49,16 @@ This is the main overview. For detailed method documentation, see:
             ↓
 ┌─────────────────────────────────────────────────┐
 │ 3. Navigate with FQN tools                     │
-│    • ViewDefinition(fqn) → source code         │
+│    • view_definition(fqn) → source code         │
 │    • GetMembers(fqn) → API surface             │
-│    • FindReferences(fqn) → usage locations     │
+│    • find_references(fqn) → usage locations     │
 └─────────────────────────────────────────────────┘
             ↓
 ┌─────────────────────────────────────────────────┐
 │ 4. Modify code (auto-commits to git)           │
-│    • OverwriteMember(fqn, code)                │
-│    • AddMember(containerFqn, code)             │
-│    • RenameSymbol(fqn, newName)                │
+│    • modify_code(fqn, code)                │
+│    • add_member(containerFqn, code)             │
+│    • rename_symbol(fqn, newName)                │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -66,7 +66,7 @@ This is the main overview. For detailed method documentation, see:
 
 **Every modification creates a branch** `sharptools/YYYYMMDD-HHMMSS`:
 - Automatic commits with descriptive messages
-- Use `UltrasharpTool_Undo` to rollback last change
+- Use `undo` to rollback last change
 - Disable with `--disable-git` flag
 - Supports custom branch retention policies
 
@@ -75,7 +75,7 @@ This is the main overview. For detailed method documentation, see:
 **Code optimization strategies:**
 - All code returned **without indentation** (~10% savings)
 - Navigate by FQN instead of reading full files
-- Adaptive detail levels in `LoadProject`
+- Adaptive detail levels in `load_project`
 - Paginated results for large queries
 
 ---
@@ -86,8 +86,8 @@ This is the main overview. For detailed method documentation, see:
 [→ Detailed docs](./ULTRA_SHARP_SOLUTION.md)
 
 Load and navigate C# solutions:
-- `UltrasharpTool_LoadSolution` - Load .sln file, initialize workspace
-- `UltrasharpTool_LoadProject` - Get comprehensive type map for navigation
+- `load_solution` - Load .sln file, initialize workspace
+- `load_project` - Get comprehensive type map for navigation
 
 **Use when:** Starting any work with a C# codebase
 
@@ -97,13 +97,13 @@ Load and navigate C# solutions:
 [→ Detailed docs](./ULTRA_SHARP_ANALYSIS.md)
 
 Understand code structure and relationships:
-- `UltrasharpTool_GetMembers` - List type members with signatures & docs
-- `UltrasharpTool_ViewDefinition` - Read source code of any symbol
-- `UltrasharpTool_FindReferences` - Find all usages
-- `UltrasharpTool_ListImplementations` - Find interface implementations
-- `UltrasharpTool_GetAllSubtypes` - Explore nested types recursively
-- `UltrasharpTool_SearchDefinitions` - Search symbols by name/pattern
-- `UltrasharpTool_AnalyzeComplexity` - Measure cyclomatic/cognitive complexity
+- `get_members` - List type members with signatures & docs
+- `view_definition` - Read source code of any symbol
+- `find_references` - Find all usages
+- `list_implementations` - Find interface implementations
+- `get_all_subtypes` - Explore nested types recursively
+- `search_definitions` - Search symbols by name/pattern
+- `analyze_complexity` - Measure cyclomatic/cognitive complexity
 
 **Use when:** Understanding existing code before modifications
 
@@ -113,12 +113,12 @@ Understand code structure and relationships:
 [→ Detailed docs](./ULTRA_SHARP_MODIFICATION.md)
 
 Modify code with automatic git tracking:
-- `UltrasharpTool_OverwriteMember` - Replace method/property/class implementation
-- `UltrasharpTool_AddMember` - Add new member to type
-- `UltrasharpTool_RenameSymbol` - Intelligent rename with reference updates
-- `UltrasharpTool_FindAndReplace` - Text-based find/replace in files
-- `UltrasharpTool_MoveMember` - Move member to different type
-- `UltrasharpTool_Undo` - Rollback last modification
+- `modify_code` - Replace method/property/class implementation
+- `add_member` - Add new member to type
+- `rename_symbol` - Intelligent rename with reference updates
+- `find_and_replace` - Text-based find/replace in files
+- `move_member` - Move member to different type
+- `undo` - Rollback last modification
 
 **Use when:** Implementing features, fixing bugs, refactoring
 
@@ -128,9 +128,9 @@ Modify code with automatic git tracking:
 [→ Detailed docs](./ULTRA_SHARP_QUALITY.md)
 
 Ensure code quality and consistency:
-- `UltrasharpTool_FormatCode` - Format code with CSharpier
-- `UltrasharpTool_AnalyzeCodeStyle` - Run Roslyn analyzers
-- `UltrasharpTool_ApplyCodeFixes` - Auto-fix common issues
+- `format_code` - Format code with CSharpier
+- `analyze_code_style` - Run Roslyn analyzers
+- `apply_code_fixes` - Auto-fix common issues
 
 **Use when:** Preparing code for commit, ensuring standards
 
@@ -140,9 +140,9 @@ Ensure code quality and consistency:
 [→ Detailed docs](./ULTRA_SHARP_DOCUMENT.md)
 
 Raw file operations when FQN approach doesn't fit:
-- `UltrasharpTool_ReadRawFromRoslynDocument` - Read file content as-is
-- `UltrasharpTool_CreateRoslynDocument` - Create new file in project
-- `UltrasharpTool_OverwriteRoslynDocument` - Replace entire file content
+- `read_file` - Read file content as-is
+- `create_file` - Create new file in project
+- `overwrite_file` - Replace entire file content
 
 **Use when:** Working with config files, non-C# files, or full-file replacements
 
@@ -152,9 +152,9 @@ Raw file operations when FQN approach doesn't fit:
 [→ Detailed docs](./ULTRA_SHARP_TRACING.md)
 
 Debug and analyze program behavior:
-- `UltrasharpTool_TraceExecution` - Trace execution path from entry point
-- `UltrasharpTool_TraceBackwards` - Trace backwards from crash/error
-- `UltrasharpTool_AnalyzeLogs` - Extract structured data from logs
+- `trace_execution` - Trace execution path from entry point
+- `trace_backwards` - Trace backwards from crash/error
+- `analyze_logs` - Extract structured data from logs
 
 **Use when:** Debugging crashes, understanding execution flow, analyzing logs
 
@@ -164,8 +164,8 @@ Debug and analyze program behavior:
 [→ Detailed docs](./ULTRA_SHARP_SEMANTIC.md)
 
 AI-powered code understanding (requires setup):
-- `UltrasharpTool_SemanticSearch` - Find semantically similar code
-- `UltrasharpTool_SemanticDiff` - Compare code semantic changes
+- `SemanticSearch` - Find semantically similar code
+- `SemanticDiff` - Compare code semantic changes
 
 **Use when:** Finding similar patterns, refactoring duplicates, code review
 
@@ -179,22 +179,22 @@ AI-powered code understanding (requires setup):
 
 ```
 Step 1: Load solution
-→ UltrasharpTool_LoadSolution("path/to/solution.sln")
+→ load_solution("path/to/solution.sln")
 
 Step 2: Get project overview
-→ UltrasharpTool_LoadProject("CoreProject")
+→ load_project("CoreProject")
   Returns namespace hierarchy and type names
 
 Step 3: Explore interesting types
-→ UltrasharpTool_GetMembers("MyNamespace.ImportantClass")
+→ get_members("MyNamespace.ImportantClass")
   See public API surface
 
 Step 4: Read implementations
-→ UltrasharpTool_ViewDefinition("MyNamespace.ImportantClass.KeyMethod")
+→ view_definition("MyNamespace.ImportantClass.KeyMethod")
   Understand how it works
 
 Step 5: Find usage patterns
-→ UltrasharpTool_FindReferences("MyNamespace.ImportantClass.KeyMethod")
+→ find_references("MyNamespace.ImportantClass.KeyMethod")
   See how it's used across codebase
 ```
 
@@ -227,10 +227,10 @@ Step 1: Locate bug
   OR TraceBackwards(crashLocation, stackTrace)
 
 Step 2: Read suspect code
-→ ViewDefinition(suspectMethodFqn)
+→view_definitionn(suspectMethodFqn)
 
 Step 3: Apply fix
-→ OverwriteMember(suspectMethodFqn, fixedCode)
+→ Overmodify_codepectMethodFqn, fixedCode)
   Auto-commits with message
 
 Step 4: Verify fix
@@ -242,7 +242,7 @@ Step 4: Verify fix
 
 ```
 Step 1: Find code smells
-→ AnalyzeComplexity(fqn) - find complex methods
+→ analyze_complexity(fqn) - find complex methods
 → SemanticSearch("pattern to deduplicate")
 
 Step 2: Plan refactoring
@@ -255,7 +255,7 @@ Step 3: Execute refactoring
 → OverwriteMember(fqn, refactoredCode)
 
 Step 4: Clean up
-→ ApplyCodeFixes(solutionPath, "IDE0005") - remove unused usings
+→ apply_code_fixes(solutionPath, "IDE0005") - remove unused usings
 → FormatCode(solutionPath)
 
 Step 5: Verify
@@ -313,7 +313,7 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
 
 ### ✅ DO
 
-1. **Always start with LoadSolution + LoadProject**
+1. **Always start with load_solution + LoadProject**
    - Provides type map for efficient navigation
    - Initializes Roslyn workspace correctly
 
@@ -333,17 +333,17 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
    ```
 
 5. **Use appropriate detail levels**
-   - `LoadProject` supports `DetailLevel` enum
+   - `load_project` supports `DetailLevel` enum
    - Start with `Summary`, drill down as needed
 
 ### ❌ DON'T
 
 1. **Don't scan files manually**
-   - Use `LoadProject` type map instead
-   - Use `SearchDefinitions` for fuzzy searches
+   - Use `load_project` type map instead
+   - Use `search_definitions` for fuzzy searches
 
 2. **Don't guess FQNs**
-   - Use `SearchDefinitions` to find correct name
+   - Use `search_definitions` to find correct name
    - Fuzzy matching is forgiving but not magic
 
 3. **Don't skip LoadSolution**
@@ -355,7 +355,7 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
    - Ensures all references are resolved
 
 5. **Don't ignore complexity warnings**
-   - `AnalyzeComplexity` highlights problematic code
+   - `analyze_complexity` highlights problematic code
    - Refactor before adding more features
 
 ---
@@ -365,23 +365,23 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
 ### Common Issues
 
 **"Symbol not found" errors:**
-- Verify FQN is correct: use `SearchDefinitions`
-- Ensure solution is loaded: `LoadSolution` first
+- Verify FQN is correct: use `search_definitions`
+- Ensure solution is loaded: `load_solution` first
 - Check fuzzy match suggestions in error message
 
 **"Project not found" errors:**
-- Use exact project name from `LoadSolution` results
+- Use exact project name from `load_solution` results
 - Project name ≠ file name (check .sln file)
 
 **Git conflicts:**
-- Use `Undo` to rollback problematic changes
+- Use `undo` to rollback problematic changes
 - Clean up old branches: `git branch -D sharptools/YYYYMMDD-HHMMSS`
 - Or disable git: `--disable-git` flag
 
 **Performance issues:**
 - Enable symbol cache: `--symbol-cache`
-- Use `DetailLevel.Summary` in `LoadProject`
-- Limit `FindReferences` scope when possible
+- Use `DetailLevel.Summary` in `load_project`
+- Limit `find_references` scope when possible
 
 **Semantic search not working:**
 - Run validation: `pwsh Dev.Scripts/validate-semantic-config.ps1`
@@ -403,28 +403,28 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
 
 ```bash
 # Essential workflow
-UltrasharpTool_LoadSolution(solutionPath)
-UltrasharpTool_LoadProject(projectName)
-UltrasharpTool_GetMembers(fqn)
-UltrasharpTool_ViewDefinition(fqn)
-UltrasharpTool_OverwriteMember(fqn, code)
+load_solution(solutionPath)
+load_project(projectName)
+get_members(fqn)
+view_definition(fqn)
+modify_code(fqn, code)
 
 # Quality assurance
-UltrasharpTool_FormatCode(path)
-UltrasharpTool_AnalyzeCodeStyle(solutionPath)
-UltrasharpTool_ApplyCodeFixes(solutionPath, "all")
+format_code(path)
+analyze_code_style(solutionPath)
+apply_code_fixes(solutionPath, "all")
 
 # Navigation
-UltrasharpTool_SearchDefinitions(query, symbolKind)
-UltrasharpTool_FindReferences(fqn)
-UltrasharpTool_ListImplementations(interfaceFqn)
+search_definitions(query, symbolKind)
+find_references(fqn)
+list_implementations(interfaceFqn)
 
 # Debugging
-UltrasharpTool_TraceExecution(entryFqn, scenario)
-UltrasharpTool_AnalyzeLogs(logPath, query)
+trace_execution(entryFqn, scenario)
+analyze_logs(logPath, query)
 
 # Refactoring
-UltrasharpTool_RenameSymbol(fqn, newName)
-UltrasharpTool_MoveMember(fqn, targetContainerFqn)
-UltrasharpTool_Undo()
+rename_symbol(fqn, newName)
+move_member(fqn, targetContainerFqn)
+undo()
 ```

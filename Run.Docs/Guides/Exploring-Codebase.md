@@ -17,11 +17,11 @@
 6. Repeat until you understand
 
 **MCP approach (2-3 minutes):**
-1. `LoadSolution` → initialize
-2. `LoadProject` → get full structure map
-3. `FindPotentialDuplicates` → find what you need
-4. `ViewDefinition` → understand implementation
-5. `FindReferences` → see usage patterns
+1. `load_solution` → initialize
+2. `load_project` → get full structure map
+3. `find_duplicates` → find what you need
+4. `view_definition` → understand implementation
+5. `find_references` → see usage patterns
 
 **Result:** 30-60x faster, complete understanding.
 
@@ -34,7 +34,7 @@
 **ALWAYS start with this!**
 
 ```csharp
-UltrasharpTool_LoadSolution("D:/Projects/MyApp/MyApp.sln")
+load_solution("D:/Projects/MyApp/MyApp.sln")
 ```
 
 **What happens:**
@@ -61,7 +61,7 @@ Index time: 8.3 seconds
 **Goal:** Understand project structure at 10,000 foot level.
 
 ```csharp
-UltrasharpTool_LoadProject(
+load_project(
     projectName: "MyApp.Core",
     detailLevel: "TypesOnly"
 )
@@ -108,7 +108,7 @@ MyApp.Core
 **Goal:** Understand specific namespace in detail.
 
 ```csharp
-UltrasharpTool_LoadProject(
+load_project(
     projectName: "MyApp.Core",
     detailLevel: "TypesAndSignatures"
 )
@@ -151,7 +151,7 @@ MyApp.Core.Services.OrderService
 **Solution:** Semantic search!
 
 ```csharp
-UltrasharpTool_FindPotentialDuplicates(
+find_duplicates(
     targetCode: "async Task<PaymentResult> ProcessPayment(decimal amount, string cardNumber)",
     threshold: 0.7
 )
@@ -184,7 +184,7 @@ UltrasharpTool_FindPotentialDuplicates(
 **Goal:** See how payment processing actually works.
 
 ```csharp
-UltrasharpTool_ViewDefinition(
+view_definition(
     fullyQualifiedName: "MyApp.Core.Services.PaymentProcessor.ProcessCreditCardAsync"
 )
 ```
@@ -243,7 +243,7 @@ public async Task<PaymentResult> ProcessCreditCardAsync(
 **Goal:** "Where is ProcessCreditCardAsync called?"
 
 ```csharp
-UltrasharpTool_FindReferences(
+find_references(
     fullyQualifiedName: "MyApp.Core.Services.PaymentProcessor.ProcessCreditCardAsync",
     includeSnippets: true
 )
@@ -304,13 +304,13 @@ From ViewDefinition response, you saw:
 
 ```csharp
 // Find validator implementation
-UltrasharpTool_FindPotentialDuplicates(
+find_duplicates(
     targetCode: "bool ValidateCard(string cardNumber, string cvv, DateTime expiry)",
     threshold: 0.8
 )
 
 // Find gateway implementations
-UltrasharpTool_ListImplementations(
+list_implementations(
     fullyQualifiedName: "MyApp.Core.Interfaces.IPaymentGateway"
 )
 ```
@@ -336,25 +336,25 @@ IPaymentGateway implementations:
 **Use this every time you explore unfamiliar project:**
 
 ```
-1. LoadSolution("path/to/solution.sln")
+1. load_solution("path/to/solution.sln")
    → Initialize workspace
 
 2. LoadProject(projectName: "ProjectName", detailLevel: "TypesOnly")
    → Get high-level overview
 
-3. LoadProject(projectName: "ProjectName", detailLevel: "TypesAndSignatures")
+3. load_project(projectName: "ProjectName", detailLevel: "TypesAndSignatures")
    → Get detailed view of key namespaces
 
-4. FindPotentialDuplicates(targetCode: "what I'm looking for", threshold: 0.7)
+4. find_duplicates(targetCode: "what I'm looking for", threshold: 0.7)
    → Find specific functionality (semantic search!)
 
 5. ViewDefinition(fullyQualifiedName: "FullClassName.MethodName")
    → Understand implementation
 
-6. FindReferences(fullyQualifiedName: "FullClassName.MethodName")
+6. find_references(fullyQualifiedName: "FullClassName.MethodName")
    → See usage patterns
 
-7. ListImplementations(fullyQualifiedName: "IInterfaceName")
+7. list_implementations(fullyQualifiedName: "IInterfaceName")
    → Understand abstraction layers
 
 8. AnalyzeComplexity(fullyQualifiedName: "ClassName", includeMembers: true)
@@ -371,8 +371,7 @@ IPaymentGateway implementations:
 
 ### Minutes 0-1: Initialize & Overview
 
-```csharp
-LoadSolution("D:/Projects/ECommerce/ECommerce.sln")
+```csharpload_solutionn("D:/Projects/ECommerce/ECommerce.sln")
 
 LoadProject(projectName: "ECommerce.Core", detailLevel: "TypesOnly")
 ```
@@ -393,8 +392,7 @@ ECommerce.Core
 ### Minutes 1-2: Find Order Processing
 
 ```csharp
-FindPotentialDuplicates(
-    targetCode: "async Task<Order> ProcessOrder(CreateOrderRequest request)",
+FindPotefind_duplicatesrgetCode: "async Task<Order> ProcessOrder(CreateOrderRequest request)",
     threshold: 0.7
 )
 ```
@@ -435,12 +433,11 @@ ViewDefinition(
 
 ```csharp
 // Understand payment processing
-ViewDefinition(
+view_definition(
     fullyQualifiedName: "ECommerce.Core.Services.PaymentService.ProcessPayment"
 )
 
-// See how inventory works
-ViewDefinition(
+// See how inventory worksview_definitionn(
     fullyQualifiedName: "ECommerce.Core.Services.InventoryService.CheckAvailability"
 )
 
@@ -481,13 +478,13 @@ FindPotentialDuplicates(
 
 ```csharp
 ✅ CORRECT ORDER:
-1. LoadProject(detailLevel: "TypesOnly")        // Overview
-2. LoadProject(detailLevel: "TypesAndSignatures") // Details
-3. FindPotentialDuplicates(...)                 // Find specific
-4. ViewDefinition(...)                          // Understand
+1.load_projectt(detailLevel: "TypesOnly")        // Overview
+2load_projectct(detailLevel: "TypesAndSignatures") // Details
+3. FindPotentialDupfind_duplicates      // Find specific
+4view_definitionon(...)                          // Understand
 
 ❌ WRONG ORDER:
-1. ViewDefinition(random class)  // Don't know what to look at
+view_definitionion(random class)  // Don't know what to look at
 2. Read random files             // No context
 ```
 
@@ -563,7 +560,7 @@ ViewDefinition("MyClass.MyMethod")  // Works
 ❌ WRONG: Read every file implementation before understanding structure
 
 ✅ RIGHT:
-1. LoadProject(detailLevel: "TypesOnly") → Overview
+load_projectect(detailLevel: "TypesOnly") → Overview
 2. Identify key areas
 3. Then drill into specific implementations
 ```
@@ -583,8 +580,7 @@ ViewDefinition("MyClass.MyMethod")  // Works
 ```csharp
 ❌ WRONG: Only read implementation, ignore usage
 
-✅ RIGHT:
-1. ViewDefinition(...)     → Understand what it does
+✅ RIGHT:view_definitiontion(...)     → Understand what it does
 2. FindReferences(...)     → Understand how it's used
    → See real-world usage patterns
 ```
@@ -646,4 +642,4 @@ FindPotentialDuplicates(
 
 **💡 Key Takeaway:** 2-5 minutes with MCP tools gives you better understanding than 2-4 hours of manual exploration.
 
-**Always start with:** LoadSolution → LoadProject → FindPotentialDuplicates → ViewDefinition → FindReferences
+**Always start with:** LoadSolutioload_projectject → FindPotentialDuplicates → ViewDefinition → FindReferences

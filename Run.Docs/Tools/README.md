@@ -8,8 +8,8 @@
 **2 инструмента**
 
 Загрузка и навигация по C# решениям:
-- `UltrasharpTool_LoadSolution` - загрузка .sln файла
-- `UltrasharpTool_LoadProject` - детальная структура проекта
+- `load_solution` - загрузка .sln файла
+- `load_project` - детальная структура проекта
 
 **С чего начать:** Всегда начинайте с LoadSolution!
 
@@ -50,13 +50,13 @@
 **3 инструмента**
 
 Автоматическое улучшение качества кода:
-- `FormatCode` - форматирование через CSharpier
-- `AnalyzeCodeStyle` - Roslyn analyzers
-- `ApplyCodeFixes` - автоисправление проблем
+- `format_code` - форматирование через CSharpier
+- `analyze_code_style` - Roslyn analyzers
+- `apply_code_fixes` - автоисправление проблем
 
 **Типичный workflow:**
 1. AnalyzeCodeStyle - найти проблемы
-2. ApplyCodeFixes - исправить автоматически
+2. apply_code_fixes - исправить автоматически
 3. FormatCode - привести к единому стилю
 
 ---
@@ -65,11 +65,11 @@
 **5 инструментов**
 
 Статический дебаггинг без выполнения кода:
-- `TraceExecution` - CFG-based трейсинг выполнения
-- `TraceBackwards` - обратный трейсинг от краша
-- `AnalyzePathFeasibility` - символьное выполнение (Z3)
-- `ExportCallGraph` - визуализация графа вызовов
-- `AnalyzeLogs` - анализ лог-файлов
+- `trace_execution` - CFG-based трейсинг выполнения
+- `trace_backwards` - обратный трейсинг от краша
+- `analyze_path_feasibility` - символьное выполнение (Z3)
+- `export_call_graph` - визуализация графа вызовов
+- `analyze_logs` - анализ лог-файлов
 
 **Продвинутые возможности:**
 - Persistent SQLite caching (5-10x speedup)
@@ -104,7 +104,7 @@
 ### Workflow 1: Изучение незнакомой кодовой базы
 ```
 1. LoadSolution - загрузить .sln
-2. LoadProject - получить структуру проекта
+2. load_project - получить структуру проекта
 3. GetMembers - изучить методы интересующего класса
 4. ViewDefinition - посмотреть реализацию
 5. FindReferences - где используется?
@@ -112,9 +112,9 @@
 
 ### Workflow 2: Рефакторинг
 ```
-1. AnalyzeComplexity - найти сложные методы
+1. analyze_complexity - найти сложные методы
 2. FindPotentialDuplicates - найти дубликаты
-3. OverwriteMember - упростить/изменить код
+3. modify_code - упростить/изменить код
 4. FormatCode - привести к стандарту
 5. AnalyzeCodeStyle - проверить качество
 ```
@@ -124,7 +124,7 @@
 1. AnalyzeLogs - проанализировать лог с крашем
 2. TraceBackwards - найти все пути к месту краша
 3. TraceExecution - понять flow выполнения
-4. AnalyzePathFeasibility - проверить feasibility
+4. analyze_path_feasibility - проверить feasibility
 5. ExportCallGraph - визуализировать граф
 ```
 

@@ -37,14 +37,14 @@
 
 ---
 
-## UltrasharpTool_ReadRawFromRoslynDocument
+## read_file
 
 **Read entire file** — returns complete file contents without indentation (token efficient).
 
 ### Usage
 
 ```javascript
-UltrasharpTool_ReadRawFromRoslynDocument(
+read_file(
     filePath: "D:/MyProject/src/Services/UserService.cs"
 )
 ```
@@ -81,8 +81,8 @@ UltrasharpTool_ReadRawFromRoslynDocument(
 ### When NOT to Use
 
 ❌ **Don't use if:**
-- Need only one class from file → `ViewDefinition`
-- Need type list → `ReadTypesFromRoslynDocument`
+- Need only one class from file → `view_definition`
+- Need type list → `list_file_entities`
 - File is very large (>1000 lines) → use ViewDefinition for specific symbols
 
 ### Best Practices
@@ -90,17 +90,17 @@ UltrasharpTool_ReadRawFromRoslynDocument(
 1. **For .cs files prefer ViewDefinition:**
    ```javascript
    // ❌ Bad - read entire file (500 lines)
-   UltrasharpTool_ReadRawFromRoslynDocument("UserService.cs")
+   read_file("UserService.cs")
 
    // ✅ Good - read only needed class
-   UltrasharpTool_ViewDefinition("MyNamespace.UserService")
+   view_definition("MyNamespace.UserService")
    ```
 
 2. **For configurations - ReadRaw is ideal:**
    ```javascript
    // ✅ Good
-   UltrasharpTool_ReadRawFromRoslynDocument("appsettings.json")
-   UltrasharpTool_ReadRawFromRoslynDocument("MyProject.csproj")
+   read_file("appsettings.json")
+   read_file("MyProject.csproj")
    ```
 
 ### Performance
@@ -115,20 +115,20 @@ UltrasharpTool_ReadRawFromRoslynDocument(
 
 ### Related Tools
 
-- ➡️ [**ReadTypesFromRoslynDocument**](#UltrasharpTool_ReadTypesFromRoslynDocument) — for type navigation in file
-- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — for reading specific symbol
-- ➡️ [**OverwriteRoslynDocument**](#UltrasharpTool_OverwriteRoslynDocument) — for overwriting file
+- ➡️ [**ReadTypesFromRoslynDocument**](#list_file_entities) — for type navigation in file
+- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — for reading specific symbol
+- ➡️ [**OverwriteRoslynDocument**](#overwrite_file) — for overwriting file
 
 ---
 
-## UltrasharpTool_ReadTypesFromRoslynDocument
+## list_file_entities
 
 **Structural file map** — returns hierarchy of types and their members in specific file.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_ReadTypesFromRoslynDocument(
+list_file_entities(
     filePath: "D:/MyProject/src/Services/UserService.cs"
 )
 ```
@@ -167,21 +167,21 @@ UltrasharpTool_ReadTypesFromRoslynDocument(
 1. **Use for multi-class files:**
    ```javascript
    // File contains UserService, UserServiceException, UserServiceExtensions
-   UltrasharpTool_ReadTypesFromRoslynDocument("UserService.cs")
+   list_file_entities("UserService.cs")
    // Get FQN of all three types
 
    // Then view details of each
-   UltrasharpTool_ViewDefinition("MyProject.Services.UserService")
-   UltrasharpTool_ViewDefinition("MyProject.Services.UserServiceException")
+   view_definition("MyProject.Services.UserService")
+   view_definition("MyProject.Services.UserServiceException")
    ```
 
 2. **Alternative to LoadProject:**
    ```javascript
    // Instead of LoadProject for entire project
-   UltrasharpTool_LoadProject("MyProject.Core")  // All files
+   load_project("MyProject.Core")  // All files
 
    // Can use ReadTypes for specific file
-   UltrasharpTool_ReadTypesFromRoslynDocument("UserService.cs")  // One file
+   list_file_entities("UserService.cs")  // One file
    ```
 
 ### Performance
@@ -191,20 +191,20 @@ UltrasharpTool_ReadTypesFromRoslynDocument(
 
 ### Related Tools
 
-- ⬅️ [**LoadProject**](./ULTRA_SHARP_SOLUTION.md#UltrasharpTool_LoadProject) — for entire project overview
-- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — specific type details
-- ➡️ [**GetMembers**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_GetMembers) — specific type members
+- ⬅️ [**LoadProject**](./ULTRA_SHARP_SOLUTION.md#load_project) — for entire project overview
+- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — specific type details
+- ➡️ [**GetMembers**](./ULTRA_SHARP_ANALYSIS.md#get_members) — specific type members
 
 ---
 
-## UltrasharpTool_CreateRoslynDocument
+## create_file
 
 **Create new file** — creates new file with specified contents.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_CreateRoslynDocument(
+create_file(
     filePath: "D:/MyProject/src/Validators/EmailValidator.cs",
     content: `
 using System;
@@ -314,18 +314,18 @@ ERROR: File already exists: D:/MyProject/src/Services/UserService.cs
 ```
 **Solution:**
 - Use different file name
-- Or use `OverwriteRoslynDocument` (⚠️ CAREFUL - overwrites file!)
-- Or use `AddMember` to add to existing type
+- Or use `overwrite_file` (⚠️ CAREFUL - overwrites file!)
+- Or use `add_member` to add to existing type
 
 ### Related Tools
 
-- ➡️ [**AddMember**](./ULTRA_SHARP_MODIFICATION.md#UltrasharpTool_AddMember) — to add to existing class
-- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — verify created file
-- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#UltrasharpTool_FormatCode) — format after creation
+- ➡️ [**AddMember**](./ULTRA_SHARP_MODIFICATION.md#add_member) — to add to existing class
+- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — verify created file
+- ➡️ [**FormatCode**](./ULTRA_SHARP_QUALITY.md#format_code) — format after creation
 
 ---
 
-## UltrasharpTool_OverwriteRoslynDocument
+## overwrite_file
 
 **⚠️ Overwrite entire file** — completely replaces existing file contents.
 
@@ -335,7 +335,7 @@ This is a **dangerous** tool - it completely deletes old file contents!
 
 **Use:**
 - ✅ Only for non-code files (json, xml, config)
-- ✅ After `ReadRawFromRoslynDocument` to save modified content
+- ✅ After `read_file` to save modified content
 - ✅ When sure you need to replace entire file
 
 **DON'T use:**
@@ -347,14 +347,14 @@ This is a **dangerous** tool - it completely deletes old file contents!
 
 ```javascript
 // 1. First read
-UltrasharpTool_ReadRawFromRoslynDocument(
+read_file(
     filePath: "D:/MyProject/appsettings.json"
 )
 
 // 2. Modify content outside SharpTools
 
 // 3. Write back
-UltrasharpTool_OverwriteRoslynDocument(
+overwrite_file(
     filePath: "D:/MyProject/appsettings.json",
     content: `{
   "ConnectionStrings": {
@@ -401,10 +401,10 @@ UltrasharpTool_OverwriteRoslynDocument(
 ### When NOT to Use
 
 ❌ **NEVER use for:**
-- Changing one method in .cs → `OverwriteMember`
-- Adding member to class → `AddMember`
-- Renaming → `RenameSymbol`
-- Regex replacements → `FindAndReplace`
+- Changing one method in .cs → `modify_code`
+- Adding member to class → `add_member`
+- Renaming → `rename_symbol`
+- Regex replacements → `find_and_replace`
 - Any targeted code changes
 
 ### Best Practices
@@ -412,37 +412,37 @@ UltrasharpTool_OverwriteRoslynDocument(
 1. **ALWAYS read before writing:**
    ```javascript
    // ✅ CORRECT
-   UltrasharpTool_ReadRawFromRoslynDocument(filePath: "config.json")
+   read_file(filePath: "config.json")
    // Modify content
-   UltrasharpTool_OverwriteRoslynDocument(filePath: "config.json", content: modified, ...)
+   overwrite_file(filePath: "config.json", content: modified, ...)
 
    // ❌ DANGEROUS - don't know what was in file
-   UltrasharpTool_OverwriteRoslynDocument(filePath: "config.json", content: ..., ...)
+   overwrite_file(filePath: "config.json", content: ..., ...)
    ```
 
 2. **Use Undo if mistake:**
    ```javascript
-   UltrasharpTool_OverwriteRoslynDocument(...)
+   overwrite_file(...)
    // Oops, error!
 
-   UltrasharpTool_Undo()
+   undo()
    // Restored old content
    ```
 
 3. **For .cs files prefer Symbol Tools:**
    ```javascript
    // ❌ Bad - overwrite entire file
-   UltrasharpTool_OverwriteRoslynDocument("UserService.cs", newContent, ...)
+   overwrite_file("UserService.cs", newContent, ...)
 
    // ✅ Good - change only needed method
-   UltrasharpTool_OverwriteMember("UserService.MyMethod", newMethodCode, ...)
+   modify_code("UserService.MyMethod", newMethodCode, ...)
    ```
 
 ### Related Tools
 
-- ⬅️ [**ReadRawFromRoslynDocument**](#UltrasharpTool_ReadRawFromRoslynDocument) — REQUIRED before overwrite
-- ➡️ [**Undo**](./ULTRA_SHARP_MODIFICATION.md#UltrasharpTool_Undo) — if something went wrong
-- ➡️ [**CreateRoslynDocument**](#UltrasharpTool_CreateRoslynDocument) — for new files
+- ⬅️ [**ReadRawFromRoslynDocument**](#read_file) — REQUIRED before overwrite
+- ➡️ [**Undo**](./ULTRA_SHARP_MODIFICATION.md#undo) — if something went wrong
+- ➡️ [**CreateRoslynDocument**](#create_file) — for new files
 
 ---
 
@@ -450,7 +450,7 @@ UltrasharpTool_OverwriteRoslynDocument(
 
 ```javascript
 // 1. Read current contents
-UltrasharpTool_ReadRawFromRoslynDocument(
+read_file(
     filePath: "D:/MyProject/appsettings.json"
 )
 // Output: { "ConnectionStrings": {...}, "Logging": {...} }
@@ -459,14 +459,14 @@ UltrasharpTool_ReadRawFromRoslynDocument(
 //    For example, parse JSON, modify, serialize back
 
 // 3. Write back
-UltrasharpTool_OverwriteRoslynDocument(
+overwrite_file(
     filePath: "D:/MyProject/appsettings.json",
     content: modifiedJson,
     commitMessage: "Update database connection string"
 )
 
 // 4. Verify
-UltrasharpTool_ReadRawFromRoslynDocument(
+read_file(
     filePath: "D:/MyProject/appsettings.json"
 )
 // Verify changes
@@ -476,11 +476,11 @@ UltrasharpTool_ReadRawFromRoslynDocument(
 
 ```javascript
 // 1. Check class doesn't exist
-UltrasharpTool_SearchDefinitions("EmailValidator")
+search_definitions("EmailValidator")
 // Output: "No matches"
 
 // 2. Create file
-UltrasharpTool_CreateRoslynDocument(
+create_file(
     filePath: "D:/MyProject/src/Validators/EmailValidator.cs",
     content: `
 using System;
@@ -500,13 +500,13 @@ namespace MyProject.Validators
 )
 
 // 3. Verify
-UltrasharpTool_ViewDefinition("MyProject.Validators.EmailValidator")
+view_definition("MyProject.Validators.EmailValidator")
 
 // 4. Format
-UltrasharpTool_FormatCode(path: "D:/MyProject/src/Validators/EmailValidator.cs", checkOnly: false)
+format_code(path: "D:/MyProject/src/Validators/EmailValidator.cs", checkOnly: false)
 
 // 5. Check quality
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 ```
 
 ---

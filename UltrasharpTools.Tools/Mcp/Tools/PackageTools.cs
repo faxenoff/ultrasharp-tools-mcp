@@ -15,7 +15,7 @@ public class PackageToolsLogCategory { }
 
 [McpServerToolType]
 public static class PackageTools {
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(AddOrModifyNugetPackage), Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "add_package", Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
     [Description("Adds or modifies a NuGet package in a project. Automatically performs restore and reloads the solution.")]
     public static async Task<string> AddOrModifyNugetPackage(
         ILogger<PackageToolsLogCategory> logger,

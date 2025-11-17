@@ -7,7 +7,10 @@ using UltrasharpTools.Tools.Serialization;
 namespace UltrasharpTools.Tools.Mcp;
 
 internal static class ToolHelpers {
-    public const string SharpToolPrefix = "UltrasharpTool_";
+    // BREAKING CHANGE: Removed prefix to align with MCP Protocol standard (snake_case without prefixes)
+    // Namespace is provided by server name: ultrasharp-tools::tool_name
+    // See: TOOL_NAMING_UNIFICATION.md for details
+    public const string SharpToolPrefix = "";
 
     public static void EnsureSolutionLoaded(ISolutionManager solutionManager) {
         if (!solutionManager.IsSolutionLoaded) {

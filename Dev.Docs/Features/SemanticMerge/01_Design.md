@@ -1066,10 +1066,10 @@ public enum IntentType
 ### Phase 6: MCP Tools (1-2 дня)
 **Цель**: API для использования
 
-- [ ] `UltrasharpTool_IndexMerge` - индексация веток
-- [ ] `UltrasharpTool_AnalyzeMerge` - анализ конфликтов
-- [ ] `UltrasharpTool_PerformMerge` - выполнение merge
-- [ ] `UltrasharpTool_ResolveMergeConflict` - разрешение конфликта
+- [ ] `IndexMerge` - индексация веток
+- [ ] `AnalyzeMerge` - анализ конфликтов
+- [ ] `PerformMerge` - выполнение merge
+- [ ] `ResolveMergeConflict` - разрешение конфликта
 - [ ] Documentation
 
 **Результат**: Готовые MCP инструменты

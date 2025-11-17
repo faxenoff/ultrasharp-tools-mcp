@@ -57,14 +57,14 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
 
 ---
 
-## UltrasharpTool_SemanticSearch
+## SemanticSearch
 
 **Find semantically similar code** — searches for code with similar meaning/functionality using vector embeddings.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_SemanticSearch(
+SemanticSearch(
     query: "validate email address",
     scope: "solution",
     topK: 10
@@ -127,16 +127,16 @@ UltrasharpTool_SemanticSearch(
 1. **Use natural language for concepts:**
    ```javascript
    // ✅ Good - conceptual search
-   UltrasharpTool_SemanticSearch(query: "user authentication logic")
+   SemanticSearch(query: "user authentication logic")
 
    // ⚠️ Less effective - too specific
-   UltrasharpTool_SemanticSearch(query: "public bool AuthenticateUser")
+   SemanticSearch(query: "public bool AuthenticateUser")
    ```
 
 2. **Use code snippets for patterns:**
    ```javascript
    // ✅ Good - pattern search
-   UltrasharpTool_SemanticSearch(query: "if (string.IsNullOrWhiteSpace(...))")
+   SemanticSearch(query: "if (string.IsNullOrWhiteSpace(...))")
 
    // Find all similar null/whitespace checks
    ```
@@ -144,19 +144,19 @@ UltrasharpTool_SemanticSearch(
 3. **Adjust topK based on needs:**
    ```javascript
    // Quick check - just top few
-   UltrasharpTool_SemanticSearch(query: "...", topK: 5)
+   SemanticSearch(query: "...", topK: 5)
 
    // Thorough search - more results
-   UltrasharpTool_SemanticSearch(query: "...", topK: 20)
+   SemanticSearch(query: "...", topK: 20)
    ```
 
 4. **Narrow scope for faster searches:**
    ```javascript
    // Faster - specific project
-   UltrasharpTool_SemanticSearch(query: "...", scope: "MyProject.Core")
+   SemanticSearch(query: "...", scope: "MyProject.Core")
 
    // Slower - entire solution
-   UltrasharpTool_SemanticSearch(query: "...", scope: "solution")
+   SemanticSearch(query: "...", scope: "solution")
    ```
 
 ### Performance
@@ -170,20 +170,20 @@ UltrasharpTool_SemanticSearch(
 
 ### Related Tools
 
-- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — view found code details
-- ➡️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_FindReferences) — find usages of similar code
-- ➡️ [**AnalyzeComplexity**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_AnalyzeComplexity) — analyze complexity of found code
+- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — view found code details
+- ➡️ [**FindReferences**](./ULTRA_SHARP_ANALYSIS.md#find_references) — find usages of similar code
+- ➡️ [**AnalyzeComplexity**](./ULTRA_SHARP_ANALYSIS.md#analyze_complexity) — analyze complexity of found code
 
 ---
 
-## UltrasharpTool_SemanticDiff
+## SemanticDiff
 
 **Semantic change analysis** — compares code changes semantically, not just textually.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_SemanticDiff(
+SemanticDiff(
     beforeFqn: "MyNamespace.UserService.ValidateUser",
     afterFqn: "MyNamespace.UserService.ValidateUser",  // after modification
     includeImplementationDetails: false
@@ -226,13 +226,13 @@ UltrasharpTool_SemanticDiff(
 1. **Use before refactoring:**
    ```javascript
    // Before
-   UltrasharpTool_ViewDefinition("UserService.ValidateUser")
+   view_definition("UserService.ValidateUser")
 
    // Refactor...
-   UltrasharpTool_OverwriteMember(...)
+   modify_code(...)
 
    // After - verify semantic equivalence
-   UltrasharpTool_SemanticDiff(
+   SemanticDiff(
        beforeFqn: "UserService.ValidateUser",
        afterFqn: "UserService.ValidateUser"
    )
@@ -240,17 +240,17 @@ UltrasharpTool_SemanticDiff(
 
 2. **Check breaking changes:**
    ```javascript
-   UltrasharpTool_SemanticDiff(...)
+   SemanticDiff(...)
    // Output: "⚠️ Breaking change: validation logic now more strict"
    ```
 
 3. **Exclude implementation details for high-level view:**
    ```javascript
    // High-level semantic changes only
-   UltrasharpTool_SemanticDiff(..., includeImplementationDetails: false)
+   SemanticDiff(..., includeImplementationDetails: false)
 
    // All changes including implementation
-   UltrasharpTool_SemanticDiff(..., includeImplementationDetails: true)
+   SemanticDiff(..., includeImplementationDetails: true)
    ```
 
 ### Performance
@@ -263,9 +263,9 @@ UltrasharpTool_SemanticDiff(
 
 ### Related Tools
 
-- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — see before/after code
-- ⬅️ [**OverwriteMember**](./ULTRA_SHARP_MODIFICATION.md#UltrasharpTool_OverwriteMember) — make changes to compare
-- ➡️ [**AnalyzeComplexity**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_AnalyzeComplexity) — compare complexity before/after
+- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — see before/after code
+- ⬅️ [**OverwriteMember**](./ULTRA_SHARP_MODIFICATION.md#modify_code) — make changes to compare
+- ➡️ [**AnalyzeComplexity**](./ULTRA_SHARP_ANALYSIS.md#analyze_complexity) — compare complexity before/after
 
 ---
 
@@ -273,7 +273,7 @@ UltrasharpTool_SemanticDiff(
 
 ```javascript
 // 1. Find duplicate validation logic
-UltrasharpTool_SemanticSearch(
+SemanticSearch(
     query: "validate email address format",
     scope: "solution",
     topK: 20
@@ -281,17 +281,17 @@ UltrasharpTool_SemanticSearch(
 // Output: Found 7 similar implementations
 
 // 2. View each implementation
-UltrasharpTool_ViewDefinition("UserService.ValidateEmail")
-UltrasharpTool_ViewDefinition("EmailValidator.IsValidEmail")
-UltrasharpTool_ViewDefinition("RegistrationService.CheckEmailFormat")
+view_definition("UserService.ValidateEmail")
+view_definition("EmailValidator.IsValidEmail")
+view_definition("RegistrationService.CheckEmailFormat")
 // ... etc
 
 // 3. Choose best implementation
-UltrasharpTool_AnalyzeComplexity(scope: "method", target: "EmailValidator.IsValidEmail")
+analyze_complexity(scope: "method", target: "EmailValidator.IsValidEmail")
 // Output: Lowest complexity, well-tested
 
 // 4. Update others to use best implementation
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedMemberName: "UserService.ValidateEmail",
     newMemberCode: `
 private bool ValidateEmail(string email)
@@ -302,7 +302,7 @@ private bool ValidateEmail(string email)
 )
 
 // 5. Verify semantic equivalence
-UltrasharpTool_SemanticDiff(
+SemanticDiff(
     beforeFqn: "UserService.ValidateEmail",  // old implementation
     afterFqn: "UserService.ValidateEmail"    // new implementation
 )
@@ -315,19 +315,19 @@ UltrasharpTool_SemanticDiff(
 
 ```javascript
 // 1. View current implementation
-UltrasharpTool_ViewDefinition("OrderService.CalculateDiscount")
-UltrasharpTool_AnalyzeComplexity(scope: "method", target: "OrderService.CalculateDiscount")
+view_definition("OrderService.CalculateDiscount")
+analyze_complexity(scope: "method", target: "OrderService.CalculateDiscount")
 // Output: Complexity 25 - needs refactoring
 
 // 2. Refactor to simpler implementation
-UltrasharpTool_OverwriteMember(
+modify_code(
     fullyQualifiedMemberName: "OrderService.CalculateDiscount",
     newMemberCode: `/* simplified implementation */`,
     commitMessage: "Simplify CalculateDiscount logic"
 )
 
 // 3. Verify semantic equivalence
-UltrasharpTool_SemanticDiff(
+SemanticDiff(
     beforeFqn: "OrderService.CalculateDiscount",
     afterFqn: "OrderService.CalculateDiscount",
     includeImplementationDetails: false
@@ -335,7 +335,7 @@ UltrasharpTool_SemanticDiff(
 // Output: "Semantic similarity: 98%, intent preserved, complexity reduced"
 
 // 4. Check new complexity
-UltrasharpTool_AnalyzeComplexity(scope: "method", target: "OrderService.CalculateDiscount")
+analyze_complexity(scope: "method", target: "OrderService.CalculateDiscount")
 // Output: Complexity 12 - much better!
 
 // 5. Run tests to verify

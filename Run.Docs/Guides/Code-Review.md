@@ -17,11 +17,11 @@
 8. Wait for fixes and re-review
 
 **MCP approach (5-10 minutes):**
-1. `AnalyzeCodeStyle` → Find all style issues (5 sec)
-2. `AnalyzeComplexity` → Identify complex code (5 sec)
-3. `FindPotentialDuplicates` → Check for duplicates (10 sec)
-4. `FormatCode` → Verify formatting (3 sec)
-5. `ApplyCodeFixes` → Auto-fix common issues (10 sec)
+1. `analyze_code_style` → Find all style issues (5 sec)
+2. `analyze_complexity` → Identify complex code (5 sec)
+3. `find_duplicates` → Check for duplicates (10 sec)
+4. `format_code` → Verify formatting (3 sec)
+5. `apply_code_fixes` → Auto-fix common issues (10 sec)
 
 **Result:** 6-12x faster, more thorough, consistent quality.
 
@@ -55,7 +55,7 @@ git diff dev...feature-branch -- src/
 **Goal:** Find style violations before they enter codebase.
 
 ```csharp
-UltrasharpTool_AnalyzeCodeStyle(
+analyze_code_style(
     path: "src/MyApp.NewFeature/",
     severityFilter: "Warning"
 )
@@ -96,7 +96,7 @@ IDE0058: Expression value is never used
 **Goal:** Identify overly complex code that needs refactoring.
 
 ```csharp
-UltrasharpTool_AnalyzeComplexity(
+analyze_complexity(
     fullyQualifiedName: "MyApp.NewFeature.Services.OrderService",
     includeMembers: true
 )
@@ -145,7 +145,7 @@ Members:
 **Approach 1: Check for duplicates of new code**
 
 ```csharp
-UltrasharpTool_FindPotentialDuplicates(
+find_duplicates(
     targetCode: "async Task<bool> ValidateEmailAsync(string email) { return email.Contains('@') && email.Contains('.'); }",
     threshold: 0.85
 )
@@ -168,7 +168,7 @@ Found 2 similar methods (threshold: 0.85):
 **Approach 2: Check entire feature for internal duplicates**
 
 ```csharp
-UltrasharpTool_FindPotentialDuplicates(
+find_duplicates(
     targetCode: "async Task ProcessAsync() { try { await Operation(); } catch (Exception ex) { _logger.LogError(ex); throw; } }",
     threshold: 0.8
 )
@@ -183,7 +183,7 @@ UltrasharpTool_FindPotentialDuplicates(
 **Goal:** Ensure code follows project formatting standards.
 
 ```csharp
-UltrasharpTool_FormatCode(
+format_code(
     path: "src/MyApp.NewFeature/",
     checkOnly: true
 )
@@ -211,7 +211,7 @@ src/MyApp.NewFeature/Models/OrderRequest.cs
 **Next step:** Apply formatting
 
 ```csharp
-UltrasharpTool_FormatCode(
+format_code(
     path: "src/MyApp.NewFeature/",
     checkOnly: false
 )
@@ -232,7 +232,7 @@ UltrasharpTool_FormatCode(
 **Approach 1: Preview fixes first**
 
 ```csharp
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     diagnosticId: "all",
     preview: true
 )
@@ -258,7 +258,7 @@ CA1822: Make method static
 **Approach 2: Apply fixes**
 
 ```csharp
-UltrasharpTool_ApplyCodeFixes(
+apply_code_fixes(
     diagnosticId: "all",
     preview: false
 )
@@ -286,13 +286,13 @@ Modified files:
 
 ```csharp
 // Re-run style analysis
-UltrasharpTool_AnalyzeCodeStyle(
+analyze_code_style(
     path: "src/MyApp.NewFeature/",
     severityFilter: "Warning"
 )
 
 // Re-check formatting
-UltrasharpTool_FormatCode(
+format_code(
     path: "src/MyApp.NewFeature/",
     checkOnly: true
 )
@@ -303,7 +303,7 @@ UltrasharpTool_FormatCode(
 AnalyzeCodeStyle:
 ✅ No issues found
 
-FormatCode:
+format_code:
 ✅ All files correctly formatted
 ```
 
@@ -334,7 +334,7 @@ FormatCode:
 6. ApplyCodeFixes(diagnosticId: "all", preview: false)
    → Apply fixes
 
-7. FormatCode(path: "src/FeaturePath/", checkOnly: false)
+7.format_codee(path: "src/FeaturePath/", checkOnly: false)
    → Apply formatting
 
 8. AnalyzeCodeStyle(path: "src/FeaturePath/", severityFilter: "Warning")
@@ -632,7 +632,7 @@ ApplyCodeFixes(diagnosticId: "all", preview: false)
 
 ```csharp
 ❌ WRONG:
-AnalyzeCodeStyle(...) → looks good → approve
+analyze_code_style(...) → looks good → approve
 // Miss complex methods!
 
 ✅ RIGHT:
@@ -649,7 +649,7 @@ AnalyzeComplexity(...) // Don't skip this!
 // Miss duplicate logic across files
 
 ✅ RIGHT:
-FindPotentialDuplicates(targetCode: "new method", threshold: 0.85)
+find_duplicates(targetCode: "new method", threshold: 0.85)
 → Find hidden duplicates
 ```
 
@@ -657,7 +657,7 @@ FindPotentialDuplicates(targetCode: "new method", threshold: 0.85)
 
 ```csharp
 ❌ WRONG:
-ApplyCodeFixes(diagnosticId: "all", preview: false)
+apply_code_fixes(diagnosticId: "all", preview: false)
 // Might apply unwanted fixes
 
 ✅ RIGHT:
@@ -732,7 +732,7 @@ AnalyzeCodeStyle(path: "src/MyApp.Infrastructure/", severityFilter: "Warning")
 // Get list of changed methods from git diff
 // Then check each:
 
-AnalyzeComplexity(
+analyze_complexity(
     fullyQualifiedName: "MyApp.Services.UserService.CreateUserAsync"
 )
 
@@ -747,8 +747,7 @@ AnalyzeComplexity(
 
 ```csharp
 // Pattern 1: Validation
-FindPotentialDuplicates(
-    targetCode: "if (x == null) throw new ArgumentNullException();",
+FindPotefind_duplicatesrgetCode: "if (x == null) throw new ArgumentNullException();",
     threshold: 0.8
 )
 
@@ -774,12 +773,10 @@ FindPotentialDuplicates(
 AnalyzeCodeStyle(severityFilter: "Error")
 // → Must be zero errors
 
-// Gate 2: Block if too many warnings
-AnalyzeCodeStyle(severityFilter: "Warning")
+// Gate 2: Block if too many warninganalyze_code_stylele(severityFilter: "Warning")
 // → Must be < 5 warnings
 
-// Gate 3: Block if complexity too high
-AnalyzeComplexity(includeMembers: true)
+// Gate 3: Block if complexity too highanalyze_complexityy(includeMembers: true)
 // → No method with CC > 15
 ```
 
@@ -816,7 +813,7 @@ mcp-call FormatCode -path $FeaturePath -checkOnly $false
 
 # Step 5: Verify
 Write-Host "5. Final verification..."
-$finalCheck = mcp-call AnalyzeCodeStyle -path $FeaturePath -severityFilter "Warning"
+$finalCheck = mcp-canalyze_code_styletyle -path $FeaturePath -severityFilter "Warning"
 
 if ($finalCheck -eq "No issues") {
     Write-Host "✅ Review passed!"

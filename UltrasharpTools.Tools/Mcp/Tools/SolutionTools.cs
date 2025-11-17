@@ -39,7 +39,7 @@ public static class SolutionTools {
         "Because of this, you create more modular, coherent, composable, type-safe, and thus inherently correct code. " +
         $"`{ToolHelpers.SharpToolPrefix}{nameof(LoadSolution)}` is the entry point for the suite, and should be called once at the beginning of your session to initialize the other tools with data from the solution.";
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(LoadSolution), Idempotent = true, Destructive = false, OpenWorld = false, ReadOnly = true)]
+    [McpServerTool(Name = "load_solution", Idempotent = true, Destructive = false, OpenWorld = false, ReadOnly = true)]
     [Description(LoadSolutionDescriptionText)]
     public static async Task<object> LoadSolution(
     ISolutionManager solutionManager,
@@ -362,7 +362,7 @@ public static class SolutionTools {
             return "Unknown";
         }
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(LoadProject), ReadOnly = true, OpenWorld = false, Destructive = false, Idempotent = false)]
+    [McpServerTool(Name = "load_project", ReadOnly = true, OpenWorld = false, Destructive = false, Idempotent = false)]
     [Description($"Use this immediately after {nameof(LoadSolution)}. This injects a comprehensive understanding of the project structure into your context.")]
     public static async Task<object> LoadProject(
         ISolutionManager solutionManager,

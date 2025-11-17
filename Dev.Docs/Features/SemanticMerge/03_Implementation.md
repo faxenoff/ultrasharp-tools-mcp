@@ -115,15 +115,15 @@ UltrasharpTools.Tools/Merge/
    - AST normalization for C#/JSON/XML
 
 5. **MCP Integration**
-   - `UltrasharpTool_SemanticMerge` - 3-way merge command
-   - `UltrasharpTool_GetSemanticMergeInfo` - help/documentation
+   - `SemanticMerge` - 3-way merge command
+   - `GetSemanticMergeInfo` - help/documentation
 
 ### 📊 Architecture Flow
 
 ```
 User Request
     ↓
-UltrasharpTool_SemanticMerge (MCP)
+SemanticMerge (MCP)
     ↓
 SemanticMergeService
     ↓

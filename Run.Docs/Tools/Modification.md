@@ -1,4 +1,4 @@
-﻿# Инструменты модификации кода
+# Инструменты модификации кода
 
 **Высокоточные операции изменения C# кода через Roslyn API.** Все модификации автоматически создают Git ветки/коммиты, проверяются на ошибки компиляции, и могут быть отменены через Undo.
 
@@ -28,15 +28,15 @@
 ```bash
 # Исходная ветка: main
 
-UltrasharpTool_AddMember(...)
+add_member(...)
 # Создана ветка: sharptools/20251113-140523
 # Commit: "Add method CreateUser to UserService"
 
-UltrasharpTool_RenameSymbol(...)
+rename_symbol(...)
 # Создана ветка: sharptools/20251113-140612
 # Commit: "Rename oldName to newName"
 
-UltrasharpTool_Undo()
+undo()
 # Откат последнего commit, возврат к sharptools/20251113-140523
 ```
 
@@ -57,20 +57,20 @@ UltrasharpTools.Droid.exe --disable-git
 **Рекомендуемый workflow:**
 ```javascript
 // 1. Модификация
-UltrasharpTool_AddMember(...)
+add_member(...)
 // Output: "✅ No compilation errors. ⚠️ Consider running FormatCode"
 
 // 2. Форматирование
-UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
+format_code(path: "src/", checkOnly: false)
 
 // 3. Линтинг
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
+analyze_code_style(severityFilter: "Warning")
 
 // 4. Авто-фиксы
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+apply_code_fixes(diagnosticId: "all", preview: false)
 ```
 
-### 🔙 Undo механизм
+### 🔙 undo механизм
 
 **Как работает:**
 - Хранит stack последних изменений
@@ -84,14 +84,14 @@ UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
 
 ---
 
-## UltrasharpTool_AddMember
+## add_member
 
 **Добавить новый член** — метод, свойство, поле, вложенный класс в существующий тип.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_AddMember(
+add_member(
 fullyQualifiedTargetName: "MyNamespace.UserService",
 codeSnippet: `
 /// <summary>
@@ -177,8 +177,8 @@ No errors found.
 Branch: sharptools/20251113-141523
 Commit: c4f2e89 "Add email validation method"
 
-💡 Use UltrasharpTool_Undo to revert this change
-💡 Use UltrasharpTool_FormatCode to apply formatting
+💡 Use undo to revert this change
+💡 Use format_code to apply formatting
 ```
 
 ### Когда использовать
@@ -197,9 +197,9 @@ Commit: c4f2e89 "Add email validation method"
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Нужно изменить существующий член → `OverwriteMember`
-- Нужно создать новый файл → `CreateRoslynDocument`
-- Добавляете только using → `ManageUsings`
+- Нужно изменить существующий член → `modify_code`
+- Нужно создать новый файл → `create_file`
+- Добавляете только using → `manage_usings`
 
 ### Best Practices
 
@@ -245,14 +245,14 @@ Commit: c4f2e89 "Add email validation method"
 
 4. **Проверяйте compilation errors:**
    ```javascript
-   UltrasharpTool_AddMember(...)
+   add_member(...)
    // Output: "ERROR: Type 'Regex' not found"
 
    // Добавьте using
-   UltrasharpTool_ManageUsings(operation: "write", codeToWrite: "...\nusing System.Text.RegularExpressions;", ...)
+   manage_usings(operation: "write", codeToWrite: "...\nusing System.Text.RegularExpressions;", ...)
 
    // Retry
-   UltrasharpTool_AddMember(...)
+   add_member(...)
    ```
 
 ### Типичные ошибки
@@ -265,7 +265,7 @@ ERROR: Compilation failed
 ```
 **Решение:**
 - Добавьте missing usings
-- Проверьте что член не дублируется (используйте `GetMembers` сначала)
+- Проверьте что член не дублируется (используйте `get_members` сначала)
 - Проверьте типы параметров
 
 #### ❌ Ошибка: "Target type not found"
@@ -278,14 +278,14 @@ ERROR: Type 'UserService' not found
 
 ### Связанные инструменты
 
-- ⬅️ [**GetMembers**](ANALYSIS_TOOLS.md#UltrasharpTool_getmembers) — посмотрите существующие члены перед добавлением
-- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — посмотрите контекст куда добавляете
-- ➡️ [**FormatCode**](QUALITY_TOOLS.md#UltrasharpTool_formatcode) — отформатируйте после добавления
-- ➡️ [**Undo**](#UltrasharpTool_undo) — откатите если ошиблись
+- ⬅️ [**GetMembers**](ANALYSIS_TOOLS.md#get_members) — посмотрите существующие члены перед добавлением
+- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — посмотрите контекст куда добавляете
+- ➡️ [**FormatCode**](QUALITY_TOOLS.md#format_code) — отформатируйте после добавления
+- ➡️ [**Undo**](#undo) — откатите если ошиблись
 
 ---
 
-## UltrasharpTool_OverwriteMember
+## modify_code
 
 **Заменить или удалить существующий член** — полная замена definition метода/свойства/класса новым кодом или удаление.
 
@@ -293,7 +293,7 @@ ERROR: Type 'UserService' not found
 
 ```javascript
 // Замена
-UltrasharpTool_OverwriteMember(
+modify_code(
 fullyQualifiedMemberName: "MyNamespace.UserService.ValidateEmail",
 newMemberCode: `
 /// <summary>
@@ -308,7 +308,7 @@ commitMessage: "Improve email validation regex"
 )
 
 // Удаление
-UltrasharpTool_OverwriteMember(
+modify_code(
 fullyQualifiedMemberName: "MyNamespace.UserService.ObsoleteMethod",
 newMemberCode: "// Delete ObsoleteMethod",
 commitMessage: "Remove obsolete method"
@@ -377,8 +377,8 @@ No errors found.
 Branch: sharptools/20251113-142314
 Commit: a9b3c45 "Improve email validation regex"
 
-💡 Use UltrasharpTool_FindReferences to check usage
-💡 Use UltrasharpTool_Undo to revert this change
+💡 Use find_references to check usage
+💡 Use undo to revert this change
 ```
 
 ### Когда использовать
@@ -401,9 +401,9 @@ Commit: a9b3c45 "Improve email validation regex"
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Нужно добавить новый член → `AddMember`
-- Нужно только переименовать → `RenameSymbol`
-- Нужна простая regex замена → `FindAndReplace`
+- Нужно добавить новый член → `add_member`
+- Нужно только переименовать → `rename_symbol`
+- Нужна простая regex замена → `find_and_replace`
 
 ### Best Practices
 
@@ -424,10 +424,10 @@ Commit: a9b3c45 "Improve email validation regex"
 2. **Проверьте impact перед изменением:**
    ```javascript
    // Сначала проверьте где используется
-   UltrasharpTool_FindReferences("MyClass.MyMethod")
+   find_references("MyClass.MyMethod")
 
    // Затем изменяйте
-   UltrasharpTool_OverwriteMember(...)
+   modify_code(...)
    ```
 
 3. **Для удаления используйте правильный синтаксис:**
@@ -449,7 +449,7 @@ ERROR: Member 'MyMethod' not found in type 'MyClass'
 **Решение:**
 - Используйте полный FQN с параметрами: `MyClass.MyMethod(int, string)`
 - Проверьте spelling
-- Используйте `GetMembers` для получения точного FQN
+- Используйте `get_members` для получения точного FQN
 
 #### ❌ Ошибка: "Breaking change detected"
 ```
@@ -457,26 +457,26 @@ ERROR: Compilation failed after overwrite
 - 'MyMethod' is referenced in 15 places
 ```
 **Решение:**
-- Проверьте `FindReferences` перед изменением
+- Проверьте `find_references` перед изменением
 - Обновите call sites
-- Или используйте `RenameSymbol` если меняете только имя
+- Или используйте `rename_symbol` если меняете только имя
 
 ### Связанные инструменты
 
-- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — посмотрите текущую definition
-- ⬅️ [**FindReferences**](ANALYSIS_TOOLS.md#UltrasharpTool_findreferences) — проверьте impact
-- ➡️ [**Undo**](#UltrasharpTool_undo) — откатите если что-то пошло не так
+- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — посмотрите текущую definition
+- ⬅️ [**FindReferences**](ANALYSIS_TOOLS.md#find_references) — проверьте impact
+- ➡️ [**Undo**](#undo) — откатите если что-то пошло не так
 
 ---
 
-## UltrasharpTool_RenameSymbol
+## rename_symbol
 
 **Переименовать символ** — меняет имя и автоматически обновляет все references в solution.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_RenameSymbol(
+rename_symbol(
 fullyQualifiedSymbolName: "MyNamespace.UserService.ValidateEmail",
 newName: "ValidateEmailFormat",
 commitMessage: "Rename ValidateEmail to ValidateEmailFormat for clarity"
@@ -542,8 +542,8 @@ All 23 references updated successfully.
 Branch: sharptools/20251113-143022
 Commit: e7d8f12 "Rename ValidateEmail to ValidateEmailFormat for clarity"
 
-💡 Use UltrasharpTool_FindReferences to verify all usages updated
-💡 Use UltrasharpTool_Undo to revert this change
+💡 Use find_references to verify all usages updated
+💡 Use undo to revert this change
 ```
 
 ### Когда использовать
@@ -566,8 +566,8 @@ Commit: e7d8f12 "Rename ValidateEmail to ValidateEmailFormat for clarity"
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Меняете сигнатуру (не только имя) → `OverwriteMember`
-- Перемещаете в другой namespace → `MoveMember`
+- Меняете сигнатуру (не только имя) → `modify_code`
+- Перемещаете в другой namespace → `move_member`
 - Символ используется в reflection (найдите вручную)
 
 ### Best Practices
@@ -575,11 +575,11 @@ Commit: e7d8f12 "Rename ValidateEmail to ValidateEmailFormat for clarity"
 1. **Проверьте scope переименования:**
    ```javascript
    // Сначала посмотрите сколько references
-   UltrasharpTool_FindReferences("OldName")
+   find_references("OldName")
    // Output: "147 references in 42 files"
 
    // Если много - убедитесь что хотите изменить всё
-   UltrasharpTool_RenameSymbol("OldName", "NewName", "...")
+   rename_symbol("OldName", "NewName", "...")
    ```
 
 2. **Используйте descriptive commit messages:**
@@ -594,12 +594,12 @@ Commit: e7d8f12 "Rename ValidateEmail to ValidateEmailFormat for clarity"
 3. **Для переменных - локальный scope:**
    ```javascript
    // RenameSymbol работает для любых символов
-   UltrasharpTool_RenameSymbol("MyMethod.localVar", "betterName", "...")
+   rename_symbol("MyMethod.localVar", "betterName", "...")
    ```
 
 4. **Проверьте после переименования:**
    ```javascript
-   UltrasharpTool_RenameSymbol(...)
+   rename_symbol(...)
 
    // Проверьте компиляцию
    // Output: "✅ No errors"
@@ -635,13 +635,13 @@ WARNING: Some references may use reflection (not updated)
 
 ### Связанные инструменты
 
-- ⬅️ [**FindReferences**](ANALYSIS_TOOLS.md#UltrasharpTool_findreferences) — посмотрите scope перед переименованием
-- ➡️ [**FormatCode**](QUALITY_TOOLS.md#UltrasharpTool_formatcode) — отформатируйте затронутые файлы
-- ➡️ [**Undo**](#UltrasharpTool_undo) — откатите если нужно
+- ⬅️ [**FindReferences**](ANALYSIS_TOOLS.md#find_references) — посмотрите scope перед переименованием
+- ➡️ [**FormatCode**](QUALITY_TOOLS.md#format_code) — отформатируйте затронутые файлы
+- ➡️ [**Undo**](#undo) — откатите если нужно
 
 ---
 
-## UltrasharpTool_FindAndReplace
+## find_and_replace
 
 **Regex find/replace** — замена текста в коде через regex паттерны. Работает с FQN (в пределах символа) или glob paths (в файлах).
 
@@ -649,7 +649,7 @@ WARNING: Some references may use reflection (not updated)
 
 ```javascript
 // В пределах символа
-UltrasharpTool_FindAndReplace(
+find_and_replace(
 regexPattern: "Console\\.WriteLine\\((.*)\\)",
 replacementText: "_logger.LogInformation($1)",
 target: "MyNamespace.UserService.ProcessUser",
@@ -657,7 +657,7 @@ commitMessage: "Replace Console.WriteLine with logger"
 )
 
 // В файлах (glob)
-UltrasharpTool_FindAndReplace(
+find_and_replace(
 regexPattern: "var\\s+(\\w+)\\s*=\\s*new\\s+List<",
 replacementText: "var $1 = [",
 target: "src/**/*.cs",
@@ -729,7 +729,7 @@ Branch: sharptools/20251113-144512
 Commit: b2a9c78 "Replace Console.WriteLine with logger"
 
 💡 5 occurrences replaced in 3 files
-💡 Use UltrasharpTool_Undo to revert this change
+💡 Use undo to revert this change
 ```
 
 ### Когда использовать
@@ -753,9 +753,9 @@ Commit: b2a9c78 "Replace Console.WriteLine with logger"
 ### Когда НЕ использовать
 
 ❌ **НЕ используйте если:**
-- Нужно переименовать символ → `RenameSymbol` (безопаснее)
-- Нужно заменить только definition → `OverwriteMember`
-- Нужно изменить using statements → `ManageUsings`
+- Нужно переименовать символ → `rename_symbol` (безопаснее)
+- Нужно заменить только definition → `modify_code`
+- Нужно изменить using statements → `manage_usings`
 
 ### Best Practices
 
@@ -800,11 +800,11 @@ Commit: b2a9c78 "Replace Console.WriteLine with logger"
 5. **Проверьте перед apply:**
    ```javascript
    // Сначала используйте SearchDefinitions для preview
-   UltrasharpTool_SearchDefinitions("Console\\.WriteLine")
+   search_definitions("Console\\.WriteLine")
    // Смотрим сколько matches
 
-   // Затем применяем FindAndReplace
-   UltrasharpTool_FindAndReplace(...)
+   // Затем применяем find_and_replace
+   find_and_replace(...)
    ```
 
 ### Типичные ошибки
@@ -852,20 +852,20 @@ replacementText: "string.IsNullOrWhiteSpace($1)"
 
 ### Связанные инструменты
 
-- ⬅️ [**SearchDefinitions**](ANALYSIS_TOOLS.md#UltrasharpTool_searchdefinitions) — preview matches
-- ➡️ [**FormatCode**](QUALITY_TOOLS.md#UltrasharpTool_formatcode) — форматируйте после замен
-- ➡️ [**Undo**](#UltrasharpTool_undo) — откатите если что-то пошло не так
+- ⬅️ [**SearchDefinitions**](ANALYSIS_TOOLS.md#search_definitions) — preview matches
+- ➡️ [**FormatCode**](QUALITY_TOOLS.md#format_code) — форматируйте после замен
+- ➡️ [**Undo**](#undo) — откатите если что-то пошло не так
 
 ---
 
-## UltrasharpTool_MoveMember
+## move_member
 
 **Переместить член** — перемещает метод/свойство/поле из одного типа в другой тип или namespace.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_MoveMember(
+move_member(
 fullyQualifiedMemberName: "MyNamespace.UserService.ValidateEmail",
 fullyQualifiedDestinationTypeOrNamespaceName: "MyNamespace.Validators.EmailValidator",
 commitMessage: "Move email validation to EmailValidator class"
@@ -923,7 +923,7 @@ Found 12 references to ValidateEmail that may need updates:
 
 ... (10 more references)
 
-💡 Use UltrasharpTool_FindReferences to review all usages
+💡 Use find_references to review all usages
 💡 Consider using RenameSymbol if you also need to update calls
 
 ═══════════════════════════════════════════════════════════
@@ -940,7 +940,7 @@ Found 12 references to ValidateEmail that may need updates:
 Branch: sharptools/20251113-145234
 Commit: f3e8d67 "Move email validation to EmailValidator class"
 
-💡 Use UltrasharpTool_Undo to revert this change
+💡 Use undo to revert this change
 ```
 
 ### Когда использовать
@@ -959,16 +959,16 @@ Commit: f3e8d67 "Move email validation to EmailValidator class"
 
 ❌ **НЕ используйте если:**
 - Нужно изменить namespace всего файла → rename namespace вручную + update references
-- Перемещаете в новый файл → используйте `AddMember` в новый тип
+- Перемещаете в новый файл → используйте `add_member` в новый тип
 
 ### Best Practices
 
 1. **Проверьте references перед перемещением:**
    ```javascript
-   UltrasharpTool_FindReferences("UserService.ValidateEmail")
+   find_references("UserService.ValidateEmail")
    // Поймите impact
 
-   UltrasharpTool_MoveMember(...)
+   move_member(...)
    // Обновите call sites вручную
    ```
 
@@ -991,25 +991,25 @@ Commit: f3e8d67 "Move email validation to EmailValidator class"
 ERROR: Type 'EmailValidator' not found
 ```
 **Решение:**
-- Создайте destination тип сначала: `AddMember` для создания класса
+- Создайте destination тип сначала: `add_member` для создания класса
 - Или используйте существующий тип
 
 ### Связанные инструменты
 
-- ⬅️ [**FindReferences**](ANALYSIS_TOOLS.md#UltrasharpTool_findreferences) — проверьте impact
-- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#UltrasharpTool_viewdefinition) — посмотрите member перед перемещением
-- ➡️ [**Undo**](#UltrasharpTool_undo) — откатите если нужно
+- ⬅️ [**FindReferences**](ANALYSIS_TOOLS.md#find_references) — проверьте impact
+- ⬅️ [**ViewDefinition**](ANALYSIS_TOOLS.md#view_definition) — посмотрите member перед перемещением
+- ➡️ [**Undo**](#undo) — откатите если нужно
 
 ---
 
-## UltrasharpTool_Undo
+## undo
 
 **Откат последнего изменения** — отменяет последнюю модификацию через Git revert.
 
 ### Использование
 
 ```javascript
-UltrasharpTool_Undo()
+undo()
 ```
 
 ### Параметры
@@ -1073,26 +1073,26 @@ HEAD is now at: e7d8f12 "Rename ValidateEmail to ValidateEmailFormat"
 
 1. **Используйте сразу если ошиблись:**
    ```javascript
-   UltrasharpTool_AddMember(...)
+   add_member(...)
    // Output: "ERROR: Compilation failed"
 
-   UltrasharpTool_Undo()
+   undo()
    // Быстро откатываем
 
    // Исправляем и пробуем снова
-   UltrasharpTool_AddMember(...) // fixed version
+   add_member(...) // fixed version
    ```
 
 2. **Можно откатить несколько изменений:**
    ```javascript
-   UltrasharpTool_Undo() // Откат последнего
-   UltrasharpTool_Undo() // Откат предпоследнего
-   UltrasharpTool_Undo() // И ещё одного
+   undo() // Откат последнего
+   undo() // Откат предпоследнего
+   undo() // И ещё одного
    ```
 
 3. **Проверьте git status после:**
    ```javascript
-   UltrasharpTool_Undo()
+   undo()
    // Смотрим на output - какой commit теперь HEAD
    ```
 
@@ -1122,12 +1122,12 @@ git checkout main  # Переключиться на main (откатит все
 
 ```javascript
 // 1. Анализ текущего состояния
-UltrasharpTool_ViewDefinition("MyClass.MyMethod")
-UltrasharpTool_GetMembers("MyClass", false)
-UltrasharpTool_FindReferences("MyClass.MyMethod")
+view_definition("MyClass.MyMethod")
+get_members("MyClass", false)
+find_references("MyClass.MyMethod")
 
 // 2. Модификация
-UltrasharpTool_OverwriteMember(
+modify_code(
 fullyQualifiedMemberName: "MyClass.MyMethod",
 newMemberCode: "/* new implementation */",
 commitMessage: "Improve MyMethod performance"
@@ -1137,9 +1137,9 @@ commitMessage: "Improve MyMethod performance"
 // Output: "✅ No compilation errors"
 
 // 4. Quality checks
-UltrasharpTool_FormatCode(path: "src/", checkOnly: false)
-UltrasharpTool_AnalyzeCodeStyle(severityFilter: "Warning")
-UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
+format_code(path: "src/", checkOnly: false)
+analyze_code_style(severityFilter: "Warning")
+apply_code_fixes(diagnosticId: "all", preview: false)
 
 // 5. Testing (вне SharpTools)
 // dotnet test
@@ -1149,18 +1149,18 @@ UltrasharpTool_ApplyCodeFixes(diagnosticId: "all", preview: false)
 // git merge sharptools/20251113-XXX
 
 // 7. Если проблема - откат
-UltrasharpTool_Undo()
+undo()
 ```
 
 ### Workflow для breaking changes
 
 ```javascript
 // 1. Оценка impact
-UltrasharpTool_FindReferences("MyClass.OldMethod")
+find_references("MyClass.OldMethod")
 // Output: "147 references in 42 files" - много!
 
 // 2. Создаём новый метод вместо изменения старого
-UltrasharpTool_AddMember(
+add_member(
 fullyQualifiedTargetName: "MyClass",
 codeSnippet: `
 [Obsolete("Use NewMethod instead")]
@@ -1175,7 +1175,7 @@ commitMessage: "Add NewMethod, deprecate OldMethod"
 )
 
 // 3. Постепенно мигрируем call sites
-UltrasharpTool_FindAndReplace(
+find_and_replace(
 regexPattern: "\\.OldMethod\\(",
 replacementText: ".NewMethod(",
 target: "src/Module1/**/*.cs",
@@ -1185,7 +1185,7 @@ commitMessage: "Migrate Module1 to NewMethod"
 // Repeat для других модулей...
 
 // 4. Когда все мигрировали - удаляем старый
-UltrasharpTool_OverwriteMember(
+modify_code(
 fullyQualifiedMemberName: "MyClass.OldMethod",
 newMemberCode: "// Delete OldMethod",
 commitMessage: "Remove deprecated OldMethod"

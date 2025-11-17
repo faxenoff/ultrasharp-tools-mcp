@@ -15,14 +15,14 @@
 
 ---
 
-## UltrasharpTool_LoadSolution
+## load_solution
 
 **Critical tool** — initializes MSBuildWorkspace and loads .sln file. Other tools won't work without it.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_LoadSolution(
+load_solution(
     solutionPath: "D:/MyProject/MyProject.sln"
 )
 ```
@@ -79,7 +79,7 @@ Solution loaded successfully: MyProject.sln
 ✅ Workspace ready
 🌳 Git integration enabled (branch: sharptools/20251113-143022)
 
-💡 Next: Use UltrasharpTool_LoadProject to explore project structure
+💡 Next: Use load_project to explore project structure
 ```
 
 ### When to Use
@@ -107,21 +107,21 @@ Solution loaded successfully: MyProject.sln
 1. **Always call first:**
    ```javascript
    // ✅ Correct
-   UltrasharpTool_LoadSolution("D:/MyProject/MyProject.sln")
-   UltrasharpTool_LoadProject("MyProject.Core")
-   UltrasharpTool_ViewDefinition("MyNamespace.MyClass")
+   load_solution("D:/MyProject/MyProject.sln")
+   load_project("MyProject.Core")
+   view_definition("MyNamespace.MyClass")
 
    // ❌ Wrong - LoadSolution skipped
-   UltrasharpTool_ViewDefinition("MyNamespace.MyClass") // ERROR: Solution not loaded
+   view_definition("MyNamespace.MyClass") // ERROR: Solution not loaded
    ```
 
 2. **Use absolute paths:**
    ```javascript
    // ✅ Correct
-   UltrasharpTool_LoadSolution("D:/Projects/MyApp/MyApp.sln")
+   load_solution("D:/Projects/MyApp/MyApp.sln")
 
    // ❌ Bad - relative paths may not work
-   UltrasharpTool_LoadSolution("../MyApp.sln")
+   load_solution("../MyApp.sln")
    ```
 
 3. **Check build configuration:**
@@ -189,21 +189,21 @@ Large project (1M LOC):     355k symbols in 21.7 sec
 
 ### Related Tools
 
-- ➡️ [**LoadProject**](#UltrasharpTool_LoadProject) — next step after LoadSolution
-- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — view code after loading
-- ➡️ [**SearchDefinitions**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_SearchDefinitions) — search through index
-- ➡️ [**Undo**](./ULTRA_SHARP_MODIFICATION.md#UltrasharpTool_Undo) — works with Git created by LoadSolution
+- ➡️ [**LoadProject**](#load_project) — next step after LoadSolution
+- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — view code after loading
+- ➡️ [**SearchDefinitions**](./ULTRA_SHARP_ANALYSIS.md#search_definitions) — search through index
+- ➡️ [**Undo**](./ULTRA_SHARP_MODIFICATION.md#undo) — works with Git created by LoadSolution
 
 ---
 
-## UltrasharpTool_LoadProject
+## load_project
 
 **Structural project map** — returns hierarchy of namespaces → types for navigation and architecture understanding.
 
 ### Usage
 
 ```javascript
-UltrasharpTool_LoadProject(
+load_project(
     projectName: "MyProject.Core"
 )
 ```
@@ -287,8 +287,8 @@ MyProject.Core.Services
 │  ├─ GetUserAsync(int id) : Task<User>
 │  └─ CreateUserAsync(string name, string email) : Task<int>
 
-💡 Use UltrasharpTool_ViewDefinition with FQN to see full source code
-💡 Example: UltrasharpTool_ViewDefinition("MyProject.Core.Domain.Entities.User")
+💡 Use view_definition with FQN to see full source code
+💡 Example: view_definition("MyProject.Core.Domain.Entities.User")
 ```
 
 ### When to Use
@@ -316,27 +316,27 @@ MyProject.Core.Services
 1. **Use for first-time exploration:**
    ```javascript
    // ✅ Correct workflow for new project
-   UltrasharpTool_LoadSolution("D:/MyProject/MyProject.sln")
-   UltrasharpTool_LoadProject("MyProject.Core")       // Get overview
-   UltrasharpTool_ViewDefinition("MyProject.Core.Services.UserService") // Details
+   load_solution("D:/MyProject/MyProject.sln")
+   load_project("MyProject.Core")       // Get overview
+   view_definition("MyProject.Core.Services.UserService") // Details
    ```
 
 2. **Exact project name:**
    ```javascript
    // ✅ Correct - project name from .sln
-   UltrasharpTool_LoadProject("MyProject.Core")
+   load_project("MyProject.Core")
 
    // ❌ Wrong
-   UltrasharpTool_LoadProject("MyProject.Core.csproj")  // No extension!
-   UltrasharpTool_LoadProject("src/MyProject.Core")     // No path!
+   load_project("MyProject.Core.csproj")  // No extension!
+   load_project("src/MyProject.Core")     // No path!
    ```
 
 3. **Use for documentation:**
    ```javascript
    // Create architectural documentation
-   UltrasharpTool_LoadProject("MyProject.API")      // Controllers
-   UltrasharpTool_LoadProject("MyProject.Core")     // Business Logic
-   UltrasharpTool_LoadProject("MyProject.Data")     // Data Access
+   load_project("MyProject.API")      // Controllers
+   load_project("MyProject.Core")     // Business Logic
+   load_project("MyProject.Data")     // Data Access
    ```
 
 ### Common Errors
@@ -352,10 +352,10 @@ ERROR: Project 'MyProject.Core' not found in solution
 
 #### ❌ Error: "LoadSolution must be called first"
 ```
-ERROR: Solution not loaded. Call UltrasharpTool_LoadSolution first.
+ERROR: Solution not loaded. Call load_solution first.
 ```
 **Solution:**
-- Call LoadSolution first
+- Call load_solution first
 - Verify LoadSolution returned success
 
 ### Adaptive Detail Logic
@@ -377,10 +377,10 @@ else
 
 ### Related Tools
 
-- ⬅️ [**LoadSolution**](#UltrasharpTool_LoadSolution) — must call before LoadProject
-- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_ViewDefinition) — detailed type view
-- ➡️ [**GetMembers**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_GetMembers) — get all type members
-- ➡️ [**SearchDefinitions**](./ULTRA_SHARP_ANALYSIS.md#UltrasharpTool_SearchDefinitions) — regex search
+- ⬅️ [**LoadSolution**](#load_solution) — must call before load_project
+- ➡️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — detailed type view
+- ➡️ [**GetMembers**](./ULTRA_SHARP_ANALYSIS.md#get_members) — get all type members
+- ➡️ [**SearchDefinitions**](./ULTRA_SHARP_ANALYSIS.md#search_definitions) — regex search
 
 ---
 
@@ -390,51 +390,51 @@ else
 
 ```javascript
 // 1. Load solution
-UltrasharpTool_LoadSolution("D:/MyProject/MyProject.sln")
+load_solution("D:/MyProject/MyProject.sln")
 
 // 2. View structure of main projects
-UltrasharpTool_LoadProject("MyProject.API")      // Entry point
-UltrasharpTool_LoadProject("MyProject.Core")     // Business logic
-UltrasharpTool_LoadProject("MyProject.Data")     // Data access
+load_project("MyProject.API")      // Entry point
+load_project("MyProject.Core")     // Business logic
+load_project("MyProject.Data")     // Data access
 
 // 3. Detailed analysis of interesting types
-UltrasharpTool_ViewDefinition("MyProject.API.Controllers.UserController")
-UltrasharpTool_GetMembers("MyProject.Core.Services.UserService", includePrivateMembers: false)
+view_definition("MyProject.API.Controllers.UserController")
+get_members("MyProject.Core.Services.UserService", includePrivateMembers: false)
 ```
 
 ### Analyzing Unknown Feature
 
 ```javascript
 // 1. Load solution
-UltrasharpTool_LoadSolution("D:/LegacyApp/LegacyApp.sln")
+load_solution("D:/LegacyApp/LegacyApp.sln")
 
 // 2. Search for entry point by name
-UltrasharpTool_SearchDefinitions("OrderProcessing")
+search_definitions("OrderProcessing")
 
 // 3. View structure of found project
-UltrasharpTool_LoadProject("LegacyApp.Orders")
+load_project("LegacyApp.Orders")
 
 // 4. Analyze found types
-UltrasharpTool_ViewDefinition("LegacyApp.Orders.OrderProcessor")
-UltrasharpTool_FindReferences("LegacyApp.Orders.OrderProcessor.ProcessOrder")
+view_definition("LegacyApp.Orders.OrderProcessor")
+find_references("LegacyApp.Orders.OrderProcessor.ProcessOrder")
 ```
 
 ### Preparing for Refactoring
 
 ```javascript
 // 1. Load solution
-UltrasharpTool_LoadSolution("D:/Refactoring/MyApp.sln")
+load_solution("D:/Refactoring/MyApp.sln")
 
 // 2. Get overview of all projects
-UltrasharpTool_LoadProject("MyApp.Core")
-UltrasharpTool_LoadProject("MyApp.Services")
-UltrasharpTool_LoadProject("MyApp.Data")
+load_project("MyApp.Core")
+load_project("MyApp.Services")
+load_project("MyApp.Data")
 
 // 3. Search for duplicated logic
-UltrasharpTool_SearchDefinitions("ValidateUser")
+search_definitions("ValidateUser")
 
 // 4. Analyze complexity
-UltrasharpTool_AnalyzeComplexity(scope: "project", target: "MyApp.Core")
+analyze_complexity(scope: "project", target: "MyApp.Core")
 ```
 
 ---
@@ -443,9 +443,9 @@ UltrasharpTool_AnalyzeComplexity(scope: "project", target: "MyApp.Core")
 
 ### Caching
 
-**What's cached after LoadSolution:**
+**What's cached afterload_solutionn:**
 - ✅ MSBuildWorkspace (singleton)
-- ✅ Solution (until next LoadSolution)
+- ✅ Solution (until nexload_solutionon)
 - ✅ Compilation per project (LRU cache, 10 items)
 - ✅ SemanticModel per document (LRU cache, 50 items)
 - ✅ FastSymbolIndex (entire index in memory)
@@ -476,14 +476,14 @@ Large project (50+ projects):     1.5-3 GB
 1. **Don't reload solution unnecessarily:**
    ```javascript
    // ❌ Bad - unnecessary reload
-   UltrasharpTool_LoadSolution(...)
-   UltrasharpTool_AddMember(...)
-   UltrasharpTool_LoadSolution(...)  // NOT NEEDED!
+   load_solution(...)
+   add_member(...)
+   load_solution(...)  // NOT NEEDED!
 
    // ✅ Good - solution updates automatically
-   UltrasharpTool_LoadSolution(...)
-   UltrasharpTool_AddMember(...)
-   UltrasharpTool_ViewDefinition(...) // Sees changes
+   load_solution(...)
+   add_member(...)
+   view_definition(...) // Sees changes
    ```
 
 2. **Use appropriate log level:**
@@ -514,7 +514,7 @@ UltrasharpTools.Droid.exe \
 ```
 
 **Options:**
-- `--load-solution <path>` — auto-load .sln on startup (optional, better use UltrasharpTool_LoadSolution)
+- `--load-solution <path>` — auto-load .sln on startup (optional, better use load_solution)
 - `--build-configuration <config>` — Debug or Release (default: Debug)
 - `--disable-git` — disable Git integration
 - `--log-level <level>` — Verbose, Debug, Information, Warning, Error, Fatal

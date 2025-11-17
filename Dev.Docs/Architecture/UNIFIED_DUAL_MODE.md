@@ -1,4 +1,4 @@
-﻿# Unified Dual-Mode Architecture: ultrasharp-tool
+# Unified Dual-Mode Architecture: ultrasharp-tool
 
 **Один универсальный инструмент для локальной и сетевой работы.**
 
@@ -124,7 +124,7 @@ UltrasharpTools.sln
 - ✅ Maximum privacy
 
 **Performance:**
-- LoadSolution: 4.8s (with cache)
+- load_solution: 4.8s (with cache)
 - Semantic search: < 100ms (local vectors)
 - No network latency
 
@@ -205,7 +205,7 @@ UltrasharpTools.sln
 - ✅ Advanced AI features (JIRA, contracts, etc)
 
 **Performance:**
-- LoadSolution: 4.8s (local cache)
+-load_solutionn: 4.8s (local cache)
 - Semantic search: 500-1000ms (server GPU, cross-project)
 - Instrumental queries: < 100ms (local cache) или 200-500ms (server)
 
@@ -370,7 +370,7 @@ public class ParallelExecutionService
 **Пример использования:**
 
 ```csharp
-// Batch request: ViewDefinition для 50 symbols
+// Batch request: view_definition для 50 symbols
 var requests = symbols.Select(s => new ViewDefinitionRequest { FQN = s }).ToList();
 
 var results = await _parallelExecution.ExecuteParallel(

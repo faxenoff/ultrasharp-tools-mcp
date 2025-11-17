@@ -16,7 +16,7 @@ public class AnalysisToolsLogCategory { }
 
 [McpServerToolType]
 public static partial class AnalysisTools {
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(GetAllSubtypes), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "get_all_subtypes", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Recursively lists all nested types, methods, properties, fields, and enums within a given parent type. Ideal for gaining a complete mental model of a type hierarchy at a glance.")]
     public static async Task<object> GetAllSubtypes(
         ISolutionManager solutionManager,
@@ -154,7 +154,7 @@ public static partial class AnalysisTools {
         };
     }
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(GetMembers), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "get_members", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Lists the full signatures of members of a specified type, including XML documentation. Essential for rapidly understanding a type's API, but does not give you the implementations. Use this like Intellisense when you're writing code which depends on the target class.")]
     public static async Task<object> GetMembers(
         ISolutionManager solutionManager,
@@ -349,7 +349,7 @@ public static partial class AnalysisTools {
             members = apiMembers.OrderBy(m => ((dynamic)m).kind).ThenBy(m => ((dynamic)m).name).ToList()
         });
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ViewDefinition), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "view_definition", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Displays the verbatim source code from the declaration of a target symbol (class, method, property, etc.) with indentation omitted to save tokens. Essential to fully understand a specific implementation without opening files.")]
     public static async Task<string> ViewDefinition(
         ISolutionManager solutionManager,
@@ -416,7 +416,7 @@ public static partial class AnalysisTools {
         }
         return index < line.Length ? line.Substring(index) : string.Empty;
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ListImplementations), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "list_implementations", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Gets the locations and FQNs of all implementations of an interface or abstract method, and lists derived classes for a base class. Crucial for navigating polymorphic code and understanding implementation patterns.")]
     public static async Task<object> ListImplementations(
         ISolutionManager solutionManager,
@@ -691,7 +691,7 @@ public static partial class AnalysisTools {
 
         return locations;
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(FindReferences), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "find_references", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Finds all references to a specified symbol with surrounding context. Indentation is omitted to save space. Critical for understanding symbol usage patterns across the codebase before editing the target.")]
     public static async Task<object> FindReferences(
                             ISolutionManager solutionManager,
@@ -823,7 +823,7 @@ public static partial class AnalysisTools {
         }, logger, nameof(FindReferences), cancellationToken);
     }
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ViewInheritanceChain), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "view_inheritance_chain", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Shows the inheritance hierarchy for a class or interface (base types and derived types). Essential for understanding type relationships and architecture.")]
     public static async Task<object> ViewInheritanceChain(
         ISolutionManager solutionManager,
@@ -996,7 +996,7 @@ public static partial class AnalysisTools {
             }
         }, logger, nameof(ViewInheritanceChain), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ViewCallGraph), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "view_call_graph", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Displays methods that call a specific method (incoming) and methods called by it (outgoing). Critical for understanding control flow and method relationships across the codebase.")]
     public static async Task<object> ViewCallGraph(
         ISolutionManager solutionManager,
@@ -1096,7 +1096,7 @@ public static partial class AnalysisTools {
             });
         }, logger, nameof(ViewCallGraph), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(SearchDefinitions), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "search_definitions", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Dual-engine pattern search across source code AND compiled assemblies for public APIs. Perfect for finding all implementations of a pattern - e.g., finding all async methods with 'ConfigureAwait', or all classes implementing IDisposable. Searches declarations, signatures, and type hierarchies.")]
     public static async Task<object> SearchDefinitions(
         ISolutionManager solutionManager,
@@ -1505,7 +1505,7 @@ public static partial class AnalysisTools {
             });
         }, logger, nameof(SearchDefinitions), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ManageUsings), Idempotent = true, ReadOnly = false, Destructive = true, OpenWorld = false)]
+    [McpServerTool(Name = "manage_usings", Idempotent = true, ReadOnly = false, Destructive = true, OpenWorld = false)]
     [Description("Reads or writes using directives in a document.")]
     public static async Task<object> ManageUsings(
                             ISolutionManager solutionManager,
@@ -1620,7 +1620,7 @@ public static partial class AnalysisTools {
         }, logger, nameof(ManageUsings), cancellationToken);
     }
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ManageAttributes), Idempotent = true, ReadOnly = false, Destructive = true, OpenWorld = false)]
+    [McpServerTool(Name = "manage_attributes", Idempotent = true, ReadOnly = false, Destructive = true, OpenWorld = false)]
     [Description("Reads or writes all attributes on a declaration.")]
     public static async Task<object> ManageAttributes(
         ISolutionManager solutionManager,
@@ -1724,7 +1724,7 @@ public static partial class AnalysisTools {
         }, logger, nameof(ManageAttributes), cancellationToken);
     }
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(AnalyzeComplexity), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
+    [McpServerTool(Name = "analyze_complexity", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Deep analysis of code complexity metrics including cyclomatic complexity, cognitive complexity, method stats, coupling, and inheritance depth. Scans methods, classes, or entire projects to identify maintenance risks and guide refactoring decisions.")]
     public static async Task<string> AnalyzeComplexity(
         ISolutionManager solutionManager,
@@ -1785,7 +1785,7 @@ public static partial class AnalysisTools {
         }, logger, nameof(AnalyzeComplexity), cancellationToken);
     }
 
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(FindPotentialDuplicates), Idempotent = true, Destructive = false, OpenWorld = false, ReadOnly = true)]
+    [McpServerTool(Name = "find_duplicates", Idempotent = true, Destructive = false, OpenWorld = false, ReadOnly = true)]
     [Description("Finds groups of semantically similar methods within the solution based on a similarity threshold.")]
     public static async Task<string> FindPotentialDuplicates(
         ISolutionManager solutionManager,

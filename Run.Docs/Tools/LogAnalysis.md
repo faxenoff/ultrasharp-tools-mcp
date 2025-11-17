@@ -10,7 +10,7 @@
 
 ---
 
-## UltrasharpTool_AnalyzeLogs
+## analyze_logs
 
 **Анализ логов с автоопределением формата** — поиск ошибок, исключений, HTTP errors в production logs без загрузки всего файла в память.
 
@@ -18,7 +18,7 @@
 
 ```javascript
 // Базовый поиск
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
 filePath: "D:/Logs/application.log",
 levels: ["Error", "Fatal"],
 keywords: null,
@@ -31,7 +31,7 @@ detailLevel: "Brief"
 )
 
 // Поиск HTTP errors
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
 filePath: "D:/Logs/access.log",
 levels: null,
 keywords: null,
@@ -41,7 +41,7 @@ take: 50
 )
 
 // Поиск по keywords
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
 filePath: "D:/Logs/app.log",
 levels: null,
 keywords: ["NullReferenceException", "OutOfMemory", "Timeout"],
@@ -187,7 +187,7 @@ Suggested actions:
 - Investigate timeout configuration
 
 💡 Use TraceBackwards to analyze crash points
-💡 Example: UltrasharpTool_TraceBackwards(
+💡 Example: trace_backwards(
     crashPointFqn: "MyApp.Services.OrderService.ProcessOrder",
     stackTraceHints: ["at MyApp.Services.OrderService.ProcessOrder"]
 )
@@ -228,14 +228,14 @@ Suggested actions:
 1. **Начните с фильтра по level:**
    ```javascript
    // ✅ Сначала смотрим критичные
-   UltrasharpTool_AnalyzeLogs(
+   analyze_logs(
        filePath: "app.log",
        levels: ["Fatal"],
        ...
    )
 
    // Затем errors
-   UltrasharpTool_AnalyzeLogs(
+   analyze_logs(
        filePath: "app.log",
        levels: ["Error"],
        ...
@@ -245,7 +245,7 @@ Suggested actions:
 2. **Используйте keywords для уточнения:**
    ```javascript
    // Ищем конкретную ошибку
-   UltrasharpTool_AnalyzeLogs(
+   analyze_logs(
        filePath: "app.log",
        levels: ["Error"],
        keywords: ["DatabaseService", "Connect"],
@@ -256,16 +256,16 @@ Suggested actions:
 3. **Pagination для больших результатов:**
    ```javascript
    // Первая страница
-   UltrasharpTool_AnalyzeLogs(..., skip: 0, take: 100)
+   analyze_logs(..., skip: 0, take: 100)
 
    // Вторая страница
-   UltrasharpTool_AnalyzeLogs(..., skip: 100, take: 100)
+   analyze_logs(..., skip: 100, take: 100)
    ```
 
 4. **Настройте context для понимания:**
    ```javascript
    // Больше контекста для сложных случаев
-   UltrasharpTool_AnalyzeLogs(
+   analyze_logs(
        ...,
        contextBefore: 10,  // 10 строк до
        contextAfter: 10    // 10 строк после
@@ -275,7 +275,7 @@ Suggested actions:
 5. **Комбинируйте с TraceBackwards:**
    ```javascript
    // 1. Найти error в логах
-   UltrasharpTool_AnalyzeLogs(
+   analyze_logs(
        filePath: "app.log",
        keywords: ["NullReferenceException"],
        ...
@@ -283,7 +283,7 @@ Suggested actions:
    // Output: stacktrace с "OrderService.ProcessOrder"
 
    // 2. Trace backwards в коде
-   UltrasharpTool_TraceBackwards(
+   trace_backwards(
        crashPointFqn: "MyApp.Services.OrderService.ProcessOrder",
        stackTraceHints: [
            "at MyApp.Services.OrderService.ProcessOrder",
@@ -338,49 +338,49 @@ Results: 18 instances found
 
 ```javascript
 // Все errors и fatals
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "app.log",
     levels: ["Error", "Fatal"]
 )
 
 // HTTP 5xx errors
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "access.log",
     statusCodes: [500, 502, 503, 504]
 )
 
 // HTTP 4xx errors
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "access.log",
     statusCodes: [400, 401, 403, 404]
 )
 
 // Поиск exceptions
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "app.log",
     keywords: ["Exception", "Error", "Failed"]
 )
 
 // Поиск specific exception
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "app.log",
     keywords: ["NullReferenceException"]
 )
 
 // Database errors
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "app.log",
     keywords: ["Database", "SQL", "Connection"]
 )
 
 // Timeout issues
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "app.log",
     keywords: ["Timeout", "TimeoutException"]
 )
 
 // Memory issues
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "app.log",
     keywords: ["OutOfMemoryException", "GC", "Heap"]
 )
@@ -392,7 +392,7 @@ UltrasharpTool_AnalyzeLogs(
 
 ```javascript
 // 1. Найти crash в логах
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "production-2025-11-13.log",
     levels: ["Fatal", "Error"],
     skip: 0,
@@ -401,7 +401,7 @@ UltrasharpTool_AnalyzeLogs(
 // Output: Found "NullReferenceException at OrderService.ProcessOrder"
 
 // 2. Понять контекст
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "production-2025-11-13.log",
     keywords: ["OrderService"],
     contextBefore: 20,
@@ -410,15 +410,15 @@ UltrasharpTool_AnalyzeLogs(
 // Смотрим что происходило до/после
 
 // 3. Trace backwards в коде
-UltrasharpTool_LoadSolution("MyApp.sln")
-UltrasharpTool_TraceBackwards(
+load_solution("MyApp.sln")
+trace_backwards(
     crashPointFqn: "MyApp.Services.OrderService.ProcessOrder",
     stackTraceHints: [...]
 )
 
 // 4. Анализ кода
-UltrasharpTool_ViewDefinition("MyApp.Services.OrderService.ProcessOrder")
-UltrasharpTool_FindReferences("MyApp.Services.OrderService.ProcessOrder")
+view_definition("MyApp.Services.OrderService.ProcessOrder")
+find_references("MyApp.Services.OrderService.ProcessOrder")
 
 // 5. Fix и deploy
 ```
@@ -427,14 +427,14 @@ UltrasharpTool_FindReferences("MyApp.Services.OrderService.ProcessOrder")
 
 ```javascript
 // 1. Найти slow requests
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "access.log",
     statusCodes: [200],  // Success но медленные
     keywords: ["slow", "timeout"]
 )
 
 // 2. Найти 5xx errors (server errors)
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "access.log",
     statusCodes: [500, 502, 503]
 )
@@ -451,19 +451,19 @@ UltrasharpTool_AnalyzeLogs(
 
 ```javascript
 // 1. Unauthorized access attempts
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "access.log",
     statusCodes: [401, 403]
 )
 
 // 2. Suspicious patterns
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "app.log",
     keywords: ["injection", "attack", "malicious"]
 )
 
 // 3. Failed login attempts
-UltrasharpTool_AnalyzeLogs(
+analyze_logs(
     filePath: "auth.log",
     keywords: ["failed", "invalid password"]
 )
@@ -482,16 +482,16 @@ UltrasharpTool_AnalyzeLogs(
 | **TraceBackwards** | Find call paths to crash | Crash point FQN | Possible paths |
 
 **Комбинированный workflow:**
-1. `AnalyzeLogs` — найти error в production logs
-2. `TraceBackwards` — найти как дошли до crash point
-3. `ViewDefinition` — посмотреть код crash point
-4. `FindReferences` — найти все call sites
-5. `OverwriteMember` — исправить bug
+1. `analyze_logs` — найти error в production logs
+2. `trace_backwards` — найти как дошли до crash point
+3. `view_definition` — посмотреть код crash point
+4. `find_references` — найти все call sites
+5. `modify_code` — исправить bug
 6. Deploy и monitor logs
 
 ---
 
-## Расширение AnalyzeLogs
+## Расширение analyze_logs
 
 ### Добавление нового формата
 
