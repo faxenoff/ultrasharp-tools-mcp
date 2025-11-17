@@ -19,6 +19,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Version>1.0.0</Version>
+    <AssemblyName>UltrasharpTools.Droid</AssemblyName>
+    <RootNamespace>UltrasharpTools.Droid</RootNamespace>
 
     <!-- Копирование всех зависимостей NuGet (включая транзитивные от UltrasharpTools.Tools) -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>

@@ -3,7 +3,7 @@
 .SYNOPSIS
     Production build script with ReadyToRun (R2R) compilation
 .DESCRIPTION
-    Publishes RemoteServer and MCPServer with AOT compilation for optimal startup performance
+    Publishes Overlord and Droid with AOT compilation for optimal startup performance
 .PARAMETER Configuration
     Build configuration (default: Release)
 .PARAMETER Runtime
@@ -62,49 +62,49 @@ if (Test-Path $publishDir) {
     Write-Success "Removed $publishDir directory"
 }
 
-# Publish RemoteServer
-Write-Header "Publishing RemoteServer with R2R"
-$remoteOutput = Join-Path $publishDir "RemoteServer"
-dotnet publish UltrasharpTools.RemoteServer/UltrasharpTools.RemoteServer.csproj `
+# Publish Overlord
+Write-Header "Publishing Overlord with R2R"
+$overlordOutput = Join-Path $publishDir "Overlord"
+dotnet publish UltrasharpTools.Overlord/UltrasharpTools.Overlord.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained false `
-    -o $remoteOutput `
+    -o $overlordOutput `
     -p:PublishReadyToRun=true `
     -p:PublishReadyToRunComposite=false
 
 if ($LASTEXITCODE -eq 0) {
-    $remoteSize = (Get-ChildItem $remoteOutput -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-    Write-Success "RemoteServer published successfully ($([math]::Round($remoteSize, 2)) MB)"
+    $overlordSize = (Get-ChildItem $overlordOutput -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+    Write-Success "Overlord published successfully ($([math]::Round($overlordSize, 2)) MB)"
 } else {
-    Write-Error "RemoteServer publish failed"
+    Write-Error "Overlord publish failed"
     exit 1
 }
 
-# Publish MCPServer
-Write-Header "Publishing MCPServer with R2R"
-$mcpOutput = Join-Path $publishDir "MCPServer"
-dotnet publish UltrasharpTools.MCPServer/UltrasharpTools.MCPServer.csproj `
+# Publish Droid
+Write-Header "Publishing Droid with R2R"
+$droidOutput = Join-Path $publishDir "Droid"
+dotnet publish UltrasharpTools.Droid/UltrasharpTools.Droid.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained false `
-    -o $mcpOutput `
+    -o $droidOutput `
     -p:PublishReadyToRun=true `
     -p:PublishReadyToRunComposite=false
 
 if ($LASTEXITCODE -eq 0) {
-    $mcpSize = (Get-ChildItem $mcpOutput -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-    Write-Success "MCPServer published successfully ($([math]::Round($mcpSize, 2)) MB)"
+    $droidSize = (Get-ChildItem $droidOutput -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+    Write-Success "Droid published successfully ($([math]::Round($droidSize, 2)) MB)"
 } else {
-    Write-Error "MCPServer publish failed"
+    Write-Error "Droid publish failed"
     exit 1
 }
 
 # Summary
 Write-Header "Build Summary"
 Write-Info "Output directory: $publishDir"
-Write-Info "RemoteServer: $remoteOutput"
-Write-Info "MCPServer: $mcpOutput"
+Write-Info "Overlord: $overlordOutput"
+Write-Info "Droid: $droidOutput"
 Write-Success "Production build completed successfully!"
 
 # Display R2R info

@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 # Training Client for Static PGO
-# Sends multiple MCP commands to MCPServer to exercise hot paths
+# Sends multiple MCP commands to Droid to exercise hot paths
 
 param(
     [Parameter(Mandatory=$true)]
@@ -96,7 +96,7 @@ try {
     Start-Sleep -Seconds 1
 
     # Call UltrasharpTool_LoadProject for multiple projects (exercises hot paths)
-    $projects = @("UltrasharpTools.Tools", "UltrasharpTools.MCPServer", "UltrasharpTools.RemoteServer")
+    $projects = @("UltrasharpTools.Tools", "UltrasharpTools.Droid", "UltrasharpTools.Overlord")
     foreach ($projectName in $projects) {
         Write-Host "Calling UltrasharpTool_LoadProject for $projectName..." -ForegroundColor Cyan
         Send-McpRequest -Process $process -Method "tools/call" -Params @{

@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 SharpTools — это MCP-сервер, предоставляющий AI-агентам возможности анализа и модификации C# кодовых баз с использованием Roslyn. Проект состоит из трёх основных компонентов:
 
 - **UltrasharpTools.Tools** — библиотека с MCP инструментами и сервисами для работы с C# кодом
-- **UltrasharpTools.RemoteServer** — HTTP-сервер (SSE) для удалённого доступа
-- **UltrasharpTools.MCPServer** — Stdio-сервер для локальной интеграции с MCP-клиентами
+- **UltrasharpTools.Overlord** — HTTP-сервер (SSE) для удалённого доступа
+- **UltrasharpTools.Droid** — Stdio-сервер для локальной интеграции с MCP-клиентами
 
 ## Команды разработки
 
@@ -24,7 +24,7 @@ ultrasharp-tools-mcp/
 ```
 
 **Dev.Scripts/** содержит:
-- `publish-mcp.ps1` — оптимизированная сборка MCPServer
+- `publish-mcp.ps1` — оптимизированная сборка Droid
 - `setup-semantic-embedding.ps1` — настройка semantic embedding
 - `detect-gpu-architecture.ps1` — определение GPU архитектуры
 - `convert-tokenizer-to-fast.ps1/.py` — конвертация токенизаторов
@@ -38,10 +38,10 @@ ultrasharp-tools-mcp/
 
 ### Сборка
 
-**Оптимизированная публикация MCPServer:**
+**Оптимизированная публикация Droid:**
 ```bash
 # Windows
-publish-mcp-server.cmd
+publish-droid.cmd
 
 # Linux/macOS
 pwsh Dev.Scripts/publish-mcp.ps1
@@ -52,7 +52,7 @@ pwsh Dev.Scripts/publish-mcp.ps1
 - ✅ Удаление PDB файлов (~34 MB)
 - ✅ Удаление BuildHost директорий
 - ✅ Организация Scripts/ и Config/
-- 📦 Результат: `Run.Publish/MCPServer/` (~103 MB)
+- 📦 Результат: `Run.Publish/Droid/` (~103 MB)
 
 **Обычная сборка для разработки:**
 ```bash
@@ -64,14 +64,14 @@ dotnet build UltrasharpTools.sln -c Release
 
 **SSE Server (HTTP):**
 ```bash
-cd UltrasharpTools.RemoteServer
+cd UltrasharpTools.Overlord
 dotnet run -- --port 3001 --log-level Information
 dotnet run -- --port 3001 --log-file ./logs/server.log --log-level Debug --build-configuration Debug
 ```
 
 **Stdio Server:**
 ```bash
-cd UltrasharpTools.MCPServer
+cd UltrasharpTools.Droid
 dotnet run -- --log-directory ./logs --log-level Information
 ```
 
@@ -178,8 +178,8 @@ services.WithSharpToolsServices(enableGit: true, buildConfiguration: "Debug");
 
 Для MCP:
 ```csharp
-services.AddMcpServer()
-    .WithHttpTransport() // или .WithMCPServerTransport()
+services.AddDroid()
+    .WithHttpTransport() // или .WithDroidTransport()
     .WithSharpTools();
 ```
 
@@ -208,7 +208,7 @@ Semantic Merge автоматически регистрирует:
 
 ### Добавление новых инструментов
 
-1. Создать метод в соответствующем классе Tools с атрибутами `[McpServerTool]` и `[Description]`
+1. Создать метод в соответствующем классе Tools с атрибутами `[DroidTool]` и `[Description]`
 2. Использовать dependency injection для сервисов
 3. Обернуть логику в `ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync`
 4. Регистрировать в `ServiceCollectionExtensions.WithSharpTools()` (если нужно)

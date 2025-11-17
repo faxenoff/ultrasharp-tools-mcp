@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Build only MCPServer for Claude Code / MCP clients
+    Build only Droid for Claude Code / MCP clients
 .PARAMETER Configuration
     Build configuration (default: Release)
 .PARAMETER Runtime
@@ -43,7 +43,7 @@ function Write-Success { param([string]$Text) Write-Host "✓ $Text" -Foreground
 function Write-Info { param([string]$Text) Write-Host "→ $Text" -ForegroundColor Yellow }
 function Write-Error { param([string]$Text) Write-Host "✗ $Text" -ForegroundColor Red }
 
-Write-Header "UltrasharpTools MCPServer Build (MCP)"
+Write-Header "UltrasharpTools Droid Build (MCP)"
 Write-Info "Configuration: $Configuration"
 Write-Info "Runtime: $Runtime"
 Write-Info "ReadyToRun: Enabled (non-composite)"
@@ -51,16 +51,16 @@ Write-Info "ReadyToRun: Enabled (non-composite)"
 # Clean previous artifacts
 Write-Header "Cleaning previous artifacts"
 $publishDir = "Run.Publish"
-$mcpOutput = Join-Path $publishDir "MCPServer"
+$mcpOutput = Join-Path $publishDir "Droid"
 
 if (Test-Path $mcpOutput) {
     Remove-Item $mcpOutput -Recurse -Force
     Write-Success "Removed $mcpOutput directory"
 }
 
-# Publish MCPServer (automatically builds UltrasharpTools.Tools)
-Write-Header "Publishing MCPServer with R2R"
-dotnet publish UltrasharpTools.MCPServer/UltrasharpTools.MCPServer.csproj `
+# Publish Droid (automatically builds UltrasharpTools.Tools)
+Write-Header "Publishing Droid with R2R"
+dotnet publish UltrasharpTools.Droid/UltrasharpTools.Droid.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained false `
@@ -77,9 +77,9 @@ if ($LASTEXITCODE -eq 0) {
     }
 
     $mcpSize = (Get-ChildItem $mcpOutput -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-    Write-Success "MCPServer published successfully ($([math]::Round($mcpSize, 2)) MB)"
+    Write-Success "Droid published successfully ($([math]::Round($mcpSize, 2)) MB)"
 } else {
-    Write-Error "MCPServer publish failed"
+    Write-Error "Droid publish failed"
     exit 1
 }
 
@@ -164,7 +164,7 @@ if (Test-Path $organizeScript) {
 # Summary
 Write-Header "Build Summary"
 Write-Info "Output: $mcpOutput"
-Write-Info "Executable: $mcpOutput\UltrasharpTools.MCPServer.exe"
+Write-Info "Executable: $mcpOutput\UltrasharpTools.Droid.exe"
 Write-Success "MCP server build completed!"
 
 # Display info
@@ -175,7 +175,7 @@ Write-Host @"
 {
   "mcpServers": {
     "SharpTools": {
-      "command": "$(Resolve-Path $mcpOutput)\UltrasharpTools.MCPServer.exe",
+      "command": "$(Resolve-Path $mcpOutput)\UltrasharpTools.Droid.exe",
       "args": [
         "--log-directory",
         "$(Resolve-Path .)\Run.Logs",

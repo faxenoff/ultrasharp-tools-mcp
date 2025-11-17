@@ -5,11 +5,11 @@
 .DESCRIPTION
     Displays final directory structure after publishing
 .PARAMETER PublishDir
-    Path to publish directory (default: Run.Publish/MCPServer)
+    Path to publish directory (default: Run.Publish/Droid)
 #>
 
 param(
-    [string]$PublishDir = "Run.Publish\MCPServer"
+    [string]$PublishDir = "Run.Publish\Droid"
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,8 +51,8 @@ Write-Host ""
 
 Write-Host "Root directory structure:" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  MCPServer/" -ForegroundColor White
-Write-Host "  ├── UltrasharpTools.MCPServer.exe      (Main executable)" -ForegroundColor Green
+Write-Host "  Droid/" -ForegroundColor White
+Write-Host "  ├── UltrasharpTools.Droid.exe           (Main executable)" -ForegroundColor Green
 Write-Host "  ├── *.dll, *.pdb                        (Runtime files)" -ForegroundColor DarkGray
 Write-Host "  │" -ForegroundColor DarkGray
 Write-Host "  ├── setup-semantic-embedding.ps1        (Setup script)" -ForegroundColor Yellow

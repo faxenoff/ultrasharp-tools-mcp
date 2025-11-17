@@ -3,7 +3,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server
+  repository: ghcr.io/YOUR_ORG/ultrasharp-tools-overlord
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion
   tag: "latest"

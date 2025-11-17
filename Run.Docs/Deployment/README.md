@@ -1,4 +1,4 @@
-# UltrasharpTools RemoteServer - Deployment Guide
+﻿# UltrasharpTools Overlord - Deployment Guide
 
 Полное руководство по развертыванию UltrasharpTools MCP Remote Server в Kubernetes кластере.
 
@@ -278,7 +278,7 @@ kubectl port-forward svc/ultrasharp-tools-server 3001:3001 -n ultrasharp-tools
 ```bash
 # Обновить образ до latest
 kubectl set image deployment/ultrasharp-tools-server \
-  ultrasharp-tools=ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server:latest \
+  ultrasharp-tools=ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:latest \
   -n ultrasharp-tools
 
 # Проверить rollout
@@ -316,7 +316,7 @@ helm install ultrasharp-tools ./helm/ultrasharp-tools \
 ```yaml
 # my-values.yaml
 image:
-  repository: ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server
+  repository: ghcr.io/YOUR_ORG/ultrasharp-tools-overlord
   tag: "latest"
 
 ingress:
@@ -393,8 +393,8 @@ GitHub Actions автоматически собирает и публикует
 **Workflow:** `.github/workflows/docker-publish.yml`
 
 **Автоматические теги:**
-- `dev` branch → `ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server:dev`
-- `release` branch → `ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server:latest`
+- `dev` branch → `ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:dev`
+- `release` branch → `ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:latest`
 
 ### Использование образа из GHCR
 
@@ -427,10 +427,10 @@ echo $GITHUB_PAT | docker login ghcr.io -u YOUR_USERNAME --password-stdin
 
 # Tag
 docker tag ultrasharp-tools-server:release \
-  ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server:v1.0.0
+  ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v1.0.0
 
 # Push
-docker push ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server:v1.0.0
+docker push ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v1.0.0
 ```
 
 ---

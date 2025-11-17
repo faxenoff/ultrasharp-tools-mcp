@@ -1,4 +1,4 @@
-# Инструменты работы с Solution
+﻿# Инструменты работы с Solution
 
 **Точка входа для всех операций с C# проектами.** Загружает .sln файл, инициализирует MSBuildWorkspace и предоставляет структурную карту проекта для навигации.
 
@@ -123,13 +123,13 @@ Solution loaded successfully: MyProject.sln
 3. **Проверяйте build configuration:**
    ```bash
    # При запуске сервера укажите нужную конфигурацию
-   UltrasharpTools.MCPServer.exe --build-configuration Release
+   UltrasharpTools.Droid.exe --build-configuration Release
    ```
 
 4. **Логируйте для диагностики:**
    ```bash
    # Используйте Debug логи при проблемах с загрузкой
-   UltrasharpTools.MCPServer.exe --log-level Debug --log-directory ./Run.Logs
+   UltrasharpTools.Droid.exe --log-level Debug --log-directory ./Run.Logs
    ```
 
 ### Типичные ошибки
@@ -512,7 +512,7 @@ Large project (50+ projects):     1.5-3 GB
 
 ```bash
 # 1. Запустите сервер
-cd UltrasharpTools.MCPServer
+cd UltrasharpTools.Droid
 dotnet run -- --log-level Debug
 
 # 2. Через MCP вызовите
@@ -554,10 +554,10 @@ time dotnet run -- --load-solution "D:/MyProject/MyProject.sln"
 
 ## Дополнительные опции командной строки
 
-При запуске серверов (MCPServer или RemoteServer) доступны опции для настройки поведения:
+При запуске серверов (Droid или Overlord) доступны опции для настройки поведения:
 
 ```bash
-UltrasharpTools.MCPServer.exe \
+UltrasharpTools.Droid.exe \
   --load-solution "D:/MyProject/MyProject.sln" \
   --build-configuration "Release" \
   --disable-git \
@@ -570,9 +570,9 @@ UltrasharpTools.MCPServer.exe \
 - `--build-configuration <config>` — Debug или Release (default: Debug)
 - `--disable-git` — отключить Git интеграцию
 - `--log-level <level>` — Verbose, Debug, Information, Warning, Error, Fatal
-- `--log-directory <path>` — директория для логов (только MCPServer)
-- `--log-file <path>` — файл для логов (только RemoteServer)
-- `--port <number>` — порт для HTTP (только RemoteServer, default: 3001)
+- `--log-directory <path>` — директория для логов (только Droid)
+- `--log-file <path>` — файл для логов (только Overlord)
+- `--port <number>` — порт для HTTP (только Overlord, default: 3001)
 
 ---
 

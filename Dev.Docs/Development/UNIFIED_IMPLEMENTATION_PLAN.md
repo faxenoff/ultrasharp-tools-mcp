@@ -1,4 +1,4 @@
-# Unified Implementation Plan: Layered Vector Index + Incremental Updates
+﻿# Unified Implementation Plan: Layered Vector Index + Incremental Updates
 
 **Дата создания:** 2025-01-16
 **Версия:** 1.0
@@ -10,13 +10,13 @@
 
 Создать **унифицированную индексную архитектуру**, которая решает следующие задачи:
 
-### Для локальной разработки (MCPServer)
+### Для локальной разработки (Droid)
 - ✅ **Быстрое переключение веток** (без полной перестройки индекса)
 - ✅ **Инкрементные обновления** (изменения сразу видны)
 - ✅ **Branch-aware индексация** (каждая ветка имеет свой слой)
 - ✅ **Персистентность** (быстрая загрузка после перезапуска)
 
-### Для серверной среды (RemoteServer)
+### Для серверной среды (Overlord)
 - ✅ **Multi-client изоляция** (разные клиенты не мешают друг другу)
 - ✅ **Shared base layer** (экономия памяти)
 - ✅ **Per-client uncommitted changes** (незакоммиченные изменения изолированы)
@@ -444,8 +444,8 @@ CREATE TABLE deleted_vectors (
    }
    ```
 3. Client ID management:
-   - MCPServer: `Process.GetCurrentProcess().Id`
-   - RemoteServer: HTTP Header `X-Client-Id` или Session ID
+   - Droid: `Process.GetCurrentProcess().Id`
+   - Overlord: HTTP Header `X-Client-Id` или Session ID
 
 #### 2.2 Code Modification Integration (1-2 дня)
 **Файлы:**
@@ -814,7 +814,7 @@ CREATE TABLE deleted_vectors (
 **Сценарии:**
 1. **Branch workflow:**
    - Create branch → Modify code → Commit → Switch branch → Verify isolation
-2. **Multi-client scenario (RemoteServer):**
+2. **Multi-client scenario (Overlord):**
    - Client A in `feature/auth` with uncommitted changes
    - Client B in `feature/payments` with different uncommitted
    - Verify isolation and no conflicts
@@ -863,7 +863,7 @@ CREATE TABLE deleted_vectors (
 #### 8.2 Command-Line Configuration (1 день)
 **Новые флаги:**
 ```bash
-# MCPServer
+# Droid
 stserver.exe \
   --layered-indexing true \         # Enable layered indexing (default: false)
   --max-branch-deltas 20 \          # LRU cache size for branch deltas
@@ -871,7 +871,7 @@ stserver.exe \
   --enable-vector-layering true \   # Enable vector deltas (default: false)
   --vector-lazy-generation true     # Generate embeddings lazily (default: true)
 
-# RemoteServer
+# Overlord
 sseserver.exe \
   --layered-indexing true \
   --multi-client-isolation true \   # Enable Layer 2 (working deltas)
@@ -947,7 +947,7 @@ Savings: 88%
 - Branch-aware indexing работает
 - Incremental updates работают
 - Значительный performance boost
-- Production-ready для single-user (MCPServer)
+- Production-ready для single-user (Droid)
 
 ### Full Feature Set - 30-40 дней
 
@@ -955,7 +955,7 @@ Savings: 88%
 - Фаза 0-8 полностью
 
 **Результат:**
-- Multi-client isolation (RemoteServer)
+- Multi-client isolation (Overlord)
 - Vector semantic search с layering
 - Full Git workflow support
 - Comprehensive testing
@@ -969,7 +969,7 @@ Savings: 88%
 
 **Week 1-3:** MVP
 - Базовый layered indexing работает
-- Можно использовать в production (MCPServer)
+- Можно использовать в production (Droid)
 - Собрать feedback
 
 **Week 4-6:** Full Feature Set
@@ -1026,7 +1026,7 @@ Savings: 88%
 - Delta compaction для больших веток
 - Fallback to full rebuild при экстремальных сценариях
 
-### Риск 3: Concurrency issues в RemoteServer
+### Риск 3: Concurrency issues в Overlord
 **Вероятность:** Средняя
 **Влияние:** Критическое
 **Митигация:**

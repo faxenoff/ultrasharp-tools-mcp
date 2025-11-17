@@ -6,7 +6,7 @@ on:
       - dev
       - release
     paths:
-      - 'UltrasharpTools.RemoteServer/**'
+      - 'UltrasharpTools.Overlord/**'
       - 'UltrasharpTools.Tools/**'
       - 'Dockerfile'
       - '.github/workflows/docker-publish.yml'
@@ -22,7 +22,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/ultrasharp-tools-remote-server
+  IMAGE_NAME: ${{ github.repository_owner }}/ultrasharp-tools-overlord
 
 jobs:
   build-and-push:

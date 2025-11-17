@@ -106,10 +106,10 @@ print_info "Using solution for training: $SOLUTION_PATH"
 # Determine projects to build
 declare -a PROJECTS=()
 if [[ "$SERVER" == "MCP" ]] || [[ "$SERVER" == "Both" ]]; then
-    PROJECTS+=("UltrasharpTools.MCPServer")
+    PROJECTS+=("UltrasharpTools.Droid")
 fi
 if [[ "$SERVER" == "Remote" ]] || [[ "$SERVER" == "Both" ]]; then
-    PROJECTS+=("UltrasharpTools.RemoteServer")
+    PROJECTS+=("UltrasharpTools.Overlord")
 fi
 
 # Print header
@@ -163,10 +163,10 @@ for PROJECT in "${PROJECTS[@]}"; do
     print_step "Phase 2: Training - Running typical scenarios"
 
     # Find executable
-    if [[ "$PROJECT" == "UltrasharpTools.MCPServer" ]]; then
-        EXECUTABLE="$INSTRUMENT_OUTPUT/UltrasharpTools.MCPServer"
+    if [[ "$PROJECT" == "UltrasharpTools.Droid" ]]; then
+        EXECUTABLE="$INSTRUMENT_OUTPUT/UltrasharpTools.Droid"
     else
-        EXECUTABLE="$INSTRUMENT_OUTPUT/stserver"
+        EXECUTABLE="$INSTRUMENT_OUTPUT/UltrasharpTools.Overlord"
     fi
 
     if [[ ! -f "$EXECUTABLE" ]]; then

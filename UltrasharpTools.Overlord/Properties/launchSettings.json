@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "UltrasharpTools.RemoteServer": {
+    "UltrasharpTools.Overlord": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

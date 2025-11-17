@@ -1,4 +1,4 @@
-# Unified Dual-Mode Architecture: ultrasharp-tool
+﻿# Unified Dual-Mode Architecture: ultrasharp-tool
 
 **Один универсальный инструмент для локальной и сетевой работы.**
 
@@ -7,7 +7,7 @@
 ## 🎯 Концепция
 
 **Проблема текущего подхода:**
-- MCPServer (local) vs RemoteServer → два разных приложения
+- Droid (local) vs Overlord → два разных приложения
 - Пользователи должны выбирать и настраивать разные системы
 - Нет гибридного режима
 
@@ -54,13 +54,13 @@ UltrasharpTools.sln
 │     ├─ LocalVectorStore          ← локальная база
 │     └─ RemoteVectorStoreClient   ← NEW! клиент к серверу
 │
-├─ UltrasharpTools.MCPServer/       → RENAME TO: UltrasharpTools/
+├─ UltrasharpTools.Droid/       → RENAME TO: UltrasharpTools/
 │  ├─ Program.cs                    # Entry point
 │  ├─ Config/
 │  │  └─ ultrasharp-config.json    ← режим работы
 │  └─ UltrasharpTools.csproj
 │
-└─ UltrasharpTools.RemoteServer/    # Server (unchanged)
+└─ UltrasharpTools.Overlord/    # Server (unchanged)
    └─ (AI Agent capabilities added)
 ```
 
@@ -324,7 +324,7 @@ Response (chunked):
 
 ---
 
-## 🧠 RemoteServer Advanced Capabilities
+## 🧠 Overlord Advanced Capabilities
 
 ### 1. Multi-threaded Instrumental Processing
 
@@ -333,7 +333,7 @@ Response (chunked):
 **Решение:**
 
 ```csharp
-// RemoteServer/Services/ParallelExecutionService.cs
+// Overlord/Services/ParallelExecutionService.cs
 public class ParallelExecutionService
 {
     private readonly SemaphoreSlim _semaphore;
@@ -395,7 +395,7 @@ var results = await _parallelExecution.ExecuteParallel(
 
 ```
 ┌────────────────────────────────────────────────┐
-│ RemoteServer                                   │
+│ Overlord                                   │
 │                                                │
 │ ┌────────────────────────────────────────┐    │
 │ │ GPU Embedding Service                  │    │
@@ -826,11 +826,11 @@ foreach (var user in users)
 
 ---
 
-## 📊 RemoteServer Architecture
+## 📊 Overlord Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ RemoteServer (Kubernetes)                                    │
+│ Overlord (Kubernetes)                                    │
 │                                                              │
 │ ┌────────────────────────────────────────────────────────┐  │
 │ │ API Layer (ASP.NET Core)                               │  │
@@ -1031,14 +1031,14 @@ Total server storage:      ~2.8 GB
 ## 🎯 Implementation Roadmap
 
 ### Phase 1: Dual-Mode Support (2-3 недели)
-- [ ] Переименовать MCPServer → UltrasharpTools
+- [ ] Переименовать Droid → UltrasharpTools
 - [ ] Добавить config: mode selection
 - [ ] LocalVectorStore (существует)
 - [ ] RemoteVectorStoreClient
 - [ ] SyncService (background sync)
 - [ ] Auto-routing (local vs server)
 
-### Phase 2: RemoteServer Multi-threading (1 неделя)
+### Phase 2: Overlord Multi-threading (1 неделя)
 - [ ] ParallelExecutionService
 - [ ] Thread pool configuration
 - [ ] Benchmarking

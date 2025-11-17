@@ -18,7 +18,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Version>1.0.0</Version>
-    <AssemblyName>stserver</AssemblyName>
+    <AssemblyName>UltrasharpTools.Overlord</AssemblyName>
+    <RootNamespace>UltrasharpTools.Overlord</RootNamespace>
 
     <!-- Копирование всех зависимостей NuGet (включая транзитивные от UltrasharpTools.Tools) -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>

@@ -1,4 +1,4 @@
-# Pre-Commit Hook Integration Design
+﻿# Pre-Commit Hook Integration Design
 
 **Автоматическая проверка кода перед коммитом через сервер и LLM модель для КАЖДОГО разработчика.**
 
@@ -14,7 +14,7 @@ Developer пишет код → git commit
 ultrasharp-tool (network mode)
        ↓ отправляет changed files
 
-RemoteServer + LLM Model (DeepSeek-Coder 16B)
+Overlord + LLM Model (DeepSeek-Coder 16B)
        ↓ анализирует код
 
 ┌─────────────────────────────────────────────┐
@@ -76,7 +76,7 @@ RemoteServer + LLM Model (DeepSeek-Coder 16B)
                     │
                     ↓
 ┌──────────────────────────────────────────────────────┐
-│ RemoteServer (GPU + LLM)                             │
+│ Overlord (GPU + LLM)                             │
 │                                                      │
 │  ┌────────────────────────────────────────────┐     │
 │  │ API: POST /api/pre-commit                  │     │
@@ -207,7 +207,7 @@ exit $?
 // Commands/PreCommitCheckCommand.cs
 public class PreCommitCheckCommand
 {
-    private readonly IRemoteServerClient _serverClient;
+    private readonly IOverlordClient _serverClient;
     private readonly IGitService _gitService;
 
     public async Task<int> Execute(string repoPath, string serverUrl, string[] checks)
@@ -327,7 +327,7 @@ public class PreCommitCheckCommand
 
 ### 3. Server-Side Analysis
 
-**RemoteServer API endpoint:**
+**Overlord API endpoint:**
 
 ```csharp
 // Controllers/PreCommitController.cs

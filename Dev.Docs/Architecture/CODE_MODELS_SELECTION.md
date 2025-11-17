@@ -1,4 +1,4 @@
-# Code Models Selection Guide
+﻿# Code Models Selection Guide
 
 **Лучшие модели для semantic code analysis на мощной GPU конфигурации (48GB VRAM, 256GB RAM).**
 
@@ -445,7 +445,7 @@ services:
             - capabilities: [gpu]
               device_ids: ['0']  # Same GPU!
 
-  # ========== RemoteServer ==========
+  # ========== Overlord ==========
 
   ultrasharp-server:
     image: ultrasharp-tools-server:latest
@@ -569,7 +569,7 @@ Capabilities:
 
 ## 📖 Вывод
 
-**Для ultrasharp-tools RemoteServer с 48GB GPU:**
+**Для ultrasharp-tools Overlord с 48GB GPU:**
 
 **Embeddings (обязательно):**
 - ✅ **CodeT5+ 110M** - лучшая для code search

@@ -1,4 +1,4 @@
-# Three-Layer Architecture Extension
+﻿# Three-Layer Architecture Extension
 
 ## 🔄 Extended Design: Multi-Layer Architecture
 
@@ -21,8 +21,8 @@ Developer B (same feature/auth branch):
 ```
 
 **This applies to:**
-- ✅ **RemoteServer (SSE):** Different clients in same branch with different uncommitted changes
-- ✅ **MCPServer (stdio):** Single client, but uncommitted changes need separate layer
+- ✅ **Overlord (SSE):** Different clients in same branch with different uncommitted changes
+- ✅ **Droid (stdio):** Single client, but uncommitted changes need separate layer
 
 ---
 
@@ -255,13 +255,13 @@ Savings: 88% memory reduction
 
 ## 🚀 Client ID Strategies
 
-### MCPServer (stdio)
+### Droid (stdio)
 ```csharp
 // Process ID unique per Claude window
 var clientId = $"stdio_{Process.GetCurrentProcess().Id}";
 ```
 
-### RemoteServer (HTTP SSE)
+### Overlord (HTTP SSE)
 ```csharp
 // HTTP header
 [FromHeader(Name = "X-Client-Id")] string? clientId

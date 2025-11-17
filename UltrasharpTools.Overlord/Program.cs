@@ -9,11 +9,11 @@ using Microsoft.AspNetCore.HttpLogging;
 using ModelContextProtocol.Protocol;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
-namespace UltrasharpTools.SseServer;
+namespace UltrasharpTools.Overlord;
 
 public class Program {
     // --- Application ---
-    public const string ApplicationName = "UltrasharpToolsMcpSseServer";
+    public const string ApplicationName = "UltrasharpToolsMcpOverlord";
     public const string ApplicationVersion = "1.0.0";
     public static async Task<int> Main(string[] args) {
         // Ensure tool assemblies are loaded for MCP SDK's WithToolsFromAssembly
@@ -62,7 +62,7 @@ public class Program {
             Description = "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache)."
         };
 
-        var rootCommand = new RootCommand("UltrasharpTools MCP Server") {
+        var rootCommand = new RootCommand("UltrasharpTools MCP Overlord") {
         portOption,
         logFileOption,
         logLevelOption,

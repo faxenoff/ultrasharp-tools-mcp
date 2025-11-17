@@ -1,4 +1,4 @@
-# Hybrid Architecture: ultrasharp-tools-droid
+﻿# Hybrid Architecture: ultrasharp-tools-droid
 
 **Lightweight local client + Powerful remote server**
 
@@ -56,7 +56,7 @@
 
 ## 📦 Размер ultrasharp-tools-droid
 
-### Текущий MCPServer (~103 MB)
+### Текущий Droid (~103 MB)
 
 ```
 .NET Runtime: ~15 MB
@@ -142,7 +142,7 @@ UltrasharpTools.Droid/
 │  ├─ EmbeddingsService.cs       # Векторизация через Ollama/TEI
 │  └─ ServerBridgeService.cs     # Communication с server
 ├─ Protocol/
-│  ├─ MCPServerClient.cs         # MCP protocol over SSE/HTTP
+│  ├─ DroidClient.cs         # MCP protocol over SSE/HTTP
 │  ├─ Messages/                  # Message types
 │  └─ VectorSerializer.cs        # Сериализация vectors
 └─ Config/
@@ -625,8 +625,8 @@ Developer B работает над feature-payment в TeamProject1
 # Новая структура
 UltrasharpTools.sln
 ├─ UltrasharpTools.Tools/      # существующий (shared library)
-├─ UltrasharpTools.MCPServer/  # существующий (local stdio)
-├─ UltrasharpTools.RemoteServer/ # существующий (remote HTTP/SSE)
+├─ UltrasharpTools.Droid/  # существующий (local stdio)
+├─ UltrasharpTools.Overlord/ # существующий (remote HTTP/SSE)
 └─ UltrasharpTools.Droid/      # НОВЫЙ! (hybrid client)
    ├─ Program.cs
    ├─ Services/
@@ -711,7 +711,7 @@ UltrasharpTools.Droid.exe: ~32 MB
 
 ### Phase 2: Server расширения
 
-**Добавить в UltrasharpTools.RemoteServer:**
+**Добавить в UltrasharpTools.Overlord:**
 
 ```csharp
 // Services/MultiProjectVectorStore.cs

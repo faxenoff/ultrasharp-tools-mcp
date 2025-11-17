@@ -1,4 +1,4 @@
-# Embeddings Setup Guide
+﻿# Embeddings Setup Guide
 
 Руководство по настройке embedding providers для семантического анализа C# кода в UltrasharpTools MCP.
 
@@ -396,7 +396,7 @@ public class MyService
 ### Через MCP Server
 
 ```bash
-dotnet run --project UltrasharpTools.MCPServer
+dotnet run --project UltrasharpTools.Droid
 ```
 
 **Логи при запуске:**

@@ -1,4 +1,4 @@
-# UltrasharpTools MCP Server
+﻿# UltrasharpTools MCP Server
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -206,7 +206,7 @@ CSharpier форматирование + Roslyn analyzers + автофиксы �
 
 **Windows (быстрый способ):**
 ```cmd
-publish-mcp-server.cmd
+publish-droid.cmd
 ```
 
 **PowerShell:**
@@ -219,17 +219,17 @@ publish-mcp-server.cmd
 ./Dev.Scripts/publish-mcp.sh
 ```
 
-**Результат**: `Run.Publish/MCPServer/` - готовый к запуску сервер со всеми зависимостями.
+**Результат**: `Run.Publish/Droid/` - готовый к запуску сервер со всеми зависимостями.
 
 ### Интеграция с Claude Desktop
 
 **Глобальная конфигурация** (`~/.claude.json` или `%USERPROFILE%\.claude.json`):
 ```json
 {
-  "mcpServers": {
+  "Droids": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "D:/path/to/Run.Publish/MCPServer/UltrasharpTools.MCPServer.exe",
+      "command": "D:/path/to/Run.Publish/Droid/UltrasharpTools.Droid.exe",
       "args": [
         "--log-level", "Information"
       ],
@@ -273,7 +273,7 @@ UltrasharpTools MCP поддерживает два режима работы с
 ```
 Claude Desktop (ваша машина)
     ↓ запускает локальный процесс через stdio
-UltrasharpTools.MCPServer.exe
+UltrasharpTools.Droid.exe
     ↓ ПРЯМОЙ доступ к файловой системе
 Ваши проекты (D:\Projects\, C:\Users\, /home/user/, и т.д.)
 ```
@@ -281,10 +281,10 @@ UltrasharpTools.MCPServer.exe
 **Конфигурация (`claude_desktop_config.json`):**
 ```json
 {
-  "mcpServers": {
+  "Droids": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "D:/path/to/UltrasharpTools.MCPServer.exe",
+      "command": "D:/path/to/UltrasharpTools.Droid.exe",
       "args": ["--log-level", "Information"]
     }
   }
@@ -573,7 +573,7 @@ UltrasharpTools.Tools (Class Library)
          │                           │
          │                           │
 
-MCPServer (Console)         RemoteServer (Web)
+Droid (Console)         Overlord (Web)
 ├─ Stdio transport          ├─ HTTP/SSE transport
 ├─ For: Claude Code         ├─ For: Remote access
 └─ Output: exe + deps       └─ Output: exe + deps
@@ -638,7 +638,7 @@ MCPServer (Console)         RemoteServer (Web)
 
 **Command line options:**
 ```bash
-# MCPServer (stdio)
+# Droid (stdio)
 --log-level <level>              # Trace|Debug|Information|Warning|Error|Critical
 --load-solution <path>           # Автозагрузка .sln при старте
 --build-configuration <config>   # Debug|Release
@@ -646,9 +646,9 @@ MCPServer (Console)         RemoteServer (Web)
 --symbol-cache                   # Включить persistent cache (по умолчанию: true)
 --symbol-cache-clear             # Очистить cache при старте
 
-# RemoteServer (HTTP/SSE)
+# Overlord (HTTP/SSE)
 --port <number>                  # HTTP порт (по умолчанию: 3001)
-# + все опции MCPServer
+# + все опции Droid
 ```
 
 **Layered Indexing** (настраивается в DI):
@@ -686,7 +686,7 @@ dotnet build UltrasharpTools.sln
 ### Production Build
 ```bash
 # Windows
-publish-mcp-server.cmd
+publish-droid.cmd
 
 # PowerShell
 .\Dev.Scripts\publish-mcp.ps1
@@ -701,12 +701,12 @@ publish-mcp-server.cmd
 
 ### Запуск из исходников
 ```bash
-# MCPServer (stdio)
-cd UltrasharpTools.MCPServer
+# Droid (stdio)
+cd UltrasharpTools.Droid
 dotnet run -- --log-level Debug
 
-# RemoteServer (HTTP)
-cd UltrasharpTools.RemoteServer
+# Overlord (HTTP)
+cd UltrasharpTools.Overlord
 dotnet run -- --port 3001 --log-level Information
 ```
 

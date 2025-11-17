@@ -1,4 +1,4 @@
-# UltrasharpTools Performance Testing Report
+﻿# UltrasharpTools Performance Testing Report
 
 **Дата тестирования:** 2025-01-14
 **Тестируемая кодовая база:** SharpTools.sln (собственный проект)
@@ -26,7 +26,7 @@
 
 **Результаты:**
 - ✅ Solution успешно загружен
-- **Проекты:** 3 (UltrasharpTools.Tools, UltrasharpTools.MCPServer, UltrasharpTools.RemoteServer)
+- **Проекты:** 3 (UltrasharpTools.Tools, UltrasharpTools.Droid, UltrasharpTools.Overlord)
 - **Документы:** 104 файла
 - **Target Framework:** net10.0
 - **Symbol Index:** Построен, ready for queries
@@ -87,7 +87,7 @@
 **Результаты:**
 - ✅ Найдено **7 ссылок** на метод
 - **Locations:**
-  - Program.cs (MCPServer и RemoteServer) - 2 ссылки
+  - Program.cs (Droid и Overlord) - 2 ссылки
   - SolutionTools.cs (MCP tool) - 1 ссылка
   - CodeFixService.cs - 1 ссылка
   - DiagnosticService.cs - 1 ссылка
@@ -214,7 +214,7 @@ Warm cache даёт ожидаемое ускорение 5-10x для повт�
 
 **Причина:** Инструмент реализован в TraceTools.cs, но не зарегистрирован в MCP server или есть проблема с naming.
 
-**Рекомендация:** Проверить регистрацию tool в ServiceCollectionExtensions.WithSharpTools() и убедиться, что атрибут `[McpServerTool]` корректен.
+**Рекомендация:** Проверить регистрацию tool в ServiceCollectionExtensions.WithSharpTools() и убедиться, что атрибут `[DroidTool]` корректен.
 
 ---
 
@@ -392,7 +392,7 @@ The system cannot find the file specified.
    - Test FormatCode functionality
 
 2. **Register AnalyzePathFeasibility in MCP**
-   - Verify `[McpServerTool]` attribute present
+   - Verify `[DroidTool]` attribute present
    - Check ServiceCollectionExtensions registration
    - Add to WithSharpTools() if missing
 
@@ -577,8 +577,8 @@ The system cannot find the file specified.
 
 **Результат:**
 - ✅ CSharpier.Core.dll присутствует в UltrasharpTools.Tools/bin/Debug/net10.0/
-- ✅ CSharpier.Core.dll присутствует в UltrasharpTools.MCPServer/bin/Debug/net10.0/
-- ✅ CSharpier.Core.dll присутствует в UltrasharpTools.RemoteServer/bin/Debug/net10.0/
+- ✅ CSharpier.Core.dll присутствует в UltrasharpTools.Droid/bin/Debug/net10.0/
+- ✅ CSharpier.Core.dll присутствует в UltrasharpTools.Overlord/bin/Debug/net10.0/
 - ✅ FormattingService готов к работе (требуется перезапуск MCP сервера)
 
 **Commit:** `0a94703` - "fix: Add CopyLocalLockFileAssemblies to ensure NuGet dependencies are copied"
@@ -591,7 +591,7 @@ Error: No such tool available: mcp__ultrasharp-tools-mcp__UltrasharpTool_Analyze
 ```
 
 **Исследование:**
-- ✅ Инструмент правильно зарегистрирован с атрибутом `[McpServerTool]` в TraceTools.cs:597
+- ✅ Инструмент правильно зарегистрирован с атрибутом `[DroidTool]` в TraceTools.cs:597
 - ✅ ISymbolicExecutionService зарегистрирован как Singleton в ServiceCollectionExtensions.cs:63
 - ✅ MCP инструменты регистрируются автоматически через `WithToolsFromAssembly()`
 - ✅ Проект полностью пересобран без ошибок

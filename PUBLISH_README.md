@@ -1,4 +1,4 @@
-# UltrasharpTools MCP Server
+﻿# UltrasharpTools MCP Server
 
 MCP сервер для анализа C# кода с поддержкой semantic search.
 
@@ -42,9 +42,9 @@ pwsh ./Config/validate-semantic-config.ps1
 
 ```json
 {
-  "mcpServers": {
+  "Droids": {
     "SharpTools": {
-      "command": "/path/to/UltrasharpTools.MCPServer.exe",
+      "command": "/path/to/UltrasharpTools.Droid.exe",
       "args": [
         "--log-directory",
         "/path/to/logs",
@@ -59,8 +59,8 @@ pwsh ./Config/validate-semantic-config.ps1
 ## 📁 Структура папки
 
 ```
-MCPServer/
-├── UltrasharpTools.MCPServer.exe      ← Главный файл
+Droid/
+├── UltrasharpTools.Droid.exe      ← Главный файл
 ├── *.dll                               ← Runtime файлы
 │
 ├── semantic-config.json                ← Создаётся setup (основной конфиг)

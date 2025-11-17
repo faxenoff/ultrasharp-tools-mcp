@@ -1,4 +1,4 @@
-# User Documentation
+﻿# User Documentation
 
 Документация для пользователей UltrasharpTools MCP.
 
@@ -38,7 +38,7 @@
 - [**Requirements.md**](Setup/Requirements.md) - Требования к оборудованию
 - [**Nvidia_FAQ.md**](Setup/Nvidia_FAQ.md) - FAQ по NVIDIA Container Toolkit
 
-### Configuration/ - Настройка клиентовПримеры конфигурации для различных MCP клиентов:- [**MCP_Claude.md**](Configuration/MCP_Claude.md) - Claude Desktop и Claude Code- [**MCP_Sharp.md**](Configuration/MCP_Sharp.md) - Полное руководство по UltrasharpTools### Deployment/ - Развертывание RemoteServerПолное руководство по развертыванию UltrasharpTools RemoteServer в Kubernetes:- [**README.md**](Deployment/README.md) - Главное руководство по развертыванию- **kubernetes/** - K8s манифесты (deployment, service, configmap, ingress, PVC)- **helm/ultrasharp-tools/** - Helm chart для гибкого развертывания- **Dockerfile** (в корне проекта) - Multi-stage Docker образ- **.github/workflows/docker-publish.yml** - CI/CD для автоматической публикации в GHCR
+### Configuration/ - Настройка клиентовПримеры конфигурации для различных MCP клиентов:- [**MCP_Claude.md**](Configuration/MCP_Claude.md) - Claude Desktop и Claude Code- [**MCP_Sharp.md**](Configuration/MCP_Sharp.md) - Полное руководство по UltrasharpTools### Deployment/ - Развертывание OverlordПолное руководство по развертыванию UltrasharpTools Overlord в Kubernetes:- [**README.md**](Deployment/README.md) - Главное руководство по развертыванию- **kubernetes/** - K8s манифесты (deployment, service, configmap, ingress, PVC)- **helm/ultrasharp-tools/** - Helm chart для гибкого развертывания- **Dockerfile** (в корне проекта) - Multi-stage Docker образ- **.github/workflows/docker-publish.yml** - CI/CD для автоматической публикации в GHCR
 
 ## 🚀 Quick Start
 

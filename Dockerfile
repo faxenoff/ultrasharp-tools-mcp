@@ -1,5 +1,5 @@
 # ========================================
-# UltrasharpTools RemoteServer - .NET 10
+# UltrasharpTools Overlord - .NET 10
 # Multi-stage build with optimization
 # Supports Debug/Release via BUILD_CONFIGURATION
 # ========================================
@@ -15,12 +15,12 @@ ARG BUILD_CONFIGURATION
 WORKDIR /src
 
 # Copy project files and restore dependencies
-COPY ["UltrasharpTools.RemoteServer/UltrasharpTools.RemoteServer.csproj", "UltrasharpTools.RemoteServer/"]
+COPY ["UltrasharpTools.Overlord/UltrasharpTools.Overlord.csproj", "UltrasharpTools.Overlord/"]
 COPY ["UltrasharpTools.Tools/UltrasharpTools.Tools.csproj", "UltrasharpTools.Tools/"]
 COPY ["UltrasharpTools.sln", "./"]
 
 # Restore with runtime and R2R settings for proper crossgen2 package resolution
-RUN dotnet restore "UltrasharpTools.RemoteServer/UltrasharpTools.RemoteServer.csproj" \
+RUN dotnet restore "UltrasharpTools.Overlord/UltrasharpTools.Overlord.csproj" \
     --runtime linux-x64 \
     /p:PublishReadyToRun=true
 
@@ -28,8 +28,8 @@ RUN dotnet restore "UltrasharpTools.RemoteServer/UltrasharpTools.RemoteServer.cs
 COPY . .
 
 # Publish with optimizations
-WORKDIR /src/UltrasharpTools.RemoteServer
-RUN dotnet publish "UltrasharpTools.RemoteServer.csproj" \
+WORKDIR /src/UltrasharpTools.Overlord
+RUN dotnet publish "UltrasharpTools.Overlord.csproj" \
     -c ${BUILD_CONFIGURATION} \
     -o /app/publish \
     --runtime linux-x64 \
@@ -92,7 +92,7 @@ RUN mkdir -p /app/data /app/logs /app/.ultrasharp && \
 # K8s labels for management
 LABEL \
     version="1.0.0" \
-    description="UltrasharpTools MCP RemoteServer - Roslyn-based C# code analysis" \
+    description="UltrasharpTools MCP Overlord - Roslyn-based C# code analysis" \
     maintainer="UltrasharpTools Team" \
     app.kubernetes.io/name="ultrasharp-tools-server" \
     app.kubernetes.io/component="mcp-server" \
@@ -111,4 +111,4 @@ RUN useradd -m -u 1001 appuser && \
 USER appuser
 
 # Entry point
-ENTRYPOINT ["dotnet", "stserver.dll"]
+ENTRYPOINT ["dotnet", "UltrasharpTools.Overlord.dll"]

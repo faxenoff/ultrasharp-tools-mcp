@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: ultrasharp-tools
-        image: ghcr.io/YOUR_ORG/ultrasharp-tools-remote-server:latest
+        image: ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:latest
         imagePullPolicy: Always
         ports:
         - name: http

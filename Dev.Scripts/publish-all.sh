@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Production build script with ReadyToRun (R2R) compilation
-# Publishes RemoteServer and MCPServer with AOT compilation for optimal startup performance
+# Publishes Overlord and Droid with AOT compilation for optimal startup performance
 #
 # Usage:
 #   ./build-production.sh
@@ -59,39 +59,39 @@ if [ -d "$PUBLISH_DIR" ]; then
     write_success "Removed $PUBLISH_DIR directory"
 fi
 
-# Publish RemoteServer
-write_header "Publishing RemoteServer with R2R"
-REMOTE_OUTPUT="$PUBLISH_DIR/RemoteServer"
-dotnet publish UltrasharpTools.RemoteServer/UltrasharpTools.RemoteServer.csproj \
+# Publish Overlord
+write_header "Publishing Overlord with R2R"
+OVERLORD_OUTPUT="$PUBLISH_DIR/Overlord"
+dotnet publish UltrasharpTools.Overlord/UltrasharpTools.Overlord.csproj \
     -c "$CONFIGURATION" \
     -r "$RUNTIME" \
     --self-contained false \
-    -o "$REMOTE_OUTPUT" \
+    -o "$OVERLORD_OUTPUT" \
     -p:PublishReadyToRun=true \
     -p:PublishReadyToRunComposite=true
 
-REMOTE_SIZE=$(du -sh "$REMOTE_OUTPUT" | cut -f1)
-write_success "RemoteServer published successfully ($REMOTE_SIZE)"
+OVERLORD_SIZE=$(du -sh "$OVERLORD_OUTPUT" | cut -f1)
+write_success "Overlord published successfully ($OVERLORD_SIZE)"
 
-# Publish MCPServer
-write_header "Publishing MCPServer with R2R"
-MCP_OUTPUT="$PUBLISH_DIR/MCPServer"
-dotnet publish UltrasharpTools.MCPServer/UltrasharpTools.MCPServer.csproj \
+# Publish Droid
+write_header "Publishing Droid with R2R"
+DROID_OUTPUT="$PUBLISH_DIR/Droid"
+dotnet publish UltrasharpTools.Droid/UltrasharpTools.Droid.csproj \
     -c "$CONFIGURATION" \
     -r "$RUNTIME" \
     --self-contained false \
-    -o "$MCP_OUTPUT" \
+    -o "$DROID_OUTPUT" \
     -p:PublishReadyToRun=true \
     -p:PublishReadyToRunComposite=true
 
-MCP_SIZE=$(du -sh "$MCP_OUTPUT" | cut -f1)
-write_success "MCPServer published successfully ($MCP_SIZE)"
+DROID_SIZE=$(du -sh "$DROID_OUTPUT" | cut -f1)
+write_success "Droid published successfully ($DROID_SIZE)"
 
 # Summary
 write_header "Build Summary"
 write_info "Output directory: $PUBLISH_DIR"
-write_info "RemoteServer: $REMOTE_OUTPUT"
-write_info "MCPServer: $MCP_OUTPUT"
+write_info "Overlord: $OVERLORD_OUTPUT"
+write_info "Droid: $DROID_OUTPUT"
 write_success "Production build completed successfully!"
 
 # Display R2R info

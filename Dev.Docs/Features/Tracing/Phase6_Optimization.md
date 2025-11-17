@@ -1,4 +1,4 @@
-# Phase 6: Performance Optimizations - Summary
+﻿# Phase 6: Performance Optimizations - Summary
 
 **Дата:** 2025-01-13
 **Статус:** ✅ Полностью завершена (3/3 задач)
@@ -393,10 +393,10 @@ public SolutionManager(..., SymbolCacheOptions? symbolCacheOptions = null)
 
 #### Command-Line Options
 
-**MCPServer и RemoteServer:**
+**Droid и Overlord:**
 ```bash
 # Enable symbol cache (default)
-dotnet run --project UltrasharpTools.MCPServer
+dotnet run --project UltrasharpTools.Droid
 
 # Disable symbol cache
 dotnet run -- --symbol-cache false
@@ -454,8 +454,8 @@ dotnet run -- \
 - `Models/SymbolCacheOptions.cs` - configuration model
 - `Services/SolutionManager.cs` - интеграция SymbolCacheOptions, nullable SymbolCacheManager
 - `Extensions/ServiceCollectionExtensions.cs` - DI registration с SymbolCacheOptions
-- `UltrasharpTools.MCPServer/Program.cs` - command-line options и logging
-- `UltrasharpTools.RemoteServer/Program.cs` - command-line options и logging
+- `UltrasharpTools.Droid/Program.cs` - command-line options и logging
+- `UltrasharpTools.Overlord/Program.cs` - command-line options и logging
 - `Doc/SYMBOL_CACHE.md` - comprehensive documentation (590 lines)
 
 **Эффект:**

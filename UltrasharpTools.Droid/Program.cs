@@ -15,10 +15,10 @@ using System;
 using System.Threading.Tasks;
 using System.Threading;
 
-namespace UltrasharpTools.StdioServer;
+namespace UltrasharpTools.Droid;
 
 public static class Program {
-    public const string ApplicationName = "UltrasharpToolsMcpStdioServer";
+    public const string ApplicationName = "UltrasharpToolsMcpDroid";
     public const string ApplicationVersion = "1.0.0";
     public static async Task<int> Main(string[] args) {
         _ = typeof(SolutionTools);
@@ -86,7 +86,7 @@ public static class Program {
             Description = "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache)."
         };
 
-        var rootCommand = new RootCommand("UltrasharpTools MCP StdIO Server")
+        var rootCommand = new RootCommand("UltrasharpTools MCP Droid")
         {
         logDirOption,
         logLevelOption,

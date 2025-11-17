@@ -1,5 +1,5 @@
 @echo off
-REM Build MCPServer for Claude Code / MCP clients
+REM Build Droid for Claude Code / MCP clients
 REM This is a convenient wrapper for Dev.Scripts\publish-mcp.ps1
 
 REM Check if PowerShell Core (pwsh) is available

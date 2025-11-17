@@ -1,4 +1,4 @@
-# UltrasharpTools MCP - Режимы доступа к файлам
+﻿# UltrasharpTools MCP - Режимы доступа к файлам
 
 **Полное руководство по работе с файлами в Local и Remote режимах.**
 
@@ -45,13 +45,13 @@ UltrasharpTools MCP поддерживает два режима работы, �
 │                                              │
 │ claude_desktop_config.json:                  │
 │ {                                            │
-│   "command": "D:/path/to/MCPServer.exe"      │
+│   "command": "D:/path/to/Droid.exe"      │
 │ }                                            │
 └──────────┬───────────────────────────────────┘
            │ запускает как child process
            ↓
 ┌──────────────────────────────────────────────┐
-│ UltrasharpTools.MCPServer.exe                │
+│ UltrasharpTools.Droid.exe                │
 │ (локальный процесс на вашей машине)          │
 │                                              │
 │ Working Directory: где был запущен           │
@@ -75,10 +75,10 @@ UltrasharpTools MCP поддерживает два режима работы, �
 **Windows (`%USERPROFILE%\.claude.json`):**
 ```json
 {
-  "mcpServers": {
+  "Droids": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "D:/Projects/ultrasharp-tools-mcp/Run.Publish/MCPServer/UltrasharpTools.MCPServer.exe",
+      "command": "D:/Projects/ultrasharp-tools-mcp/Run.Publish/Droid/UltrasharpTools.Droid.exe",
       "args": [
         "--log-level", "Information"
       ],
@@ -91,10 +91,10 @@ UltrasharpTools MCP поддерживает два режима работы, �
 **macOS/Linux (`~/.claude.json`):**
 ```json
 {
-  "mcpServers": {
+  "Droids": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "/home/user/ultrasharp-tools-mcp/Run.Publish/MCPServer/UltrasharpTools.MCPServer",
+      "command": "/home/user/ultrasharp-tools-mcp/Run.Publish/Droid/UltrasharpTools.Droid",
       "args": [
         "--log-level", "Information"
       ],
@@ -112,7 +112,7 @@ UltrasharpTools MCP поддерживает два режима работы, �
 // Claude запрашивает:
 LoadSolution("D:/MyProjects/MyApp/MyApp.sln")
 
-// MCPServer.exe (работает локально):
+// Droid.exe (работает локально):
 1. Читает D:/MyProjects/MyApp/MyApp.sln (прямой file read)
 2. Парсит .sln → находит .csproj файлы
 3. Загружает каждый .csproj:
@@ -195,7 +195,7 @@ LoadSolution("D:/MyProjects/MyApp/MyApp.sln")
 │  ┌──────────────────────────────────────────┐ │
 │  │ Pod: ultrasharp-tools-server             │ │
 │  │                                          │ │
-│  │ UltrasharpTools.RemoteServer             │ │
+│  │ UltrasharpTools.Overlord             │ │
 │  │ - Изолированная ФС контейнера            │ │
 │  │ - НЕТ доступа к D:\MyProject\            │ │
 │  │ - Доступ к /app/projects/ (volume)       │ │
@@ -637,10 +637,10 @@ dotnet restore MyApp.sln
 ```json
 // ~/.claude.json
 {
-  "mcpServers": {
+  "Droids": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "D:/tools/ultrasharp/MCPServer.exe"
+      "command": "D:/tools/ultrasharp/Droid.exe"
     }
   }
 }
@@ -876,10 +876,10 @@ initContainers:
 
 ```json
 {
-  "mcpServers": {
+  "Droids": {
     "ultrasharp-local": {
       "type": "stdio",
-      "command": "D:/tools/ultrasharp/MCPServer.exe"
+      "command": "D:/tools/ultrasharp/Droid.exe"
     },
     "ultrasharp-remote": {
       "type": "sse",
@@ -963,7 +963,7 @@ git push origin feature-branch
 docker run -d \
   -p 3001:3001 \
   -v /path/to/projects:/app/projects \
-  ultrasharp-tools-remote-server:latest
+  ultrasharp-tools-overlord:latest
 ```
 
 Проще чем Kubernetes, но без orchestration, scaling, etc.

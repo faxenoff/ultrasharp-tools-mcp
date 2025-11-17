@@ -1,10 +1,10 @@
-# Incremental Indexing: Architecture Analysis & Implementation Plan
+﻿# Incremental Indexing: Architecture Analysis & Implementation Plan
 
 ## 🏗️ Architecture Analysis
 
 ### Process Model
 
-#### MCPServer (Stdio Transport)
+#### Droid (Stdio Transport)
 ```
 Claude Code Instance
     ↓
@@ -31,7 +31,7 @@ stserver.exe \
   --load-solution ./MyApp.sln
 ```
 
-#### RemoteServer (HTTP SSE Transport)
+#### Overlord (HTTP SSE Transport)
 ```
 Multiple Claude Clients
     ↓
@@ -205,7 +205,7 @@ BuildFromSolutionAsync()  // FULL index rebuild (~33 seconds)
 | **Stale Index after modifications** | SearchDefinitions fails, fallback to slow Roslyn | Every AddMember/OverwriteMember call |
 | **No incremental updates** | Full rebuild required (33s) | Every auto-reload trigger |
 | **External changes not synced** | Roslyn Solution out of sync with disk | When using external editors |
-| **RemoteServer shared state** | Multiple clients conflict | Multi-user scenarios |
+| **Overlord shared state** | Multiple clients conflict | Multi-user scenarios |
 
 ### User Impact
 
@@ -421,7 +421,7 @@ private void RebuildLookupStructures() {
 
 **Files to modify:**
 - `SolutionManager.cs` - Add SubscribeToWorkspaceChanges()
-- Test with MCPServer + LoadSolution + AddMember
+- Test with Droid + LoadSolution + AddMember
 
 **Success criteria:**
 - Log entries show WorkspaceChangeKind.DocumentChanged after AddMember
@@ -513,7 +513,7 @@ private void RebuildLookupStructures() {
 5. ✅ Test: External edit → auto-reload → index updated
 6. ✅ Test: Project file change → full rebuild
 7. ✅ Test: Concurrent updates (multiple AddMember calls)
-8. ✅ Test: RemoteServer with multiple clients
+8. ✅ Test: Overlord with multiple clients
 
 **Success criteria:**
 - 1 file: 100-500ms (vs 33s full rebuild) ✅ 66-330x faster
@@ -576,7 +576,7 @@ Speedup: 54-143x faster
 
 ## 🎯 Recommendations
 
-### For MCPServer (Stdio) - Recommended Flags
+### For Droid (Stdio) - Recommended Flags
 ```bash
 stserver.exe \
   --load-solution ./MyApp.sln \
@@ -587,12 +587,12 @@ stserver.exe \
 ```
 
 **Rationale:**
-- MCPServer is single-user, isolated process
+- Droid is single-user, isolated process
 - Auto-reload is safe and beneficial
 - Incremental indexing works perfectly
 - 500ms debounce balances responsiveness vs rebuild frequency
 
-### For RemoteServer (HTTP) - Recommended Flags
+### For Overlord (HTTP) - Recommended Flags
 ```bash
 sseserver.exe \
   --port 3001 \
@@ -602,7 +602,7 @@ sseserver.exe \
 ```
 
 **Rationale:**
-- RemoteServer is multi-client, shared state
+- Overlord is multi-client, shared state
 - Auto-reload could cause conflicts (Client A modifies, Client B index rebuilds)
 - Incremental indexing still beneficial for internal modifications
 - Consider disabling auto-reload for stability

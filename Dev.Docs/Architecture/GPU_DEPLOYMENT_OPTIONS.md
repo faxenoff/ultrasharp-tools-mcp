@@ -1,4 +1,4 @@
-# GPU & Model Deployment Options
+﻿# GPU & Model Deployment Options
 
 **Варианты размещения embedding модели и GPU инфраструктуры.**
 
@@ -16,7 +16,7 @@
 │  │ Kubernetes Cluster                            │         │
 │  │                                               │         │
 │  │  ┌──────────────┐      ┌──────────────┐      │         │
-│  │  │ RemoteServer │ ───► │ TEI Pod      │      │         │
+│  │  │ Overlord │ ───► │ TEI Pod      │      │         │
 │  │  │ (CPU)        │ HTTP │ (GPU)        │      │         │
 │  │  └──────────────┘      └──────────────┘      │         │
 │  │                                               │         │
@@ -31,7 +31,7 @@
 │  │ Kubernetes       │         │ Отдельная VM/Server     │  │
 │  │                  │         │                         │  │
 │  │ ┌──────────────┐ │  HTTP   │  ┌─────────────────┐   │  │
-│  │ │RemoteServer  │─┼────────►│  │ TEI (standalone)│   │  │
+│  │ │Overlord  │─┼────────►│  │ TEI (standalone)│   │  │
 │  │ │(CPU)         │ │  (ext)  │  │ + GPU           │   │  │
 │  │ └──────────────┘ │         │  └─────────────────┘   │  │
 │  └──────────────────┘         │                         │  │
@@ -46,7 +46,7 @@
 │  │ Kubernetes       │         │ Managed Service         │  │
 │  │                  │         │                         │  │
 │  │ ┌──────────────┐ │  HTTPS  │  • Hugging Face         │  │
-│  │ │RemoteServer  │─┼────────►│    Inference API        │  │
+│  │ │Overlord  │─┼────────►│    Inference API        │  │
 │  │ │(CPU)         │ │         │  • OpenAI Embeddings    │  │
 │  │ └──────────────┘ │         │  • AWS Bedrock          │  │
 │  └──────────────────┘         │                         │  │
@@ -59,7 +59,7 @@
 
 ## 📋 Вариант 1: Co-located (Same Kubernetes Cluster)
 
-**Модель и RemoteServer в одном кластере, разные pods.**
+**Модель и Overlord в одном кластере, разные pods.**
 
 ### Архитектура
 
@@ -75,7 +75,7 @@
 │  │  │      server       │                          │    │
 │  │  │                   │                          │    │
 │  │  │ Container:        │                          │    │
-│  │  │ - RemoteServer    │                          │    │
+│  │  │ - Overlord    │                          │    │
 │  │  │   (CPU only)      │                          │    │
 │  │  └─────────┬─────────┘                          │    │
 │  │            │                                     │    │
@@ -183,10 +183,10 @@ spec:
     name: http
 ```
 
-**RemoteServer конфигурация:**
+**Overlord конфигурация:**
 
 ```json
-// ultrasharp-config.json (в RemoteServer)
+// ultrasharp-config.json (в Overlord)
 {
   "embedding": {
     "provider": "tei",
@@ -303,7 +303,7 @@ Azure AKS:
 
 ## 📋 Вариант 2: Separate VM/Server (Dedicated Inference)
 
-**Модель на отдельной VM с GPU, RemoteServer в Kubernetes.**
+**Модель на отдельной VM с GPU, Overlord в Kubernetes.**
 
 ### Архитектура
 
@@ -315,7 +315,7 @@ Azure AKS:
 │  │ Pod: ultrasharp-     │  │ HTTP  │  │ TEI (standalone)   │  │
 │  │      server          │──┼──────►│  │                    │  │
 │  │                      │  │ (ext) │  │ • Model: bge-large │  │
-│  │ - RemoteServer (CPU) │  │       │  │ • GPU: NVIDIA T4   │  │
+│  │ - Overlord (CPU) │  │       │  │ • GPU: NVIDIA T4   │  │
 │  └──────────────────────┘  │       │  │ • Port: 8080       │  │
 │                            │       │  └────────────────────┘  │
 │  No GPU required!          │       │                          │
@@ -431,7 +431,7 @@ sudo ufw enable
 
 ---
 
-**4. RemoteServer конфигурация:**
+**4. Overlord конфигурация:**
 
 ```json
 // ultrasharp-config.json (в Kubernetes pod)
@@ -552,7 +552,7 @@ Variant 2: $420/месяц
 │  │ Pod: ultrasharp-     │──┼──────►│  │ Hugging Face       │  │
 │  │      server          │  │       │  │ Inference API      │  │
 │  │                      │  │       │  │                    │  │
-│  │ - RemoteServer (CPU) │  │       │  │ • Pay per request  │  │
+│  │ - Overlord (CPU) │  │       │  │ • Pay per request  │  │
 │  └──────────────────────┘  │       │  │ • No GPU setup     │  │
 │                            │       │  │ • Auto-scaling     │  │
 │  No GPU, no setup!         │       │  └────────────────────┘  │

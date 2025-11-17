@@ -5,9 +5,9 @@ VisualStudioVersion = 18.0.11201.2
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Tools", "UltrasharpTools.Tools\UltrasharpTools.Tools.csproj", "{43569443-A282-4E77-AD84-9E5813A98E8D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.RemoteServer", "UltrasharpTools.RemoteServer\UltrasharpTools.RemoteServer.csproj", "{C3B267BF-EA86-4A06-BAE6-1FEDC5A30213}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Overlord", "UltrasharpTools.Overlord\UltrasharpTools.Overlord.csproj", "{C3B267BF-EA86-4A06-BAE6-1FEDC5A30213}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.MCPServer", "UltrasharpTools.MCPServer\UltrasharpTools.MCPServer.csproj", "{6DF2B244-8781-4F09-87E7-F5130D03821D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Droid", "UltrasharpTools.Droid\UltrasharpTools.Droid.csproj", "{6DF2B244-8781-4F09-87E7-F5130D03821D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Benchmarks", "UltrasharpTools.Benchmarks\UltrasharpTools.Benchmarks.csproj", "{2BF6AEB9-F1F1-431D-B491-0E76E78877C8}"
 EndProject

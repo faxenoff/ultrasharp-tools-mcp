@@ -1,4 +1,4 @@
-# UltrasharpTools: Отчёт об улучшениях
+﻿# UltrasharpTools: Отчёт об улучшениях
 
 ## Обзор
 
@@ -358,7 +358,7 @@ MyProject/
 │   │   ├── callgraph/
 │   │   └── symbols/
 │   └── logs/
-│       └── UltrasharpTools.MCPServer-.log
+│       └── UltrasharpTools.Droid-.log
 ├── MyProject.sln
 └── src/
 ```

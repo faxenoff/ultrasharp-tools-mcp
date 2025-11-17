@@ -1,8 +1,8 @@
-# Layered Branch-Aware Indexing для RemoteServer
+﻿# Layered Branch-Aware Indexing для Overlord
 
 ## 🎯 Проблема: Multi-Client Branch Isolation
 
-### Текущая архитектура RemoteServer (SSE)
+### Текущая архитектура Overlord (SSE)
 
 ```
 Multiple Claude Clients
@@ -329,7 +329,7 @@ public class HybridLayeredIndex {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  RemoteServer (HTTP SSE)                                    │
+│  Overlord (HTTP SSE)                                    │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │  HybridLayeredIndex (Singleton)                     │  │
@@ -814,7 +814,7 @@ private async Task CleanupOrphanedDeltasAsync() {
 5. ✅ Test: Delta compaction under load
 
 ### Phase 7: Integration & Documentation (2-3 days)
-1. ✅ Integrate with RemoteServer
+1. ✅ Integrate with Overlord
 2. ✅ Add MCP tools: CreateBranch, SwitchBranch, DeleteBranch
 3. ✅ Update ULTRA-SHARPED.md
 4. ✅ Create user guide for branch-aware workflows

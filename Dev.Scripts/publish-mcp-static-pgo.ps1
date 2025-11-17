@@ -103,10 +103,10 @@ Write-Info "Using solution for training: $SolutionPath"
 # Determine projects to build
 $projects = @()
 if ($Server -eq "MCP" -or $Server -eq "Both") {
-    $projects += "UltrasharpTools.MCPServer"
+    $projects += "UltrasharpTools.Droid"
 }
 if ($Server -eq "Remote" -or $Server -eq "Both") {
-    $projects += "UltrasharpTools.RemoteServer"
+    $projects += "UltrasharpTools.Overlord"
 }
 
 Write-ColorOutput @"
@@ -191,10 +191,10 @@ foreach ($project in $projects) {
     # ==================== PHASE 2: TRAIN ====================
     Write-Step "Phase 2: Training - Running typical scenarios"
 
-    $executable = if ($project -eq "UltrasharpTools.MCPServer") {
-        Join-Path $instrumentOutput "UltrasharpTools.MCPServer.exe"
+    $executable = if ($project -eq "UltrasharpTools.Droid") {
+        Join-Path $instrumentOutput "UltrasharpTools.Droid.exe"
     } else {
-        Join-Path $instrumentOutput "stserver.exe"
+        Join-Path $instrumentOutput "UltrasharpTools.Overlord.exe"
     }
 
     if (-not (Test-Path $executable)) {
