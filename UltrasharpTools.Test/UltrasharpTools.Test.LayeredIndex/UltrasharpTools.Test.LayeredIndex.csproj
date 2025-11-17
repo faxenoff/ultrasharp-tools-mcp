@@ -5,6 +5,11 @@
     <LangVersion>13.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- Отключение глобализации: только en-US, экономия ~5 MB + ускорение старта -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Отключение сателитных сборок локализации (для NuGet пакетов типа Roslyn) -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,7 +1,7 @@
 namespace UltrasharpTools.Tools.Interfaces;
 
 /// <summary>
-/// Сервис для форматирования кода с использованием CSharpier
+/// Сервис для форматирования кода с использованием Roslyn Formatter
 /// </summary>
 public interface IFormattingService
 {

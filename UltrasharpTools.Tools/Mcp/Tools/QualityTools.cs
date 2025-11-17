@@ -16,7 +16,7 @@ public class QualityToolsLogCategory { }
 public static partial class QualityTools
 {
 [McpServerTool(Name = "format_code", Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
-[Description("Formats C# code files using CSharpier. Supports .cs, .csproj, and .xml files. Can check formatting without applying changes.")]
+[Description("Formats C# code files using Roslyn Formatter. Supports .cs, .csproj, and .xml files. Can check formatting without applying changes.")]
 public static async Task<object> FormatCode(
 IFormattingService formattingService,
 ILogger<QualityToolsLogCategory> logger,

@@ -1,13 +1,14 @@
-using CSharpier.Core;
-using CSharpier.Core.CSharp;
-using CSharpier.Core.Xml;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.Extensions.Logging;
+using System.Xml.Linq;
 using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Tools.Services;
 
 /// <summary>
-/// Сервис для форматирования C# кода с использованием CSharpier
+/// Сервис для форматирования C# кода с использованием Roslyn Formatter
 /// </summary>
 public class FormattingService(ILogger<FormattingService> logger) : IFormattingService
 {
@@ -49,23 +50,19 @@ try
 var originalCode = await File.ReadAllTextAsync(filePath, cancellationToken);
 var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
-CodeFormatterResult result;
+string formattedCode;
 if (ext == ".cs")
 {
-result = await CSharpFormatter.FormatAsync(
-originalCode,
-new CodeFormatterOptions(),
-cancellationToken
-);
+formattedCode = await FormatCSharpCodeAsync(originalCode, cancellationToken);
 }
 else // .csproj, .xml
 {
-result = XmlFormatter.Format(originalCode, new CodeFormatterOptions());
+formattedCode = FormatXmlCode(originalCode);
 }
 
-if (result.Code != originalCode)
+if (formattedCode != originalCode)
 {
-return (FilePath: filePath, NeedsFormatting: true, FormattedCode: result.Code, Error: (string?)null);
+return (FilePath: filePath, NeedsFormatting: true, FormattedCode: formattedCode, Error: (string?)null);
 }
 
 return (FilePath: filePath, NeedsFormatting: false, FormattedCode: (string?)null, Error: (string?)null);
@@ -124,6 +121,47 @@ FilesFormatted = filesFormatted,
 TotalFilesChecked = filesToCheck.Count,
 Errors = errors
 };
+}
+
+/// <summary>
+/// Форматирует C# код с использованием Roslyn Formatter
+/// </summary>
+private async Task<string> FormatCSharpCodeAsync(string code, CancellationToken cancellationToken)
+{
+try
+{
+// Parse code into syntax tree
+var tree = CSharpSyntaxTree.ParseText(code, cancellationToken: cancellationToken);
+var root = await tree.GetRootAsync(cancellationToken);
+
+// Create workspace and apply formatting
+using var workspace = new AdhocWorkspace();
+var formattedRoot = Formatter.Format(root, workspace, cancellationToken: cancellationToken);
+
+return formattedRoot.ToFullString();
+}
+catch (Exception ex)
+{
+_logger.LogWarning(ex, "Failed to format C# code with Roslyn, returning original");
+return code;
+}
+}
+
+/// <summary>
+/// Форматирует XML код с использованием XDocument
+/// </summary>
+private string FormatXmlCode(string xml)
+{
+try
+{
+var doc = XDocument.Parse(xml, LoadOptions.PreserveWhitespace);
+return doc.ToString();
+}
+catch (Exception ex)
+{
+_logger.LogWarning(ex, "Failed to format XML code, returning original");
+return xml;
+}
 }
 
 private List<string> GetFilesToFormat(string path)

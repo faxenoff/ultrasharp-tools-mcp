@@ -3,6 +3,7 @@ using UltrasharpTools.Tools.Interfaces;
 using UltrasharpTools.Tools.Mcp.Tools;
 using UltrasharpTools.Tools.Extensions;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Logging;
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using Microsoft.AspNetCore.HttpLogging;

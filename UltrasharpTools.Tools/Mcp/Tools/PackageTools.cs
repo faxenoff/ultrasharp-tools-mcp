@@ -1,9 +1,5 @@
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol;
-using NuGet.Common;
-using NuGet.Protocol;
-using NuGet.Protocol.Core.Types;
-using NuGet.Versioning;
 using UltrasharpTools.Tools.Services;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
@@ -21,6 +17,7 @@ public static class PackageTools {
         ILogger<PackageToolsLogCategory> logger,
         ISolutionManager solutionManager,
         IDocumentOperationsService documentOperations,
+        NuGetHttpService nugetService,
         string projectName,
         string nugetPackageId,
         [Description("The version of the NuGet package or 'latest' for latest")] string? version,
@@ -53,14 +50,14 @@ public static class PackageTools {
             }
 
             // Validate the package exists
-            var packageExists = await ValidatePackageAsync(nugetPackageId, version, logger, cancellationToken);
+            var packageExists = await nugetService.ValidatePackageAsync(nugetPackageId, version, cancellationToken);
             if (!packageExists) {
                 throw new McpException($"Package '{nugetPackageId}' {(string.IsNullOrEmpty(version) ? "" : $"with version {version} ")}was not found on NuGet.org.");
             }
 
             // If no version specified, get the latest version
             if (string.IsNullOrEmpty(version)) {
-                version = await GetLatestVersionAsync(nugetPackageId, logger, cancellationToken);
+                version = await nugetService.GetLatestVersionAsync(nugetPackageId, includePrerelease: false, cancellationToken);
                 logger.LogInformation("Using latest version {Version} for package {PackageId}", version, nugetPackageId);
             }
 
@@ -130,71 +127,6 @@ public static class PackageTools {
             return $"The package {nugetPackageId} has been {action} with version {version}. You must perform a `{(packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference ? "dotnet restore" : "nuget restore")}` and then reload the solution.";
         }, logger, nameof(AddOrModifyNugetPackage), cancellationToken);
     }
-    private static async Task<bool> ValidatePackageAsync(string packageId, string? version, Microsoft.Extensions.Logging.ILogger logger, CancellationToken cancellationToken) {
-        try {
-            logger.LogInformation("Validating package {PackageId} {Version} on NuGet.org",
-                packageId, version ?? "latest");
-
-            var nugetLogger = NullLogger.Instance;
-
-            // Create repository
-            var repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
-            var resource = await repository.GetResourceAsync<PackageMetadataResource>(cancellationToken);
-
-            // Get package metadata
-            var packages = await resource.GetMetadataAsync(
-                packageId,
-                includePrerelease: true,
-                includeUnlisted: false,
-                sourceCacheContext: new SourceCacheContext(),
-                nugetLogger,
-                cancellationToken);
-
-            if (!packages.Any())
-                return false; // Package doesn't exist
-
-            if (string.IsNullOrEmpty(version))
-                return true; // Just checking existence
-
-            // Validate specific version
-            var targetVersion = NuGetVersion.Parse(version);
-            return packages.Any(p => p.Identity.Version.Equals(targetVersion));
-        } catch (Exception ex) {
-            logger.LogError(ex, "Error validating NuGet package {PackageId} {Version}", packageId, version);
-            throw new McpException($"Failed to validate NuGet package '{packageId}': {ex.Message}");
-        }
-    }
-
-    private static async Task<string> GetLatestVersionAsync(string packageId, Microsoft.Extensions.Logging.ILogger logger, CancellationToken cancellationToken) {
-        try {
-            var nugetLogger = NullLogger.Instance;
-
-            var repository = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
-            var resource = await repository.GetResourceAsync<PackageMetadataResource>(cancellationToken);
-
-            var packages = await resource.GetMetadataAsync(
-                packageId,
-                includePrerelease: false, // Only stable versions for the latest
-                includeUnlisted: false,
-                sourceCacheContext: new SourceCacheContext(),
-                nugetLogger,
-                cancellationToken);
-
-            var latestPackage = packages
-                .OrderByDescending(p => p.Identity.Version)
-                .FirstOrDefault();
-
-            if (latestPackage == null) {
-                throw new McpException($"No stable versions found for package '{packageId}'.");
-            }
-
-            return latestPackage.Identity.Version.ToString();
-        } catch (Exception ex) {
-            logger.LogError(ex, "Error getting latest version for NuGet package {PackageId}", packageId);
-            throw new McpException($"Failed to get latest version for NuGet package '{packageId}': {ex.Message}");
-        }
-    }
-
     private static async Task UpdatePackageReferenceAsync(
         string projectPath,
         string packageId,

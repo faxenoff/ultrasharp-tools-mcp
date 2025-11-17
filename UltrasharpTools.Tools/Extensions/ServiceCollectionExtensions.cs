@@ -62,7 +62,7 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton(gitOptions ?? new GitOptions());
 
         if (enableGit) {
-            services.AddSingleton<IGitService, GitService>();
+            services.AddSingleton<IGitService, GitCliService>();
         } else {
             services.AddSingleton<IGitService, NoOpGitService>();
         }
@@ -80,7 +80,11 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton<IBacktraceService, BacktraceService>();
         services.AddSingleton<ILogAnalysisService, LogAnalysisService>();
 
-        // Quality tools services (CSharpier formatting, Roslyn analyzers, code fixes)
+        // NuGet HTTP service (lightweight replacement for NuGet.Protocol)
+        services.AddHttpClient("NuGetApi");
+        services.AddSingleton<NuGetHttpService>();
+
+        // Quality tools services (Roslyn formatting, analyzers, code fixes)
         services.AddSingleton<IFormattingService, FormattingService>();
         services.AddSingleton<IDiagnosticService, DiagnosticService>();
         services.AddSingleton<ICodeFixService, CodeFixService>();

@@ -7,8 +7,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
-    <PackageReference Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
     <PackageReference Include="System.CommandLine" Version="2.0.0" />
   </ItemGroup>
 
@@ -24,6 +22,11 @@
 
     <!-- Копирование всех зависимостей NuGet (включая транзитивные от UltrasharpTools.Tools) -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+    <!-- Отключение глобализации: только en-US, экономия ~5 MB + ускорение старта -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Отключение сателитных сборок локализации (для NuGet пакетов типа Roslyn) -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <!-- Performance Optimizations (Release only) -->

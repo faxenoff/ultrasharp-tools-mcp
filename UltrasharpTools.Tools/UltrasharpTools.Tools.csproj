@@ -17,28 +17,33 @@
 <TieredPGO>true</TieredPGO>
 <!-- Dynamic PGO: Continuous optimization based on runtime behavior -->
 <DynamicPGO>true</DynamicPGO>
+
+<!-- Отключение глобализации: только en-US, экономия ~5 MB + ускорение старта -->
+<InvariantGlobalization>true</InvariantGlobalization>
+<!-- Отключение сателитных сборок локализации (для NuGet пакетов типа Roslyn) -->
+<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 </PropertyGroup>
 <ItemGroup>
-<PackageReference Include="CSharpier.Core" Version="1.2.1" />
 <PackageReference Include="DiffPlex" Version="1.9.0" />
 <PackageReference Include="ICSharpCode.Decompiler" Version="10.0.0.8079-preview1" />
-<PackageReference Include="LibGit2Sharp" Version="0.31.0" />
 <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.0.0-2.final" />
 <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0-2.final" />
 <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0-2.final" />
 <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.0.0-2.final" />
 <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
-<!-- RAG / Vector Search dependencies -->
-<PackageReference Include="Microsoft.SemanticKernel.Connectors.Sqlite" Version="1.51.0-preview" />
 <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
 <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.0" />
 <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
 <PackageReference Include="Microsoft.Z3" Version="4.12.2" />
 <PackageReference Include="ModelContextProtocol" Version="0.4.0-preview.3" />
-<PackageReference Include="NuGet.Protocol" Version="7.0.0" />
 <PackageReference Include="System.IO.Hashing" Version="10.0.0" />
 <PackageReference Include="System.Reflection.MetadataLoadContext" Version="10.0.0" />
 <PackageReference Include="YamlDotNet" Version="16.3.0" />
+<!-- Явно исключаем транзитивную зависимость Newtonsoft.Json (используем System.Text.Json) -->
+<PackageReference Include="Newtonsoft.Json" Version="13.0.3">
+<ExcludeAssets>all</ExcludeAssets>
+<PrivateAssets>all</PrivateAssets>
+</PackageReference>
 </ItemGroup>
 <!-- Vectorlite native library для HNSW ANN vector search (для больших кодовых баз >10K символов) -->
 <ItemGroup>
