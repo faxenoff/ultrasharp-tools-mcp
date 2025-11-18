@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using UltrasharpTools.Droid.Models.Hybrid;
 
 namespace UltrasharpTools.Droid.Services.Hybrid;
 
@@ -11,28 +12,53 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
     private readonly IEmbeddingService? _localEmbedding;
     private readonly IServerBridgeService? _serverBridge;
     private readonly string? _overlordUrl;
+    private readonly SemanticModeConfig _config;
 
     private SemanticModeAvailability? _cachedAvailability;
     private DateTime _lastCheck = DateTime.MinValue;
-    private static readonly TimeSpan CacheValidityPeriod = TimeSpan.FromMinutes(5);
 
     public SemanticModeProvider(
         ILogger<SemanticModeProvider> logger,
         IEmbeddingService? localEmbedding = null,
         IServerBridgeService? serverBridge = null,
-        string? overlordUrl = null)
+        string? overlordUrl = null,
+        SemanticModeConfig? config = null)
     {
         _logger = logger;
         _localEmbedding = localEmbedding;
         _serverBridge = serverBridge;
         _overlordUrl = overlordUrl;
+        _config = config ?? SemanticModeConfig.CreateDefault();
+
+        _logger.LogDebug(
+            "SemanticModeProvider initialized: enabled={Enabled}, cacheValidity={CacheSeconds}s, localTimeout={LocalTimeout}s, overlordTimeout={OverlordTimeout}s",
+            _config.Enabled,
+            _config.Availability.CacheValiditySeconds,
+            _config.Availability.LocalCheckTimeoutSeconds,
+            _config.Availability.OverlordCheckTimeoutSeconds);
     }
 
     /// <inheritdoc/>
     public async Task<SemanticModeAvailability> CheckAvailabilityAsync(CancellationToken ct = default)
     {
+        // Проверяем, включён ли semantic mode
+        if (!_config.Enabled)
+        {
+            _logger.LogDebug("Semantic mode is DISABLED by configuration");
+            return new SemanticModeAvailability
+            {
+                IsAvailable = false,
+                Source = SemanticModeSource.None,
+                ModelName = null,
+                VectorDimension = 0,
+                LocalEmbeddingUrl = null,
+                OverlordUrl = null
+            };
+        }
+
         // Проверяем кэш
-        if (_cachedAvailability != null && DateTime.UtcNow - _lastCheck < CacheValidityPeriod)
+        var cacheValidity = TimeSpan.FromSeconds(_config.Availability.CacheValiditySeconds);
+        if (_cachedAvailability != null && DateTime.UtcNow - _lastCheck < cacheValidity)
         {
             _logger.LogTrace("Returning cached semantic mode availability: {Source}", _cachedAvailability.Source);
             return _cachedAvailability;
@@ -241,12 +267,20 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
 
         try
         {
-            // Проверяем доступность через тестовый запрос
-            var testVector = await _localEmbedding.GetEmbeddingAsync("test", ct);
+            // Проверяем доступность через тестовый запрос с timeout из конфига
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(_config.Availability.LocalCheckTimeoutSeconds));
+
+            var testVector = await _localEmbedding.GetEmbeddingAsync("test", cts.Token);
             var isAvailable = testVector != null && testVector.Length > 0;
 
             _logger.LogTrace("Local embedding availability: {Available}", isAvailable);
             return isAvailable;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogTrace("Local embedding service check timed out after {Timeout}s", _config.Availability.LocalCheckTimeoutSeconds);
+            return false;
         }
         catch (Exception ex)
         {
@@ -265,9 +299,18 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
 
         try
         {
-            var isAvailable = await _serverBridge.IsServerAvailableAsync(ct);
+            // Проверяем доступность с timeout из конфига
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(_config.Availability.OverlordCheckTimeoutSeconds));
+
+            var isAvailable = await _serverBridge.IsServerAvailableAsync(cts.Token);
             _logger.LogTrace("Overlord availability: {Available}", isAvailable);
             return isAvailable;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogTrace("Overlord availability check timed out after {Timeout}s", _config.Availability.OverlordCheckTimeoutSeconds);
+            return false;
         }
         catch (Exception ex)
         {

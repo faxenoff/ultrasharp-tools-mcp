@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using UltrasharpTools.Droid.Models.Hybrid;
 
 namespace UltrasharpTools.Droid.Services.Hybrid;
 
@@ -11,16 +12,16 @@ public sealed class ToolEnricher : IToolEnricher
     private readonly ILogger<ToolEnricher> _logger;
     private readonly ISemanticModeProvider _semanticProvider;
     private readonly List<IEnrichmentStrategy> _strategies;
-    private readonly TimeSpan _enrichmentTimeout;
+    private readonly SemanticModeConfig _config;
 
     public ToolEnricher(
         ILogger<ToolEnricher> logger,
         ISemanticModeProvider semanticProvider,
-        TimeSpan? enrichmentTimeout = null)
+        SemanticModeConfig? config = null)
     {
         _logger = logger;
         _semanticProvider = semanticProvider;
-        _enrichmentTimeout = enrichmentTimeout ?? TimeSpan.FromSeconds(5);
+        _config = config ?? SemanticModeConfig.CreateDefault();
 
         // Регистрируем enrichment strategies
         _strategies = new List<IEnrichmentStrategy>
@@ -46,9 +47,11 @@ public sealed class ToolEnricher : IToolEnricher
         };
 
         _logger.LogInformation(
-            "ToolEnricher initialized with {StrategyCount} strategies, timeout: {Timeout}ms",
+            "ToolEnricher initialized: strategies={Count}, timeout={Timeout}s, maxConcurrency={Concurrency}, gracefulDegradation={Graceful}",
             _strategies.Count,
-            _enrichmentTimeout.TotalMilliseconds);
+            _config.Enrichment.TimeoutSeconds,
+            _config.Enrichment.MaxConcurrency,
+            _config.Enrichment.GracefulDegradation);
     }
 
     /// <inheritdoc/>
@@ -78,6 +81,23 @@ public sealed class ToolEnricher : IToolEnricher
             };
         }
 
+        // Проверяем, включён ли enrichment для этого инструмента
+        if (_config.ToolSettings.TryGetValue(toolName, out var toolSettings) && !toolSettings.Enabled)
+        {
+            _logger.LogTrace("Enrichment disabled for {Tool} by configuration", toolName);
+            return new EnrichedToolResult
+            {
+                OriginalResult = originalResult,
+                Semantic = null,
+                Metadata = new EnrichmentMetadata
+                {
+                    EnrichmentTimeMs = sw.ElapsedMilliseconds,
+                    Source = availability.Source,
+                    ErrorMessage = "Enrichment disabled by configuration"
+                }
+            };
+        }
+
         // Находим подходящую strategy
         var strategy = _strategies.FirstOrDefault(s => s.SupportedTools.Contains(toolName));
         if (strategy == null)
@@ -100,9 +120,9 @@ public sealed class ToolEnricher : IToolEnricher
 
         try
         {
-            // Выполняем enrichment с timeout
+            // Выполняем enrichment с timeout из конфига
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(_enrichmentTimeout);
+            cts.CancelAfter(TimeSpan.FromSeconds(_config.Enrichment.TimeoutSeconds));
 
             var enrichment = await strategy.EnrichAsync(
                 originalResult,
@@ -145,9 +165,9 @@ public sealed class ToolEnricher : IToolEnricher
         {
             sw.Stop();
             _logger.LogWarning(
-                "Enrichment for {Tool} timed out after {Timeout}ms",
+                "Enrichment for {Tool} timed out after {Timeout}s",
                 toolName,
-                _enrichmentTimeout.TotalMilliseconds);
+                _config.Enrichment.TimeoutSeconds);
 
             return new EnrichedToolResult
             {

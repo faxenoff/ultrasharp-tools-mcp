@@ -302,13 +302,18 @@ public static class Program {
             });
 
             // Universal Semantic Mode - Phase 12
+            // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
+            var semanticConfigLoader = new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
+                LoggerFactory.Create(b => b.AddConsole()).CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>());
+            var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
+
             // SemanticModeProvider для auto-detection Local/Overlord embedding
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
                 var localEmbedding = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>();
                 var serverBridge = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
-                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, localEmbedding, serverBridge, serverUrl);
+                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, localEmbedding, serverBridge, serverUrl, semanticConfig);
             });
 
             // ToolEnricher для semantic enrichment всех инструментов
@@ -316,7 +321,7 @@ public static class Program {
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>>();
                 var semanticProvider = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>();
-                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider);
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider, semanticConfig);
             });
 
             // McpToolInterceptor для global routing + enrichment
@@ -352,12 +357,17 @@ public static class Program {
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ConfigurationService>();
 
             // Universal Semantic Mode - Phase 12 (local mode)
+            // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
+            var semanticConfigLoader = new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
+                LoggerFactory.Create(b => b.AddConsole()).CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>());
+            var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
+
             // SemanticModeProvider (только локальный embedding если доступен)
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
                 // В local mode нет serverBridge и Overlord
-                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, null, null, null);
+                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, null, null, null, semanticConfig);
             });
 
             // ToolEnricher для semantic enrichment
@@ -365,7 +375,7 @@ public static class Program {
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>>();
                 var semanticProvider = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>();
-                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider);
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider, semanticConfig);
             });
 
             // McpToolInterceptor (только локальное выполнение)
