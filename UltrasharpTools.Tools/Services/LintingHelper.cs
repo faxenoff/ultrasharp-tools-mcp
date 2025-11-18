@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using UltrasharpTools.Tools.Interfaces;
+using UltrasharpTools.Tools.Infrastructure;
 using System.Text;
 
 namespace UltrasharpTools.Tools.Services;
@@ -80,7 +81,7 @@ public static class LintingHelper {
             return string.Empty;
         }
 
-        var sb = new StringBuilder();
+        var sb = ObjectPoolProvider.Instance.GetStringBuilder();
         sb.AppendLine();
         sb.AppendLine("## 📊 Code Quality Check");
         sb.AppendLine();
@@ -122,7 +123,9 @@ public static class LintingHelper {
             sb.AppendLine("💡 **Tip:** Use `UltrasharpTool_AnalyzeCodeStyle` for full analysis or `UltrasharpTool_ApplyCodeFixes` to auto-fix common issues.");
         }
 
-        return sb.ToString();
+        var result = sb.ToString();
+        ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+        return result;
     }
     /// <summary>
     /// Проверяет есть ли критические проблемы в результатах линтинга

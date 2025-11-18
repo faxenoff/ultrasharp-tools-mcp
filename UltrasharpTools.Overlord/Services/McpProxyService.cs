@@ -255,12 +255,16 @@ public sealed class McpProxyService : IMcpProxyService
                 return JsonSerializer.Serialize(new { error = "Symbol location has no source tree" });
             }
 
-            var document = solution.GetDocument(location.SourceTree);
+            // Null-forgiving operator: SourceTree is checked above
+#pragma warning disable CS8602 // Dereference of a possibly null reference
+            var document = solution.GetDocument(location.SourceTree!);
+#pragma warning restore CS8602
             if (document == null)
             {
                 return JsonSerializer.Serialize(new { error = "Could not find document for symbol" });
             }
 
+            // Document is guaranteed non-null after check above
             var syntaxTree = await document.GetSyntaxTreeAsync(cancellationToken);
             if (syntaxTree == null)
             {
@@ -380,12 +384,21 @@ public sealed class McpProxyService : IMcpProxyService
 
             // Получаем document
             var location = symbol.Locations.First();
-            var document = _solutionManager.CurrentSolution.GetDocument(location.SourceTree);
+            if (location.SourceTree == null)
+            {
+                return JsonSerializer.Serialize(new { error = "Symbol location has no source tree" });
+            }
+
+            // Null-forgiving operator: SourceTree is checked above
+#pragma warning disable CS8602 // Dereference of a possibly null reference
+            var document = _solutionManager.CurrentSolution.GetDocument(location.SourceTree!);
+#pragma warning restore CS8602
             if (document == null)
             {
                 return JsonSerializer.Serialize(new { error = "Could not find document for symbol" });
             }
 
+            // Document is guaranteed non-null after check above
             // Выполняем замену
             var newSolution = await _modificationService.ReplaceNodeAsync(document.Id, oldNode, newNode, cancellationToken);
 

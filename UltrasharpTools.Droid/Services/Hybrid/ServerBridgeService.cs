@@ -14,6 +14,7 @@ public sealed class ServerBridgeService : IServerBridgeService
     private readonly ILogger<ServerBridgeService> _logger;
     private readonly string _serverUrl;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly RetryPolicy _retryPolicy;
 
     public ServerBridgeService(
         HttpClient httpClient,
@@ -28,16 +29,24 @@ public sealed class ServerBridgeService : IServerBridgeService
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false
         };
+
+        // Retry policy: 3 attempts, 100ms initial delay, exponential backoff up to 10s
+        _retryPolicy = new RetryPolicy(
+            logger,
+            maxRetries: 3,
+            initialDelay: TimeSpan.FromMilliseconds(100),
+            maxDelay: TimeSpan.FromSeconds(10),
+            backoffMultiplier: 2.0);
     }
 
-    public async Task SendFileChangedEventAsync(
+    public async ValueTask SendFileChangedEventAsync(
         FileChangedEvent evt,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var url = $"{_serverUrl}/api/agent/file-changed";
-            var response = await _httpClient.PostAsJsonAsync(url, evt, _jsonOptions, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync(url, evt, _jsonOptions, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             _logger.LogDebug(
@@ -55,14 +64,14 @@ public sealed class ServerBridgeService : IServerBridgeService
         }
     }
 
-    public async Task SendBranchSwitchEventAsync(
+    public async ValueTask SendBranchSwitchEventAsync(
         BranchSwitchEvent evt,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var url = $"{_serverUrl}/api/agent/branch-switched";
-            var response = await _httpClient.PostAsJsonAsync(url, evt, _jsonOptions, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync(url, evt, _jsonOptions, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             _logger.LogInformation(
@@ -80,14 +89,14 @@ public sealed class ServerBridgeService : IServerBridgeService
         }
     }
 
-    public async Task SendGitCommitEventAsync(
+    public async ValueTask SendGitCommitEventAsync(
         GitCommitEvent evt,
         CancellationToken cancellationToken = default)
     {
         try
         {
             var url = $"{_serverUrl}/api/agent/git-commit";
-            var response = await _httpClient.PostAsJsonAsync(url, evt, _jsonOptions, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync(url, evt, _jsonOptions, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             _logger.LogInformation(
@@ -105,12 +114,12 @@ public sealed class ServerBridgeService : IServerBridgeService
         }
     }
 
-    public async Task<bool> IsServerAvailableAsync(CancellationToken cancellationToken = default)
+    public async ValueTask<bool> IsServerAvailableAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             var url = $"{_serverUrl}/api/agent/health";
-            var response = await _httpClient.GetAsync(url, cancellationToken);
+            var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             return response.IsSuccessStatusCode;
         }
         catch
@@ -119,53 +128,48 @@ public sealed class ServerBridgeService : IServerBridgeService
         }
     }
 
-    public async Task<string> CallMcpProxyAsync(
+    public async ValueTask<string> CallMcpProxyAsync(
         string toolName,
         string argumentsJson,
         string? projectContext = null,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var url = $"{_serverUrl}/api/agent/mcp-proxy";
-
-            var request = new
+        return await _retryPolicy.ExecuteAsync(
+            async ct =>
             {
-                tool = toolName,
-                arguments = argumentsJson,
-                context = new
+                var url = $"{_serverUrl}/api/agent/mcp-proxy";
+
+                var request = new
                 {
-                    project = projectContext
-                }
-            };
+                    tool = toolName,
+                    arguments = argumentsJson,
+                    context = new
+                    {
+                        project = projectContext
+                    }
+                };
 
-            _logger.LogDebug(
-                "Calling MCP proxy: tool={ToolName}, project={Project}",
-                toolName,
-                projectContext);
+                _logger.LogDebug(
+                    "Calling MCP proxy: tool={ToolName}, project={Project}",
+                    toolName,
+                    projectContext);
 
-            var response = await _httpClient.PostAsJsonAsync(url, request, _jsonOptions, cancellationToken);
-            response.EnsureSuccessStatusCode();
+                var response = await _httpClient.PostAsJsonAsync(url, request, _jsonOptions, ct).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadAsStringAsync(cancellationToken);
+                var result = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
-            _logger.LogDebug(
-                "MCP proxy call succeeded: tool={ToolName}",
-                toolName);
+                _logger.LogDebug(
+                    "MCP proxy call succeeded: tool={ToolName}",
+                    toolName);
 
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed to call MCP proxy: tool={ToolName}",
-                toolName);
-            throw;
-        }
+                return result;
+            },
+            $"CallMcpProxy({toolName})",
+            cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<object> CallMcpProxyAsync(
+    public async ValueTask<object> CallMcpProxyAsync(
         string toolName,
         Dictionary<string, object> arguments,
         string? projectContext = null,
@@ -175,7 +179,7 @@ public sealed class ServerBridgeService : IServerBridgeService
         var argumentsJson = JsonSerializer.Serialize(arguments, _jsonOptions);
 
         // Вызываем основной метод
-        var resultJson = await CallMcpProxyAsync(toolName, argumentsJson, projectContext, cancellationToken);
+        var resultJson = await CallMcpProxyAsync(toolName, argumentsJson, projectContext, cancellationToken).ConfigureAwait(false);
 
         // Десериализуем результат обратно
         var result = JsonSerializer.Deserialize<object>(resultJson, _jsonOptions);

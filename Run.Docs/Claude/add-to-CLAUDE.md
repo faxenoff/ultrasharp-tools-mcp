@@ -44,13 +44,14 @@ UltrasharpTools provides deep C# code understanding through Roslyn APIs, enablin
 
 | Category | Purpose | Key Tools |
 |----------|---------|-----------|
-| **Solution** | Load & navigate | LoadSolution, LoadProject |
-| **Analysis** | Code understanding | ViewDefinition, GetMembers, FindReferences |
-| **Modification** | Code changes | modify_code, AddMember, RenameSymbol |
-| **Quality** | Formatting & fixes | FormatCode, AnalyzeCodeStyle, ApplyCodeFixes |
-| **Document** | File operations | ReadRawFromRoslynDocument, OverwriteRoslynDocument |
-| **Tracing** | Debugging | TraceExecution, TraceBackwards, AnalyzeLogs |
-| **Semantic** | Smart search | SemanticSearch, SemanticDiff |
+| **Solution** | Load & navigate | load_solution, load_project |
+| **Analysis** | Code understanding | view_definition, get_members, find_references |
+| **Modification** | Code changes | modify_code, add_member, rename_symbol |
+| **Quality** | Formatting & fixes | format_code, analyze_code_style, apply_code_fixes |
+| **Document** | File operations | read_raw_from_roslyn_document, overwrite_roslyn_document |
+| **Tracing** | Debugging | trace_execution, trace_backwards, analyze_logs |
+| **Semantic** | Smart search | semantic_search, semantic_diff |
+| **System** | Server info | get_capabilities |
 
 ## Detailed Documentation
 
@@ -85,10 +86,18 @@ For comprehensive tool documentation and advanced usage, see:
 
 ## Configuration
 
+**Check Server Capabilities** (recommended at startup):
+```
+get_capabilities()
+→ Returns: semantic mode status, enabled features, server info
+→ Use to: detect if semantic search is available
+```
+
 **Semantic Search** (optional):
 - Setup: `setup-semantic-embedding.cmd` (Windows) or `pwsh Dev.Scripts/setup-semantic-embedding.ps1`
 - Providers: TEI (recommended), Ollama, Memory
 - Config: `Run.Config/semantic-config.json`
+- Check availability: `get_capabilities()` → `semanticMode.enabled`
 
 **Build Configuration**:
 - Use `--build-configuration Debug` for full debugging symbols
@@ -97,17 +106,19 @@ For comprehensive tool documentation and advanced usage, see:
 ## Best Practices
 
 ✅ **DO**:
-- Start with load_solution + LoadProject
+- Call `get_capabilities()` at startup to check available features
+- Start with load_solution + load_project
 - Use FQN for all symbol operations
-- Check AnalyzeCodeStyle before committing
-- Use FormatCode for consistency
+- Check analyze_code_style before committing
+- Use format_code for consistency
 - Review changes with git diff
 
 ❌ **DON'T**:
-- Don't scan files manually - use LoadProject type map
+- Don't scan files manually - use load_project type map
 - Don't guess FQNs - fuzzy matching handles variations
-- Don't skip LoadSolution - required for all operations
-- Don't forget to load dependencies with LoadSolution
+- Don't skip load_solution - required for all operations
+- Don't forget to load dependencies with load_solution
+- Don't assume semantic mode is available - check with get_capabilities()
 
 ## Support & Resources
 

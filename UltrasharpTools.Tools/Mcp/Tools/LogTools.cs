@@ -4,6 +4,7 @@ using ModelContextProtocol;
 using UltrasharpTools.Tools.Mcp;
 using UltrasharpTools.Tools.Interfaces;
 using UltrasharpTools.Tools.Models;
+using UltrasharpTools.Tools.Infrastructure;
 using LogLevel = UltrasharpTools.Tools.Models.LogLevel;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
@@ -136,7 +137,9 @@ return formatted;
 }
 
 // Format as text
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+try
+{
 sb.AppendLine();
 sb.AppendLine($"Log Analysis: {Path.GetFileName(result.FilePath)}");
 sb.AppendLine(new string('═', 80));
@@ -230,6 +233,11 @@ sb.AppendLine();
 }
 
 formatted["analysis"] = sb.ToString();
+}
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+}
 
 // Include raw entries for programmatic access
 formatted["entries"] = result.Entries.Select(e => new

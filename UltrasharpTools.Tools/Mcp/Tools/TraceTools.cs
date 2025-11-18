@@ -6,6 +6,7 @@ using UltrasharpTools.Tools.Mcp;
 using UltrasharpTools.Tools.Interfaces;
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Services;
+using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -134,7 +135,9 @@ result["error"] = trace.ErrorMessage;
 }
 
 // Format steps into readable text
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+try
+{
 sb.AppendLine();
 sb.AppendLine($"Execution Trace: {trace.EntryPointFqn}");
 sb.AppendLine(new string('═', 80));
@@ -213,6 +216,11 @@ sb.AppendLine();
 }
 
 result["trace"] = sb.ToString();
+}
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+}
 
 // Also include raw steps for programmatic access
 result["steps"] = trace.Steps.Select(
@@ -368,7 +376,9 @@ formatted["stackTraceHints"] = result.StackTraceHints;
 }
 
 // Format each call path
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+try
+{
 sb.AppendLine();
 sb.AppendLine($"Backtrace from: {result.CrashPointFqn}");
 sb.AppendLine(new string('═', 80));
@@ -429,6 +439,11 @@ sb.AppendLine();
 }
 
 formatted["backtrace"] = sb.ToString();
+}
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+}
 
 // Include raw paths for programmatic access
 formatted["paths"] = result.CallPaths.Select(

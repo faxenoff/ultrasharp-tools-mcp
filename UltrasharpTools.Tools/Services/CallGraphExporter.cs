@@ -1,4 +1,5 @@
 using UltrasharpTools.Tools.Models;
+using UltrasharpTools.Tools.Infrastructure;
 using System.Text;
 
 namespace UltrasharpTools.Tools.Services;
@@ -13,7 +14,7 @@ public static class CallGraphExporter
 /// </summary>
 public static string ToDot(BacktraceResult result, bool includeConfidence = true)
 {
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 sb.AppendLine("digraph CallGraph {");
 sb.AppendLine("  rankdir=BT;  // Bottom to top (crash -> entry)");
 sb.AppendLine("  node [shape=box, style=rounded];");
@@ -80,7 +81,9 @@ sb.AppendLine("  }");
 
 sb.AppendLine("}");
 
-return sb.ToString();
+var result_string = sb.ToString();
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+return result_string;
 }
 
 /// <summary>
@@ -88,7 +91,7 @@ return sb.ToString();
 /// </summary>
 public static string ToMermaid(BacktraceResult result, bool includeConfidence = true)
 {
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 sb.AppendLine("```mermaid");
 sb.AppendLine("graph BT");
 sb.AppendLine("  %% Call graph from crash point to entry");
@@ -141,7 +144,10 @@ sb.AppendLine();
 }
 
 sb.AppendLine("```");
-return sb.ToString();
+
+var result_string = sb.ToString();
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+return result_string;
 }
 
 /// <summary>
@@ -149,7 +155,7 @@ return sb.ToString();
 /// </summary>
 public static string ToGraphML(BacktraceResult result)
 {
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
 sb.AppendLine("<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\"");
 sb.AppendLine("         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"");
@@ -205,7 +211,9 @@ sb.AppendLine("    </edge>");
 sb.AppendLine("  </graph>");
 sb.AppendLine("</graphml>");
 
-return sb.ToString();
+var result_string = sb.ToString();
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+return result_string;
 }
 
 private static string SimplifyMethodName(string fqn)

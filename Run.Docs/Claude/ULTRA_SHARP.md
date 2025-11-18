@@ -12,11 +12,12 @@ This is the main overview. For detailed method documentation, see:
 - **[ULTRA_SHARP_ANALYSIS.md](./ULTRA_SHARP_ANALYSIS.md)** - Code analysis & navigation
 - **[ULTRA_SHARP_MODIFICATION.md](./ULTRA_SHARP_MODIFICATION.md)** - Code modification & refactoring
 - **[ULTRA_SHARP_QUALITY.md](./ULTRA_SHARP_QUALITY.md)** - Formatting & code fixes
-- **[ULTRA_SHARP_VALIDATION.md](./ULTRA_SHARP_VALIDATION.md)** - Code validation & diagnostics (NEW)
-- **[ULTRA_SHARP_FILE_OPS.md](./ULTRA_SHARP_FILE_OPS.md)** - File operations & refactoring (NEW)
+- **[ULTRA_SHARP_VALIDATION.md](./ULTRA_SHARP_VALIDATION.md)** - Code validation & diagnostics
+- **[ULTRA_SHARP_FILE_OPS.md](./ULTRA_SHARP_FILE_OPS.md)** - File operations & refactoring
 - **[ULTRA_SHARP_DOCUMENT.md](./ULTRA_SHARP_DOCUMENT.md)** - Document operations
 - **[ULTRA_SHARP_TRACING.md](./ULTRA_SHARP_TRACING.md)** - Execution tracing & debugging
 - **[ULTRA_SHARP_SEMANTIC.md](./ULTRA_SHARP_SEMANTIC.md)** - Semantic search & AI-powered features
+- **[ULTRA_SHARP_SYSTEM.md](./ULTRA_SHARP_SYSTEM.md)** - Server capabilities & runtime info ⭐ NEW
 
 ---
 
@@ -196,6 +197,21 @@ AI-powered code understanding (requires setup):
 **Use when:** Finding similar patterns, refactoring duplicates, code review
 
 **Setup required:** Run `setup-semantic-embedding.cmd` (Windows) or `pwsh Dev.Scripts/setup-semantic-embedding.ps1`
+
+---
+
+### System & Capabilities
+[→ Detailed docs](./ULTRA_SHARP_SYSTEM.md)
+
+Server capabilities and runtime information:
+- `get_capabilities` - Get server features and semantic mode status
+
+**Use when:**
+- ✅ Startup - check available features
+- ✅ Before semantic search - verify availability
+- ✅ Show status to user
+
+**Returns:** Server info, semantic mode status (Local/Overlord/Both/None), enabled features
 
 ---
 

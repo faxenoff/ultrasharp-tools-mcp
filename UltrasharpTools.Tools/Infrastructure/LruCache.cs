@@ -137,5 +137,19 @@ public sealed class LruCache<TKey, TValue> where TKey : notnull
     /// </summary>
     public int MaxSize => _maxSize;
 
+    /// <summary>
+    /// Get all keys in cache (snapshot).
+    /// </summary>
+    public IEnumerable<TKey> Keys
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _dictionary.Keys.ToList();
+            }
+        }
+    }
+
     private sealed record CacheItem(TKey Key, TValue Value);
 }
