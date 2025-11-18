@@ -10,7 +10,7 @@
 
 UltrasharpTools делает именно это. Он даёт AI полный доступ к вашей C# кодовой базе через Roslyn — не просто как к тексту, а как к **реальному коду**, который можно анализировать, модифицировать и проверять на ошибки автоматически.
 
-**🚀 2-150x быстрее** | **✨ 36 готовых инструментов** | **🔍 482К+ символов за 4.8 сек** | **⚡ < 20ms переключение веток**
+**🚀 2-150x быстрее** | **✨ 37 готовых инструментов** | **🔍 482К+ символов за 4.8 сек** | **⚡ < 20ms переключение веток**
 
 ---
 
@@ -261,185 +261,142 @@ Claude: Найдено 45 использований в 12 файлах...
 
 ---
 
-## 🔌 **Режимы работы и доступ к файлам**
+## 🔌 **Режимы работы**
 
-UltrasharpTools MCP поддерживает два режима работы с **разным доступом к файловой системе**.
+UltrasharpTools предоставляет два режима работы под разные сценарии.
 
-### 📍 Local Mode (Stdio) - Для разработчиков
+### 📍 Droid - Локальный режим (stdio)
 
-**Для кого:** Индивидуальные разработчики, работающие на своей машине.
+**Основной режим для разработчиков**
 
 **Как работает:**
 ```
-Claude Desktop (ваша машина)
-    ↓ запускает локальный процесс через stdio
+Claude Desktop/Claude Code
+    ↓ stdio процесс на вашей машине
 UltrasharpTools.Droid.exe
-    ↓ ПРЯМОЙ доступ к файловой системе
-Ваши проекты (D:\Projects\, C:\Users\, /home/user/, и т.д.)
+    ↓ прямой доступ к файловой системе
+Ваши C# проекты на диске
 ```
 
-**Конфигурация (`claude_desktop_config.json`):**
+**Конфигурация (`~/.claude.json`):**
 ```json
 {
   "Droids": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "D:/path/to/UltrasharpTools.Droid.exe",
-      "args": ["--log-level", "Information"]
+      "command": "D:/path/to/Run.Publish/Droid/UltrasharpTools.Droid.exe",
+      "args": ["--log-level", "Information"],
+      "env": {}
     }
   }
 }
 ```
 
-**Доступ к файлам:**
-- ✅ **Полный доступ** ко всей файловой системе вашей машины
-- ✅ Работает с **локальными путями** (`D:/MyProject/App.sln`, `/home/user/project/`)
-- ✅ Читает/пишет файлы **напрямую**
-- ✅ Использует **локальный Git** репозиторий
-- ✅ NuGet packages из `~/.nuget/packages/`
+**Возможности:**
+- ✅ **Полный доступ** к файловой системе вашей машины
+- ✅ **Локальный Git** - автоматические коммиты в `sharptools/*` ветки
+- ✅ **Максимальная скорость** - нет сетевых задержек
+- ✅ **NuGet packages** из локального кэша (`~/.nuget/packages/`)
+- ✅ **Локальная семантика** (опционально) - semantic search через Ollama/TEI/Memory
 
-**Пример использования:**
-```
-Claude: load_solution("D:/MyProjects/MyApp/MyApp.sln")
-→ Сервер читает файлы напрямую с вашего диска D:\
-→ Индексирует код, assemblies, references
-→ Готов к работе!
-```
-
-**Преимущества:**
-- ⚡ **Максимальная скорость** - нет сетевых задержек
-- 🎯 **Простая настройка** - один JSON файл
-- 🔒 **Безопасность** - всё локально, ничего не уходит в сеть
-- 💾 **Прямой доступ** - работа с вашими файлами без копирования
-
-**Use case:** Разработка, отладка, рефакторинг на локальной машине.
+**Use case:** Индивидуальная разработка, рефакторинг, отладка на локальной машине
 
 ---
 
-### 🌐 Remote Mode (HTTP/SSE) - Для команд и CI/CD
+### 🌐 Overlord - Удалённый режим (HTTP/SSE)
 
-**Для кого:** Команды разработчиков, CI/CD pipelines, shared environments.
+**Централизованный сервер для командной работы**
 
 **Как работает:**
 ```
-User Machine (Claude Desktop)
-    ↓ HTTP/SSE запросы через сеть
-Remote MCP Server (Kubernetes pod / Docker container)
-    ↓ доступ ТОЛЬКО к mounted volumes
-PersistentVolume (/app/projects/)
+Claude Desktop/Claude Code
+    ↓ HTTP/SSE через сеть
+UltrasharpTools.Overlord (Docker/Kubernetes)
+    ↓ доступ к mounted volumes
+/app/projects/ (PersistentVolume)
     ← git clone из GitHub/GitLab
 ```
 
-**⚠️ ВАЖНО:** Remote сервер **НЕ ИМЕЕТ доступа** к файлам на вашей машине!
-
-**Как предоставить файлы remote серверу?**
-
-**Вариант 1: Git-based workflow (рекомендуется)**
-
+**Deployment через Docker:**
 ```bash
-# В Kubernetes pod (init container или manual):
-cd /app/projects
-git clone https://github.com/mycompany/myproject.git
+docker run -d \
+  --name ultrasharp-overlord \
+  -p 3001:3001 \
+  -v /path/to/projects:/app/projects \
+  -e GIT_AUTHOR_NAME="Bot" \
+  -e GIT_AUTHOR_EMAIL="bot@example.com" \
+  ghcr.io/faxenoff/ultrasharp-tools-overlord:latest
 ```
 
-Затем Claude использует:
-```
-LoadSolution("/app/projects/myproject/MyApp.sln")
-→ Сервер читает из /app/projects (PersistentVolume внутри pod)
-```
-
-**Вариант 2: NFS/SMB Mount**
-
-```yaml
-# Kubernetes PersistentVolume с NFS
-apiVersion: v1
-kind: PersistentVolume
-spec:
-  nfs:
-    server: nfs-server.example.com
-    path: "/exported/projects"  # ваши проекты на NFS
+**Конфигурация клиента (`~/.claude.json`):**
+```json
+{
+  "mcpServers": {
+    "ultrasharp-remote": {
+      "type": "sse",
+      "url": "http://localhost:3001/sse",
+      "timeout": 60000
+    }
+  }
+}
 ```
 
-После mount:
-```
-LoadSolution("/app/projects/MyApp/MyApp.sln")
-→ Читает через NFS mount
-```
-
-**Вариант 3: Direct Volume Copy**
-
-```bash
-# Скопируйте проект в PersistentVolume
-kubectl cp ./MyProject/ pod-name:/app/projects/MyProject/
-```
-
-**Deployment конфигурация:**
-
-```yaml
-# kubernetes/deployment.yaml
-spec:
-  volumes:
-  - name: projects-storage
-    persistentVolumeClaim:
-      claimName: projects-pvc
-
-  containers:
-  - name: ultrasharp-server
-    volumeMounts:
-    - name: projects-storage
-      mountPath: /app/projects  # <-- здесь будут ваши проекты
-```
-
-**Преимущества:**
-- 👥 **Shared access** - вся команда использует один сервер
-- 🔄 **CI/CD integration** - автоматизация code review, analysis
+**Возможности:**
+- 👥 **Shared semantic index** - вся команда использует единую базу векторов
+- 🔍 **Cross-project search** - поиск дубликатов между проектами команды
+- 🌐 **Centralized embedding service** - Ollama/TEI для всех разработчиков
+- 🔄 **CI/CD integration** - автоматический анализ кода в pipeline
 - 🛡️ **Изоляция** - код анализируется в контейнере
 - 📊 **Масштабируемость** - можно добавить replicas
 
-**Use case:** Team code review server, CI/CD pipelines, shared analysis infrastructure.
+**⚠️ Важно:** Overlord **НЕ имеет доступа** к файлам на клиентской машине!
+Проекты нужно предоставить через:
+- Git clone в pod (`/app/projects/`)
+- NFS/SMB mount
+- kubectl cp для тестирования
 
-**Подробная документация:** [Run.Docs/Deployment/README.md](Run.Docs/Deployment/README.md)
+**Use case:** Командная работа, code review server, CI/CD pipelines
+
+**📖 Подробнее:** [Run.Docs/OVERLORD_README.md](Run.Docs/OVERLORD_README.md) | [Deployment Guide](Run.Docs/Deployment/README.md)
 
 ---
 
 ### 📊 Сравнение режимов
 
-| Аспект | Local (Stdio) | Remote (HTTP/SSE) |
+| Аспект | Droid (Local) | Overlord (Remote) |
 |--------|---------------|-------------------|
-| **Доступ к файлам** | ✅ Прямой к вашей ФС | ⚠️ Только mounted volumes |
-| **Где исходники?** | На вашей машине | Git clone в pod/NFS mount |
-| **Скорость** | ⚡ Максимальная | Зависит от network/storage |
-| **Setup сложность** | 🟢 Простой (1 JSON) | 🟡 Средний (Kubernetes/Docker) |
-| **Security** | Локально | Изолированно в контейнере |
+| **Доступ к файлам** | ✅ Прямой к локальной ФС | ⚠️ Только mounted volumes в pod |
+| **Где проекты?** | На вашем диске | Git clone / NFS mount в контейнере |
+| **Скорость** | ⚡⚡⚡ Максимальная | ⚡⚡ Зависит от сети |
+| **Setup** | 🟢 Простой (1 JSON) | 🟡 Средний (Docker/K8s) |
+| **Semantic search** | Локальная (Ollama/TEI/Memory) | Централизованная (shared index) |
+| **Cross-project** | ❌ Один проект за раз | ✅ Поиск по всем проектам команды |
 | **Использование** | Один разработчик | Команда / CI/CD |
-| **NuGet packages** | ~/.nuget/packages | Внутри контейнера |
-| **Git operations** | Локальный репозиторий | Git в pod |
+| **Git** | Локальный репозиторий | Git в контейнере |
 
 ---
 
 ### 🎯 Какой режим выбрать?
 
-**Используйте Local (Stdio), если:**
-- ✅ Работаете на своей машине
+**Используйте Droid (Local), если:**
+- ✅ Работаете на своей машине с локальными проектами
 - ✅ Нужна максимальная скорость
-- ✅ Хотите простую настройку
-- ✅ Работаете с локальными проектами
+- ✅ Хотите простую настройку (1 JSON файл)
+- ✅ Достаточно локальной семантики
 
-**Используйте Remote (HTTP/SSE), если:**
-- ✅ Нужен shared server для команды
-- ✅ Интеграция с CI/CD
-- ✅ Код должен быть изолирован
-- ✅ Используете Kubernetes/Docker infrastructure
+**Используйте Overlord (Remote), если:**
+- ✅ Работаете в команде и нужен shared semantic index
+- ✅ Хотите cross-project поиск дубликатов
+- ✅ Интегрируете с CI/CD
+- ✅ Код должен анализироваться в изолированном контейнере
 
-**Hybrid подход:**
-- **Local** для разработки и отладки
-- **Remote** для code review и CI/CD
-
-**📖 Подробная документация:** [Run.Docs/Setup/Access-Modes.md](Run.Docs/Setup/Access-Modes.md) - детальное руководство по режимам работы с примерами, troubleshooting и FAQ.
+**Комбинированный подход:**
+- **Droid** для ежедневной разработки на локальной машине
+- **Overlord** для code review, поиска дубликатов между проектами, CI/CD
 
 ---
 
-## 🎨 **Полный список инструментов (36 tools)**
+## 🎨 **Полный список инструментов (37 tools)**
 
 ### 🔷 Solution Management (2)
 | Инструмент | Что делает |
@@ -505,6 +462,11 @@ spec:
 | `add_package` | Добавляет/обновляет NuGet пакет в проект |
 | `request_new_tool` | Запрос новых инструментов (логируется для review) |
 
+### ⚙️ System (1)
+| Инструмент | Что делает |
+|------------|------------|
+| `get_capabilities` | Проверка возможностей сервера (semantic mode, версия, features) |
+
 **📖 Подробная документация**: [Run.Docs/Tools/](Run.Docs/Tools/) - примеры, best practices, workflows для каждого инструмента.
 
 ---
@@ -513,26 +475,55 @@ spec:
 
 ### Semantic Code Search (опционально)
 
-Для поиска похожего кода по смыслу (не по тексту) можно включить векторные embeddings:
+Для поиска похожего кода по смыслу (не по тексту) можно включить векторные embeddings.
 
 **Что получите:**
 - ✅ Поиск дубликатов даже с разными названиями переменных
 - ✅ "Найди код похожий на этот метод" → семантический поиск
 - ✅ Автоматическая группировка похожих методов/классов
 
+**Два варианта setup:**
+
+**1. Локальная семантика (Droid)**
+
+Быстрая настройка через `setup-semantic-embedding.cmd`:
+
+```bash
+# Windows
+Dev.Scripts\setup-semantic-embedding.cmd
+
+# Linux/Mac
+pwsh Dev.Scripts/setup-semantic-embedding.ps1
+```
+
+Выберите embedding provider:
+- **Ollama** (рекомендуется) - простая установка, работает на CPU/GPU
+- **TEI** - максимальная производительность, требует Docker + NVIDIA GPU
+- **Memory** - для тестирования без внешних зависимостей
+
+**Ollama quick start:**
+```bash
+# 1. Установите Ollama (https://ollama.ai)
+ollama pull granite-embedding
+
+# 2. Запустите setup
+setup-semantic-embedding.cmd
+# Выберите "Ollama"
+
+# 3. Готово! Droid автоматически использует Ollama
+```
+
+**2. Централизованная семантика (Overlord)**
+
+Для командной работы - shared semantic index на Overlord сервере.
+Все разработчики используют единую базу векторов и embedding service.
+
 **Адаптивные векторные бэкенды** (автоматическое переключение):
 - **SqliteVec** (< 10K символов): Brute-force SIMD, 100% accuracy, fast indexing
 - **Vectorlite HNSW** (> 10K символов): 3-100x быстрее поиск, 99.9%+ recall, масштабируется до 100K+ векторов
 - **Auto-switching**: автоматический выбор оптимального backend по размеру базы
 
-**Конфигурации для разных проектов:**
-```csharp
-// Малые (< 50K): M=16, efConstruction=100
-// Средние (50K-200K): M=24, efConstruction=150
-// Большие (> 200K): M=32, efConstruction=200
-```
-
-**Настройка**: см. [Run.Docs/Setup/Embeddings.md](Run.Docs/Setup/Embeddings.md)
+**📖 Подробнее:** [Run.Docs/Deployment/SEMANTIC_SETUP_GUIDE.md](Run.Docs/Deployment/SEMANTIC_SETUP_GUIDE.md)
 
 ### Layered Indexing для Git workflow (включено по умолчанию)
 
