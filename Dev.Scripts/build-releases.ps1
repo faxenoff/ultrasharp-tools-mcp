@@ -149,7 +149,7 @@ foreach ($Platform in $Platforms) {
         $SuccessCount++
     }
     catch {
-        Write-Error "Failed to build $rid: $_"
+        Write-Error "Failed to build ${rid}: ${_}"
         $FailCount++
     }
 }
