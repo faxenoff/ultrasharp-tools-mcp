@@ -25,11 +25,24 @@ public sealed class ToolEnricher : IToolEnricher
         // Регистрируем enrichment strategies
         _strategies = new List<IEnrichmentStrategy>
         {
+            // Phase 12.1 - Core strategies
             new ViewDefinitionEnrichmentStrategy(),
             new FindReferencesEnrichmentStrategy(),
             new ModifyCodeEnrichmentStrategy(),
             new GetMembersEnrichmentStrategy(),
-            new AnalyzeComplexityEnrichmentStrategy()
+            new AnalyzeComplexityEnrichmentStrategy(),
+
+            // Phase 12.2 - Extended strategies
+            new FindAllReferencesEnrichmentStrategy(),
+            new ListTypesEnrichmentStrategy(),
+            new SearchSymbolsEnrichmentStrategy(),
+            new TraceExecutionEnrichmentStrategy(),
+            new AnalyzeCodeStyleEnrichmentStrategy(),
+            new GetTypeHierarchyEnrichmentStrategy(),
+            new GetProjectStructureEnrichmentStrategy(),
+            new FindUsagesEnrichmentStrategy(),
+            new GetDiagnosticsEnrichmentStrategy(),
+            new ApplyCodeFixesEnrichmentStrategy()
         };
 
         _logger.LogInformation(
@@ -422,6 +435,486 @@ internal sealed class AnalyzeComplexityEnrichmentStrategy : IEnrichmentStrategy
         return new SemanticEnrichment
         {
             SimilarDefinitions = similarComplexity.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для find_all_references
+/// </summary>
+internal sealed class FindAllReferencesEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "FindAllReferences";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "find_all_references"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        if (arguments == null || !arguments.TryGetValue("fqn", out var fqnObj))
+        {
+            return null;
+        }
+
+        var fqn = fqnObj?.ToString();
+        if (string.IsNullOrEmpty(fqn))
+        {
+            return null;
+        }
+
+        // Ищем похожие usage patterns в других проектах
+        var query = $"Find similar usage patterns and references for: {fqn}";
+        var similarUsages = await semanticProvider.SearchByTextAsync(query, topK: 10, threshold: 0.65, ct);
+
+        var recommendations = new List<string>();
+        if (similarUsages.Any())
+        {
+            recommendations.Add($"Found {similarUsages.Count()} similar usage patterns across projects");
+            recommendations.Add("Review cross-project usage for consistency");
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarUsages = similarUsages.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для list_types
+/// </summary>
+internal sealed class ListTypesEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "ListTypes";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "list_types"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        // Получаем namespace filter если есть
+        var namespaceFilter = arguments?.TryGetValue("namespaceFilter", out var nsObj) == true
+            ? nsObj?.ToString()
+            : null;
+
+        if (string.IsNullOrEmpty(namespaceFilter))
+        {
+            return null; // Без фильтра слишком широкий запрос
+        }
+
+        // Ищем похожие типы в других проектах
+        var query = $"Find similar types in namespace: {namespaceFilter}";
+        var similarTypes = await semanticProvider.SearchByTextAsync(query, topK: 8, threshold: 0.7, ct);
+
+        var recommendations = new List<string>();
+        if (similarTypes.Any())
+        {
+            recommendations.Add($"Found {similarTypes.Count()} similar type definitions in other projects");
+            recommendations.Add("Consider reviewing for reusable patterns");
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarDefinitions = similarTypes.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для search_symbols
+/// </summary>
+internal sealed class SearchSymbolsEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "SearchSymbols";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "search_symbols"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        if (arguments == null || !arguments.TryGetValue("query", out var queryObj))
+        {
+            return null;
+        }
+
+        var searchQuery = queryObj?.ToString();
+        if (string.IsNullOrEmpty(searchQuery))
+        {
+            return null;
+        }
+
+        // Semantic search в дополнение к fuzzy matching
+        var semanticQuery = $"Find symbols semantically similar to: {searchQuery}";
+        var semanticMatches = await semanticProvider.SearchByTextAsync(semanticQuery, topK: 10, threshold: 0.6, ct);
+
+        var recommendations = new List<string>();
+        if (semanticMatches.Any())
+        {
+            recommendations.Add("Semantic search found additional relevant symbols");
+            recommendations.Add("Review cross-project matches for reusable implementations");
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarDefinitions = semanticMatches.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для trace_execution
+/// </summary>
+internal sealed class TraceExecutionEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "TraceExecution";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "trace_execution"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        if (arguments == null || !arguments.TryGetValue("entryPoint", out var entryObj))
+        {
+            return null;
+        }
+
+        var entryPoint = entryObj?.ToString();
+        if (string.IsNullOrEmpty(entryPoint))
+        {
+            return null;
+        }
+
+        // Ищем похожие execution paths
+        var query = $"Find similar execution flows and call patterns for: {entryPoint}";
+        var similarFlows = await semanticProvider.SearchByTextAsync(query, topK: 5, threshold: 0.75, ct);
+
+        var recommendations = new List<string>();
+        if (similarFlows.Any())
+        {
+            recommendations.Add("Found similar execution patterns in other projects");
+            recommendations.Add("Compare call graphs for architectural insights");
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarUsages = similarFlows.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для analyze_code_style
+/// </summary>
+internal sealed class AnalyzeCodeStyleEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "AnalyzeCodeStyle";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "analyze_code_style"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        if (arguments == null || !arguments.TryGetValue("fqn", out var fqnObj))
+        {
+            return null;
+        }
+
+        var fqn = fqnObj?.ToString();
+        if (string.IsNullOrEmpty(fqn))
+        {
+            return null;
+        }
+
+        // Ищем best practices examples
+        var query = $"Find well-styled code examples similar to: {fqn}";
+        var bestPractices = await semanticProvider.SearchByTextAsync(query, topK: 5, threshold: 0.7, ct);
+
+        var recommendations = new List<string>();
+
+        // Анализируем результат code style analysis
+        var resultStr = originalResult?.ToString() ?? "";
+        if (resultStr.Contains("Warning") || resultStr.Contains("Issue"))
+        {
+            recommendations.Add("Code style issues detected");
+            if (bestPractices.Any())
+            {
+                recommendations.Add("Review best practice examples from other projects");
+            }
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarDefinitions = bestPractices.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для get_type_hierarchy
+/// </summary>
+internal sealed class GetTypeHierarchyEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "GetTypeHierarchy";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "get_type_hierarchy"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        if (arguments == null || !arguments.TryGetValue("fqn", out var fqnObj))
+        {
+            return null;
+        }
+
+        var fqn = fqnObj?.ToString();
+        if (string.IsNullOrEmpty(fqn))
+        {
+            return null;
+        }
+
+        // Ищем похожие type hierarchies в других проектах
+        var query = $"Find similar type hierarchies and inheritance patterns for: {fqn}";
+        var similarHierarchies = await semanticProvider.SearchByTextAsync(query, topK: 5, threshold: 0.75, ct);
+
+        var recommendations = new List<string>();
+        if (similarHierarchies.Any())
+        {
+            recommendations.Add("Found similar inheritance patterns in other projects");
+            recommendations.Add("Review for common architectural approaches");
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarStructures = similarHierarchies.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для get_project_structure
+/// </summary>
+internal sealed class GetProjectStructureEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "GetProjectStructure";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "get_project_structure"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        // Ищем проекты с похожей структурой
+        var query = "Find projects with similar folder structure and organization";
+        var similarProjects = await semanticProvider.SearchByTextAsync(query, topK: 3, threshold: 0.65, ct);
+
+        var recommendations = new List<string>();
+        if (similarProjects.Any())
+        {
+            recommendations.Add("Found projects with similar organizational patterns");
+            recommendations.Add("Compare architectural decisions across team projects");
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarStructures = similarProjects.ToList(),
+            CrossProjectMatches = similarProjects.Any()
+                ? new Dictionary<string, List<SemanticMatch>>
+                {
+                    ["similar_structures"] = similarProjects.ToList()
+                }
+                : null,
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для find_usages
+/// </summary>
+internal sealed class FindUsagesEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "FindUsages";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "find_usages"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        if (arguments == null || !arguments.TryGetValue("fqn", out var fqnObj))
+        {
+            return null;
+        }
+
+        var fqn = fqnObj?.ToString();
+        if (string.IsNullOrEmpty(fqn))
+        {
+            return null;
+        }
+
+        // Ищем похожие usage examples
+        var query = $"Find similar usage examples and patterns for: {fqn}";
+        var similarUsages = await semanticProvider.SearchByTextAsync(query, topK: 8, threshold: 0.7, ct);
+
+        var recommendations = new List<string>();
+        if (similarUsages.Any())
+        {
+            recommendations.Add($"Found {similarUsages.Count()} similar usage patterns");
+            recommendations.Add("Review for common anti-patterns or best practices");
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarUsages = similarUsages.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для get_diagnostics
+/// </summary>
+internal sealed class GetDiagnosticsEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "GetDiagnostics";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "get_diagnostics"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        // Анализируем diagnostics из результата
+        var resultStr = originalResult?.ToString() ?? "";
+
+        // Ищем похожие ошибки и их решения
+        var query = "Find similar diagnostic issues and their resolutions";
+        var similarIssues = await semanticProvider.SearchByTextAsync(query, topK: 5, threshold: 0.7, ct);
+
+        var recommendations = new List<string>();
+
+        if (resultStr.Contains("Error") || resultStr.Contains("Warning"))
+        {
+            recommendations.Add("Diagnostics contain errors or warnings");
+            if (similarIssues.Any())
+            {
+                recommendations.Add("Review similar issues and resolutions from other projects");
+            }
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarChanges = similarIssues.ToList(),
+            Recommendations = recommendations
+        };
+    }
+}
+
+/// <summary>
+/// Enrichment strategy для apply_code_fixes
+/// </summary>
+internal sealed class ApplyCodeFixesEnrichmentStrategy : IEnrichmentStrategy
+{
+    public string Name => "ApplyCodeFixes";
+
+    public IReadOnlySet<string> SupportedTools { get; } = new HashSet<string>
+    {
+        "apply_code_fixes"
+    };
+
+    public async Task<SemanticEnrichment?> EnrichAsync(
+        object originalResult,
+        Dictionary<string, object>? arguments,
+        ISemanticModeProvider semanticProvider,
+        CancellationToken ct)
+    {
+        if (arguments == null || !arguments.TryGetValue("fqn", out var fqnObj))
+        {
+            return null;
+        }
+
+        var fqn = fqnObj?.ToString();
+        if (string.IsNullOrEmpty(fqn))
+        {
+            return null;
+        }
+
+        // Ищем похожие code fixes из истории
+        var query = $"Find similar code fixes and diagnostic resolutions for: {fqn}";
+        var similarFixes = await semanticProvider.SearchByTextAsync(query, topK: 5, threshold: 0.75, ct);
+
+        var recommendations = new List<string>
+        {
+            "Code fixes applied automatically",
+            "Review changes with git diff"
+        };
+
+        if (similarFixes.Any())
+        {
+            recommendations.Add("Similar fixes found in project history");
+        }
+
+        return new SemanticEnrichment
+        {
+            SimilarChanges = similarFixes.ToList(),
             Recommendations = recommendations
         };
     }
