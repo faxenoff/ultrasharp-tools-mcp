@@ -70,6 +70,10 @@ secrets.json
 logs_llm/
 vectors.*
 
+# VS Code Copilot Edits (auto-generated)
+.vscode/prompts/
+Prompts/
+
 # OS generated files
 ehthumbs.db
 Thumbs.db

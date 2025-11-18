@@ -104,6 +104,60 @@ public static class TestServiceProvider
         return services.BuildServiceProvider();
     }
 
+    /// <summary>
+    /// Create service provider for semantic analysis tools tests (semantic_search, semantic_diff, detect_code_clones)
+    /// </summary>
+    public static ServiceProvider CreateForSemanticAnalysisTest(
+        TestConfiguration config,
+        string provider = "memory",
+        int? dimension = null,
+        Action<IServiceCollection>? configureServices = null)
+    {
+        var services = new ServiceCollection();
+
+        // Configure logging
+        services.AddLogging(builder =>
+        {
+            builder.AddConsole();
+            builder.SetMinimumLevel(ParseLogLevel(config.LogLevel));
+        });
+
+        // Register UltrasharpTools services
+        services.WithUltrasharpToolsServices(
+            enableGit: config.EnableGit,
+            buildConfiguration: config.BuildConfiguration,
+            gitOptions: null,
+            reloadOptions: null,
+            symbolCacheOptions: null
+        );
+
+        // Configure Semantic RAG (required for SemanticSearchService)
+        var ragDimension = dimension ?? config.SemanticRag.Dimension;
+        services.WithSemanticRag(
+            databasePath: config.SemanticRag.DatabasePath,
+            dimension: ragDimension,
+            configureEmbedding: opts =>
+            {
+                if (provider.ToLower() == "ollama")
+                {
+                    opts.Provider = "ollama";
+                    opts.Ollama.Model = "granite-embedding:latest";
+                    opts.Ollama.BaseUrl = "http://localhost:11434";
+                    opts.Ollama.Concurrency = 8;
+                }
+                else
+                {
+                    opts.Provider = "memory";
+                }
+            }
+        );
+
+        // Allow custom service configuration
+        configureServices?.Invoke(services);
+
+        return services.BuildServiceProvider();
+    }
+
     private static LogLevel ParseLogLevel(string logLevel)
     {
         return logLevel.ToLower() switch

@@ -90,6 +90,15 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton<ICodeFixService, CodeFixService>();
         services.AddSingleton<IQuickLintService, QuickLintService>();
 
+        // Preview manager for code modification previews
+        services.AddSingleton<UltrasharpTools.Tools.Preview.PreviewManager>();
+
+        // Version manager for code snapshots
+        services.AddSingleton<UltrasharpTools.Tools.Versioning.VersionManager>();
+
+        // Import update service for auto-import management
+        services.AddSingleton<ImportUpdateService>();
+
         return services;
     }
 

@@ -36,12 +36,14 @@ public static class ModificationTools {
         ICodeModificationService modificationService,
         IComplexityAnalysisService complexityAnalysisService,
         ISemanticSimilarityService semanticSimilarityService,
+        UltrasharpTools.Tools.Preview.PreviewManager previewManager,
         ILogger<ModificationToolsLogCategory> logger,
         [Description("FQN of the parent type or method.")] string fullyQualifiedTargetName,
         [Description("The C# code to add.")] string codeSnippet,
         [Description("If the target is a partial type, specifies which file to add to. Set to 'auto' to determine automatically.")] string fileNameHint,
         [Description("Suggest a line number to insert the member near. '-1' to determine automatically.")] int lineNumberHint,
         string commitMessage,
+        [Description("Preview mode: if true, returns diff without applying changes (default: false)")] bool preview = false,
         CancellationToken cancellationToken = default) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
             // Validate parameters
@@ -51,7 +53,40 @@ public static class ModificationTools {
 
             // Ensure solution is loaded
             await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(solutionManager, logger, nameof(AddMember), cancellationToken);
-            logger.LogInformation("Executing '{AddMember}' for target: {TargetName}", nameof(AddMember), fullyQualifiedTargetName);
+            logger.LogInformation("Executing '{AddMember}' for target: {TargetName} (preview={Preview})", nameof(AddMember), fullyQualifiedTargetName, preview);
+
+            // Preview mode: return diff without applying changes
+            if (preview)
+            {
+                try
+                {
+                    var previewResult = await previewManager.PreviewAddMemberAsync(
+                        fullyQualifiedTargetName,
+                        codeSnippet,
+                        cancellationToken);
+
+                    return ToolHelpers.ToJson(new
+                    {
+                        mode = "preview",
+                        operation = previewResult.Operation,
+                        targetFqn = previewResult.TargetFqn,
+                        filesAffected = previewResult.FilesAffected,
+                        diff = previewResult.Diff,
+                        impact = new
+                        {
+                            entitiesAffected = previewResult.EstimatedImpact.EntitiesAffected,
+                            referencesAffected = previewResult.EstimatedImpact.ReferencesAffected,
+                            breakingChange = previewResult.EstimatedImpact.BreakingChange
+                        },
+                        message = "Preview mode: no changes applied. Set preview=false to apply changes."
+                    });
+                }
+                catch (Exception ex) when (ex is not McpException && ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Preview generation failed for {TargetName}", fullyQualifiedTargetName);
+                    throw new McpException($"Preview generation failed: {ex.Message}");
+                }
+            }
 
             // Get the target symbol
             var targetSymbol = await ToolHelpers.GetRoslynSymbolOrThrowAsync(solutionManager, fullyQualifiedTargetName, cancellationToken);
@@ -239,10 +274,12 @@ public static class ModificationTools {
     public static async Task<string> OverwriteMember(
         ISolutionManager solutionManager,
         ICodeModificationService modificationService,
+        UltrasharpTools.Tools.Preview.PreviewManager previewManager,
         ILogger<ModificationToolsLogCategory> logger,
         [Description("FQN of the member or type to rewrite.")] string fullyQualifiedMemberName,
         [Description("The new C# code for the member or type. *If this member has attributes or XML documentation, they MUST be included here.* To Delete the target instead, set this to `// Delete {memberName}`.")] string newMemberCode,
         string commitMessage,
+        [Description("Preview mode: if true, returns diff without applying changes (default: false)")] bool preview = false,
         CancellationToken cancellationToken = default) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
             ErrorHandlingHelpers.ValidateStringParameter(fullyQualifiedMemberName, nameof(fullyQualifiedMemberName), logger);
@@ -250,7 +287,40 @@ public static class ModificationTools {
             newMemberCode = newMemberCode.TrimBackslash();
 
             await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(solutionManager, logger, nameof(OverwriteMember), cancellationToken);
-            logger.LogInformation("Executing '{OverwriteMember}' for: {SymbolName}", nameof(OverwriteMember), fullyQualifiedMemberName);
+            logger.LogInformation("Executing '{OverwriteMember}' for: {SymbolName} (preview={Preview})", nameof(OverwriteMember), fullyQualifiedMemberName, preview);
+
+            // Preview mode: return diff without applying changes
+            if (preview)
+            {
+                try
+                {
+                    var previewResult = await previewManager.PreviewCodeModificationAsync(
+                        fullyQualifiedMemberName,
+                        newMemberCode,
+                        cancellationToken);
+
+                    return ToolHelpers.ToJson(new
+                    {
+                        mode = "preview",
+                        operation = previewResult.Operation,
+                        targetFqn = previewResult.TargetFqn,
+                        filesAffected = previewResult.FilesAffected,
+                        diff = previewResult.Diff,
+                        impact = new
+                        {
+                            entitiesAffected = previewResult.EstimatedImpact.EntitiesAffected,
+                            referencesAffected = previewResult.EstimatedImpact.ReferencesAffected,
+                            breakingChange = previewResult.EstimatedImpact.BreakingChange
+                        },
+                        message = "Preview mode: no changes applied. Set preview=false to apply changes."
+                    });
+                }
+                catch (Exception ex) when (ex is not McpException && ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Preview generation failed for {SymbolName}", fullyQualifiedMemberName);
+                    throw new McpException($"Preview generation failed: {ex.Message}");
+                }
+            }
 
             var symbol = await ToolHelpers.GetRoslynSymbolOrThrowAsync(solutionManager, fullyQualifiedMemberName, cancellationToken);
 
@@ -365,10 +435,12 @@ public static class ModificationTools {
     public static async Task<string> RenameSymbol(
         ISolutionManager solutionManager,
         ICodeModificationService modificationService,
+        UltrasharpTools.Tools.Preview.PreviewManager previewManager,
         ILogger<ModificationToolsLogCategory> logger,
         [Description("FQN of the symbol to rename.")] string fullyQualifiedSymbolName,
         [Description("The new name for the symbol.")] string newName,
         string commitMessage,
+        [Description("Preview mode: if true, returns impact analysis without applying changes (default: false)")] bool preview = false,
         CancellationToken cancellationToken = default) {
 
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
@@ -383,7 +455,43 @@ public static class ModificationTools {
 
             // Ensure solution is loaded
             await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(solutionManager, logger, nameof(RenameSymbol), cancellationToken);
-            logger.LogInformation("Executing '{RenameSymbol}' for {SymbolName} to {NewName}", nameof(RenameSymbol), fullyQualifiedSymbolName, newName);
+            logger.LogInformation("Executing '{RenameSymbol}' for {SymbolName} to {NewName} (preview={Preview})", nameof(RenameSymbol), fullyQualifiedSymbolName, newName, preview);
+
+            // Preview mode: return impact analysis without applying changes
+            if (preview)
+            {
+                try
+                {
+                    var previewResult = await previewManager.PreviewRenameSymbolAsync(
+                        fullyQualifiedSymbolName,
+                        newName,
+                        cancellationToken);
+
+                    return ToolHelpers.ToJson(new
+                    {
+                        mode = "preview",
+                        operation = previewResult.Operation,
+                        targetFqn = previewResult.TargetFqn,
+                        oldName = previewResult.OldCode,
+                        newName = previewResult.NewCode,
+                        filesAffected = previewResult.FilesAffected.Length,
+                        affectedFiles = previewResult.FilesAffected,
+                        diff = previewResult.Diff,
+                        impact = new
+                        {
+                            entitiesAffected = previewResult.EstimatedImpact.EntitiesAffected,
+                            referencesAffected = previewResult.EstimatedImpact.ReferencesAffected,
+                            breakingChange = previewResult.EstimatedImpact.BreakingChange
+                        },
+                        message = "Preview mode: no changes applied. Set preview=false to apply changes."
+                    });
+                }
+                catch (Exception ex) when (ex is not McpException && ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Preview generation failed for {SymbolName}", fullyQualifiedSymbolName);
+                    throw new McpException($"Preview generation failed: {ex.Message}");
+                }
+            }
 
             // Get the symbol to rename
             var symbol = await ToolHelpers.GetRoslynSymbolOrThrowAsync(solutionManager, fullyQualifiedSymbolName, cancellationToken);

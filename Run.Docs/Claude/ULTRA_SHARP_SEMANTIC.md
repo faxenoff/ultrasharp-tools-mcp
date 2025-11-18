@@ -10,8 +10,9 @@
 
 | Tool | Purpose | Requires Setup | Use Case |
 |------|---------|----------------|----------|
-| **SemanticSearch** | Find semantically similar code | ✅ Yes | Find similar patterns, duplicates |
-| **SemanticDiff** | Compare semantic changes | ✅ Yes | Code review, refactoring |
+| **semantic_search** | Find semantically similar code | ✅ Yes | Find similar patterns, discover existing utilities |
+| **semantic_diff** | Compare semantic changes | ✅ Yes | Verify refactorings, detect breaking changes |
+| **detect_code_clones** | Find duplicate code | ✅ Yes | Identify consolidation opportunities |
 
 ---
 
@@ -57,17 +58,18 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
 
 ---
 
-## SemanticSearch
+## semantic_search
 
 **Find semantically similar code** — searches for code with similar meaning/functionality using vector embeddings.
 
 ### Usage
 
 ```javascript
-SemanticSearch(
+semantic_search(
     query: "validate email address",
     scope: "solution",
-    topK: 10
+    topK: 10,
+    minSimilarity: 0.7
 )
 ```
 
@@ -176,14 +178,14 @@ SemanticSearch(
 
 ---
 
-## SemanticDiff
+## semantic_diff
 
 **Semantic change analysis** — compares code changes semantically, not just textually.
 
 ### Usage
 
 ```javascript
-SemanticDiff(
+semantic_diff(
     beforeFqn: "MyNamespace.UserService.ValidateUser",
     afterFqn: "MyNamespace.UserService.ValidateUser",  // after modification
     includeImplementationDetails: false
@@ -263,34 +265,140 @@ SemanticDiff(
 
 ### Related Tools
 
-- ⬅️ [**ViewDefinition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — see before/after code
-- ⬅️ [**OverwriteMember**](./ULTRA_SHARP_MODIFICATION.md#modify_code) — make changes to compare
-- ➡️ [**AnalyzeComplexity**](./ULTRA_SHARP_ANALYSIS.md#analyze_complexity) — compare complexity before/after
+- ⬅️ [**view_definition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — see before/after code
+- ⬅️ [**modify_code**](./ULTRA_SHARP_MODIFICATION.md#modify_code) — make changes to compare
+- ➡️ [**analyze_complexity**](./ULTRA_SHARP_ANALYSIS.md#analyze_complexity) — compare complexity before/after
+
+---
+
+## detect_code_clones
+
+**Find duplicate or similar code** — identifies code clones across the codebase using semantic analysis.
+
+### Usage
+
+```javascript
+detect_code_clones(
+    minSimilarity: 0.85,
+    mode: "semantic",
+    membersOnly: true,
+    maxGroups: 20
+)
+```
+
+### Parameters
+
+- **minSimilarity** (default: 0.85): Minimum similarity threshold (0.5-1.0). Use 0.85+ for exact duplicates, 0.7+ for similar patterns.
+- **mode** (default: "semantic"): Clone detection mode - 'semantic' (ML-based), 'exact', or 'similar'
+- **membersOnly** (default: true): Only analyze methods and properties, skip classes for faster analysis
+- **maxGroups** (default: 20): Maximum number of clone groups to return (1-100)
+
+### What It Shows
+
+- 🔍 **Clone groups** - Groups of similar code entities
+- 📊 **Clone type** - exact_clone (98%+), very_similar (90%+), similar (80%+), conceptually_similar
+- 📈 **Statistics** - Total clone groups, duplicate entities, estimated duplicate lines
+- 💡 **Refactoring recommendations** - Actionable suggestions for each clone group
+- ⚠️ **Priority** - critical, high, medium, low based on impact
+
+### When to Use
+
+✅ **For technical debt analysis:**
+- Find copy-paste code
+- Identify refactoring opportunities
+- Estimate code duplication impact
+
+✅ **For code quality improvement:**
+- Consolidate duplicate logic
+- Extract common patterns to utilities
+- Reduce maintenance burden
+
+✅ **For codebase understanding:**
+- Discover recurring patterns
+- Understand architectural inconsistencies
+- Plan refactoring priorities
+
+### Example Queries
+
+```javascript
+// Find exact duplicates
+detect_code_clones(minSimilarity: 0.95)
+
+// Find similar patterns for refactoring
+detect_code_clones(minSimilarity: 0.75, maxGroups: 50)
+
+// Comprehensive clone detection including classes
+detect_code_clones(minSimilarity: 0.80, membersOnly: false)
+```
+
+### Best Practices
+
+1. **Start with high similarity for duplicates:**
+   ```javascript
+   // Find true duplicates first
+   detect_code_clones(minSimilarity: 0.9)
+   ```
+
+2. **Use lower thresholds for patterns:**
+   ```javascript
+   // Find similar implementations to consolidate
+   detect_code_clones(minSimilarity: 0.7)
+   ```
+
+3. **Focus on critical clones first:**
+   - Results are sorted by priority (critical → high → medium → low)
+   - Start refactoring from highest priority groups
+   - Consider estimated LOC saved
+
+### Performance
+
+- **Speed:** 10-30 sec depending on codebase size
+- **Depends on:**
+  - Number of entities to analyze
+  - Embedding provider speed (TEI > Ollama > Memory)
+  - maxGroups limit
+
+### Related Tools
+
+- ➡️ [**semantic_search**](#semantic_search) — find specific patterns
+- ➡️ [**semantic_diff**](#semantic_diff) — verify refactoring preserved behavior
+- ➡️ [**view_definition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — examine clone code
+- ➡️ [**modify_code**](./ULTRA_SHARP_MODIFICATION.md#modify_code) — consolidate clones
 
 ---
 
 ## Workflow: Find and Consolidate Duplicates
 
 ```javascript
-// 1. Find duplicate validation logic
-SemanticSearch(
+// 1. Detect all code clones in codebase
+detect_code_clones(
+    minSimilarity: 0.85,
+    mode: "semantic",
+    membersOnly: true,
+    maxGroups: 20
+)
+// Output: Found 7 clone groups with duplicate email validation logic
+
+// 2. Find specific validation duplicates
+semantic_search(
     query: "validate email address format",
     scope: "solution",
-    topK: 20
+    topK: 20,
+    minSimilarity: 0.7
 )
-// Output: Found 7 similar implementations
+// Output: Found 7 similar implementations across different services
 
-// 2. View each implementation
+// 3. View each implementation
 view_definition("UserService.ValidateEmail")
 view_definition("EmailValidator.IsValidEmail")
 view_definition("RegistrationService.CheckEmailFormat")
 // ... etc
 
-// 3. Choose best implementation
+// 4. Choose best implementation
 analyze_complexity(scope: "method", target: "EmailValidator.IsValidEmail")
 // Output: Lowest complexity, well-tested
 
-// 4. Update others to use best implementation
+// 5. Update others to use best implementation
 modify_code(
     fullyQualifiedMemberName: "UserService.ValidateEmail",
     newMemberCode: `
@@ -301,12 +409,13 @@ private bool ValidateEmail(string email)
     commitMessage: "Consolidate to EmailValidator.IsValidEmail"
 )
 
-// 5. Verify semantic equivalence
-SemanticDiff(
+// 6. Verify semantic equivalence
+semantic_diff(
     beforeFqn: "UserService.ValidateEmail",  // old implementation
-    afterFqn: "UserService.ValidateEmail"    // new implementation
+    afterFqn: "UserService.ValidateEmail",   // new implementation
+    includeImplementationDetails: false
 )
-// Output: "Semantic similarity: 95%, behavior preserved"
+// Output: "Semantic similarity: 95%, behavior preserved, refactoring category"
 ```
 
 ---
@@ -327,12 +436,13 @@ modify_code(
 )
 
 // 3. Verify semantic equivalence
-SemanticDiff(
+semantic_diff(
     beforeFqn: "OrderService.CalculateDiscount",
     afterFqn: "OrderService.CalculateDiscount",
-    includeImplementationDetails: false
+    includeImplementationDetails: true
 )
-// Output: "Semantic similarity: 98%, intent preserved, complexity reduced"
+// Output: "Semantic similarity: 98%, behavior preserved, refactoring category"
+// codeMetrics: { beforeLines: 45, afterLines: 28, lineDelta: -17, sizeDeltaPercent: -37.78% }
 
 // 4. Check new complexity
 analyze_complexity(scope: "method", target: "OrderService.CalculateDiscount")

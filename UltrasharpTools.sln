@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Test.Layere
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Test.SemanticMerge", "UltrasharpTools.Test\UltrasharpTools.Test.SemanticMerge\UltrasharpTools.Test.SemanticMerge.csproj", "{EE99A38A-3219-4CF1-87A8-3BD49488990E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Test.SemanticAnalysis", "UltrasharpTools.Test\UltrasharpTools.Test.SemanticAnalysis\UltrasharpTools.Test.SemanticAnalysis.csproj", "{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -113,6 +115,18 @@ Global
 		{EE99A38A-3219-4CF1-87A8-3BD49488990E}.Release|x64.Build.0 = Release|Any CPU
 		{EE99A38A-3219-4CF1-87A8-3BD49488990E}.Release|x86.ActiveCfg = Release|Any CPU
 		{EE99A38A-3219-4CF1-87A8-3BD49488990E}.Release|x86.Build.0 = Release|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Debug|x64.Build.0 = Debug|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Debug|x86.Build.0 = Debug|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|x64.ActiveCfg = Release|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|x64.Build.0 = Release|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|x86.ActiveCfg = Release|Any CPU
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -121,5 +135,6 @@ Global
 		{C6560AF8-E00F-43E7-B219-FFD303FDC6F1} = {C93971C6-3989-0EEE-3854-E921E1D1A73A}
 		{CEEC24FC-DD9E-434C-B457-7AA8CC24C482} = {C93971C6-3989-0EEE-3854-E921E1D1A73A}
 		{EE99A38A-3219-4CF1-87A8-3BD49488990E} = {C93971C6-3989-0EEE-3854-E921E1D1A73A}
+		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E} = {C93971C6-3989-0EEE-3854-E921E1D1A73A}
 	EndGlobalSection
 EndGlobal

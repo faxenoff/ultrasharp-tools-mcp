@@ -12,6 +12,8 @@ This is the main overview. For detailed method documentation, see:
 - **[ULTRA_SHARP_ANALYSIS.md](./ULTRA_SHARP_ANALYSIS.md)** - Code analysis & navigation
 - **[ULTRA_SHARP_MODIFICATION.md](./ULTRA_SHARP_MODIFICATION.md)** - Code modification & refactoring
 - **[ULTRA_SHARP_QUALITY.md](./ULTRA_SHARP_QUALITY.md)** - Formatting & code fixes
+- **[ULTRA_SHARP_VALIDATION.md](./ULTRA_SHARP_VALIDATION.md)** - Code validation & diagnostics (NEW)
+- **[ULTRA_SHARP_FILE_OPS.md](./ULTRA_SHARP_FILE_OPS.md)** - File operations & refactoring (NEW)
 - **[ULTRA_SHARP_DOCUMENT.md](./ULTRA_SHARP_DOCUMENT.md)** - Document operations
 - **[ULTRA_SHARP_TRACING.md](./ULTRA_SHARP_TRACING.md)** - Execution tracing & debugging
 - **[ULTRA_SHARP_SEMANTIC.md](./ULTRA_SHARP_SEMANTIC.md)** - Semantic search & AI-powered features
@@ -160,12 +162,36 @@ Debug and analyze program behavior:
 
 ---
 
+### Code Validation
+[→ Detailed docs](./ULTRA_SHARP_VALIDATION.md)
+
+Automated quality checks with Roslyn diagnostics:
+- `validate_file` - Validate single C# file with analyzers
+- `validate_directory` - Batch validate directory (parallel)
+- `compare_validation` - Track quality improvements
+
+**Use when:** Pre-commit checks, CI/CD pipelines, quality tracking
+
+---
+
+### File Operations
+[→ Detailed docs](./ULTRA_SHARP_FILE_OPS.md)
+
+Large-scale file refactoring:
+- `split_file` - Split large file by top-level types
+- `synthesize_files` - Combine multiple files into one
+
+**Use when:** Refactor "God classes", consolidate utilities, reorganize codebase
+
+---
+
 ### Semantic Search
 [→ Detailed docs](./ULTRA_SHARP_SEMANTIC.md)
 
 AI-powered code understanding (requires setup):
-- `SemanticSearch` - Find semantically similar code
-- `SemanticDiff` - Compare code semantic changes
+- `semantic_search` - Find semantically similar code
+- `semantic_diff` - Compare code semantic changes
+- `detect_code_clones` - Find duplicate/similar code
 
 **Use when:** Finding similar patterns, refactoring duplicates, code review
 

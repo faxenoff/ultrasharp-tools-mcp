@@ -77,6 +77,71 @@ _logger.LogInformation("Project {ProjectName} reindexed", projectName);
 }
 
 /// <summary>
+/// Инкрементально переиндексировать изменённые файлы.
+/// </summary>
+public async Task ReindexChangedFilesAsync(string[] filePaths, CancellationToken ct = default)
+{
+if (_solutionManager.CurrentWorkspace?.CurrentSolution == null)
+{
+throw new InvalidOperationException("No solution loaded.");
+}
+
+_logger.LogInformation("Incrementally reindexing {Count} changed files", filePaths.Length);
+
+var solution = _solutionManager.CurrentWorkspace.CurrentSolution;
+var documentsToReindex = new List<(Document, Compilation)>();
+
+// Найти документы и их компиляции
+foreach (var filePath in filePaths)
+{
+foreach (var project in solution.Projects)
+{
+var document = project.Documents.FirstOrDefault(d =>
+string.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+
+if (document != null)
+{
+var compilation = await project.GetCompilationAsync(ct);
+if (compilation != null)
+{
+documentsToReindex.Add((document, compilation));
+}
+break;
+}
+}
+}
+
+if (documentsToReindex.Count == 0)
+{
+_logger.LogWarning("No documents found for reindexing");
+return;
+}
+
+// Переиндексировать документы
+foreach (var (document, compilation) in documentsToReindex)
+{
+await _indexer.ReindexDocumentAsync(document, compilation, ct);
+}
+
+_logger.LogInformation("Incremental reindex complete: {Count} files", documentsToReindex.Count);
+}
+
+/// <summary>
+/// Удалить индекс для конкретных файлов (например, при удалении файлов).
+/// </summary>
+public async Task DeleteFileIndexesAsync(string[] filePaths, CancellationToken ct = default)
+{
+_logger.LogInformation("Deleting indexes for {Count} files", filePaths.Length);
+
+foreach (var filePath in filePaths)
+{
+await _indexer.DeleteDocumentIndexAsync(filePath, ct);
+}
+
+_logger.LogInformation("Deleted indexes for {Count} files", filePaths.Length);
+}
+
+/// <summary>
 /// Найти методы, похожие на данный код.
 /// </summary>
 public async Task<List<SemanticCodeMatch>> FindSimilarMethodsAsync(
