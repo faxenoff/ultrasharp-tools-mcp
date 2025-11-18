@@ -19,10 +19,10 @@
 
 ```cmd
 # Автоопределение версии из .csproj
-build-releases.cmd
+Dev.Scripts\build-releases.cmd
 
 # Указать версию вручную
-build-releases.cmd 3.0.0
+Dev.Scripts\build-releases.cmd 3.0.0
 ```
 
 ### Linux/macOS
