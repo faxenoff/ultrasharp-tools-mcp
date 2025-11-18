@@ -1,8 +1,8 @@
 # UltrasharpTools - Project Status & Roadmap
 
 **Дата:** 2025-11-18
-**Версия:** 2.2.0
-**Статус:** 🚀 Production Ready (Phase 1-12.2) - 15 Enrichment Strategies, 85% Tool Coverage!
+**Версия:** 2.2.1
+**Статус:** 🚀 Production Ready (Phase 1-12.3) - Tool Routing Cleanup, Clone Detection Unification!
 
 ---
 
@@ -221,7 +221,24 @@ Claude → Droid
 **Completed:** 2025-11-18
 **Status:** ✅ COMPLETE
 
-### Phase 12.3: Configuration & Testing
+### ✅ Phase 12.3: Tool Routing Cleanup & Clone Detection - COMPLETE
+- ✅ Анализ detect_code_clones vs find_duplicates
+- ✅ CLONE_DETECTION_UNIFICATION_ANALYSIS.md (детальный анализ)
+- ✅ Обновлён ToolRouter - detect_code_clones → LOCAL
+- ✅ Обновлён ToolRoutingConfig - detect_code_clones = "local"
+- ✅ Обновлён McpProxyService.ExecuteDetectCodeClones - helpful error
+- ✅ Обновлён CODE_AUDIT_REPORT.md - resolved status
+- ✅ Компиляция успешна (0 errors, 4 warnings)
+
+**Completed:** 2025-11-18
+**Status:** ✅ COMPLETE
+
+**Ключевое решение:**
+- `find_duplicates` (OVERLORD) - Query-based cross-project search
+- `detect_code_clones` (LOCAL) - Batch analysis with grouping & refactoring recommendations
+- Разные инструменты для разных use cases - НЕ унифицировать
+
+### Phase 12.4: Configuration & Testing
 - [ ] semantic-mode-config.json schema
 - [ ] ConfigurationLoader для semantic config
 - [ ] Unit tests для SemanticModeProvider
@@ -232,7 +249,7 @@ Claude → Droid
 **Timeline:** 1-2 weeks
 **Priority:** MEDIUM
 
-### Phase 12.4: MCP SDK Deep Integration
+### Phase 12.5: MCP SDK Deep Integration
 - [ ] Исследовать MCP SDK internal architecture
 - [ ] Найти official extension points
 - [ ] Реализовать custom middleware если доступно
@@ -271,9 +288,10 @@ Claude → Droid
 - [UNIVERSAL_SEMANTIC_MODE.md](./UNIVERSAL_SEMANTIC_MODE.md) - Revolutionary semantic approach
 - [TOOL_ROUTING_ARCHITECTURE.md](./TOOL_ROUTING_ARCHITECTURE.md) - Классификация 52 tools
 - [MCP_PROXY_REVISED_SCOPE.md](./MCP_PROXY_REVISED_SCOPE.md) - Overlord proxy architecture
+- [CLONE_DETECTION_UNIFICATION_ANALYSIS.md](./CLONE_DETECTION_UNIFICATION_ANALYSIS.md) - detect_code_clones vs find_duplicates ⭐ NEW
 
 ### Implementation Completion:
-- [PHASE_12.2_COMPLETION.md](./PHASE_12.2_COMPLETION.md) - Extended Enrichment Strategies (15 total) ⭐ NEW
+- [PHASE_12.2_COMPLETION.md](./PHASE_12.2_COMPLETION.md) - Extended Enrichment Strategies (15 total)
 - [PHASE_12_COMPLETION.md](./PHASE_12_COMPLETION.md) - Universal Semantic Mode Core Infrastructure
 - [PHASE_11_COMPLETION.md](./PHASE_11_COMPLETION.md) - Integration & DI Setup
 - [PHASE_10_COMPLETION.md](./PHASE_10_COMPLETION.md) - Tool Routing Logic
@@ -366,5 +384,5 @@ dotnet run -- \
 ---
 
 **Last Updated:** 2025-11-18
-**Project Version:** 2.2.0
-**Status:** 🚀 Production Ready (Phase 1-12.2) - 15 Enrichment Strategies, 85% Tool Coverage!
+**Project Version:** 2.2.1
+**Status:** 🚀 Production Ready (Phase 1-12.3) - Tool Routing Cleanup, Clone Detection Unification!

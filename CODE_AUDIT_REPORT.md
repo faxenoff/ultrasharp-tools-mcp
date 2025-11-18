@@ -186,29 +186,48 @@ Line = 0, // TODO: извлечь из metadata
 
 ---
 
-### 4. McpProxyService.cs - detect_code_clones (Stub Implementation)
+### 4. McpProxyService.cs - detect_code_clones (Intentional Design)
 
+**Статус:** ✅ RESOLVED (Phase 12.3)
+
+**Реализация:**
 ```csharp
+// detect_code_clones - это BATCH ANALYSIS tool (сканирует весь codebase)
+// Overlord не должен выполнять resource-intensive full scans
+// Этот tool должен быть выполнен ЛОКАЛЬНО на Droid с loaded solution
+// ToolRouter автоматически перенаправит на LOCAL execution
+
 return JsonSerializer.Serialize(new
 {
-    message = "detect_code_clones requires pre-indexed vector store",
-    hint = "This tool analyzes all code in vector store to find clones. Use find_duplicates for specific code search.",
-    suggestion = "For now, use find_duplicates with targetCode to find similar code across projects"
+    error = "detect_code_clones requires local execution with loaded solution",
+    toolType = "LOCAL",
+    hint = "This tool performs batch analysis on entire codebase (resource-intensive)",
+    explanation = new
+    {
+        toolPurpose = "Scan ALL code entities, group similar code, provide refactoring recommendations",
+        requiresLocal = "Full Roslyn semantic model and SemanticSearchService with indexed solution",
+        alternative = "Use find_duplicates for targeted duplicate search across projects (works on Overlord)"
+    },
+    recommendation = "Ensure Droid is running in Hybrid mode with loaded solution, ToolRouter will handle routing"
 });
 ```
 
-**Критичность:** 🟢 ОЧЕНЬ НИЗКАЯ
+**Критичность:** 🟢 НЕ КРИТИЧНО (by design)
 **Обоснование:**
-- `detect_code_clones` = batch operation (scan all code for duplicates)
-- `find_duplicates` = targeted operation (find clones of specific code)
-- Stub возвращает helpful message с альтернативой
-- `find_duplicates` покрывает 99% use cases
-- Batch scanning всего codebase - resource-intensive и редко нужен
+- `detect_code_clones` и `find_duplicates` - **РАЗНЫЕ ИНСТРУМЕНТЫ**:
+  - `find_duplicates`: Query-based (дай код, найди похожие) → OVERLORD
+  - `detect_code_clones`: Batch analysis (просканируй всё, найди все группы клонов) → LOCAL
+- ToolRouter автоматически перенаправляет detect_code_clones на LOCAL execution
+- Tools версия полностью реализована (SemanticAnalysisTools.cs:236-319)
+- Overlord версия возвращает helpful error для debugging
 
-**Рекомендация:**
-- Оставить stub с helpful message
-- Если появится real demand - реализовать в Phase 13
-- Альтернатива: scheduled background job для clone detection (не через MCP tool)
+**Решение (Phase 12.3):**
+- ✅ Обновлён ToolRouter - detect_code_clones удалён из SemanticTools
+- ✅ Обновлён ToolRoutingConfig - detect_code_clones = "local"
+- ✅ Обновлён McpProxyService - helpful error message с explanation
+- ✅ Создан CLONE_DETECTION_UNIFICATION_ANALYSIS.md (детальный анализ)
+
+**Итог:** Не stub, а intentional design - LOCAL tool с automatic routing
 
 ---
 
@@ -227,12 +246,12 @@ return JsonSerializer.Serialize(new
 - ✅ MultiProjectVectorStoreService.GetProjectsAsync - ПОЛНОСТЬЮ
 - ✅ MultiProjectVectorStoreService.GetBranchesAsync - ПОЛНОСТЬЮ
 
-### MCP Proxy (Phase 9):
+### MCP Proxy (Phase 9 + Phase 12.3):
 - ✅ semantic_search - ПОЛНОСТЬЮ
 - ✅ semantic_diff - ПОЛНОСТЬЮ
-- ✅ find_duplicates - ПОЛНОСТЬЮ
+- ✅ find_duplicates - ПОЛНОСТЬЮ (OVERLORD - cross-project query)
 - ✅ pattern_search - ПОЛНОСТЬЮ
-- ⚪ detect_code_clones - STUB (с альтернативой find_duplicates)
+- ✅ detect_code_clones - ROUTED TO LOCAL (intentional design - batch analysis)
 
 ### Tool Routing (Phase 10-11):
 - ✅ ToolRouter.DetermineRouting - ПОЛНОСТЬЮ
@@ -321,7 +340,7 @@ return JsonSerializer.Serialize(new
 - ✅ **0 критических TODO** (все critical features реализованы)
 - ✅ **0 NotImplementedException** (нет throwing exceptions)
 - 🟡 **13 некритичных TODO** (improvements для future versions)
-- 🟢 **1 stub implementation** (с helpful message и альтернативой)
+- ✅ **detect_code_clones RESOLVED** (Phase 12.3 - routed to LOCAL by design)
 
 ### Оценка:
 **Качество кода:** ⭐⭐⭐⭐⭐ (5/5)
