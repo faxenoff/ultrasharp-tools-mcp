@@ -303,59 +303,64 @@ UltrasharpTools.Droid.exe
 
 ---
 
-### 🌐 Overlord - Удалённый режим (HTTP/SSE)
+### 🌐 Overlord - Semantic Hub для команды
 
-**Централизованный сервер для командной работы**
+**Централизованный сервер для semantic обработки кода**
 
-**Как работает:**
+**Архитектура:**
 ```
-Claude Desktop/Claude Code
-    ↓ HTTP/SSE через сеть
-UltrasharpTools.Overlord (Docker/Kubernetes)
-    ↓ доступ к mounted volumes
-/app/projects/ (PersistentVolume)
-    ← git clone из GitHub/GitLab
+Droid (на машине разработчика)
+    ↓ работает с локальными файлами
+    ↓ создаёт code embeddings
+    ↓ отправляет векторы через HTTP
+        ↓
+    Overlord (Docker/Kubernetes)
+        ↓ принимает векторы от всех Droid клиентов
+        ↓ хранит в едином MultiProjectVectorStore
+        ↓ использует мощную embedding модель (Ollama/TEI)
+        ↓ выполняет cross-project semantic search
+        ↓ возвращает результаты с рекомендациями
 ```
+
+**Ключевая особенность:** Overlord **НЕ работает с файлами напрямую**!
+Каждый Droid работает со своими локальными проектами, а Overlord:
+- Агрегирует векторы от всех разработчиков
+- Предоставляет единую точку доступа к мощной embedding модели
+- Выполняет поиск по всем проектам команды одновременно
 
 **Deployment через Docker:**
 ```bash
 docker run -d \
   --name ultrasharp-overlord \
   -p 3001:3001 \
-  -v /path/to/projects:/app/projects \
-  -e GIT_AUTHOR_NAME="Bot" \
-  -e GIT_AUTHOR_EMAIL="bot@example.com" \
+  -v ultrasharp-vectors:/app/data \
+  -e EMBEDDING_URL=http://ollama:11434 \
+  -e EMBEDDING_MODEL=granite-embedding \
   ghcr.io/faxenoff/ultrasharp-tools-overlord:latest
 ```
 
-**Конфигурация клиента (`~/.claude.json`):**
-```json
-{
-  "mcpServers": {
-    "ultrasharp-remote": {
-      "type": "sse",
-      "url": "http://localhost:3001/sse",
-      "timeout": 60000
-    }
-  }
-}
+**Подключение Droid к Overlord:**
+```bash
+# Ваш Droid работает с локальными файлами
+# + использует Overlord для semantic операций
+UltrasharpTools.Droid.exe \
+  --overlord-url http://overlord:3001 \
+  --load-solution D:/MyProject/MyApp.sln
 ```
 
-**Возможности:**
-- 👥 **Shared semantic index** - вся команда использует единую базу векторов
-- 🔍 **Cross-project search** - поиск дубликатов между проектами команды
-- 🌐 **Centralized embedding service** - Ollama/TEI для всех разработчиков
-- 🔄 **CI/CD integration** - автоматический анализ кода в pipeline
-- 🛡️ **Изоляция** - код анализируется в контейнере
-- 📊 **Масштабируемость** - можно добавить replicas
+**Что получаете:**
+- 🧠 **Shared semantic brain** - единая база знаний о коде всей команды
+- 🔍 **Cross-project search** - "найди дубликаты во ВСЕХ проектах команды"
+- 💪 **Powerful embedding** - дорогая модель на GPU доступна всем
+- 📊 **Smart recommendations** - "в проекте TeamA уже есть такая реализация!"
+- ⚡ **No local GPU needed** - embedding выполняется на сервере
+- 🔄 **Auto-enrichment** - все инструменты автоматически обогащаются semantic данными
 
-**⚠️ Важно:** Overlord **НЕ имеет доступа** к файлам на клиентской машине!
-Проекты нужно предоставить через:
-- Git clone в pod (`/app/projects/`)
-- NFS/SMB mount
-- kubectl cp для тестирования
-
-**Use case:** Командная работа, code review server, CI/CD pipelines
+**Use case:**
+- Команды разработчиков с несколькими проектами
+- Поиск дубликатов кода между микросервисами
+- Централизованный доступ к мощной embedding модели
+- Knowledge sharing через semantic recommendations
 
 **📖 Подробнее:** [Run.Docs/OVERLORD_README.md](Run.Docs/OVERLORD_README.md) | [Deployment Guide](Run.Docs/Deployment/README.md)
 
@@ -363,36 +368,40 @@ docker run -d \
 
 ### 📊 Сравнение режимов
 
-| Аспект | Droid (Local) | Overlord (Remote) |
-|--------|---------------|-------------------|
-| **Доступ к файлам** | ✅ Прямой к локальной ФС | ⚠️ Только mounted volumes в pod |
-| **Где проекты?** | На вашем диске | Git clone / NFS mount в контейнере |
-| **Скорость** | ⚡⚡⚡ Максимальная | ⚡⚡ Зависит от сети |
-| **Setup** | 🟢 Простой (1 JSON) | 🟡 Средний (Docker/K8s) |
-| **Semantic search** | Локальная (Ollama/TEI/Memory) | Централизованная (shared index) |
-| **Cross-project** | ❌ Один проект за раз | ✅ Поиск по всем проектам команды |
-| **Использование** | Один разработчик | Команда / CI/CD |
-| **Git** | Локальный репозиторий | Git в контейнере |
+| Аспект | Droid (автономный) | Droid + Overlord (гибридный) |
+|--------|-------------------|------------------------------|
+| **Работа с файлами** | ✅ Локально на вашей машине | ✅ Локально на вашей машине |
+| **Semantic search** | Локальная модель (Ollama/TEI) | Централизованная мощная модель |
+| **Vector store** | Локальный SQLite | Shared MultiProjectVectorStore |
+| **Cross-project** | ❌ Только текущий проект | ✅ Поиск по всем проектам команды |
+| **GPU requirements** | Желательно для TEI | Не нужно (на сервере) |
+| **Recommendations** | Нет | ✅ "Есть похожий код в TeamProject" |
+| **Setup сложность** | 🟢 Простой | 🟡 + Overlord deployment |
+| **Использование** | Индивидуальная работа | Командная разработка |
 
 ---
 
 ### 🎯 Какой режим выбрать?
 
-**Используйте Droid (Local), если:**
-- ✅ Работаете на своей машине с локальными проектами
-- ✅ Нужна максимальная скорость
-- ✅ Хотите простую настройку (1 JSON файл)
-- ✅ Достаточно локальной семантики
+**Автономный Droid (без Overlord):**
+- ✅ Работаете в одиночку
+- ✅ Один проект за раз
+- ✅ Хотите простую настройку
+- ✅ Локальная semantic модель достаточна (Ollama на вашей машине)
+- ✅ Не нужен поиск между проектами
 
-**Используйте Overlord (Remote), если:**
-- ✅ Работаете в команде и нужен shared semantic index
-- ✅ Хотите cross-project поиск дубликатов
-- ✅ Интегрируете с CI/CD
-- ✅ Код должен анализироваться в изолированном контейнере
+**Droid + Overlord (гибридный режим):**
+- ✅ Работаете в команде (2+ разработчика)
+- ✅ Несколько проектов/микросервисов
+- ✅ Нужен cross-project поиск дубликатов
+- ✅ Хотите мощную embedding модель на GPU без локального GPU
+- ✅ Важны smart recommendations ("похожий код в другом проекте")
+- ✅ Team knowledge sharing
 
-**Комбинированный подход:**
-- **Droid** для ежедневной разработки на локальной машине
-- **Overlord** для code review, поиска дубликатов между проектами, CI/CD
+**Типичный сценарий:**
+1. Начните с **автономного Droid** - быстрый старт, всё локально
+2. Когда вырастет команда → добавьте **Overlord** для semantic синхронизации
+3. Каждый разработчик работает со своими файлами + получает знания от всей команды
 
 ---
 
