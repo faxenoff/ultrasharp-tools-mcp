@@ -44,11 +44,13 @@ public sealed class ToolRoutingConfig
     [JsonPropertyName("routingRules")]
     public Dictionary<string, string> RoutingRules { get; set; } = new()
     {
-        // Semantic tools - всегда Overlord
+        // Semantic tools - всегда Overlord (cross-project vector search)
         ["semantic_search"] = "overlord",
         ["semantic_diff"] = "overlord",
         ["find_duplicates"] = "overlord",
-        ["detect_code_clones"] = "overlord",
+
+        // Batch analysis tools - всегда локально (requires loaded solution + full Roslyn)
+        ["detect_code_clones"] = "local",
 
         // Hybrid tools - Overlord с fallback
         ["pattern_search"] = "overlord_with_fallback",

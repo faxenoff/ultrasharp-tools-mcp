@@ -12,14 +12,13 @@ public sealed class ToolRouter : IToolRouter
     private readonly IServerBridgeService? _serverBridge;
     private readonly bool _isHybridMode;
 
-    // Semantic tools - всегда требуют Overlord (векторный поиск + embedding)
+    // Semantic tools - всегда требуют Overlord (векторный поиск + embedding + cross-project)
     private static readonly HashSet<string> SemanticTools = new(StringComparer.OrdinalIgnoreCase)
     {
-        "find_duplicates",
-        "semantic_search",
-        "semantic_diff",
-        "detect_code_clones",
-        "reindex_changed_files"
+        "find_duplicates",      // Cross-project duplicate search (query-based)
+        "semantic_search",      // Cross-project semantic search
+        "semantic_diff",        // Semantic similarity comparison
+        "reindex_changed_files" // Vector store indexing
     };
 
     // Hybrid tools - решение зависит от параметров
@@ -85,7 +84,8 @@ public sealed class ToolRouter : IToolRouter
             return decision;
         }
 
-        // 5. По умолчанию → Local (быстрые Roslyn операции)
+        // 5. По умолчанию → Local (быстрые Roslyn операции + batch analysis tools)
+        // Includes: detect_code_clones (requires loaded solution + SemanticSearchService)
         _logger.LogTrace("Default routing for {ToolName}: LOCAL", toolName);
         return ToolRoutingDecision.Local;
     }

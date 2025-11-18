@@ -749,14 +749,28 @@ public sealed class McpProxyService : IMcpProxyService
                 return JsonSerializer.Serialize(new { error = "Invalid arguments" });
             }
 
-            // detect_code_clones - это поиск всех дубликатов во всех проектах
-            // Используем тот же механизм что и find_duplicates, но по всем файлам
+            // detect_code_clones - это BATCH ANALYSIS tool (сканирует весь codebase)
+            // Overlord не должен выполнять resource-intensive full scans
+            // Этот tool должен быть выполнен ЛОКАЛЬНО на Droid с loaded solution
+            // ToolRouter автоматически перенаправит на LOCAL execution
+
+            _logger.LogInformation(
+                "detect_code_clones called on Overlord - this should be routed to LOCAL. " +
+                "minSimilarity={MinSimilarity}, mode={Mode}, membersOnly={MembersOnly}, maxGroups={MaxGroups}",
+                args.MinSimilarity, args.Mode, args.MembersOnly, args.MaxGroups);
 
             return JsonSerializer.Serialize(new
             {
-                message = "detect_code_clones requires pre-indexed vector store",
-                hint = "This tool analyzes all code in vector store to find clones. Use find_duplicates for specific code search.",
-                suggestion = "For now, use find_duplicates with targetCode to find similar code across projects"
+                error = "detect_code_clones requires local execution with loaded solution",
+                toolType = "LOCAL",
+                hint = "This tool performs batch analysis on entire codebase (resource-intensive)",
+                explanation = new
+                {
+                    toolPurpose = "Scan ALL code entities, group similar code, provide refactoring recommendations",
+                    requiresLocal = "Full Roslyn semantic model and SemanticSearchService with indexed solution",
+                    alternative = "Use find_duplicates for targeted duplicate search across projects (works on Overlord)"
+                },
+                recommendation = "Ensure Droid is running in Hybrid mode with loaded solution, ToolRouter will handle routing"
             });
         }
         catch (Exception ex)
@@ -917,8 +931,10 @@ public sealed class McpProxyService : IMcpProxyService
 
     private sealed class DetectCodeClonesArgs
     {
-        public double Threshold { get; set; } = 0.8;
-        public int Limit { get; set; } = 50;
+        public float MinSimilarity { get; set; } = 0.85f;
+        public string Mode { get; set; } = "semantic";
+        public bool MembersOnly { get; set; } = true;
+        public int MaxGroups { get; set; } = 20;
     }
 
     private sealed class PatternSearchArgs
