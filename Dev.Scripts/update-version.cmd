@@ -61,11 +61,26 @@ REM Check for --dry-run flag
 if /i "%~2"=="--dry-run" set DRY_RUN_FLAG=-DryRun
 if /i "%~2"=="-d" set DRY_RUN_FLAG=-DryRun
 
+REM Check for PowerShell availability
+where pwsh >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    set PS_CMD=pwsh
+) else (
+    where powershell >nul 2>&1
+    if %ERRORLEVEL% EQU 0 (
+        set PS_CMD=powershell
+    ) else (
+        echo Error: PowerShell not found!
+        echo Please install PowerShell 7+ from: https://github.com/PowerShell/PowerShell/releases
+        exit /b 1
+    )
+)
+
 REM Run PowerShell script
 if defined DRY_RUN_FLAG (
-    pwsh -ExecutionPolicy Bypass -File "%SCRIPT_DIR%update-version.ps1" -Version "%VERSION%" %DRY_RUN_FLAG%
+    %PS_CMD% -ExecutionPolicy Bypass -File "%SCRIPT_DIR%update-version.ps1" -Version "%VERSION%" %DRY_RUN_FLAG%
 ) else (
-    pwsh -ExecutionPolicy Bypass -File "%SCRIPT_DIR%update-version.ps1" -Version "%VERSION%"
+    %PS_CMD% -ExecutionPolicy Bypass -File "%SCRIPT_DIR%update-version.ps1" -Version "%VERSION%"
 )
 
 exit /b %ERRORLEVEL%
