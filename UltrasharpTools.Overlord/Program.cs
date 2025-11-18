@@ -63,6 +63,16 @@ public class Program {
             Description = "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache)."
         };
 
+        var embeddingUrlOption = new Option<string?>("--embedding-url") {
+            Description = "URL of embedding service (Ollama or TEI). If not specified, embedding features are disabled.",
+            DefaultValueFactory = _ => null
+        };
+
+        var embeddingModelOption = new Option<string>("--embedding-model") {
+            Description = "Name of embedding model to use (default: nomic-embed-text for Ollama).",
+            DefaultValueFactory = _ => "nomic-embed-text"
+        };
+
         var rootCommand = new RootCommand("UltrasharpTools MCP Overlord") {
         portOption,
         logFileOption,
@@ -72,7 +82,9 @@ public class Program {
         disableGitOption,
         symbolCacheEnabledOption,
         symbolCacheClearOption,
-        symbolCacheDirectoryOption
+        symbolCacheDirectoryOption,
+        embeddingUrlOption,
+        embeddingModelOption
     };
 
         // Parse arguments first to get values
@@ -87,6 +99,8 @@ public class Program {
         bool symbolCacheEnabled = parseResult.GetValue(symbolCacheEnabledOption);
         bool symbolCacheClear = parseResult.GetValue(symbolCacheClearOption);
         string? symbolCacheDirectory = parseResult.GetValue(symbolCacheDirectoryOption);
+        string? embeddingUrl = parseResult.GetValue(embeddingUrlOption);
+        string embeddingModel = parseResult.GetValue(embeddingModelOption);
         string serverUrl = $"http://localhost:{port}";
 
         // Use project-local logs directory if not specified
@@ -122,6 +136,13 @@ public class Program {
             }
         } else {
             Console.WriteLine("Symbol cache is disabled");
+        }
+
+        if (!string.IsNullOrEmpty(embeddingUrl)) {
+            Console.WriteLine($"Embedding service enabled: {embeddingUrl}");
+            Console.WriteLine($"Embedding model: {embeddingModel}");
+        } else {
+            Console.WriteLine("Embedding service disabled (semantic tools will not be available)");
         }
 
         try {
@@ -166,6 +187,47 @@ public class Program {
             };
 
             builder.Services.WithUltrasharpToolsServices(!disableGit, buildConfiguration, null, null, symbolCacheOptions);
+
+            // Регистрируем MultiProjectVectorStore для hybrid архитектуры
+            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.IMultiProjectVectorStoreService>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Overlord.Services.MultiProjectVectorStoreService>>();
+                var basePath = Path.Combine(AppContext.BaseDirectory, "data", "multi-project-vectors");
+                return new UltrasharpTools.Overlord.Services.MultiProjectVectorStoreService(logger, basePath, 768);
+            });
+
+            // Регистрируем Symbol Resolution Service для MCP Proxy
+            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.ISymbolResolutionService, UltrasharpTools.Overlord.Services.SymbolResolutionService>();
+
+            // Регистрируем Embedding Service (опционально)
+            if (!string.IsNullOrEmpty(embeddingUrl))
+            {
+                builder.Services.AddHttpClient<UltrasharpTools.Overlord.Services.IEmbeddingService, UltrasharpTools.Overlord.Services.EmbeddingService>()
+                    .ConfigureHttpClient(client =>
+                    {
+                        client.Timeout = TimeSpan.FromMinutes(5);  // Embedding может занять время
+                    });
+
+                // Регистрируем фабрику для передачи параметров
+                builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.IEmbeddingService>(sp =>
+                {
+                    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(UltrasharpTools.Overlord.Services.EmbeddingService));
+                    var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Overlord.Services.EmbeddingService>>();
+                    return new UltrasharpTools.Overlord.Services.EmbeddingService(httpClient, logger, embeddingUrl, embeddingModel);
+                });
+            }
+
+            // Регистрируем MCP Proxy Service
+            builder.Services.AddScoped<UltrasharpTools.Overlord.Services.IMcpProxyService, UltrasharpTools.Overlord.Services.McpProxyService>();
+
+            // Регистрируем Notification Service для SSE
+            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.INotificationService, UltrasharpTools.Overlord.Services.NotificationService>();
+
+            // Регистрируем Conflict Detection Service
+            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.IConflictDetectionService, UltrasharpTools.Overlord.Services.ConflictDetectionService>();
+
+            // Регистрируем controllers для Agent API
+            builder.Services.AddControllers();
 
             builder.Services
                 .AddMcpServer(options => {
@@ -242,10 +304,14 @@ public class Program {
             // if (app.Environment.IsDevelopment()) { }
             // app.UseHttpsRedirection(); 
 
-            // 4. MCP Middleware
+            // 4. Controllers (Agent API endpoints)
+            app.MapControllers();
+
+            // 5. MCP Middleware
             app.MapMcp(); // Maps the MCP endpoint (typically "/mcp")
 
             logger.LogInformation("Starting {AppName} server...", ApplicationName);
+            logger.LogInformation("Agent API endpoints available at /api/agent/*");
             await app.RunAsync(serverUrl);
 
             return 0;

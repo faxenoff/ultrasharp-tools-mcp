@@ -48,6 +48,26 @@ public static class Program {
             DefaultValueFactory = _ => false
         };
 
+        var modeOption = new Option<string>("--mode") {
+            Description = "Operation mode: local (default) or hybrid (connect to Overlord server)",
+            DefaultValueFactory = _ => "local"
+        };
+
+        var serverUrlOption = new Option<string?>("--server-url") {
+            Description = "Overlord server URL (required for hybrid mode)",
+            DefaultValueFactory = _ => null
+        };
+
+        var embeddingUrlOption = new Option<string?>("--embedding-url") {
+            Description = "Embedding service URL for hybrid mode (Ollama/TEI)",
+            DefaultValueFactory = _ => "http://localhost:11434"
+        };
+
+        var embeddingModelOption = new Option<string?>("--embedding-model") {
+            Description = "Embedding model name for hybrid mode",
+            DefaultValueFactory = _ => "nomic-embed-text"
+        };
+
         var gitBranchRetentionCountOption = new Option<int?>("--git-branch-retention-count") {
             Description = "Keep only the N most recent sharptools/* branches. (null = no limit)",
             DefaultValueFactory = _ => 10
@@ -94,6 +114,10 @@ public static class Program {
         loadSolutionOption,
         buildConfigurationOption,
         disableGitOption,
+        modeOption,
+        serverUrlOption,
+        embeddingUrlOption,
+        embeddingModelOption,
         gitBranchRetentionCountOption,
         gitBranchRetentionDaysOption,
         gitAutoCleanupOption,
@@ -112,6 +136,10 @@ public static class Program {
         string? solutionPath = parseResult.GetValue(loadSolutionOption);
         string? buildConfiguration = parseResult.GetValue(buildConfigurationOption);
         bool disableGit = parseResult.GetValue(disableGitOption);
+        string mode = parseResult.GetValue(modeOption) ?? "local";
+        string? serverUrl = parseResult.GetValue(serverUrlOption);
+        string? embeddingUrl = parseResult.GetValue(embeddingUrlOption);
+        string? embeddingModel = parseResult.GetValue(embeddingModelOption);
         int? gitBranchRetentionCount = parseResult.GetValue(gitBranchRetentionCountOption);
         int? gitBranchRetentionDays = parseResult.GetValue(gitBranchRetentionDaysOption);
         bool gitAutoCleanup = parseResult.GetValue(gitAutoCleanupOption);
@@ -140,6 +168,22 @@ public static class Program {
         Console.Error.WriteLine($"Logging to directory: {Path.GetFullPath(logDirPath)} with minimum level {minimumLogLevel}");
 
         // Early startup information (before DI/logging is configured)
+
+        // Hybrid mode validation
+        bool isHybridMode = mode == "hybrid";
+        if (isHybridMode && string.IsNullOrEmpty(serverUrl)) {
+            Console.Error.WriteLine("Error: --server-url is required for hybrid mode");
+            return 1;
+        }
+
+        if (isHybridMode) {
+            Console.WriteLine($"Running in HYBRID mode, server: {serverUrl}");
+            Console.WriteLine($"Embedding service: {embeddingUrl}");
+            Console.WriteLine($"Embedding model: {embeddingModel}");
+        } else {
+            Console.WriteLine("Running in LOCAL mode");
+        }
+
         if (disableGit) {
             Console.WriteLine("Git integration is disabled.");
         }
@@ -202,6 +246,139 @@ public static class Program {
         };
 
         builder.Services.WithUltrasharpToolsServices(!disableGit, buildConfiguration, gitOptions, reloadOptions, symbolCacheOptions);
+
+        // Register hybrid mode services if enabled
+        if (isHybridMode)
+        {
+            // Determine project name from solution path or use directory name
+            var projectName = !string.IsNullOrEmpty(solutionPath)
+                ? Path.GetFileNameWithoutExtension(solutionPath)
+                : Path.GetFileName(Directory.GetCurrentDirectory());
+
+            var repositoryPath = !string.IsNullOrEmpty(solutionPath)
+                ? Path.GetDirectoryName(solutionPath) ?? Directory.GetCurrentDirectory()
+                : Directory.GetCurrentDirectory();
+
+            var agentConfig = new UltrasharpTools.Droid.Models.Hybrid.AgentConfig
+            {
+                ProjectName = projectName,
+                RepositoryPath = repositoryPath,
+                ServerUrl = serverUrl!,
+                EmbeddingUrl = embeddingUrl ?? "http://localhost:11434",
+                EmbeddingModel = embeddingModel ?? "nomic-embed-text"
+            };
+
+            builder.Services.AddSingleton(agentConfig);
+            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService, UltrasharpTools.Droid.Services.Hybrid.ServerBridgeService>();
+
+            // Embedding service (optional)
+            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService, UltrasharpTools.Droid.Services.Hybrid.EmbeddingService>();
+
+            // Notification client service
+            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.INotificationClientService, UltrasharpTools.Droid.Services.Hybrid.NotificationClientService>();
+
+            // Background services для автоматической векторизации
+            builder.Services.AddHostedService<UltrasharpTools.Droid.Services.Hybrid.FileWatcherService>();
+            builder.Services.AddHostedService<UltrasharpTools.Droid.Services.Hybrid.GitWatcherService>();
+
+            // ToolRouter для маршрутизации LOCAL/OVERLORD
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolRouter>>();
+                var serverBridge = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolRouter(logger, serverBridge, isHybridMode: true);
+            });
+
+            // ConfigurationService для загрузки routing config
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ConfigurationService>();
+
+            // Health check background service
+            builder.Services.AddHostedService(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.HealthCheckHostedService>>();
+                var router = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
+                var configService = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ConfigurationService>();
+                return new UltrasharpTools.Droid.Services.Hybrid.HealthCheckHostedService(logger, router, configService, solutionPath);
+            });
+
+            // Universal Semantic Mode - Phase 12
+            // SemanticModeProvider для auto-detection Local/Overlord embedding
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
+                var localEmbedding = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>();
+                var serverBridge = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
+                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, localEmbedding, serverBridge, serverUrl);
+            });
+
+            // ToolEnricher для semantic enrichment всех инструментов
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>>();
+                var semanticProvider = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>();
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider);
+            });
+
+            // McpToolInterceptor для global routing + enrichment
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IMcpToolExecutor>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor>>();
+                var router = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
+                var enricher = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>();
+                var serverBridge = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
+                return new UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor(logger, router, enricher, serverBridge);
+            });
+
+            Console.WriteLine($"Hybrid mode services registered for project: {projectName}");
+            Console.WriteLine("Background services enabled:");
+            Console.WriteLine("  - FileWatcher: monitoring {0}", string.Join(", ", agentConfig.WatchPatterns));
+            Console.WriteLine("  - GitWatcher: checking every {0}ms", agentConfig.GitCheckIntervalMs);
+            Console.WriteLine("  - EmbeddingService: {0}", agentConfig.AutoVectorizeEnabled ? "enabled" : "disabled");
+            Console.WriteLine("  - NotificationClient: SSE real-time notifications");
+            Console.WriteLine("  - ToolRouter: automatic routing LOCAL/OVERLORD");
+            Console.WriteLine("  - SemanticMode: Universal semantic enrichment for ALL tools");
+            Console.WriteLine("  - McpToolInterceptor: Global tool execution with routing + enrichment");
+        }
+        else
+        {
+            // Local mode - ToolRouter с fallback на LOCAL
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolRouter>>();
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolRouter(logger, null, isHybridMode: false);
+            });
+
+            // ConfigurationService всегда доступен
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ConfigurationService>();
+
+            // Universal Semantic Mode - Phase 12 (local mode)
+            // SemanticModeProvider (только локальный embedding если доступен)
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
+                // В local mode нет serverBridge и Overlord
+                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, null, null, null);
+            });
+
+            // ToolEnricher для semantic enrichment
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>>();
+                var semanticProvider = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>();
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider);
+            });
+
+            // McpToolInterceptor (только локальное выполнение)
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IMcpToolExecutor>(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor>>();
+                var router = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
+                var enricher = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>();
+                return new UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor(logger, router, enricher, null);
+            });
+
+            Console.WriteLine("Local mode - Universal Semantic Mode available if local embedding configured");
+        }
 
         builder.Services
             .AddMcpServer(options => {
