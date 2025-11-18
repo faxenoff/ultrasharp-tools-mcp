@@ -100,7 +100,7 @@ public class Program {
         bool symbolCacheClear = parseResult.GetValue(symbolCacheClearOption);
         string? symbolCacheDirectory = parseResult.GetValue(symbolCacheDirectoryOption);
         string? embeddingUrl = parseResult.GetValue(embeddingUrlOption);
-        string embeddingModel = parseResult.GetValue(embeddingModelOption);
+        string? embeddingModel = parseResult.GetValue(embeddingModelOption);
         string serverUrl = $"http://localhost:{port}";
 
         // Use project-local logs directory if not specified
@@ -213,7 +213,7 @@ public class Program {
                 {
                     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(UltrasharpTools.Overlord.Services.EmbeddingService));
                     var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Overlord.Services.EmbeddingService>>();
-                    return new UltrasharpTools.Overlord.Services.EmbeddingService(httpClient, logger, embeddingUrl, embeddingModel);
+                    return new UltrasharpTools.Overlord.Services.EmbeddingService(httpClient, logger, embeddingUrl, embeddingModel ?? "nomic-embed-text");
                 });
             }
 

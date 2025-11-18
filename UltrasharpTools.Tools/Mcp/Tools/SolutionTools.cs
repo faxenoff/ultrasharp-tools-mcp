@@ -5,6 +5,7 @@
 
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Services;
+using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -204,7 +205,7 @@ public static class SolutionTools {
                         }
 
                         // Format the namespace tree as a string representation
-                        var namespaceTreeBuilder = new StringBuilder();
+                        var namespaceTreeBuilder = ObjectPoolProvider.Instance.GetStringBuilder();
                         BuildNamespaceTreeString("", namespaceTree, namespaceTreeBuilder);
                         var namespaceStructure = namespaceTreeBuilder.ToString();
 
@@ -493,7 +494,9 @@ public static class SolutionTools {
                     commonImplementationInfo.MedianImplementationCount,
                     commonImplementationInfo.CommonBaseTypes.Count);
 
-                var structureBuilder = new StringBuilder();
+                var structureBuilder = ObjectPoolProvider.Instance.GetStringBuilder();
+                try
+                {
                 DetailLevel currentDetailLevel = DetailLevel.Full;
                 string output = "";
                 bool lengthAcceptable = false;
@@ -525,6 +528,11 @@ public static class SolutionTools {
                 return $"<typeTree note=\"Use {ToolHelpers.SharpToolPrefix}{nameof(AnalysisTools.GetMembers)} for more detailed information about specific types.\">" +
                     output +
                     "\n</typeTree>";
+                }
+                finally
+                {
+                    ObjectPoolProvider.Instance.ReturnStringBuilder(structureBuilder);
+                }
 
             } catch (OperationCanceledException) {
                 logger.LogInformation("Operation was cancelled while analyzing project {ProjectName}", project.Name);
@@ -644,7 +652,9 @@ public static class SolutionTools {
             }
 
             var typesInNamespace = namespaceContents.GetValueOrDefault(namespaceName);
-            var typeContent = new StringBuilder();
+            var typeContent = ObjectPoolProvider.Instance.GetStringBuilder();
+            try
+            {
 
             if (typesInNamespace != null) {
                 foreach (var type in typesInNamespace.OrderBy(t => t.Name)) {
@@ -660,7 +670,15 @@ public static class SolutionTools {
                 }
             }
 
-            var childNamespaceContent = new StringBuilder();
+            }
+            finally
+            {
+                ObjectPoolProvider.Instance.ReturnStringBuilder(typeContent);
+            }
+
+            var childNamespaceContent = ObjectPoolProvider.Instance.GetStringBuilder();
+            try
+            {
             if (namespaceParts.TryGetValue(namespaceName, out var children)) {
                 foreach (var child in children.OrderBy(c => c.Key)) {
                     if (child.Value?.Count == 0) { // This indicates a child namespace rather than a type within the current namespace
@@ -678,6 +696,11 @@ public static class SolutionTools {
             sb.Append(typeContent);
             sb.Append(childNamespaceContent);
             sb.Append("\n}");
+            }
+            finally
+            {
+                ObjectPoolProvider.Instance.ReturnStringBuilder(childNamespaceContent);
+            }
 
         } catch (Exception ex) {
             logger.LogError(ex, "Error building namespace structure text for {Namespace}", namespaceName);
@@ -957,7 +980,9 @@ public static class SolutionTools {
         Random random,
         string indent) {
 
-        var membersContent = new StringBuilder();
+        var membersContent = ObjectPoolProvider.Instance.GetStringBuilder();
+        try
+        {
         var publicOrInternalMembers = type.GetMembers()
             .Where(m => !m.IsImplicitlyDeclared &&
                        !(m is INamedTypeSymbol) &&
@@ -1096,6 +1121,11 @@ public static class SolutionTools {
         }
 
         return false;
+        }
+        finally
+        {
+            ObjectPoolProvider.Instance.ReturnStringBuilder(membersContent);
+        }
     }
 }
 

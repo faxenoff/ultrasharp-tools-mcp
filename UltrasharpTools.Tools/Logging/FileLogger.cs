@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.RegularExpressions;
+using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Logging;
 
@@ -61,8 +62,9 @@ internal sealed partial class FileLogger : ILogger
 
     private string BuildLogEntry(LogLevel logLevel, string category, string message, Exception? exception)
     {
-        var sb = new StringBuilder();
-
+        var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+        try
+        {
         if (_options.IncludeTimestamp)
         {
             sb.Append(DateTime.Now.ToString(_options.TimestampFormat));
@@ -92,6 +94,11 @@ internal sealed partial class FileLogger : ILogger
         }
 
         return sb.ToString();
+        }
+        finally
+        {
+            ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+        }
     }
 
     private static string GetLogLevelString(LogLevel logLevel)

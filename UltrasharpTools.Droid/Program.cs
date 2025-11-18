@@ -25,6 +25,7 @@ public static class Program {
         _ = typeof(SolutionTools);
         _ = typeof(AnalysisTools);
         _ = typeof(ModificationTools);
+        _ = typeof(SystemTools);
 
         var logDirOption = new Option<string?>("--log-directory") {
             Description = "Optional path to a log directory. If not specified, uses .ultrasharp/logs in project root."
@@ -269,17 +270,58 @@ public static class Program {
             };
 
             builder.Services.AddSingleton(agentConfig);
-            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService, UltrasharpTools.Droid.Services.Hybrid.ServerBridgeService>();
+
+            // Configure HttpClient with optimized connection pooling
+            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService, UltrasharpTools.Droid.Services.Hybrid.ServerBridgeService>()
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                    MaxConnectionsPerServer = 10,
+                    EnableMultipleHttp2Connections = true,
+                    ConnectTimeout = TimeSpan.FromSeconds(10)
+                })
+                .SetHandlerLifetime(Timeout.InfiniteTimeSpan); // Prevent handler rotation
 
             // Embedding service (optional)
-            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService, UltrasharpTools.Droid.Services.Hybrid.EmbeddingService>();
+            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService, UltrasharpTools.Droid.Services.Hybrid.EmbeddingService>()
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                    MaxConnectionsPerServer = 10,
+                    EnableMultipleHttp2Connections = true,
+                    ConnectTimeout = TimeSpan.FromSeconds(10)
+                })
+                .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
             // Notification client service
-            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.INotificationClientService, UltrasharpTools.Droid.Services.Hybrid.NotificationClientService>();
+            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.INotificationClientService, UltrasharpTools.Droid.Services.Hybrid.NotificationClientService>()
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                    MaxConnectionsPerServer = 5,
+                    EnableMultipleHttp2Connections = true,
+                    ConnectTimeout = TimeSpan.FromSeconds(10)
+                })
+                .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
             // Background services для автоматической векторизации
             builder.Services.AddHostedService<UltrasharpTools.Droid.Services.Hybrid.FileWatcherService>();
             builder.Services.AddHostedService<UltrasharpTools.Droid.Services.Hybrid.GitWatcherService>();
+
+            // Request batching service для оптимизации semantic queries
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService>(sp =>
+            {
+                var serverBridge = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService>>();
+                return new UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService(
+                    serverBridge,
+                    logger,
+                    batchWindow: TimeSpan.FromMilliseconds(50),
+                    maxBatchSize: 10);
+            });
 
             // ToolRouter для маршрутизации LOCAL/OVERLORD
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>(sp =>
@@ -308,7 +350,7 @@ public static class Program {
             var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
 
             // SemanticModeProvider для auto-detection Local/Overlord embedding
-            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>(sp =>
+            builder.Services.AddSingleton<ISemanticModeProvider>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
                 var localEmbedding = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>();
@@ -320,7 +362,7 @@ public static class Program {
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>>();
-                var semanticProvider = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>();
+                var semanticProvider = sp.GetRequiredService<ISemanticModeProvider>();
                 return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider, semanticConfig);
             });
 
@@ -363,7 +405,7 @@ public static class Program {
             var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
 
             // SemanticModeProvider (только локальный embedding если доступен)
-            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>(sp =>
+            builder.Services.AddSingleton<ISemanticModeProvider>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
                 // В local mode нет serverBridge и Overlord
@@ -374,7 +416,7 @@ public static class Program {
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>>();
-                var semanticProvider = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ISemanticModeProvider>();
+                var semanticProvider = sp.GetRequiredService<ISemanticModeProvider>();
                 return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider, semanticConfig);
             });
 
@@ -390,11 +432,42 @@ public static class Program {
             Console.WriteLine("Local mode - Universal Semantic Mode available if local embedding configured");
         }
 
+        // Check semantic mode availability for MCP Initialize capabilities
+        Console.WriteLine("Checking semantic mode availability...");
+        var semanticAvailability = await UltrasharpTools.Droid.Services.Hybrid.SemanticModeBootstrapCheck
+            .CheckAvailabilityAsync(embeddingUrl, serverUrl, timeoutMs: 3000);
+
+        if (semanticAvailability.IsAvailable)
+        {
+            Console.WriteLine($"Semantic mode: AVAILABLE ({semanticAvailability.Source})");
+        }
+        else
+        {
+            Console.WriteLine("Semantic mode: NOT AVAILABLE");
+        }
+
         builder.Services
             .AddMcpServer(options => {
                 options.ServerInfo = new Implementation {
                     Name = ApplicationName,
                     Version = ApplicationVersion,
+                };
+
+                // Add experimental capabilities for semantic mode discovery
+                options.Capabilities = new ServerCapabilities
+                {
+                    Experimental = new Dictionary<string, object>
+                    {
+                        ["semanticMode"] = new
+                        {
+                            enabled = semanticAvailability.IsAvailable,
+                            source = semanticAvailability.Source.ToString(),
+                            modelName = semanticAvailability.ModelName,
+                            vectorDimension = semanticAvailability.VectorDimension,
+                            dynamic = true,
+                            note = "Use get_capabilities tool for real-time status"
+                        }
+                    }
                 };
             })
             .WithStdioServerTransport()

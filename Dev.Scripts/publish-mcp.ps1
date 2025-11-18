@@ -134,7 +134,7 @@ if (!(Test-Path $readmeDir)) {
 }
 
 # Copy README files to Read.me/
-$publishReadme = Join-Path $ProjectRoot "PUBLISH_README.md"
+$publishReadme = Join-Path $ProjectRoot "Run.Docs/PUBLISH_README.md"
 if (Test-Path $publishReadme) {
     # Main README.md in Read.me/
     Copy-Item -Path $publishReadme -Destination (Join-Path $readmeDir "README.md") -Force

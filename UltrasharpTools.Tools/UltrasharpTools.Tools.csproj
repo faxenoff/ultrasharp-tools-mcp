@@ -4,7 +4,7 @@
 <LangVersion>13.0</LangVersion>
 <ImplicitUsings>enable</ImplicitUsings>
 <Nullable>enable</Nullable>
-<Version>1.0.0</Version>
+<Version>3.0.0</Version>
 
 <!-- Копирование всех зависимостей NuGet в выходную директорию -->
 <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
@@ -34,6 +34,7 @@
 <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
 <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.0" />
 <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+<PackageReference Include="Microsoft.Extensions.ObjectPool" Version="10.0.0" />
 <PackageReference Include="Microsoft.Z3" Version="4.12.2" />
 <PackageReference Include="ModelContextProtocol" Version="0.4.0-preview.3" />
 <PackageReference Include="System.IO.Hashing" Version="10.0.0" />

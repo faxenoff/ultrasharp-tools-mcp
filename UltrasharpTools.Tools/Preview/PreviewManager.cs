@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Interfaces;
 using System.Text;
 
@@ -183,8 +184,10 @@ BreakingChange = IsPublicSymbol(symbol) // Public renames are breaking changes
 
 private string GenerateUnifiedDiff(string oldCode, string newCode, string filePath, string symbolName)
 {
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 
+try
+{
 // Unified diff header
 sb.AppendLine($"--- a/{Path.GetFileName(filePath)}");
 sb.AppendLine($"+++ b/{Path.GetFileName(filePath)}");
@@ -224,11 +227,18 @@ sb.AppendLine($"+{newLines[i]}");
 
 return sb.ToString();
 }
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+}
+}
 
 private string GenerateAddMemberDiff(string newMemberCode, string filePath, string parentTypeName)
 {
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 
+try
+{
 sb.AppendLine($"--- a/{Path.GetFileName(filePath)}");
 sb.AppendLine($"+++ b/{Path.GetFileName(filePath)}");
 sb.AppendLine($"@@ +{parentTypeName} (new member) @@");
@@ -240,11 +250,18 @@ sb.AppendLine($"+{line}");
 
 return sb.ToString();
 }
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+}
+}
 
 private string GenerateRenameDiffSummary(string oldName, string newName, int filesAffected, int referencesAffected)
 {
-var sb = new StringBuilder();
+var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 
+try
+{
 sb.AppendLine($"Rename: {oldName} -> {newName}");
 sb.AppendLine($"Files affected: {filesAffected}");
 sb.AppendLine($"References affected: {referencesAffected}");
@@ -253,6 +270,11 @@ sb.AppendLine($"- {oldName}");
 sb.AppendLine($"+ {newName}");
 
 return sb.ToString();
+}
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+}
 }
 
 private async Task<ImpactEstimation> EstimateImpactAsync(ISymbol symbol, CancellationToken cancellationToken)

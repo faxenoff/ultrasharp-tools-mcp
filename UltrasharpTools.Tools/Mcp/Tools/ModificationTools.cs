@@ -17,6 +17,7 @@ using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol;
+using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Interfaces;
 using UltrasharpTools.Tools.Mcp;
 using UltrasharpTools.Tools.Models;
@@ -526,29 +527,35 @@ public static class ModificationTools {
                     .Take(5)  // Limit to first 5 documents to avoid excessive checking
                     .ToList();
 
-                StringBuilder errorBuilder = new StringBuilder("<errorCheck>");
+                var errorBuilder = ObjectPoolProvider.Instance.GetStringBuilder();
+                errorBuilder.Append("<errorCheck>");
 
-                // Check each affected document for compilation errors
-                foreach (var docId in affectedDocumentIds) {
-                    if (solutionManager.CurrentSolution != null) {
-                        var updatedDoc = solutionManager.CurrentSolution.GetDocument(docId);
-                        if (updatedDoc != null) {
-                            var (docHasErrors, docErrorMessages) = await ContextInjectors.CheckCompilationErrorsAsync(
-                                solutionManager, updatedDoc, logger, cancellationToken);
+                try {
+                    // Check each affected document for compilation errors
+                    foreach (var docId in affectedDocumentIds) {
+                        if (solutionManager.CurrentSolution != null) {
+                            var updatedDoc = solutionManager.CurrentSolution.GetDocument(docId);
+                            if (updatedDoc != null) {
+                                var (docHasErrors, docErrorMessages) = await ContextInjectors.CheckCompilationErrorsAsync(
+                                    solutionManager, updatedDoc, logger, cancellationToken);
 
-                            if (docHasErrors) {
-                                errorBuilder.AppendLine($"Issues in file {updatedDoc.FilePath ?? "unknown"}:");
-                                errorBuilder.AppendLine(docErrorMessages);
-                                errorBuilder.AppendLine();
-                            } else {
-                                errorBuilder.AppendLine($"No compilation issues in file {updatedDoc.FilePath ?? "unknown"}.");
+                                if (docHasErrors) {
+                                    errorBuilder.AppendLine($"Issues in file {updatedDoc.FilePath ?? "unknown"}:");
+                                    errorBuilder.AppendLine(docErrorMessages);
+                                    errorBuilder.AppendLine();
+                                } else {
+                                    errorBuilder.AppendLine($"No compilation issues in file {updatedDoc.FilePath ?? "unknown"}.");
+                                }
                             }
                         }
                     }
-                }
-                errorBuilder.AppendLine("</errorCheck>");
+                    errorBuilder.AppendLine("</errorCheck>");
 
-                return $"Symbol '{symbol.Name}' (originally '{fullyQualifiedSymbolName}') successfully renamed to '{newName}' and references updated in {changedDocumentCount} documents.\n\n{errorBuilder}";
+                    var errorCheckResult = errorBuilder.ToString();
+                    return $"Symbol '{symbol.Name}' (originally '{fullyQualifiedSymbolName}') successfully renamed to '{newName}' and references updated in {changedDocumentCount} documents.\n\n{errorCheckResult}";
+                } finally {
+                    ObjectPoolProvider.Instance.ReturnStringBuilder(errorBuilder);
+                }
 
             } catch (InvalidOperationException ex) {
                 logger.LogError(ex, "Invalid rename operation for {SymbolName} to {NewName}", fullyQualifiedSymbolName, newName);
@@ -753,60 +760,69 @@ public static class ModificationTools {
                     logger.LogWarning("No documents were changed when replacing references to '{SymbolName}'",
                         fullyQualifiedSymbolName);
 
-                    var filterDesc = new StringBuilder();
-                    if (!string.IsNullOrEmpty(filenameFilter))
-                        filterDesc.Append($" matching '{filenameFilter}'");
-                    if (syntaxNodeKinds != null && syntaxNodeKinds.Length > 0)
-                        filterDesc.Append($" of types [{string.Join(", ", syntaxNodeKinds)}]");
+                    var filterDesc = ObjectPoolProvider.Instance.GetStringBuilder();
+                    try {
+                        if (!string.IsNullOrEmpty(filenameFilter))
+                            filterDesc.Append($" matching '{filenameFilter}'");
+                        if (syntaxNodeKinds != null && syntaxNodeKinds.Length > 0)
+                            filterDesc.Append($" of types [{string.Join(", ", syntaxNodeKinds)}]");
 
-                    return $"No references to '{symbol.Name}' found{filterDesc}. No changes were made.";
+                        var filterDescStr = filterDesc.ToString();
+                        return $"No references to '{symbol.Name}' found{filterDescStr}. No changes were made.";
+                    } finally {
+                        ObjectPoolProvider.Instance.ReturnStringBuilder(filterDesc);
+                    }
                 }
 
                 // Preview mode: show what would be changed without applying
                 if (preview)
                 {
-                    var previewOutput = new StringBuilder();
-                    previewOutput.AppendLine($"## Preview: Replace references to '{symbol.Name}' with '{replacementCode}'");
-                    previewOutput.AppendLine();
-                    previewOutput.AppendLine($"**Would modify {changedDocumentsCount} document(s)**");
-                    previewOutput.AppendLine();
+                    var previewOutput = ObjectPoolProvider.Instance.GetStringBuilder();
+                    try {
+                        previewOutput.AppendLine($"## Preview: Replace references to '{symbol.Name}' with '{replacementCode}'");
+                        previewOutput.AppendLine();
+                        previewOutput.AppendLine($"**Would modify {changedDocumentsCount} document(s)**");
+                        previewOutput.AppendLine();
 
-                    // Show active filters
-                    if (!string.IsNullOrEmpty(filenameFilter))
-                        previewOutput.AppendLine($"• File filter: `{filenameFilter}`");
-                    if (syntaxNodeKinds != null && syntaxNodeKinds.Length > 0)
-                        previewOutput.AppendLine($"• Node types: `{string.Join(", ", syntaxNodeKinds)}`");
-                    if (excludeCommentsAndStrings)
-                        previewOutput.AppendLine($"• Excluding comments and strings");
-                    previewOutput.AppendLine();
+                        // Show active filters
+                        if (!string.IsNullOrEmpty(filenameFilter))
+                            previewOutput.AppendLine($"• File filter: `{filenameFilter}`");
+                        if (syntaxNodeKinds != null && syntaxNodeKinds.Length > 0)
+                            previewOutput.AppendLine($"• Node types: `{string.Join(", ", syntaxNodeKinds)}`");
+                        if (excludeCommentsAndStrings)
+                            previewOutput.AppendLine($"• Excluding comments and strings");
+                        previewOutput.AppendLine();
 
-                    previewOutput.AppendLine("### Changed files:");
+                        previewOutput.AppendLine("### Changed files:");
 
-                    var changedDocs = solutionChanges.GetProjectChanges()
-                        .SelectMany(pc => pc.GetChangedDocuments())
-                        .Take(20)
-                        .ToList();
+                        var changedDocs = solutionChanges.GetProjectChanges()
+                            .SelectMany(pc => pc.GetChangedDocuments())
+                            .Take(20)
+                            .ToList();
 
-                    foreach (var docId in changedDocs)
-                    {
-                        var doc = originalSolution.GetDocument(docId);
-                        var newDoc = newSolution.GetDocument(docId);
-                        if (doc != null && newDoc != null)
+                        foreach (var docId in changedDocs)
                         {
-                            previewOutput.AppendLine($"  • {doc.FilePath ?? doc.Name}");
+                            var doc = originalSolution.GetDocument(docId);
+                            var newDoc = newSolution.GetDocument(docId);
+                            if (doc != null && newDoc != null)
+                            {
+                                previewOutput.AppendLine($"  • {doc.FilePath ?? doc.Name}");
+                            }
                         }
+
+                        if (changedDocumentsCount > 20)
+                        {
+                            previewOutput.AppendLine($"  ... and {changedDocumentsCount - 20} more file(s)");
+                        }
+
+                        previewOutput.AppendLine();
+                        previewOutput.AppendLine("**⚠️ Preview mode:** No changes were applied.");
+                        previewOutput.AppendLine("**💡 Tip:** Set `preview=false` and provide `commitMessage` to apply the changes.");
+
+                        return previewOutput.ToString();
+                    } finally {
+                        ObjectPoolProvider.Instance.ReturnStringBuilder(previewOutput);
                     }
-
-                    if (changedDocumentsCount > 20)
-                    {
-                        previewOutput.AppendLine($"  ... and {changedDocumentsCount - 20} more file(s)");
-                    }
-
-                    previewOutput.AppendLine();
-                    previewOutput.AppendLine("**⚠️ Preview mode:** No changes were applied.");
-                    previewOutput.AppendLine("**💡 Tip:** Set `preview=false` and provide `commitMessage` to apply the changes.");
-
-                    return previewOutput.ToString();
                 }
 
                 // Apply the changes
@@ -818,31 +834,37 @@ public static class ModificationTools {
                     .Take(5) // Limit to first 5 documents to avoid excessive checking
                     .ToList();
 
-                StringBuilder errorBuilder = new StringBuilder("<errorCheck>");
+                var errorBuilder = ObjectPoolProvider.Instance.GetStringBuilder();
+                errorBuilder.Append("<errorCheck>");
 
-                // Check each affected document for compilation errors
-                foreach (var docId in changedDocIds) {
-                    if (solutionManager.CurrentSolution != null) {
-                        var updatedDoc = solutionManager.CurrentSolution.GetDocument(docId);
-                        if (updatedDoc != null) {
-                            var (docHasErrors, docErrorMessages) = await ContextInjectors.CheckCompilationErrorsAsync(
-                solutionManager, updatedDoc, logger, cancellationToken);
+                try {
+                    // Check each affected document for compilation errors
+                    foreach (var docId in changedDocIds) {
+                        if (solutionManager.CurrentSolution != null) {
+                            var updatedDoc = solutionManager.CurrentSolution.GetDocument(docId);
+                            if (updatedDoc != null) {
+                                var (docHasErrors, docErrorMessages) = await ContextInjectors.CheckCompilationErrorsAsync(
+                    solutionManager, updatedDoc, logger, cancellationToken);
 
-                            if (docHasErrors) {
-                                errorBuilder.AppendLine($"Issues in file {updatedDoc.FilePath ?? "unknown"}:");
-                                errorBuilder.AppendLine(docErrorMessages);
-                                errorBuilder.AppendLine();
-                            } else {
-                                errorBuilder.AppendLine($"No compilation issues in file {updatedDoc.FilePath ?? "unknown"}.");
+                                if (docHasErrors) {
+                                    errorBuilder.AppendLine($"Issues in file {updatedDoc.FilePath ?? "unknown"}:");
+                                    errorBuilder.AppendLine(docErrorMessages);
+                                    errorBuilder.AppendLine();
+                                } else {
+                                    errorBuilder.AppendLine($"No compilation issues in file {updatedDoc.FilePath ?? "unknown"}.");
+                                }
                             }
                         }
                     }
+                    errorBuilder.AppendLine("</errorCheck>");
+
+                    var filterMessage = string.IsNullOrEmpty(filenameFilter) ? "" : $" (with filter '{filenameFilter}')";
+                    var errorCheckResult = errorBuilder.ToString();
+
+                    return $"Successfully replaced references to '{symbol.Name}'{filterMessage} with '{replacementCode}' in {changedDocumentsCount} document(s).\n\n{errorCheckResult}";
+                } finally {
+                    ObjectPoolProvider.Instance.ReturnStringBuilder(errorBuilder);
                 }
-                errorBuilder.AppendLine("</errorCheck>");
-
-                var filterMessage = string.IsNullOrEmpty(filenameFilter) ? "" : $" (with filter '{filenameFilter}')";
-
-                return $"Successfully replaced references to '{symbol.Name}'{filterMessage} with '{replacementCode}' in {changedDocumentsCount} document(s).\n\n{errorBuilder}";
 
             } catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException)) {
                 logger.LogError(ex, "Failed to replace references to symbol '{SymbolName}' with '{ReplacementCode}'",

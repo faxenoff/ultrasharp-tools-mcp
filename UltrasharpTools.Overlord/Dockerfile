@@ -15,6 +15,7 @@ ARG BUILD_CONFIGURATION
 WORKDIR /src
 
 # Copy project files and restore dependencies
+# NOTE: Build context should be project root, not this directory
 COPY ["UltrasharpTools.Overlord/UltrasharpTools.Overlord.csproj", "UltrasharpTools.Overlord/"]
 COPY ["UltrasharpTools.Tools/UltrasharpTools.Tools.csproj", "UltrasharpTools.Tools/"]
 COPY ["UltrasharpTools.sln", "./"]
@@ -89,14 +90,22 @@ COPY --from=build /app/publish .
 RUN mkdir -p /app/data /app/logs /app/.ultrasharp && \
     chmod -R 755 /app
 
-# K8s labels for management
+# OCI labels and K8s labels for management
 LABEL \
-    version="1.0.0" \
-    description="UltrasharpTools MCP Overlord - Roslyn-based C# code analysis" \
+    org.opencontainers.image.title="UltrasharpTools Overlord" \
+    org.opencontainers.image.description="Roslyn-powered C# code analysis server for team collaboration via Model Context Protocol. Supports semantic search, cross-project analysis, and 52 MCP tools." \
+    org.opencontainers.image.authors="UltrasharpTools Team" \
+    org.opencontainers.image.vendor="UltrasharpTools" \
+    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.url="https://github.com/faxenoff/ultrasharp-tools-mcp" \
+    org.opencontainers.image.source="https://github.com/faxenoff/ultrasharp-tools-mcp" \
+    org.opencontainers.image.documentation="https://github.com/faxenoff/ultrasharp-tools-mcp/blob/main/Run.Docs/OVERLORD_README.md" \
+    version="3.0.0" \
     maintainer="UltrasharpTools Team" \
     app.kubernetes.io/name="ultrasharp-tools-server" \
     app.kubernetes.io/component="mcp-server" \
-    app.kubernetes.io/part-of="ultrasharp-tools"
+    app.kubernetes.io/part-of="ultrasharp-tools" \
+    app.kubernetes.io/version="3.0.0"
 
 # Expose port
 EXPOSE 3001

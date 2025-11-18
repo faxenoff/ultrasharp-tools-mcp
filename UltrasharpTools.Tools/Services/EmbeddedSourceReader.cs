@@ -7,6 +7,7 @@ using System.Reflection.PortableExecutable;
 using System.Text;
 using System.IO.Compression;
 using Microsoft.CodeAnalysis;
+using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Services {
     public class EmbeddedSourceReader {
@@ -146,7 +147,9 @@ namespace UltrasharpTools.Tools.Services {
             var blobReader = reader.GetBlobReader(handle);
             var separator = (char)blobReader.ReadByte();
 
-            var sb = new StringBuilder();
+            var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+            try
+            {
             bool first = true;
 
             while (blobReader.Offset < blobReader.Length) {
@@ -162,6 +165,11 @@ namespace UltrasharpTools.Tools.Services {
             }
 
             return sb.ToString();
+            }
+            finally
+            {
+                ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+            }
         }
         /// <summary>
         /// Helper method to get source for a specific symbol from Roslyn

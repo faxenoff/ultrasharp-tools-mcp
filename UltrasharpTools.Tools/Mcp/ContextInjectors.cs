@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using UltrasharpTools.Tools.Interfaces;
 using UltrasharpTools.Tools.Mcp.Tools;
+using UltrasharpTools.Tools.Infrastructure;
 namespace UltrasharpTools.Tools.Mcp;
 /// <summary>
 /// Provides reusable context injection methods for checking compilation errors and generating diffs.
@@ -66,7 +67,9 @@ internal static class ContextInjectors {
             .Where(d => d.Id == "CS0103" || d.Id == "CS1061" || d.Id == "CS0117" || d.Id == "CS0246")
             .ToList();
             // Build error message
-            var sb = new StringBuilder();
+            var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+            try
+            {
             sb.AppendLine($"<compilationErrors note=\"If the fixes for these errors are simple, use `{ToolHelpers.SharpToolPrefix}{nameof(ModificationTools.FindAndReplace)}`\">");
             // First add member access errors (highest priority as this is what we're focusing on)
             foreach (var error in memberAccessErrors) {
@@ -82,6 +85,11 @@ internal static class ContextInjectors {
             logger.LogWarning("Compilation issues found in {FilePath}:\n{Errors}",
             document.FilePath ?? "unknown", sb.ToString());
             return (true, sb.ToString());
+            }
+            finally
+            {
+                ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+            }
         } catch (Exception ex) when (!(ex is OperationCanceledException)) {
             logger.LogError(ex, "Error checking for compilation errors in document {FilePath}",
             document.FilePath ?? "unknown");
@@ -104,7 +112,9 @@ internal static class ContextInjectors {
         string strippedOldCode = trimLines(oldCode);
         string strippedNewCode = trimLines(newCode);
         var diff = InlineDiffBuilder.Diff(strippedOldCode, strippedNewCode);
-        var diffBuilder = new StringBuilder();
+        var diffBuilder = ObjectPoolProvider.Instance.GetStringBuilder();
+        try
+        {
         bool inUnchangedSection = false;
         foreach (var line in diff.Lines) {
             switch (line.Type) {
@@ -131,6 +141,11 @@ internal static class ContextInjectors {
             diffResult = $"<diff>\n{diffResult}\n</diff>\nNote: This diff has been applied. You must base all future changes on the updated code.";
         }
         return diffResult;
+        }
+        finally
+        {
+            ObjectPoolProvider.Instance.ReturnStringBuilder(diffBuilder);
+        }
     }
     /// <summary>
     /// Creates a diff between old and new document text
@@ -165,7 +180,9 @@ internal static class ContextInjectors {
         if (changedDocuments.Count == 0) {
             return "No documents changed.";
         }
-        var sb = new StringBuilder();
+        var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+        try
+        {
         sb.AppendLine($"Changes in {Math.Min(changedDocuments.Count, maxDocuments)} documents:");
         int count = 0;
         foreach (var docId in changedDocuments) {
@@ -184,6 +201,11 @@ internal static class ContextInjectors {
             count++;
         }
         return sb.ToString();
+        }
+        finally
+        {
+            ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+        }
     }
     public static async Task<string> CreateCallGraphContextAsync<TLogCategory>(
         ICodeAnalysisService codeAnalysisService,
@@ -228,7 +250,9 @@ internal static class ContextInjectors {
 
         // Format results in XML format
         var random = new Random();
-        var result = new StringBuilder();
+        var result = ObjectPoolProvider.Instance.GetStringBuilder();
+        try
+        {
         result.AppendLine("<callers>");
         var randomizedCallers = callers.OrderBy(_ => random.Next()).Take(20);
         foreach (var caller in randomizedCallers) {
@@ -248,6 +272,11 @@ internal static class ContextInjectors {
         result.AppendLine("</callees>");
 
         return result.ToString();
+        }
+        finally
+        {
+            ObjectPoolProvider.Instance.ReturnStringBuilder(result);
+        }
     }
     public static async Task<string> CreateTypeReferenceContextAsync<TLogCategory>(
         ICodeAnalysisService codeAnalysisService,
@@ -300,7 +329,9 @@ internal static class ContextInjectors {
 
         // Format results in XML format
         var random = new Random();
-        var result = new StringBuilder();
+        var result = ObjectPoolProvider.Instance.GetStringBuilder();
+        try
+        {
         result.AppendLine("<referencingTypes>");
         foreach (var referencingType in referencingTypes.OrderBy(t => random.Next()).Take(20)) {
             result.AppendLine(referencingType);
@@ -319,6 +350,11 @@ internal static class ContextInjectors {
         result.AppendLine("</referencedTypes>");
 
         return result.ToString();
+        }
+        finally
+        {
+            ObjectPoolProvider.Instance.ReturnStringBuilder(result);
+        }
     }/// <summary>
      /// Determines if a symbol is defined within the current solution.
      /// </summary>

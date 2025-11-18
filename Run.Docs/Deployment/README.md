@@ -190,6 +190,7 @@ cat /app/projects/myproject/Program.cs
 ```bash
 docker build -t ultrasharp-tools-server:debug \
   --build-arg BUILD_CONFIGURATION=Debug \
+  -f UltrasharpTools.Overlord/Dockerfile \
   .
 ```
 
@@ -197,6 +198,7 @@ docker build -t ultrasharp-tools-server:debug \
 ```bash
 docker build -t ultrasharp-tools-server:release \
   --build-arg BUILD_CONFIGURATION=Release \
+  -f UltrasharpTools.Overlord/Dockerfile \
   .
 ```
 
@@ -635,6 +637,7 @@ kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- \
 - [Main README](../../README.md)
 - [MCP Configuration Guide](../Configuration/MCP_Sharp.md)
 - [Docker Setup](../Setup/Docker.md)
+- **[Semantic Embedding Setup Guide](SEMANTIC_SETUP_GUIDE.md)** - Настройка semantic search
 - [GitHub Container Registry Docs](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 - [Helm Documentation](https://helm.sh/docs/)

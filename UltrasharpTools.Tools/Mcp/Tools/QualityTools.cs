@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using ModelContextProtocol;
+using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Interfaces;
 using UltrasharpTools.Tools.Services;
 using System.Text;
@@ -44,7 +45,9 @@ throw new McpException($"Path does not exist: {path}");
 
 var result = await formattingService.FormatAsync(path, checkOnly, cancellationToken);
 
-var output = new StringBuilder();
+var output = ObjectPoolProvider.Instance.GetStringBuilder();
+try
+{
 output.AppendLine("## Code Formatting Results\n");
 output.AppendLine($"**Total files checked:** {result.TotalFilesChecked}");
 output.AppendLine($"**Files needing formatting:** {result.FilesNeedingFormatting.Count}");
@@ -95,14 +98,21 @@ if (checkOnly && result.FilesNeedingFormatting.Count > 0)
 output.AppendLine("\n**💡 Tip:** Set `checkOnly=false` to apply formatting changes.");
 }
 
+var outputStr = output.ToString();
+
 return ToolHelpers.ToJson(new
 {
-summary = output.ToString(),
+summary = outputStr,
 totalFilesChecked = result.TotalFilesChecked,
 filesNeedingFormatting = result.FilesNeedingFormatting.Count,
 filesFormatted = result.FilesFormatted.Count,
 errors = result.Errors.Count
 });
+}
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(output);
+}
 
 }, logger, nameof(FormatCode), cancellationToken);
 }
@@ -136,7 +146,9 @@ $"Invalid severity filter: {severityFilter}. Valid values: Hidden, Info, Warning
 
 var result = await diagnosticService.AnalyzeAsync(solutionPath, severity, skip, take, cancellationToken);
 
-var output = new StringBuilder();
+var output = ObjectPoolProvider.Instance.GetStringBuilder();
+try
+{
 output.AppendLine("## Code Style Analysis Results\n");
 output.AppendLine($"**Total diagnostics found:** {result.TotalCount}");
 output.AppendLine($"**Showing:** {result.Diagnostics.Count} (skip: {skip}, take: {take})");
@@ -174,9 +186,11 @@ if (result.HasMore)
 output.AppendLine($"\n**💡 Tip:** Use `skip={skip + take}` to see more results.");
 }
 
+var outputStr = output.ToString();
+
 return ToolHelpers.ToJson(new
 {
-summary = output.ToString(),
+summary = outputStr,
 totalCount = result.TotalCount,
 returnedCount = result.Diagnostics.Count,
 hasMore = result.HasMore,
@@ -190,6 +204,11 @@ line = d.Diagnostic.Location.GetLineSpan().StartLinePosition.Line + 1,
 column = d.Diagnostic.Location.GetLineSpan().StartLinePosition.Character + 1
 }).ToList()
 });
+}
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(output);
+}
 
 }, logger, nameof(AnalyzeCodeStyle), cancellationToken);
 }
@@ -216,16 +235,19 @@ nameof(ApplyCodeFixes), solutionPath, diagnosticId, preview);
 
 var result = await codeFixService.ApplyFixesAsync(solutionPath, diagnosticId, preview, cancellationToken);
 
-var output = new StringBuilder();
+var output = ObjectPoolProvider.Instance.GetStringBuilder();
+try
+{
 output.AppendLine("## Code Fix Results\n");
 output.AppendLine($"**Total fixable issues found:** {result.TotalFixableIssues}");
 
 if (result.TotalFixableIssues == 0)
 {
 output.AppendLine("\n✅ No fixable issues found!");
+var outputStr = output.ToString();
 return ToolHelpers.ToJson(new
 {
-summary = output.ToString(),
+summary = outputStr,
 totalFixableIssues = 0,
 appliedFixes = 0,
 wasPreview = preview
@@ -277,6 +299,11 @@ appliedFixes = result.AppliedFixes.Count,
 errors = result.Errors.Count,
 wasPreview = preview
 });
+}
+finally
+{
+ObjectPoolProvider.Instance.ReturnStringBuilder(output);
+}
 
 }, logger, nameof(ApplyCodeFixes), cancellationToken);
 }
