@@ -1,0 +1,96 @@
+{
+  "$schema": "./semantic-mode-config.schema.json",
+  "enabled": true,
+  "availability": {
+    "cacheValiditySeconds": 300,
+    "localCheckTimeoutSeconds": 3,
+    "overlordCheckTimeoutSeconds": 5,
+    "embeddingSourcePreference": "auto",
+    "searchSourcePreference": "auto"
+  },
+  "enrichment": {
+    "timeoutSeconds": 5,
+    "maxConcurrency": 5,
+    "gracefulDegradation": true,
+    "logSuccessfulEnrichments": false,
+    "logFailedEnrichments": true,
+    "minMatchesForEnrichment": 1
+  },
+  "toolSettings": {
+    "view_definition": {
+      "enabled": true,
+      "topK": 5,
+      "threshold": 0.7
+    },
+    "find_references": {
+      "enabled": true,
+      "topK": 10,
+      "threshold": 0.65
+    },
+    "modify_code": {
+      "enabled": true,
+      "topK": 8,
+      "threshold": 0.7
+    },
+    "get_members": {
+      "enabled": true,
+      "topK": 5,
+      "threshold": 0.7
+    },
+    "analyze_complexity": {
+      "enabled": true,
+      "topK": 5,
+      "threshold": 0.7
+    },
+    "find_all_references": {
+      "enabled": true,
+      "topK": 10,
+      "threshold": 0.65
+    },
+    "list_types": {
+      "enabled": true,
+      "topK": 8,
+      "threshold": 0.7
+    },
+    "search_symbols": {
+      "enabled": true,
+      "topK": 10,
+      "threshold": 0.6
+    },
+    "trace_execution": {
+      "enabled": true,
+      "topK": 5,
+      "threshold": 0.75
+    },
+    "analyze_code_style": {
+      "enabled": true,
+      "topK": 5,
+      "threshold": 0.7
+    },
+    "get_type_hierarchy": {
+      "enabled": true,
+      "topK": 5,
+      "threshold": 0.75
+    },
+    "get_project_structure": {
+      "enabled": true,
+      "topK": 3,
+      "threshold": 0.65
+    },
+    "find_usages": {
+      "enabled": true,
+      "topK": 8,
+      "threshold": 0.7
+    },
+    "get_diagnostics": {
+      "enabled": true,
+      "topK": 5,
+      "threshold": 0.7
+    },
+    "apply_code_fixes": {
+      "enabled": true,
+      "topK": 5,
+      "threshold": 0.75
+    }
+  }
+}
