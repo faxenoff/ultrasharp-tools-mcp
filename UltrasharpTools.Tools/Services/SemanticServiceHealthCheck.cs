@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Net.Http;
 using UltrasharpTools.Tools.Models;
+using UltrasharpTools.Tools.Config;
 
 namespace UltrasharpTools.Tools.Services;
 
