@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Services;
 using UltrasharpTools.Tools.Serialization;
@@ -97,19 +98,20 @@ internal static class ToolHelpers {
             throw new McpException($"Error finding document for syntax node: {ex.Message}");
         }
     }
-
     public static string ToJson(object? data) {
-        // Use source-generated context for 2-3x faster serialization of known types
-        // Falls back to reflection for unknown types (anonymous objects, etc.)
+        // Use source-generated context for known types (2-3x faster)
+        // Falls back to reflection-based serializer for anonymous types
         return JsonSerializer.Serialize(data, new JsonSerializerOptions {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = false,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            TypeInfoResolver = UltrasharpToolsJsonContext.Default
+            // Combine source-generated context + default reflection-based resolver
+            TypeInfoResolver = JsonTypeInfoResolver.Combine(
+        UltrasharpToolsJsonContext.Default,
+        new DefaultJsonTypeInfoResolver())
         });
     }
-
     private static string RoslynAccessibilityToString(Accessibility accessibility) {
         return accessibility switch {
             Accessibility.Private => "private",
