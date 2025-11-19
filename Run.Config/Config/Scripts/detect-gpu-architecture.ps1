@@ -63,7 +63,15 @@ try {
     }
 
     $gpuName = $parts[0].Trim()
-    $computeCap = $parts[1].Trim()
+    $computeCap = if ($parts.Count -ge 2) { $parts[1].Trim() } else { "" }
+
+    if (-not $computeCap) {
+        Write-Host "✗ No compute capability data" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Recommendation: architecture: cpu" -ForegroundColor Cyan
+        Write-Output "cpu"
+        exit 0
+    }
 
     Write-Host "✓ Detected: $gpuName" -ForegroundColor Green
     Write-Host "  Compute Capability: $computeCap" -ForegroundColor DarkGray
@@ -85,7 +93,11 @@ try {
         # Hopper (90)
         { $_ -eq "9.0" } { "hopper" }
 
-        # Blackwell (120) - experimental
+        # Blackwell (100, 102) - RTX 5000 series
+        { $_ -eq "10.0" } { "blackwell" }
+        { $_ -eq "10.2" } { "blackwell" }
+
+        # Future architectures (120+) - experimental
         { $_ -eq "12.0" } { "blackwell-experimental" }
 
         default {
