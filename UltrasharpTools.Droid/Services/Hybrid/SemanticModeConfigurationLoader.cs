@@ -15,10 +15,10 @@ public sealed class SemanticModeConfigurationLoader
     // Пути поиска конфигурации (в порядке приоритета)
     private static readonly string[] ConfigPaths = new[]
     {
-        ".ultrasharp/semantic-mode-config.json",           // Project-specific
+        "Config/semantic-mode-config.json",                // Primary location (next to exe)
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ultrasharp", "semantic-mode-config.json"), // User-specific
         "semantic-mode-config.json",                       // Current directory
-        "Run.Config/semantic-mode-config.json"             // Default location
+        "Run.Config/semantic-mode-config.json"             // Development location
     };
 
     public SemanticModeConfigurationLoader(ILogger<SemanticModeConfigurationLoader> logger)
@@ -73,8 +73,8 @@ public sealed class SemanticModeConfigurationLoader
         _logger.LogInformation("No semantic mode config found, using default configuration");
         var defaultConfig = SemanticModeConfig.CreateDefault();
 
-        // Сохраняем default конфигурацию для будущего использования
-        var defaultPath = ".ultrasharp/semantic-mode-config.json";
+        // Сохраняем default конфигурацию для будущего использования в Config/
+        var defaultPath = "Config/semantic-mode-config.json";
         try
         {
             await SaveToFileAsync(defaultConfig, defaultPath, cancellationToken);
