@@ -11,6 +11,7 @@ using ModelContextProtocol.Protocol;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.IO;
 using System;
 using System.Threading.Tasks;
@@ -261,6 +262,9 @@ public static class Program {
         };
 
         builder.Services.WithUltrasharpToolsServices(!disableGit, buildConfiguration, gitOptions, reloadOptions, symbolCacheOptions);
+
+        // Register null SemanticSearchService if not already registered (for pattern_search fallback)
+        builder.Services.TryAddSingleton<UltrasharpTools.Tools.Semantic.SemanticSearchService>(sp => null!);
 
         // Register hybrid mode services if enabled
         if (isHybridMode)
