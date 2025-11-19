@@ -164,6 +164,21 @@ if (Test-Path $sourceConfigDir) {
     }
 }
 
+# Copy semantic-config.json if it exists (from Run.Config or Run.Config/Config)
+$semanticConfigSources = @(
+    (Join-Path $runConfigDir "semantic-config.json"),           # Legacy location
+    (Join-Path $sourceConfigDir "semantic-config.json")         # Correct location
+)
+
+foreach ($semanticConfigSource in $semanticConfigSources) {
+    if (Test-Path $semanticConfigSource) {
+        $semanticConfigTarget = Join-Path $targetConfigDir "semantic-config.json"
+        Copy-Item -Path $semanticConfigSource -Destination $semanticConfigTarget -Force
+        Write-Success "Copied semantic-config.json to Config/"
+        break  # Only copy from first found location
+    }
+}
+
 # Copy setup guide if exists
 $setupGuide = Join-Path $ProjectRoot "SEMANTIC_SETUP_GUIDE.md"
 if (Test-Path $setupGuide) {

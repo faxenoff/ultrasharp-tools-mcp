@@ -226,6 +226,15 @@ public static class Program {
         }
 
         var builder = Host.CreateApplicationBuilder(args);
+
+        // Set content root to exe directory (not current working directory)
+        var exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        if (!string.IsNullOrEmpty(exeDirectory))
+        {
+            builder.Environment.ContentRootPath = exeDirectory;
+            Directory.SetCurrentDirectory(exeDirectory);
+        }
+
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole();
         builder.Logging.SetMinimumLevel(minimumLogLevel);
@@ -266,8 +275,10 @@ public static class Program {
 
         // Auto-enable semantic RAG if semantic-config.json exists
         // Check Config\semantic-config.json (recommended) or semantic-config.json (legacy)
-        var configDirPath = Path.Combine(Directory.GetCurrentDirectory(), "Config", "semantic-config.json");
-        var legacyPath = Path.Combine(Directory.GetCurrentDirectory(), "semantic-config.json");
+        // Use exe directory instead of current working directory
+        var exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? Directory.GetCurrentDirectory();
+        var configDirPath = Path.Combine(exeDir, "Config", "semantic-config.json");
+        var legacyPath = Path.Combine(exeDir, "semantic-config.json");
         var hasSemanticConfig = File.Exists(configDirPath) || File.Exists(legacyPath);
         var semanticConfigPath = File.Exists(configDirPath) ? configDirPath : legacyPath;
 
