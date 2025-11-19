@@ -44,7 +44,24 @@ try {
     }
 
     # Parse first GPU
-    $parts = $lines[0] -split ","
+    $firstLine = $lines[0]
+    if (-not $firstLine) {
+        Write-Host "✗ No GPU data returned" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Recommendation: architecture: cpu" -ForegroundColor Cyan
+        Write-Output "cpu"
+        exit 0
+    }
+
+    $parts = $firstLine -split ","
+    if ($parts.Count -lt 2) {
+        Write-Host "✗ Invalid GPU data format" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Recommendation: architecture: cpu" -ForegroundColor Cyan
+        Write-Output "cpu"
+        exit 0
+    }
+
     $gpuName = $parts[0].Trim()
     $computeCap = $parts[1].Trim()
 
