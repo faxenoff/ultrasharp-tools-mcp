@@ -46,7 +46,15 @@ function Write-Error { param([string]$Text) Write-Host "✗ $Text" -ForegroundCo
 Write-Header "UltrasharpTools Droid Build (MCP)"
 Write-Info "Configuration: $Configuration"
 Write-Info "Runtime: $Runtime"
-Write-Info "ReadyToRun: Enabled (non-composite)"
+
+# Configure R2R based on configuration
+$useR2R = $Configuration -ne "Debug"
+if ($useR2R) {
+    Write-Info "ReadyToRun: Enabled (non-composite)"
+} else {
+    Write-Info "ReadyToRun: Disabled (Debug mode)"
+    Write-Info "PDB Files: Will be kept for debugging"
+}
 
 # Prepare output directory
 Write-Header "Preparing output directory"
@@ -59,22 +67,33 @@ if (-not (Test-Path $publishDir)) {
 }
 
 # Publish Droid (automatically builds UltrasharpTools.Tools)
-Write-Header "Publishing Droid with R2R"
+if ($useR2R) {
+    Write-Header "Publishing Droid with R2R"
+} else {
+    Write-Header "Publishing Droid (Debug, no R2R)"
+}
+
 dotnet publish UltrasharpTools.Droid/UltrasharpTools.Droid.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained false `
     -o $mcpOutput `
-    -p:PublishReadyToRun=true `
+    -p:PublishReadyToRun=$useR2R `
     -p:PublishReadyToRunComposite=false
 
 if ($LASTEXITCODE -eq 0) {
-    # Clean up PDB files from publish output
-    $pdbFiles = Get-ChildItem -Path $mcpOutput -Filter "*.pdb" -Recurse
-    $pdbCount = $pdbFiles.Count
-    if ($pdbCount -gt 0) {
-        $pdbFiles | Remove-Item -Force
-        Write-Success "Cleaned up PDB files from publish output"
+    # Clean up PDB files from publish output (only for Release builds)
+    if ($Configuration -ne "Debug") {
+        $pdbFiles = Get-ChildItem -Path $mcpOutput -Filter "*.pdb" -Recurse
+        $pdbCount = $pdbFiles.Count
+        if ($pdbCount -gt 0) {
+            $pdbFiles | Remove-Item -Force
+            Write-Success "Cleaned up PDB files from publish output"
+        }
+    } else {
+        $pdbFiles = Get-ChildItem -Path $mcpOutput -Filter "*.pdb" -Recurse
+        $pdbCount = $pdbFiles.Count
+        Write-Success "Kept $pdbCount PDB files for debugging"
     }
 
     # Verify BuildHost directories exist (required for MSBuild)
