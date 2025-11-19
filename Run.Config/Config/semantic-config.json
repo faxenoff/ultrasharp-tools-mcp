@@ -1,0 +1,61 @@
+{
+  "auto_detection": {
+    "language": true,
+    "codebase_size": true,
+    "gpu_architecture": true
+  },
+  "embedding": {
+    "ollama": {
+      "models": [
+        {
+          "vector_size": 768,
+          "languages": [
+            "en"
+          ],
+          "id": "nomic-embed-text"
+        },
+        {
+          "vector_size": 1024,
+          "languages": [
+            "en"
+          ],
+          "id": "mxbai-embed-large"
+        },
+        {
+          "vector_size": 384,
+          "languages": [
+            "en"
+          ],
+          "id": "all-minilm"
+        },
+        {
+          "vector_size": 384,
+          "languages": [
+            "en"
+          ],
+          "id": "granite-embedding:30m"
+        },
+        {
+          "vector_size": 768,
+          "languages": [
+            "multi"
+          ],
+          "id": "granite-embedding:278m"
+        }
+      ],
+      "endpoint": "http://127.0.0.1:11434",
+      "selected_model": "nomic-embed-text"
+    },
+    "architecture": "cpu",
+    "tei": {
+      "models": [],
+      "endpoint": "http://127.0.0.1:8080",
+      "selected_model": null
+    },
+    "memory": {
+      "vector_size": 384,
+      "model_path": "./models/embedding"
+    },
+    "platform": "ollama"
+  }
+}

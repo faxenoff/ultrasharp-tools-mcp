@@ -1,0 +1,191 @@
+{
+  "version": "1.0.0",
+  "providers": {
+    "tei": {
+      "name": "TEI (Text Embeddings Inference)",
+      "description": "HuggingFace официальный inference сервер\n✅ Высокий контекст (до 8192 токенов)\n🚀 Авто-определение GPU (RTX 30xx/40xx/50xx)\n🐳 Требуется Docker Desktop\n⚡ В 5-10 раз быстрее на GPU",
+      "requires": ["docker"],
+      "optional": ["nvidia-gpu"],
+      "default_port": 8080,
+      "container_name": "tei-server"
+    },
+    "ollama": {
+      "name": "Ollama",
+      "description": "Простая локальная установка без Docker\n✅ Легкая установка\n🎮 Авто-определение GPU\n⚠️  Контекст зависит от модели (512-8192 токенов)\n📦 Меньший размер загрузки",
+      "requires": ["ollama"],
+      "optional": ["nvidia-gpu"],
+      "default_port": 11434
+    },
+    "memory": {
+      "name": "Memory Provider (без ML)",
+      "description": "Hash-based embeddings (без ML)\n⚠️  Только детерминированный хеш\n✅ Установка не требуется\n⚡ Мгновенно, без вычислений",
+      "requires": [],
+      "optional": []
+    }
+  },
+  "models": [
+    {
+      "id": "all-minilm-l6-v2",
+      "provider": "tei",
+      "name": "All MiniLM L6 v2",
+      "badge": "⭐ Рекомендуется",
+      "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "en",
+      "context_tokens": 256,
+      "dimensions": 384,
+      "size_mb": 90,
+      "description": "Лучший баланс скорости и качества для английского"
+    },
+    {
+      "id": "paraphrase-multilingual-minilm",
+      "provider": "tei",
+      "name": "Paraphrase Multilingual MiniLM",
+      "badge": "🌍 Мультиязычная",
+      "model_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "multi",
+      "context_tokens": 128,
+      "dimensions": 384,
+      "size_mb": 470,
+      "description": "Поддержка 50+ языков"
+    },
+    {
+      "id": "bge-small-en",
+      "provider": "tei",
+      "name": "BGE Small EN v1.5",
+      "badge": "🏃 Быстрая",
+      "model_id": "BAAI/bge-small-en-v1.5",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "en",
+      "context_tokens": 512,
+      "dimensions": 384,
+      "size_mb": 133,
+      "description": "Быстрая с хорошим качеством"
+    },
+    {
+      "id": "ibm-granite-8k-en",
+      "provider": "tei",
+      "name": "IBM Granite 8K EN",
+      "badge": "🎯 Длинный контекст",
+      "model_id": "ibm-granite/granite-embedding-30m-english",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "en",
+      "context_tokens": 8192,
+      "dimensions": 384,
+      "size_mb": 120,
+      "description": "Длинный контекст 8K (experimental)",
+      "experimental": true
+    },
+    {
+      "id": "ibm-granite-multilingual",
+      "provider": "tei",
+      "name": "IBM Granite Multilingual",
+      "badge": "🌍 Мультиязычная",
+      "model_id": "ibm-granite/granite-embedding-125m-multilingual",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "multi",
+      "context_tokens": 512,
+      "dimensions": 768,
+      "size_mb": 500,
+      "description": "Мультиязычная поддержка",
+      "experimental": true
+    },
+    {
+      "id": "bge-m3",
+      "provider": "tei",
+      "name": "BGE M3",
+      "badge": "🌍 Мультиязычная",
+      "model_id": "BAAI/bge-m3",
+      "gpu_architectures": ["ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "multi",
+      "context_tokens": 8192,
+      "dimensions": 1024,
+      "size_mb": 2200,
+      "description": "Поддержка 100+ языков с длинным контекстом"
+    },
+    {
+      "id": "e5-small",
+      "provider": "tei",
+      "name": "E5 Small v2",
+      "badge": "🏃 Быстрая",
+      "model_id": "intfloat/e5-small-v2",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "en",
+      "context_tokens": 512,
+      "dimensions": 384,
+      "size_mb": 133,
+      "description": "Быстрая и эффективная для английского"
+    },
+    {
+      "id": "ollama-nomic-embed",
+      "provider": "ollama",
+      "name": "Nomic Embed Text",
+      "badge": "⭐ Рекомендуется",
+      "model_id": "nomic-embed-text",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "en",
+      "context_tokens": 8192,
+      "dimensions": 768,
+      "size_mb": 274,
+      "description": "Высокое качество с поддержкой длинного контекста"
+    },
+    {
+      "id": "ollama-mxbai-large",
+      "provider": "ollama",
+      "name": "MxBai Embed Large",
+      "badge": "🎯 Качество",
+      "model_id": "mxbai-embed-large",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "en",
+      "context_tokens": 512,
+      "dimensions": 1024,
+      "size_mb": 669,
+      "description": "Высокое качество, медленнее"
+    },
+    {
+      "id": "ollama-all-minilm",
+      "provider": "ollama",
+      "name": "All MiniLM L6 v2",
+      "badge": "🏃 Быстрая",
+      "model_id": "all-minilm",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "en",
+      "context_tokens": 512,
+      "dimensions": 384,
+      "size_mb": 45,
+      "description": "Очень быстрая, легковесная модель"
+    },
+    {
+      "id": "ollama-granite-en",
+      "provider": "ollama",
+      "name": "IBM Granite EN",
+      "badge": null,
+      "model_id": "granite-embedding:30m",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "en",
+      "context_tokens": 512,
+      "dimensions": 384,
+      "size_mb": 60,
+      "description": "Компактная английская модель"
+    },
+    {
+      "id": "ollama-granite-multilingual",
+      "provider": "ollama",
+      "name": "IBM Granite Multilingual",
+      "badge": "🌍 Мультиязычная",
+      "model_id": "granite-embedding:278m",
+      "gpu_architectures": ["turing", "ampere-80", "ampere-86", "ada", "hopper", "cpu"],
+      "language": "multi",
+      "context_tokens": 512,
+      "dimensions": 768,
+      "size_mb": 560,
+      "description": "Мультиязычная поддержка"
+    }
+  ],
+  "default_models": {
+    "tei": "all-minilm-l6-v2",
+    "ollama": "ollama-nomic-embed",
+    "memory": null
+  }
+}

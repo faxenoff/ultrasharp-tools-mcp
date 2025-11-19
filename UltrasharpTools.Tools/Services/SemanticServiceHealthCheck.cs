@@ -16,7 +16,7 @@ public class SemanticServiceHealthCheck
 
     public SemanticServiceHealthCheck(IHttpClientFactory? httpClientFactory = null, ILogger<SemanticServiceHealthCheck>? logger = null)
     {
-        _httpClient = httpClientFactory?.CreateClient() ?? new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        _httpClient = httpClientFactory?.CreateClient() ?? new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _logger = logger;
     }
 
@@ -25,15 +25,41 @@ public class SemanticServiceHealthCheck
     /// </summary>
     public async Task<bool> QuickCheckAsync(SemanticEmbeddingConfig config, CancellationToken cancellationToken = default)
     {
+        // CRITICAL DEBUG: Hardcoded path logging FIRST
+        try
+        {
+            File.AppendAllText(@"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync ENTRY\n");
+        }
+        catch { }
+
         var platform = config.Embedding.Platform.ToLowerInvariant();
 
-        return platform switch
+        // Debug logging with details
+        try
+        {
+            File.AppendAllText(@"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync: platform={platform}, endpoint={config.Embedding.Tei?.Endpoint ?? "null"}\n");
+        }
+        catch { }
+
+        var result = platform switch
         {
             "tei" => await CheckTeiHealthAsync(config.Embedding.Tei.Endpoint, cancellationToken),
             "ollama" => await CheckOllamaHealthAsync(config.Embedding.Ollama.Endpoint, cancellationToken),
             "memory" => true,
             _ => false
         };
+
+        // Log result
+        try
+        {
+            File.AppendAllText(@"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync EXIT: result={result}\n");
+        }
+        catch { }
+
+        return result;
     }
 
     /// <summary>
@@ -172,14 +198,26 @@ public class SemanticServiceHealthCheck
 
     private async Task<bool> CheckTeiHealthAsync(string endpoint, CancellationToken cancellationToken)
     {
+        const string LOG = @"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log";
+
+        try { File.AppendAllText(LOG, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync ENTRY\n"); } catch { }
+
         try
         {
-            var healthUrl = $"{endpoint.TrimEnd('/')}/health";
+            // TEI uses /info endpoint for health checks, not /health
+            var healthUrl = $"{endpoint.TrimEnd('/')}/info";
+
+            try { File.AppendAllText(LOG, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync START: URL={healthUrl}, Timeout={_httpClient.Timeout.TotalSeconds}s\n"); } catch { }
+
             var response = await _httpClient.GetAsync(healthUrl, cancellationToken);
+
+            try { File.AppendAllText(LOG, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync RESPONSE: StatusCode={response.StatusCode}, Success={response.IsSuccessStatusCode}\n"); } catch { }
+
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (Exception ex)
         {
+            try { File.AppendAllText(LOG, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync EXCEPTION: {ex.GetType().Name}: {ex.Message}\n"); } catch { }
             return false;
         }
     }

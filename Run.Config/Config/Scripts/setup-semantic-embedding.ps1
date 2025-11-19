@@ -1,146 +1,313 @@
 #!/usr/bin/env pwsh
-<#
-.SYNOPSIS
-    Interactive setup for Semantic Embedding configuration
-.DESCRIPTION
-    Walks user through configuration setup with auto-detection
-#>
+# ==============================================================================
+# UltrasharpTools MCP - Semantic Embedding Setup (PowerShell)
+# ==============================================================================
+# This script provides interactive setup for local embedding providers:
+#   - TEI (Text Embeddings Inference) with Docker
+#   - Ollama (native installation)
+#   - Memory provider (no ML, hash-based)
+#
+# Features:
+#   - Loads models from Config/embedding-models.json
+#   - Auto-detects GPU capabilities
+#   - Interactive model selection with filtering by GPU/CPU
+#   - Creates semantic-config.json
+#
+# Usage:
+#   .\setup-semantic-embedding.ps1                    # Interactive mode
+#   .\setup-semantic-embedding.ps1 -SkipGpuDetection  # Force CPU mode
+# ==============================================================================
 
 param(
-    [switch]$SkipGpuDetection,
-    [switch]$Force
+    [switch]$SkipGpuDetection = $false
 )
 
-$ErrorActionPreference = "Stop"
+# Configuration
+$ConfigFile = Join-Path (Split-Path -Parent $PSScriptRoot) "embedding-models.json"
 
-# Determine config path - parent directory (Config)
-# When running from Config/Scripts/, parent is Config/
-$configDir = Split-Path -Parent $PSScriptRoot
-if (!(Test-Path $configDir)) {
-    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-}
+# Colors
+function Write-Success { param($msg) Write-Host $msg -ForegroundColor Green }
+function Write-Info { param($msg) Write-Host $msg -ForegroundColor Cyan }
+function Write-Warn { param($msg) Write-Host $msg -ForegroundColor Yellow }
+function Write-Err { param($msg) Write-Host $msg -ForegroundColor Red }
 
-$configPath = Join-Path $configDir "semantic-config.json"
-
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "Semantic Embedding Configuration Setup" -ForegroundColor Cyan
-Write-Host "============================================================" -ForegroundColor Cyan
+# Banner
+Write-Host ""
+Write-Host "=================================================================" -ForegroundColor Cyan
+Write-Host "UltrasharpTools MCP - Semantic Embedding Setup" -ForegroundColor Cyan
+Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-if ((Test-Path $configPath) -and !$Force) {
-    Write-Host "✓ Configuration already exists: $configPath" -ForegroundColor Green
-    Write-Host ""
-    $overwrite = Read-Host "Overwrite existing configuration? [y/N]"
-    if ($overwrite -ne "y" -and $overwrite -ne "Y") {
-        Write-Host "Setup cancelled." -ForegroundColor Yellow
-        exit 0
-    }
+# Check if config file exists
+if (!(Test-Path $ConfigFile)) {
+    Write-Err "Configuration file not found: $ConfigFile"
+    exit 1
 }
 
+# Load configuration
+Write-Host "[*] Loading configuration..." -ForegroundColor Gray
+try {
+    $cfg = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+} catch {
+    Write-Err "Failed to parse configuration: $_"
+    exit 1
+}
+
+# ==============================================================================
 # Step 1: Detect GPU architecture
+# ==============================================================================
+
 Write-Host "[1/3] GPU Architecture Detection" -ForegroundColor Yellow
 Write-Host ""
 
 $architecture = "cpu"
+$hasGpu = $false
+
 if (!$SkipGpuDetection) {
-    # Look for detect script in same directory (Dev.Scripts or Scripts)
+    # Look for detect script in same directory
     $detectScript = Join-Path $PSScriptRoot "detect-gpu-architecture.ps1"
 
     if (Test-Path $detectScript) {
+        Write-Host "Running GPU detection..." -ForegroundColor Gray
         $architecture = & $detectScript
         if ($LASTEXITCODE -ne 0) {
+            Write-Warn "✗ GPU detection failed, defaulting to CPU"
             $architecture = "cpu"
+        } else {
+            if ($architecture -eq "cpu") {
+                Write-Info "✓ No compatible GPU detected"
+            } else {
+                Write-Success "✓ Detected GPU architecture: $architecture"
+                $hasGpu = $true
+            }
         }
     } else {
-        Write-Host "⚠ detect-gpu-architecture.ps1 not found, defaulting to CPU" -ForegroundColor Yellow
+        Write-Warn "⚠ detect-gpu-architecture.ps1 not found, defaulting to CPU"
     }
 } else {
     Write-Host "Skipping GPU detection (--SkipGpuDetection)" -ForegroundColor Gray
     $architecture = "cpu"
 }
 
+Write-Host "Selected architecture: $architecture" -ForegroundColor White
 Write-Host ""
 
-# Step 2: Select platform
-Write-Host "[2/3] Platform Selection" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "Available platforms:"
-Write-Host "  1) TEI (Text Embeddings Inference) - Docker-based, high performance"
-Write-Host "  2) Ollama - Easy setup, good performance"
-Write-Host "  3) Memory - In-process (experimental)"
+# ==============================================================================
+# Step 2: Select Provider
+# ==============================================================================
+
+Write-Host "[2/3] Provider Selection" -ForegroundColor Yellow
 Write-Host ""
 
-$platformChoice = Read-Host "Select platform [1-3] (default: 1)"
-if ([string]::IsNullOrWhiteSpace($platformChoice)) { $platformChoice = "1" }
-
-$platform = switch ($platformChoice) {
-    "1" { "tei" }
-    "2" { "ollama" }
-    "3" { "memory" }
-    default { "tei" }
-}
-
-Write-Host "  Selected: $platform" -ForegroundColor Cyan
-Write-Host ""
-
-# Step 3: Configure endpoints
-Write-Host "[3/3] Endpoint Configuration" -ForegroundColor Yellow
-Write-Host ""
-
-$teiEndpoint = "http://localhost:8080"
-$ollamaEndpoint = "http://localhost:11434"
-
-if ($platform -eq "tei") {
-    $customTei = Read-Host "TEI endpoint (default: $teiEndpoint)"
-    if (![string]::IsNullOrWhiteSpace($customTei)) {
-        $teiEndpoint = $customTei
-    }
-} elseif ($platform -eq "ollama") {
-    $customOllama = Read-Host "Ollama endpoint (default: $ollamaEndpoint)"
-    if (![string]::IsNullOrWhiteSpace($customOllama)) {
-        $ollamaEndpoint = $customOllama
+# Display providers
+$providers = $cfg.providers.PSObject.Properties | ForEach-Object {
+    [PSCustomObject]@{
+        Id = $_.Name
+        Name = $_.Value.name
+        Description = $_.Value.description
     }
 }
 
-# Create configuration
+$index = 1
+foreach ($provider in $providers) {
+    Write-Host "$index) $($provider.Name)" -ForegroundColor White
+    Write-Host "   $($provider.Description -replace '\\n', "`n   ")" -ForegroundColor Gray
+    Write-Host ""
+    $index++
+}
+
+do {
+    $providerChoice = Read-Host "Choose provider [1-$($providers.Count)]"
+    $providerIdx = [int]$providerChoice - 1
+} while ($providerIdx -lt 0 -or $providerIdx -ge $providers.Count)
+
+$selectedProvider = $providers[$providerIdx].Id
+
 Write-Host ""
+Write-Info "Selected: $($providers[$providerIdx].Name)"
+Write-Host ""
+
+# Memory provider doesn't need model selection
+if ($selectedProvider -eq "memory") {
+    Write-Host ""
+    Write-Host "=================================================================" -ForegroundColor Yellow
+    Write-Host "Memory Provider (No ML)" -ForegroundColor Yellow
+    Write-Host "=================================================================" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Warn "[WARNING] Memory provider uses deterministic hashing (no ML embeddings)"
+    Write-Host ""
+    Write-Host "Configuration will be created with Memory provider."
+    Write-Host "No installation required."
+    Write-Host ""
+
+    # Create minimal config
+    $config = @{
+        embedding = @{
+            platform = "memory"
+            architecture = $architecture
+            tei = @{
+                endpoint = "http://127.0.0.1:8080"
+                models = @()
+                selected_model = $null
+            }
+            ollama = @{
+                endpoint = "http://127.0.0.1:11434"
+                models = @()
+                selected_model = $null
+            }
+            memory = @{
+                model_path = "./models/embedding"
+                vector_size = 384
+            }
+        }
+        auto_detection = @{
+            gpu_architecture = $true
+            codebase_size = $true
+            language = $true
+        }
+    }
+
+    # Save config
+    $configDir = Split-Path -Parent $PSScriptRoot
+    if (!(Test-Path $configDir)) {
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    }
+    $configPath = Join-Path $configDir "semantic-config.json"
+    $config | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
+
+    Write-Success "Configuration saved to: $configPath"
+    Write-Host ""
+    exit 0
+}
+
+# ==============================================================================
+# Step 3: Select Model
+# ==============================================================================
+
+Write-Host "[3/3] Model Selection" -ForegroundColor Yellow
+Write-Host ""
+
+# Filter models by provider
+$providerModels = $cfg.models | Where-Object { $_.provider -eq $selectedProvider }
+
+if ($providerModels.Count -eq 0) {
+    Write-Err "No models available for provider: $selectedProvider"
+    exit 1
+}
+
+# Filter and sort by GPU architecture compatibility
+# Split into GPU-compatible and CPU-only models
+$gpuModels = @()
+$cpuModels = @()
+
+foreach ($model in $providerModels) {
+    if ($model.gpu_architectures -contains $architecture -and $architecture -ne "cpu") {
+        $gpuModels += $model
+    } elseif ($model.gpu_architectures -contains "cpu") {
+        $cpuModels += $model
+    }
+}
+
+# Combine: GPU-compatible first, then CPU-only
+$availableModels = $gpuModels + $cpuModels
+
+if ($availableModels.Count -eq 0) {
+    Write-Err "No compatible models found for architecture: $architecture"
+    exit 1
+}
+
+# Display header
+if ($gpuModels.Count -gt 0) {
+    Write-Host "Available models for your GPU ($architecture):" -ForegroundColor White
+} else {
+    Write-Host "Available models (CPU mode):" -ForegroundColor White
+}
+Write-Host ""
+
+# Display models
+$index = 1
+$displayedGpuSection = $false
+
+foreach ($model in $availableModels) {
+    # Show separator between GPU and CPU sections (only if we have GPU models)
+    if (!$displayedGpuSection -and $index -gt $gpuModels.Count -and $cpuModels.Count -gt 0 -and $gpuModels.Count -gt 0) {
+        Write-Host "--- CPU-only models (slower) ---" -ForegroundColor DarkGray
+        Write-Host ""
+        $displayedGpuSection = $true
+    }
+
+    $badge = if ($model.badge) { " $($model.badge)" } else { "" }
+
+    # Add GPU indicator for GPU-compatible models
+    if ($index -le $gpuModels.Count -and $gpuModels.Count -gt 0) {
+        Write-Host "$index) $($model.name)$badge 🚀 GPU" -ForegroundColor White
+    } else {
+        Write-Host "$index) $($model.name)$badge" -ForegroundColor White
+    }
+
+    $langLabel = if ($model.language -eq "multi") { "Multilingual" } else { "English" }
+    Write-Host "   • Language: $langLabel | Context: $($model.context_tokens) tokens | Dim: $($model.dimensions) | Size: ~$($model.size_mb) MB" -ForegroundColor Gray
+    Write-Host "   • $($model.description)" -ForegroundColor Gray
+    Write-Host ""
+    $index++
+}
+
+do {
+    $modelChoice = Read-Host "Choose model [1-$($availableModels.Count)]"
+    $modelIdx = [int]$modelChoice - 1
+} while ($modelIdx -lt 0 -or $modelIdx -ge $availableModels.Count)
+
+$selectedModel = $availableModels[$modelIdx]
+
+Write-Host ""
+Write-Info "Selected: $($selectedModel.name)"
+Write-Host ""
+
+# ==============================================================================
+# Create Configuration
+# ==============================================================================
+
 Write-Host "Creating configuration..." -ForegroundColor Yellow
+Write-Host ""
+
+# Prepare endpoint URLs (use 127.0.0.1 instead of localhost to avoid IPv6 delays)
+$teiEndpoint = "http://127.0.0.1:$($cfg.providers.tei.default_port)"
+$ollamaEndpoint = "http://127.0.0.1:$($cfg.providers.ollama.default_port)"
+
+# Build models arrays for config
+if ($selectedProvider -eq "tei") {
+    $teiModels = $availableModels | ForEach-Object {
+        @{
+            id = $_.model_id
+            languages = @($_.language)
+            vector_size = $_.dimensions
+        }
+    }
+    $ollamaModels = @()
+} else {
+    $teiModels = @()
+    $ollamaModels = $availableModels | ForEach-Object {
+        @{
+            id = $_.model_id
+            languages = @($_.language)
+            vector_size = $_.dimensions
+        }
+    }
+}
 
 $config = @{
     embedding = @{
-        platform = $platform
+        platform = $selectedProvider
         architecture = $architecture
         tei = @{
             endpoint = $teiEndpoint
-            models = @(
-                @{
-                    id = "sentence-transformers/all-MiniLM-L6-v2"
-                    languages = @("english")
-                    vector_size = 384
-                },
-                @{
-                    id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-                    languages = @("multilingual")
-                    vector_size = 384
-                }
-            )
-            selected_model = "sentence-transformers/all-MiniLM-L6-v2"
+            models = $teiModels
+            selected_model = if ($selectedProvider -eq "tei") { $selectedModel.model_id } else { $null }
         }
         ollama = @{
             endpoint = $ollamaEndpoint
-            models = @(
-                @{
-                    id = "granite-embedding:latest"
-                    languages = @("english")
-                    vector_size = 384
-                },
-                @{
-                    id = "mxbai-embed-large:latest"
-                    languages = @("multilingual")
-                    vector_size = 1024
-                }
-            )
-            selected_model = "granite-embedding:latest"
+            models = $ollamaModels
+            selected_model = if ($selectedProvider -eq "ollama") { $selectedModel.model_id } else { $null }
         }
         memory = @{
             model_path = "./models/embedding"
@@ -149,132 +316,86 @@ $config = @{
     }
     auto_detection = @{
         gpu_architecture = $true
-        language = $true
         codebase_size = $true
+        language = $true
     }
 }
 
-$json = $config | ConvertTo-Json -Depth 10
-Set-Content -Path $configPath -Value $json -Encoding UTF8
-
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host "✓ Configuration Created Successfully!" -ForegroundColor Green
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Configuration saved to: $configPath" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Summary:" -ForegroundColor Yellow
-Write-Host "  Platform: $platform" -ForegroundColor White
-Write-Host "  Architecture: $architecture" -ForegroundColor White
-if ($platform -eq "tei") {
-    Write-Host "  TEI Endpoint: $teiEndpoint" -ForegroundColor White
-} elseif ($platform -eq "ollama") {
-    Write-Host "  Ollama Endpoint: $ollamaEndpoint" -ForegroundColor White
+# Determine config path - parent directory (Config)
+$configDir = Split-Path -Parent $PSScriptRoot
+if (!(Test-Path $configDir)) {
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
 }
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "Setting Up Embedding Service" -ForegroundColor Cyan
-Write-Host "============================================================" -ForegroundColor Cyan
+
+$configPath = Join-Path $configDir "semantic-config.json"
+
+# Save configuration
+$config | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
+
+Write-Success "✓ Configuration saved to: $configPath"
 Write-Host ""
 
-if ($platform -eq "tei") {
-    Write-Host "[TEI Setup]" -ForegroundColor Yellow
+# ==============================================================================
+# Installation Instructions
+# ==============================================================================
+
+Write-Host "=================================================================" -ForegroundColor Green
+Write-Host "Configuration Complete!" -ForegroundColor Green
+Write-Host "=================================================================" -ForegroundColor Green
+Write-Host ""
+
+Write-Host "Summary:" -ForegroundColor White
+Write-Host "  Platform: $selectedProvider" -ForegroundColor Cyan
+Write-Host "  Model: $($selectedModel.name)" -ForegroundColor Cyan
+Write-Host "  Architecture: $architecture" -ForegroundColor Cyan
+Write-Host ""
+
+if ($selectedProvider -eq "tei") {
+    Write-Host "Installing TEI server..." -ForegroundColor Yellow
     Write-Host ""
 
-    $setupTei = Join-Path $PSScriptRoot "setup-tei.ps1"
-    if (Test-Path $setupTei) {
-        Write-Host "Launching TEI setup..." -ForegroundColor Cyan
-        Write-Host ""
-
-        $choice = Read-Host "Start TEI server now? [y/N]"
-        if ($choice -eq "y" -or $choice -eq "Y") {
-            & $setupTei -Architecture $architecture
+    $setupScript = Join-Path $PSScriptRoot "setup-tei.ps1"
+    if (Test-Path $setupScript) {
+        & $setupScript
+        if ($LASTEXITCODE -ne 0) {
             Write-Host ""
-            Write-Host "✓ TEI server setup completed" -ForegroundColor Green
-        } else {
-            Write-Host "Skipped. Run manually: .\Scripts\setup-tei.ps1 -Architecture $architecture" -ForegroundColor Yellow
+            Write-Host "⚠ TEI setup encountered issues" -ForegroundColor Yellow
+            Write-Host "  You can run it manually: .\Config\Scripts\setup-tei.ps1" -ForegroundColor Gray
         }
     } else {
-        Write-Host "⚠ setup-tei.ps1 not found" -ForegroundColor Yellow
-        Write-Host "Manual setup required for TEI" -ForegroundColor Gray
+        Write-Host "⚠ setup-tei.ps1 not found at: $setupScript" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Please install TEI manually:" -ForegroundColor White
+        Write-Host "  Docker required" -ForegroundColor Gray
+        Write-Host "  Model: $($selectedModel.model_id)" -ForegroundColor Gray
     }
-
-} elseif ($platform -eq "ollama") {
-    Write-Host "[Ollama Setup]" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Next: Restart Claude Desktop to enable semantic mode" -ForegroundColor Yellow
+    Write-Host ""
+} elseif ($selectedProvider -eq "ollama") {
+    Write-Host "Installing Ollama and downloading model..." -ForegroundColor Yellow
     Write-Host ""
 
-    # Check if Ollama is installed
-    try {
-        $ollamaVersion = ollama --version 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ Ollama is installed: $ollamaVersion" -ForegroundColor Green
-        } else {
-            throw "Ollama not found"
-        }
-    } catch {
-        Write-Host "✗ Ollama is not installed" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Please install Ollama:" -ForegroundColor Yellow
-        Write-Host "  1. Visit: https://ollama.ai" -ForegroundColor Cyan
-        Write-Host "  2. Download and install for your OS" -ForegroundColor Cyan
-        Write-Host "  3. Re-run this setup script" -ForegroundColor Cyan
-        Write-Host ""
-        exit 1
-    }
-
-    Write-Host ""
-
-    # Check if model is available
-    $modelName = "granite-embedding"
-    Write-Host "Checking for model: $modelName..." -ForegroundColor Cyan
-
-    try {
-        $models = ollama list 2>&1
-        if ($models -match $modelName) {
-            Write-Host "✓ Model '$modelName' is already available" -ForegroundColor Green
-        } else {
-            Write-Host "Model '$modelName' not found" -ForegroundColor Yellow
+    $setupScript = Join-Path $PSScriptRoot "setup-ollama.ps1"
+    if (Test-Path $setupScript) {
+        & $setupScript -ModelId $selectedModel.model_id
+        if ($LASTEXITCODE -ne 0) {
             Write-Host ""
-
-            $pullChoice = Read-Host "Download $modelName model now? (requires ~250MB) [y/N]"
-            if ($pullChoice -eq "y" -or $pullChoice -eq "Y") {
-                Write-Host ""
-                Write-Host "Pulling model (this may take a few minutes)..." -ForegroundColor Cyan
-                ollama pull $modelName
-
-                if ($LASTEXITCODE -eq 0) {
-                    Write-Host ""
-                    Write-Host "✓ Model pulled successfully" -ForegroundColor Green
-                } else {
-                    Write-Host ""
-                    Write-Host "✗ Failed to pull model" -ForegroundColor Red
-                    Write-Host "Try manually: ollama pull $modelName" -ForegroundColor Yellow
-                }
-            } else {
-                Write-Host "Skipped. Run manually: ollama pull $modelName" -ForegroundColor Yellow
-            }
+            Write-Host "⚠ Ollama setup encountered issues" -ForegroundColor Yellow
+            Write-Host "  You can run it manually: .\Config\Scripts\setup-ollama.ps1 -ModelId $($selectedModel.model_id)" -ForegroundColor Gray
         }
-    } catch {
-        Write-Host "⚠ Could not check Ollama models" -ForegroundColor Yellow
+    } else {
+        Write-Host "⚠ setup-ollama.ps1 not found at: $setupScript" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Please install Ollama manually:" -ForegroundColor White
+        Write-Host "  Download from: https://ollama.ai" -ForegroundColor Gray
+        Write-Host "  Then run: ollama pull $($selectedModel.model_id)" -ForegroundColor Gray
     }
-
-} elseif ($platform -eq "memory") {
-    Write-Host "[Memory Setup]" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "✓ No additional setup required for in-memory embeddings" -ForegroundColor Green
+    Write-Host "Next: Restart Claude Desktop to enable semantic mode" -ForegroundColor Yellow
+    Write-Host ""
 }
 
-Write-Host ""
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host "✓ Setup Complete!" -ForegroundColor Green
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Configuration: $configPath" -ForegroundColor Cyan
-Write-Host "Platform: $platform" -ForegroundColor Cyan
-Write-Host "Architecture: $architecture" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Environment variables can override config:" -ForegroundColor Gray
-Write-Host "  SEMANTIC_PLATFORM, SEMANTIC_ARCHITECTURE" -ForegroundColor DarkGray
-Write-Host "  TEI_ENDPOINT, OLLAMA_ENDPOINT" -ForegroundColor DarkGray
+Write-Host "Configuration file location:" -ForegroundColor White
+Write-Host "  $configPath" -ForegroundColor Gray
 Write-Host ""

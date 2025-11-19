@@ -282,25 +282,70 @@ public static class Program {
         var hasSemanticConfig = File.Exists(configDirPath) || File.Exists(legacyPath);
         var semanticConfigPath = File.Exists(configDirPath) ? configDirPath : legacyPath;
 
+        // Debug logging (before logger is available)
+        File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - exeDir: {exeDir}\n" +
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - configDirPath: {configDirPath}\n" +
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - configDirPath exists: {File.Exists(configDirPath)}\n" +
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - hasSemanticConfig: {hasSemanticConfig}\n");
+
         bool semanticEnabled = false;
 
         if (hasSemanticConfig)
         {
             Console.WriteLine($"[Semantic] Found {Path.GetFileName(semanticConfigPath)}");
+            File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Found semantic-config.json at: {semanticConfigPath}\n");
 
             try
             {
                 // Load config
                 var configJson = await File.ReadAllTextAsync(semanticConfigPath);
-                var config = JsonSerializer.Deserialize<SemanticEmbeddingConfig>(configJson);
+                File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Config JSON length: {configJson.Length}\n");
+
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    PropertyNamingPolicy = null  // Allow both snake_case and PascalCase
+                };
+                var config = JsonSerializer.Deserialize<SemanticEmbeddingConfig>(configJson, jsonOptions);
+
+                File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Config deserialized: {config != null}, Platform: {config?.Embedding?.Platform}\n");
 
                 if (config != null)
                 {
-                    // Quick check if service is available (2s timeout)
-                    var healthCheck = new SemanticServiceHealthCheck(httpClientFactory: null, logger: null);
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Starting health check for {config.Embedding.Platform}\n");
 
-                    var isAvailable = await healthCheck.QuickCheckAsync(config, cts.Token);
+                    // Log endpoint before health check
+                    var endpoint = config.Embedding.Platform.ToLowerInvariant() == "tei"
+                        ? config.Embedding.Tei?.Endpoint
+                        : config.Embedding.Ollama?.Endpoint;
+                    File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Endpoint: {endpoint ?? "NULL"}\n");
+
+                    // Quick check if service is available (10s timeout - generous for debugging)
+                    var healthCheck = new SemanticServiceHealthCheck(httpClientFactory: null, logger: null);
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+                    File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Calling QuickCheckAsync with 10s timeout\n");
+
+                    bool isAvailable = false;
+                    try
+                    {
+                        isAvailable = await healthCheck.QuickCheckAsync(config, cts.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync exception: {ex.GetType().Name}: {ex.Message}\n");
+                    }
+
+                    File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Health check result: {isAvailable}\n");
 
                     if (isAvailable)
                     {
