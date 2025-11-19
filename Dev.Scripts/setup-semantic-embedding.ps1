@@ -13,19 +13,34 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Determine project root (when in Dev.Scripts, go up one level; when in publish, use current)
-$ProjectRoot = if ((Split-Path -Leaf $PSScriptRoot) -eq "Dev.Scripts") {
-    Split-Path -Parent $PSScriptRoot
-} else {
-    $PSScriptRoot
+# Determine script location and config path
+$scriptLocation = Split-Path -Leaf $PSScriptRoot
+
+if ($scriptLocation -eq "Dev.Scripts") {
+    Write-Host "============================================================" -ForegroundColor Red
+    Write-Host "ERROR: Setup must be run from published build" -ForegroundColor Red
+    Write-Host "============================================================" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "This setup script should be run from:" -ForegroundColor Yellow
+    Write-Host "  Publish\Droid\Scripts\setup-semantic-embedding.cmd" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Or copy the published build to another location and run from there." -ForegroundColor Yellow
+    Write-Host ""
+    exit 1
 }
+
+# When in Scripts folder (Publish\Droid\Scripts), Config is at ../Config
+$configDir = Join-Path $PSScriptRoot ".." "Config"
+if (!(Test-Path $configDir)) {
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+}
+
+$configPath = Join-Path $configDir "semantic-config.json"
 
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "Semantic Embedding Configuration Setup" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
-
-$configPath = Join-Path $ProjectRoot "semantic-config.json"
 
 if ((Test-Path $configPath) -and !$Force) {
     Write-Host "✓ Configuration already exists: $configPath" -ForegroundColor Green
