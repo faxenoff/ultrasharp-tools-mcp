@@ -1013,7 +1013,7 @@ public static class SolutionTools {
                     membersContent.Append($"\n{indent}  {field.Name}:{GetTypeShortName(field.Type)}");
                 }
             } else {
-                membersContent.Append($"\n{indent}  {fields.Count}f");
+                membersContent.Append($"\n{indent}  {fields.Count} fie");
             }
         }
 
@@ -1024,7 +1024,7 @@ public static class SolutionTools {
                     membersContent.Append($"\n{indent}  const {cnst.Name}:{GetTypeShortName(cnst.Type)}");
                 }
             } else {
-                membersContent.Append($"\n{indent}  {constants.Count}c");
+                membersContent.Append($"\n{indent}  {constants.Count} const");
             }
         }
 
@@ -1035,7 +1035,7 @@ public static class SolutionTools {
                     membersContent.Append($"\n{indent}  {enumVal.Name}");
                 }
             } else {
-                membersContent.Append($"\n{indent}  {enumValues.Count}e");
+                membersContent.Append($"\n{indent}  {enumValues.Count} enu");
             }
         }
 
@@ -1046,7 +1046,7 @@ public static class SolutionTools {
                     membersContent.Append($"\n{indent}  evt {evt.Name}:{GetTypeShortName(evt.Type)}");
                 }
             } else {
-                membersContent.Append($"\n{indent}  {events.Count}ev");
+                membersContent.Append($"\n{indent}  {events.Count} eve");
             }
         }
 
@@ -1067,12 +1067,12 @@ public static class SolutionTools {
                     membersContent.Append($"\n{indent}  {prop.Name}"); // Type omitted
                 }
                 if (propsToShow.Count < properties.Count) {
-                    membersContent.Append($"\n{indent}  +{properties.Count - propsToShow.Count}p");
+                    membersContent.Append($"\n{indent}  + {properties.Count - propsToShow.Count} prop");
                 }
             } else if (detailLevel == DetailLevel.NoPropertyNames || detailLevel == DetailLevel.FiftyPercentMethodNames) { // Only count for NoPropertyNames or if method names are also being reduced
-                membersContent.Append($"\n{indent}  {properties.Count}p");
+                membersContent.Append($"\n{indent}  {properties.Count} prop");
             } else if (detailLevel < DetailLevel.NamespacesAndTypesOnly) { // Default for levels more compressed than NoPropertyNames but not NamespacesAndTypesOnly (e.g. NoMethodNames)
-                membersContent.Append($"\n{indent}  {properties.Count}p");
+                membersContent.Append($"\n{indent}  {properties.Count} prop");
             }
             // If detailLevel is NamespacesAndTypesOnly, properties are skipped entirely by the initial check.
         }
@@ -1097,7 +1097,7 @@ public static class SolutionTools {
                         }
                         membersContent.Append(")");
                     } else if (method.Parameters.Length > 0) {
-                        membersContent.Append($"({method.Parameters.Length}p)");
+                        membersContent.Append($"({method.Parameters.Length} para)");
                     } else {
                         membersContent.Append("()");
                     }
