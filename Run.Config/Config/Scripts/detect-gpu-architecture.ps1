@@ -33,7 +33,14 @@ try {
         throw "nvidia-smi query failed"
     }
 
-    $lines = $gpuInfo -split "`n" | Where-Object { $_.Trim() -ne "" }
+    # Convert to string if it's an array (PowerShell 2>&1 can return ErrorRecord objects)
+    $gpuInfoText = if ($gpuInfo -is [Array]) {
+        ($gpuInfo | Where-Object { $_ -is [string] }) -join "`n"
+    } else {
+        $gpuInfo.ToString()
+    }
+
+    $lines = $gpuInfoText -split "`n" | Where-Object { $_.Trim() -ne "" }
 
     if ($lines.Count -eq 0) {
         Write-Host "✗ No NVIDIA GPUs detected" -ForegroundColor Yellow
@@ -44,7 +51,7 @@ try {
     }
 
     # Parse first GPU
-    $firstLine = $lines[0]
+    $firstLine = $lines[0].ToString().Trim()
     if (-not $firstLine) {
         Write-Host "✗ No GPU data returned" -ForegroundColor Yellow
         Write-Host ""
@@ -53,9 +60,10 @@ try {
         exit 0
     }
 
-    $parts = $firstLine -split ","
+    $parts = $firstLine -split "," | ForEach-Object { $_.Trim() }
     if ($parts.Count -lt 2) {
-        Write-Host "✗ Invalid GPU data format" -ForegroundColor Yellow
+        Write-Host "✗ Invalid GPU data format: '$firstLine'" -ForegroundColor Yellow
+        Write-Host "  Parts count: $($parts.Count)" -ForegroundColor DarkGray
         Write-Host ""
         Write-Host "Recommendation: architecture: cpu" -ForegroundColor Cyan
         Write-Output "cpu"
