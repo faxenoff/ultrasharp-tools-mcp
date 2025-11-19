@@ -125,6 +125,25 @@ Write-Header "Organizing Documentation and Scripts"
 $runConfigDir = Join-Path $ProjectRoot "Run.Config"
 $sourceConfigDir = Join-Path $runConfigDir "Config"
 
+# Clean up old structure (from previous builds)
+$oldScriptsDir = Join-Path $mcpOutput "Scripts"
+if (Test-Path $oldScriptsDir) {
+    Remove-Item -Path $oldScriptsDir -Recurse -Force
+    Write-Success "Removed old Scripts/ directory"
+}
+
+$oldSetupCmd = Join-Path $mcpOutput "setup-semantic-embedding.cmd"
+if (Test-Path $oldSetupCmd) {
+    Remove-Item -Path $oldSetupCmd -Force
+    Write-Success "Removed old setup-semantic-embedding.cmd from root"
+}
+
+$oldSetupSh = Join-Path $mcpOutput "setup-semantic-embedding.sh"
+if (Test-Path $oldSetupSh) {
+    Remove-Item -Path $oldSetupSh -Force
+    Write-Success "Removed old setup-semantic-embedding.sh from root"
+}
+
 # Copy entire Config directory structure
 $targetConfigDir = Join-Path $mcpOutput "Config"
 if (Test-Path $sourceConfigDir) {
