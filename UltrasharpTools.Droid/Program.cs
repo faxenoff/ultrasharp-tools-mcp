@@ -263,11 +263,43 @@ public static class Program {
 
         builder.Services.WithUltrasharpToolsServices(!disableGit, buildConfiguration, gitOptions, reloadOptions, symbolCacheOptions);
 
-        // CRITICAL: Register dummy SemanticSearchService to prevent "No service of the requested type was found"
-        // MCP framework requires all parameters to be resolvable, even if nullable
-        // This allows pattern_search to work in entity/content modes without semantic mode configured
-        if (!builder.Services.Any(sd => sd.ServiceType == typeof(UltrasharpTools.Tools.Semantic.SemanticSearchService)))
+        // Auto-enable semantic RAG if semantic-config.json exists
+        var semanticConfigPath = Path.Combine(Directory.GetCurrentDirectory(), "semantic-config.json");
+        var hasSemanticConfig = File.Exists(semanticConfigPath);
+
+        if (hasSemanticConfig)
         {
+            Console.WriteLine($"[Semantic] Found semantic-config.json, enabling semantic RAG...");
+
+            // Determine database path based on solution
+            string? databasePath = null;
+            if (!string.IsNullOrEmpty(solutionPath))
+            {
+                var solutionDir = Path.GetDirectoryName(solutionPath);
+                if (!string.IsNullOrEmpty(solutionDir))
+                {
+                    databasePath = Path.Combine(solutionDir, ".ultrasharp", "semantic.db");
+                }
+            }
+
+            // Register semantic RAG services
+            builder.Services.WithSemanticRag(
+                databasePath: databasePath,
+                dimension: 384, // Default for granite-embedding and all-MiniLM-L6-v2
+                configureEmbedding: null,
+                indexerConfig: null
+            );
+
+            Console.WriteLine($"[Semantic] Semantic RAG enabled (database: {databasePath ?? "in-memory"})");
+        }
+        else
+        {
+            Console.WriteLine("[Semantic] No semantic-config.json found, semantic mode disabled");
+            Console.WriteLine("[Semantic] Run setup-semantic-embedding.cmd to configure semantic search");
+
+            // CRITICAL: Register dummy SemanticSearchService to prevent "No service of the requested type was found"
+            // MCP framework requires all parameters to be resolvable, even if nullable
+            // This allows pattern_search to work in entity/content modes without semantic mode configured
             builder.Services.AddSingleton<UltrasharpTools.Tools.Semantic.SemanticSearchService>(sp =>
             {
                 // Return a real instance with null dependencies - pattern_search checks for null and falls back
