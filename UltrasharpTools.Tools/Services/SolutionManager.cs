@@ -170,7 +170,12 @@ public sealed class SolutionManager : ISolutionManager {
 
             LogMemoryUsage("Before Solution Load");
 
-            _currentSolution = await _workspace.OpenSolutionAsync(solutionPath, new ProgressReporter(_logger), cancellationToken);
+            // Create extended timeout for solution loading (3 minutes)
+            // Large solutions with many dependencies can take time to load through BuildHost
+            using var extendedTimeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, extendedTimeoutCts.Token);
+
+            _currentSolution = await _workspace.OpenSolutionAsync(solutionPath, new ProgressReporter(_logger), linkedCts.Token);
             _logger.LogInformation("Solution loaded successfully with {ProjectCount} projects.", _currentSolution.Projects.Count());
 
             LogMemoryUsage("After Solution Load");

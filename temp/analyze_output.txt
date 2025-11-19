@@ -1,0 +1,22 @@
+Анализ вывода load_project:
+
+Повторяющиеся паттерны:
+- "properties;" - можно заменить на "props"
+- "params" - можно заменить на "p"  
+- ".ctor" - можно заменить на "ctor"
+- "IServiceCollection" - длинное имя типа
+- Много enum values - можно скрыть детали
+
+Пример текущего:
+AutoDetectionSettings{
+  3 properties;
+}
+
+Можно сократить до:
+AutoDetectionSettings{3 props}
+
+Или для методов:
+WithEmbeddingServices(2 params):IServiceCollection;
+
+Можно:
+WithEmbeddingServices(2p):IServiceCollection

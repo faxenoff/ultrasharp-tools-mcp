@@ -234,24 +234,24 @@ public static class SolutionTools {
                         }
 
                         // Build the project data
-                        projectsData.Add(new {
-                            name = project.Name + (project.AssemblyName.Equals(project.Name, StringComparison.OrdinalIgnoreCase) ? "" : $" ({project.AssemblyName})"),
-                            version = project.Version.ToString(),
-                            targetFramework,
-                            namespaces = namespaceStructure,
-                            documentCount = project.DocumentIds.Count,
-                            projectReferences = projectRefs,
-                            packageReferences = packageRefs
+                        projectsData.Add(new Dictionary<string, object> {
+                            ["name"] = project.Name + (project.AssemblyName.Equals(project.Name, StringComparison.OrdinalIgnoreCase) ? "" : $" ({project.AssemblyName})"),
+                            ["version"] = project.Version.ToString(),
+                            ["targetFramework"] = targetFramework,
+                            ["namespaces"] = namespaceStructure,
+                            ["documentCount"] = project.DocumentIds.Count,
+                            ["projectReferences"] = projectRefs,
+                            ["packageReferences"] = packageRefs
                         });
                     } catch (Exception ex) when (!(ex is OperationCanceledException)) {
                         logger.LogWarning(ex, "Error processing project {ProjectName}, adding basic info only", project.Name);
                         // Add minimal project info when there's an error
-                        projectsData.Add(new {
-                            name = project.Name,
+                        projectsData.Add(new Dictionary<string, object> {
+                            ["name"] = project.Name,
                             //filePath = project.FilePath,
-                            language = project.Language,
-                            error = $"Error processing project: {ex.Message}",
-                            documentCount = project.DocumentIds.Count
+                            ["language"] = project.Language,
+                            ["error"] = $"Error processing project: {ex.Message}",
+                            ["documentCount"] = project.DocumentIds.Count
                         });
                     }
                 }
@@ -264,10 +264,10 @@ public static class SolutionTools {
                     solutionName = "unknown";
                 }
 
-                var result = new {
-                    solutionName,
-                    projects = projectsData.OrderBy(p => ((dynamic)p).name).ToList(),
-                    nextStep = $"Use `{ToolHelpers.SharpToolPrefix}{nameof(LoadProject)}` to get a detailed view of a specific project's structure."
+                var result = new Dictionary<string, object> {
+                    ["solutionName"] = solutionName,
+                    ["projects"] = projectsData.OrderBy(p => ((Dictionary<string, object>)p)["name"]).ToList(),
+                    ["nextStep"] = $"Use `{ToolHelpers.SharpToolPrefix}{nameof(LoadProject)}` to get a detailed view of a specific project's structure."
                 };
 
                 logger.LogInformation("Project structure retrieved successfully for {ProjectCount} projects.", projectsData.Count);
@@ -670,36 +670,36 @@ public static class SolutionTools {
                 }
             }
 
-            }
-            finally
-            {
-                ObjectPoolProvider.Instance.ReturnStringBuilder(typeContent);
-            }
-
             var childNamespaceContent = ObjectPoolProvider.Instance.GetStringBuilder();
             try
             {
-            if (namespaceParts.TryGetValue(namespaceName, out var children)) {
-                foreach (var child in children.OrderBy(c => c.Key)) {
-                    if (child.Value?.Count == 0) { // This indicates a child namespace rather than a type within the current namespace
-                        var childNamespace = namespaceName + "." + child.Key;
-                        try {
-                            childNamespaceContent.Append(BuildNamespaceStructureText(childNamespace, namespaceParts, namespaceContents, logger, detailLevel, random, commonImplementationInfo));
-                        } catch (Exception ex) {
-                            logger.LogWarning(ex, "Error building structure for child namespace {Namespace}", childNamespace);
-                            childNamespaceContent.Append($"\n{child.Key}{{/* Error: {ex.Message} */}}");
+                if (namespaceParts.TryGetValue(namespaceName, out var children)) {
+                    foreach (var child in children.OrderBy(c => c.Key)) {
+                        if (child.Value?.Count == 0) { // This indicates a child namespace rather than a type within the current namespace
+                            var childNamespace = namespaceName + "." + child.Key;
+                            try {
+                                childNamespaceContent.Append(BuildNamespaceStructureText(childNamespace, namespaceParts, namespaceContents, logger, detailLevel, random, commonImplementationInfo));
+                            } catch (Exception ex) {
+                                logger.LogWarning(ex, "Error building structure for child namespace {Namespace}", childNamespace);
+                                childNamespaceContent.Append($"\n{child.Key}{{/* Error: {ex.Message} */}}");
+                            }
                         }
                     }
                 }
-            }
 
-            sb.Append(typeContent);
-            sb.Append(childNamespaceContent);
-            sb.Append("\n}");
+                sb.Append(typeContent);
+                sb.Append(childNamespaceContent);
+                sb.Append("\n}");
             }
             finally
             {
                 ObjectPoolProvider.Instance.ReturnStringBuilder(childNamespaceContent);
+            }
+
+            }
+            finally
+            {
+                ObjectPoolProvider.Instance.ReturnStringBuilder(typeContent);
             }
 
         } catch (Exception ex) {
@@ -1010,10 +1010,10 @@ public static class SolutionTools {
         if (fields.Any()) {
             if (detailLevel <= DetailLevel.NoConstantFieldNames) {
                 foreach (var field in fields.OrderBy(f => f.Name)) {
-                    membersContent.Append($"\n{indent}  {field.Name}:{GetTypeShortName(field.Type)};");
+                    membersContent.Append($"\n{indent}  {field.Name}:{GetTypeShortName(field.Type)}");
                 }
             } else {
-                membersContent.Append($"\n{indent}  {fields.Count} field{(fields.Count == 1 ? "" : "s")};");
+                membersContent.Append($"\n{indent}  {fields.Count}f");
             }
         }
 
@@ -1021,10 +1021,10 @@ public static class SolutionTools {
         if (constants.Any()) {
             if (detailLevel < DetailLevel.NoConstantFieldNames) { // Show names if detail is Full
                 foreach (var cnst in constants.OrderBy(c => c.Name)) {
-                    membersContent.Append($"\n{indent}  const {cnst.Name}:{GetTypeShortName(cnst.Type)};");
+                    membersContent.Append($"\n{indent}  const {cnst.Name}:{GetTypeShortName(cnst.Type)}");
                 }
             } else {
-                membersContent.Append($"\n{indent}  {constants.Count} constant{(constants.Count == 1 ? "" : "s")};");
+                membersContent.Append($"\n{indent}  {constants.Count}c");
             }
         }
 
@@ -1032,10 +1032,10 @@ public static class SolutionTools {
         if (enumValues.Any()) {
             if (detailLevel < DetailLevel.NoEventEnumNames) {
                 foreach (var enumVal in enumValues.OrderBy(e => e.Name)) {
-                    membersContent.Append($"\n{indent}  {enumVal.Name};");
+                    membersContent.Append($"\n{indent}  {enumVal.Name}");
                 }
             } else {
-                membersContent.Append($"\n{indent}  {enumValues.Count} enum value{(enumValues.Count == 1 ? "" : "s")};");
+                membersContent.Append($"\n{indent}  {enumValues.Count}e");
             }
         }
 
@@ -1043,10 +1043,10 @@ public static class SolutionTools {
         if (events.Any()) {
             if (detailLevel < DetailLevel.NoEventEnumNames) {
                 foreach (var evt in events.OrderBy(e => e.Name)) {
-                    membersContent.Append($"\n{indent}  event {evt.Name}:{GetTypeShortName(evt.Type)};");
+                    membersContent.Append($"\n{indent}  evt {evt.Name}:{GetTypeShortName(evt.Type)}");
                 }
             } else {
-                membersContent.Append($"\n{indent}  {events.Count} event{(events.Count == 1 ? "" : "s")};");
+                membersContent.Append($"\n{indent}  {events.Count}ev");
             }
         }
 
@@ -1054,25 +1054,25 @@ public static class SolutionTools {
         if (properties.Any()) {
             if (detailLevel < DetailLevel.NoPropertyTypes) { // Full, NoConstantFieldNames, NoEventEnumNames, NoMethodParamTypes
                 foreach (var prop in properties.OrderBy(p => p.Name)) {
-                    membersContent.Append($"\n{indent}  {prop.Name}:{GetTypeShortName(prop.Type)};");
+                    membersContent.Append($"\n{indent}  {prop.Name}:{GetTypeShortName(prop.Type)}");
                 }
             } else if (detailLevel == DetailLevel.NoPropertyTypes || detailLevel == DetailLevel.NoMethodParamNames) { // Retain property names without types
                 foreach (var prop in properties.OrderBy(p => p.Name)) {
-                    membersContent.Append($"\n{indent}  {prop.Name};");
+                    membersContent.Append($"\n{indent}  {prop.Name}");
                 }
             } else if (detailLevel == DetailLevel.FiftyPercentPropertyNames) {
                 var shuffledProps = properties.OrderBy(_ => random.Next()).ToList();
                 var propsToShow = shuffledProps.Take(Math.Max(1, properties.Count / 2)).ToList();
                 foreach (var prop in propsToShow.OrderBy(p => p.Name)) {
-                    membersContent.Append($"\n{indent}  {prop.Name};"); // Type omitted
+                    membersContent.Append($"\n{indent}  {prop.Name}"); // Type omitted
                 }
                 if (propsToShow.Count < properties.Count) {
-                    membersContent.Append($"\n{indent}  and {properties.Count - propsToShow.Count} more propert{(properties.Count - propsToShow.Count == 1 ? "y" : "ies")};");
+                    membersContent.Append($"\n{indent}  +{properties.Count - propsToShow.Count}p");
                 }
             } else if (detailLevel == DetailLevel.NoPropertyNames || detailLevel == DetailLevel.FiftyPercentMethodNames) { // Only count for NoPropertyNames or if method names are also being reduced
-                membersContent.Append($"\n{indent}  {properties.Count} propert{(properties.Count == 1 ? "y" : "ies")};");
+                membersContent.Append($"\n{indent}  {properties.Count}p");
             } else if (detailLevel < DetailLevel.NamespacesAndTypesOnly) { // Default for levels more compressed than NoPropertyNames but not NamespacesAndTypesOnly (e.g. NoMethodNames)
-                membersContent.Append($"\n{indent}  {properties.Count} propert{(properties.Count == 1 ? "y" : "ies")};");
+                membersContent.Append($"\n{indent}  {properties.Count}p");
             }
             // If detailLevel is NamespacesAndTypesOnly, properties are skipped entirely by the initial check.
         }
@@ -1097,7 +1097,7 @@ public static class SolutionTools {
                         }
                         membersContent.Append(")");
                     } else if (method.Parameters.Length > 0) {
-                        membersContent.Append($"({method.Parameters.Length} param{(method.Parameters.Length == 1 ? "" : "s")})");
+                        membersContent.Append($"({method.Parameters.Length}p)");
                     } else {
                         membersContent.Append("()");
                     }
@@ -1110,7 +1110,7 @@ public static class SolutionTools {
                     membersContent.Append($"\n{indent}  and {methods.Count - methodsToShow.Count} more method{(methods.Count - methodsToShow.Count == 1 ? "" : "s")};");
                 }
             } else { // NoMethodNames or higher compression
-                membersContent.Append($"\n{indent}  {methods.Count} method{(methods.Count == 1 ? "" : "s")};");
+                membersContent.Append($"\n{indent}  {methods.Count} methods;");
             }
         }
 
