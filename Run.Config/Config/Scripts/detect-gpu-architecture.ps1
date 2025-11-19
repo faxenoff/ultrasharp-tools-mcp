@@ -27,20 +27,24 @@ try {
 Write-Host "Detecting GPU..." -ForegroundColor Yellow
 
 try {
-    $gpuInfo = nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader 2>&1
+    # Run nvidia-smi without 2>&1 to avoid ErrorRecord objects
+    $gpuInfo = & nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader
 
     if ($LASTEXITCODE -ne 0) {
         throw "nvidia-smi query failed"
     }
 
-    # Convert to string if it's an array (PowerShell 2>&1 can return ErrorRecord objects)
-    $gpuInfoText = if ($gpuInfo -is [Array]) {
-        ($gpuInfo | Where-Object { $_ -is [string] }) -join "`n"
+    # Handle output - can be array or string
+    if ($gpuInfo -is [string]) {
+        # Single string - might have multiple lines separated by newline
+        $lines = @($gpuInfo -split "`r?`n" | Where-Object { $_.Trim() -ne "" })
+    } elseif ($gpuInfo -is [Array]) {
+        # Already an array - filter empty
+        $lines = @($gpuInfo | Where-Object { $_ -and $_.ToString().Trim() -ne "" })
     } else {
-        $gpuInfo.ToString()
+        # Something else - convert to string array
+        $lines = @($gpuInfo.ToString()) | Where-Object { $_.Trim() -ne "" }
     }
-
-    $lines = $gpuInfoText -split "`n" | Where-Object { $_.Trim() -ne "" }
 
     if ($lines.Count -eq 0) {
         Write-Host "✗ No NVIDIA GPUs detected" -ForegroundColor Yellow
@@ -50,7 +54,7 @@ try {
         exit 0
     }
 
-    # Parse first GPU
+    # Parse first GPU (now $lines[0] is a full line, not a char)
     $firstLine = $lines[0].ToString().Trim()
     if (-not $firstLine) {
         Write-Host "✗ No GPU data returned" -ForegroundColor Yellow
