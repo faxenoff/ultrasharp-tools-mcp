@@ -13,23 +13,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Determine script location and config path
-$scriptLocation = Split-Path -Leaf $PSScriptRoot
-
-if ($scriptLocation -eq "Dev.Scripts") {
-    Write-Host "============================================================" -ForegroundColor Red
-    Write-Host "ERROR: Setup must be run from published build" -ForegroundColor Red
-    Write-Host "============================================================" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "This setup script should be run from:" -ForegroundColor Yellow
-    Write-Host "  Publish\Droid\Scripts\setup-semantic-embedding.cmd" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Or copy the published build to another location and run from there." -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
-}
-
-# When in Scripts folder (Publish\Droid\Scripts), Config is at ../Config
+# Determine config path - always ../Config from Scripts folder
 $configDir = Join-Path $PSScriptRoot ".." "Config"
 if (!(Test-Path $configDir)) {
     New-Item -ItemType Directory -Path $configDir -Force | Out-Null
