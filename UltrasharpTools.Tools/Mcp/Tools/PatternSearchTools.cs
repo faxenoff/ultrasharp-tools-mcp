@@ -55,8 +55,9 @@ public static partial class PatternSearchTools
     {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
         {
-            logger.LogDebug("PatternSearch invoked: pattern='{Pattern}', mode='{Mode}', semanticService is {ServiceStatus}",
-                pattern, mode, semanticService == null ? "NULL" : "NOT NULL");
+            logger.LogDebug("PatternSearch invoked: pattern='{Pattern}', mode='{Mode}', semanticService: {ServiceStatus}",
+                pattern, mode,
+                semanticService == null ? "NULL" : (semanticService.IsAvailable ? "AVAILABLE" : "NOT AVAILABLE"));
 
             ErrorHandlingHelpers.ValidateStringParameter(pattern, nameof(pattern), logger);
             await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(solutionManager, logger, nameof(PatternSearch), cancellationToken);
@@ -73,12 +74,15 @@ public static partial class PatternSearchTools
 
             // Fallback to entity mode if hybrid/semantic requested but semantic service unavailable
             var effectiveMode = mode;
+            var isSemanticAvailable = semanticService != null && semanticService.IsAvailable;
+
             if ((mode.Equals("hybrid", StringComparison.OrdinalIgnoreCase) ||
                  mode.Equals("semantic", StringComparison.OrdinalIgnoreCase)) &&
-                semanticService == null)
+                !isSemanticAvailable)
             {
                 effectiveMode = "entity";
-                logger.LogInformation("Semantic mode not available, falling back to entity mode");
+                logger.LogInformation("Semantic mode not available (semantic service: {ServiceStatus}), falling back to entity mode",
+                    semanticService == null ? "NULL" : "NOT AVAILABLE");
             }
 
             logger.LogInformation("Pattern search: mode={Mode} (requested: {RequestedMode}), pattern='{Pattern}', limit={Limit}",
