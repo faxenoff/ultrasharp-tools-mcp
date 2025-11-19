@@ -11,13 +11,13 @@ REM Check if PowerShell Core (pwsh) is available
 where pwsh >nul 2>&1
 if %errorlevel% equ 0 (
     echo Using PowerShell Core...
-    pwsh -ExecutionPolicy Bypass -File "%~dp0Dev.Scripts\setup-semantic-embedding.ps1" %*
+    pwsh -ExecutionPolicy Bypass -File "%~dp0setup-semantic-embedding.ps1" %*
     goto :end
 )
 
 REM Fallback to Windows PowerShell
 echo Using Windows PowerShell...
-powershell -ExecutionPolicy Bypass -File "%~dp0Dev.Scripts\setup-semantic-embedding.ps1" %*
+powershell -ExecutionPolicy Bypass -File "%~dp0setup-semantic-embedding.ps1" %*
 
 :end
 pause
