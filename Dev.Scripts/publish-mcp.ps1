@@ -119,58 +119,37 @@ if ($LASTEXITCODE -eq 0) {
     exit 1
 }
 
-# Copy setup scripts and configs to publish directory
+# Copy Config directory to publish
 Write-Header "Organizing Documentation and Scripts"
 
 $runConfigDir = Join-Path $ProjectRoot "Run.Config"
+$sourceConfigDir = Join-Path $runConfigDir "Config"
 
-# Create Scripts subdirectory
-$scriptsDir = Join-Path $mcpOutput "Scripts"
-if (!(Test-Path $scriptsDir)) {
-    New-Item -ItemType Directory -Path $scriptsDir | Out-Null
-    Write-Success "Created: Scripts/ directory"
-}
-
-# Copy Run.Config/Scripts/* to Scripts/
-$runConfigScripts = Join-Path $runConfigDir "Scripts"
-if (Test-Path $runConfigScripts) {
-    Get-ChildItem -Path $runConfigScripts -File | ForEach-Object {
-        Copy-Item -Path $_.FullName -Destination $scriptsDir -Force
-        Write-Success "Copied to Scripts/: $($_.Name)"
+# Copy entire Config directory structure
+$targetConfigDir = Join-Path $mcpOutput "Config"
+if (Test-Path $sourceConfigDir) {
+    # Remove old Config if exists
+    if (Test-Path $targetConfigDir) {
+        Remove-Item -Path $targetConfigDir -Recurse -Force
     }
-}
 
-# Copy setup launcher scripts from Run.Config to root
-$setupLaunchers = @("setup-semantic-embedding.cmd", "setup-semantic-embedding.sh")
-foreach ($launcher in $setupLaunchers) {
-    $launcherPath = Join-Path $runConfigDir $launcher
-    if (Test-Path $launcherPath) {
-        Copy-Item -Path $launcherPath -Destination $mcpOutput -Force
-        Write-Success "Copied to root: $launcher"
+    # Copy Config directory recursively
+    Copy-Item -Path $sourceConfigDir -Destination $targetConfigDir -Recurse -Force
+    Write-Success "Copied Config/ directory with all contents"
+
+    # List what was copied
+    $copiedFiles = Get-ChildItem -Path $targetConfigDir -Recurse -File
+    foreach ($file in $copiedFiles) {
+        $relativePath = $file.FullName.Substring($targetConfigDir.Length + 1)
+        Write-Success "  → Config/$relativePath"
     }
-}
-
-# Create Config subdirectory
-$configDir = Join-Path $mcpOutput "Config"
-if (!(Test-Path $configDir)) {
-    New-Item -ItemType Directory -Path $configDir | Out-Null
-    Write-Success "Created: Config/ directory"
-}
-
-# Copy config templates from Run.Config (exclude semantic-config.json - it's a template)
-$configFiles = Get-ChildItem -Path $runConfigDir -Filter "*.json" -File | Where-Object {
-    $_.Name -ne "semantic-config.json"  # This is a template, user will create it via setup script
-}
-foreach ($configFile in $configFiles) {
-    Copy-Item -Path $configFile.FullName -Destination $configDir -Force
-    Write-Success "Copied to Config/: $($configFile.Name)"
 }
 
 # Copy setup guide if exists
 $setupGuide = Join-Path $ProjectRoot "SEMANTIC_SETUP_GUIDE.md"
 if (Test-Path $setupGuide) {
-    Copy-Item -Path $setupGuide -Destination $configDir -Force
-    Write-Success "Copied to Config/: SEMANTIC_SETUP_GUIDE.md"
+    Copy-Item -Path $setupGuide -Destination $targetConfigDir -Force
+    Write-Success "  → Config/SEMANTIC_SETUP_GUIDE.md"
 }
 
 # Create Read.me subdirectory for documentation
@@ -238,8 +217,8 @@ Write-Host ""
 Write-Header "First Time Setup"
 Write-Info "Configure semantic embedding (required for semantic search):"
 Write-Host "  cd $(Resolve-Path $mcpOutput)" -ForegroundColor Cyan
-Write-Host "  .\setup-semantic-embedding.cmd" -ForegroundColor Cyan
+Write-Host "  .\Config\setup-semantic-embedding.cmd" -ForegroundColor Cyan
 Write-Host ""
-Write-Info "Or double-click: setup-semantic-embedding.cmd in $mcpOutput" -ForegroundColor Yellow
+Write-Info "Or double-click: Config\setup-semantic-embedding.cmd in $mcpOutput" -ForegroundColor Yellow
 Write-Host ""
 Write-Info "Documentation: Read.me\README.md" -ForegroundColor Gray
