@@ -136,6 +136,19 @@ public static class Program {
         string? logDirPath = parseResult.GetValue(logDirOption);
         LogLevel minimumLogLevel = parseResult.GetValue(logLevelOption);
         string? solutionPath = parseResult.GetValue(loadSolutionOption);
+
+        // Auto-detect solution file if not specified
+        if (string.IsNullOrEmpty(solutionPath)) {
+            var currentDir = Directory.GetCurrentDirectory();
+            var solutionFiles = Directory.GetFiles(currentDir, "*.sln");
+            if (solutionFiles.Length == 1) {
+                solutionPath = solutionFiles[0];
+                Console.WriteLine($"Auto-detected solution: {Path.GetFileName(solutionPath)}");
+            } else if (solutionFiles.Length > 1) {
+                Console.WriteLine($"Multiple solution files found in {currentDir}. Use --load-solution to specify which one to load.");
+            }
+        }
+
         string? buildConfiguration = parseResult.GetValue(buildConfigurationOption);
         bool disableGit = parseResult.GetValue(disableGitOption);
         string mode = parseResult.GetValue(modeOption) ?? "local";
@@ -166,7 +179,7 @@ public static class Program {
             }
         }
 
-        string logFilePath = Path.Combine(logDirPath, $"{ApplicationName}-.log");
+        string logFilePath = Path.Combine(logDirPath, $"{ApplicationName}-{{Date:yyyyMMdd}}.log");
         Console.Error.WriteLine($"Logging to directory: {Path.GetFullPath(logDirPath)} with minimum level {minimumLogLevel}");
 
         // Early startup information (before DI/logging is configured)
@@ -454,24 +467,8 @@ public static class Program {
                     Version = ApplicationVersion,
                 };
 
-                // Add experimental capabilities for semantic mode discovery
-                // Using JsonElement to avoid source-generated serializer issues
-                var semanticModeJson = JsonSerializer.SerializeToElement(new {
-                    enabled = semanticAvailability.IsAvailable,
-                    source = semanticAvailability.Source.ToString(),
-                    modelName = semanticAvailability.ModelName ?? "",
-                    vectorDimension = semanticAvailability.VectorDimension,
-                    dynamic = true,
-                    note = "Use get_capabilities tool for real-time status"
-                });
-
-                options.Capabilities = new ServerCapabilities
-                {
-                    Experimental = new Dictionary<string, object>
-                    {
-                        ["semanticMode"] = semanticModeJson
-                    }
-                };
+                // Note: Semantic mode capabilities are available via get_capabilities tool
+                // Experimental capabilities cannot be set here due to source-generated JSON serializer limitations
             })
             .WithStdioServerTransport()
             .WithUltrasharpTools();
@@ -482,24 +479,29 @@ public static class Program {
             var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger(ApplicationName);
 
+            // Start background solution loading if path is available
             if (!string.IsNullOrEmpty(solutionPath)) {
-                try {
-                    var solutionManager = host.Services.GetRequiredService<ISolutionManager>();
-                    var editorConfigProvider = host.Services.GetRequiredService<IEditorConfigProvider>();
+                var solutionPathCopy = solutionPath; // Capture for closure
+                _ = Task.Run(async () => {
+                    try {
+                        var solutionManager = host.Services.GetRequiredService<ISolutionManager>();
+                        var editorConfigProvider = host.Services.GetRequiredService<IEditorConfigProvider>();
 
-                    logger.LogInformation("Loading solution: {SolutionPath}", solutionPath);
-                    await solutionManager.LoadSolutionAsync(solutionPath, CancellationToken.None);
+                        logger.LogInformation("Background loading solution: {SolutionPath}", solutionPathCopy);
+                        await solutionManager.LoadSolutionAsync(solutionPathCopy, CancellationToken.None);
 
-                    var solutionDir = Path.GetDirectoryName(solutionPath);
-                    if (!string.IsNullOrEmpty(solutionDir)) {
-                        await editorConfigProvider.InitializeAsync(solutionDir, CancellationToken.None);
-                        logger.LogInformation("Solution loaded successfully: {SolutionPath}", solutionPath);
-                    } else {
-                        logger.LogWarning("Could not determine directory for solution path: {SolutionPath}", solutionPath);
+                        var solutionDir = Path.GetDirectoryName(solutionPathCopy);
+                        if (!string.IsNullOrEmpty(solutionDir)) {
+                            await editorConfigProvider.InitializeAsync(solutionDir, CancellationToken.None);
+                            logger.LogInformation("Solution loaded successfully in background: {SolutionPath}", solutionPathCopy);
+                        } else {
+                            logger.LogWarning("Could not determine directory for solution path: {SolutionPath}", solutionPathCopy);
+                        }
+                    } catch (Exception ex) {
+                        logger.LogError(ex, "Error loading solution in background: {SolutionPath}", solutionPathCopy);
                     }
-                } catch (Exception ex) {
-                    logger.LogError(ex, "Error loading solution: {SolutionPath}", solutionPath);
-                }
+                });
+                logger.LogInformation("Solution loading started in background, MCP server ready to accept requests");
             }
 
             await host.RunAsync();

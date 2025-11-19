@@ -1,0 +1,26 @@
+<typeTree note="Use GetMembers for more detailed information about specific types.">
+UltrasharpTools{
+Tools{
+Config{
+AutoDetectionSettings{
+  3 properties;
+}
+AutoSelectionSettings{
+  3 properties;
+}
+CodebaseSettings{
+  4 properties;
+}
+// ... и так далее
+}
+Extensions{
+ServiceCollectionExtensions{
+  WithEmbeddingServices(2 params):IServiceCollection;
+  WithLayeredIndexing(4 params):IServiceCollection;
+  // ...
+}
+}
+// ... остальное
+}
+}
+</typeTree>

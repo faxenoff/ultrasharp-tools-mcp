@@ -48,14 +48,14 @@ Write-Info "Configuration: $Configuration"
 Write-Info "Runtime: $Runtime"
 Write-Info "ReadyToRun: Enabled (non-composite)"
 
-# Clean previous artifacts
-Write-Header "Cleaning previous artifacts"
+# Prepare output directory
+Write-Header "Preparing output directory"
 $publishDir = "Run.Publish"
 $mcpOutput = Join-Path $publishDir "Droid"
 
-if (Test-Path $mcpOutput) {
-    Remove-Item $mcpOutput -Recurse -Force
-    Write-Success "Removed $mcpOutput directory"
+if (-not (Test-Path $publishDir)) {
+    New-Item -ItemType Directory -Path $publishDir | Out-Null
+    Write-Success "Created $publishDir directory"
 }
 
 # Publish Droid (automatically builds UltrasharpTools.Tools)
@@ -69,11 +69,28 @@ dotnet publish UltrasharpTools.Droid/UltrasharpTools.Droid.csproj `
     -p:PublishReadyToRunComposite=false
 
 if ($LASTEXITCODE -eq 0) {
-    # Clean up BuildHost directories
-    $buildHostDirs = Get-ChildItem -Path $mcpOutput -Directory -Filter "BuildHost-*"
-    foreach ($dir in $buildHostDirs) {
-        Remove-Item $dir.FullName -Recurse -Force
-        Write-Success "Removed: $($dir.Name)"
+    # Clean up PDB files from publish output
+    $pdbFiles = Get-ChildItem -Path $mcpOutput -Filter "*.pdb" -Recurse
+    $pdbCount = $pdbFiles.Count
+    if ($pdbCount -gt 0) {
+        $pdbFiles | Remove-Item -Force
+        Write-Success "Cleaned up PDB files from publish output"
+    }
+
+    # Verify BuildHost directories exist (required for MSBuild)
+    $netcoreBuildHost = Join-Path $mcpOutput "BuildHost-netcore"
+    $net472BuildHost = Join-Path $mcpOutput "BuildHost-net472"
+
+    if (Test-Path $netcoreBuildHost) {
+        Write-Success "Kept: BuildHost-netcore (for .NET Core/5+/10 projects)"
+    } else {
+        Write-Warning "BuildHost-netcore not found - modern .NET project loading may fail!"
+    }
+
+    if (Test-Path $net472BuildHost) {
+        Write-Success "Kept: BuildHost-net472 (for .NET Framework projects)"
+    } else {
+        Write-Warning "BuildHost-net472 not found - .NET Framework project loading may fail!"
     }
 
     $mcpSize = (Get-ChildItem $mcpOutput -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
