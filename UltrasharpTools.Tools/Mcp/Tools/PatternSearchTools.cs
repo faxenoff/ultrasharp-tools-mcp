@@ -30,13 +30,13 @@ public static partial class PatternSearchTools
                  "Hybrid combines and ranks results by relevance.")]
     public static async Task<object> PatternSearch(
         ISolutionManager solutionManager,
-        SemanticSearchService semanticService,
+        SemanticSearchService? semanticService,
         ILogger<PatternSearchToolsLogCategory> logger,
 
         [Description("Search pattern (regex for entity/content, natural language for semantic/hybrid)")]
         string pattern,
 
-        [Description("Search mode: 'entity', 'content', 'semantic', or 'hybrid' (default)")]
+        [Description("Search mode: 'entity', 'content', 'semantic', or 'hybrid' (default). If semantic mode is not available, defaults to 'entity'.")]
         string mode = "hybrid",
 
         [Description("Entity type filter (class, interface, method, property, field, enum, etc.)")]
@@ -68,12 +68,22 @@ public static partial class PatternSearchTools
                 throw new McpException("minSimilarity must be between 0.0 and 1.0");
             }
 
-            logger.LogInformation("Pattern search: mode={Mode}, pattern='{Pattern}', limit={Limit}",
-                mode, pattern, limit);
+            // Fallback to entity mode if hybrid/semantic requested but semantic service unavailable
+            var effectiveMode = mode;
+            if ((mode.Equals("hybrid", StringComparison.OrdinalIgnoreCase) ||
+                 mode.Equals("semantic", StringComparison.OrdinalIgnoreCase)) &&
+                semanticService == null)
+            {
+                effectiveMode = "entity";
+                logger.LogInformation("Semantic mode not available, falling back to entity mode");
+            }
+
+            logger.LogInformation("Pattern search: mode={Mode} (requested: {RequestedMode}), pattern='{Pattern}', limit={Limit}",
+                effectiveMode, mode, pattern, limit);
 
             var solution = solutionManager.CurrentWorkspace!.CurrentSolution;
 
-            switch (mode.ToLowerInvariant())
+            switch (effectiveMode.ToLowerInvariant())
             {
                 case "entity":
                     return await SearchEntityMode(solution, pattern, entityTypes, namespaceFilter, limit, logger, cancellationToken);
@@ -82,13 +92,15 @@ public static partial class PatternSearchTools
                     return await SearchContentMode(solution, pattern, entityTypes, namespaceFilter, limit, logger, cancellationToken);
 
                 case "semantic":
-                    return await SearchSemanticMode(semanticService, pattern, entityTypes, limit, minSimilarity, logger, cancellationToken);
+                    // semantic mode - semanticService guaranteed not null due to fallback logic above
+                    return await SearchSemanticMode(semanticService!, pattern, entityTypes, limit, minSimilarity, logger, cancellationToken);
 
                 case "hybrid":
-                    return await SearchHybridMode(solution, semanticService, pattern, entityTypes, namespaceFilter, limit, minSimilarity, logger, cancellationToken);
+                    // hybrid mode - semanticService guaranteed not null due to fallback logic above
+                    return await SearchHybridMode(solution, semanticService!, pattern, entityTypes, namespaceFilter, limit, minSimilarity, logger, cancellationToken);
 
                 default:
-                    throw new McpException($"Unknown search mode: {mode}. Use 'entity', 'content', 'semantic', or 'hybrid'.");
+                    throw new McpException($"Unknown search mode: {effectiveMode}. Use 'entity', 'content', 'semantic', or 'hybrid'.");
             }
 
         }, logger, nameof(PatternSearch), cancellationToken);
