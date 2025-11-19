@@ -86,18 +86,39 @@ For comprehensive tool documentation and advanced usage, see:
 
 ## Configuration
 
-**Check Server Capabilities** (recommended at startup):
+**Check Server Capabilities** (REQUIRED at startup):
 ```
 get_capabilities()
 → Returns: semantic mode status, enabled features, server info
 → Use to: detect if semantic search is available
+
+Example response:
+{
+  "semanticMode": {
+    "enabled": true,
+    "mode": "Local",           // Local, Overlord, Both, or None
+    "provider": "TEI",          // TEI, Ollama, Memory, or null
+    "dimension": 384
+  },
+  "version": "3.0.0",
+  "roslynVersion": "5.0.0"
+}
 ```
 
-**Semantic Search** (optional):
+**⚠️ IMPORTANT - Semantic Features:**
+Before using `semantic_search`, `semantic_diff`, or `detect_code_clones`:
+1. **ALWAYS call `get_capabilities()` first**
+2. Check `semanticMode.enabled === true`
+3. If disabled, these tools WILL FAIL - use alternative tools instead:
+   - Instead of `semantic_search` → use `pattern_search` or `search_definitions`
+   - Instead of `semantic_diff` → use `find_and_replace` with git diff
+   - Instead of `detect_code_clones` → use `analyze_complexity`
+
+**Semantic Search Setup** (optional, user must configure):
 - Setup: `setup-semantic-embedding.cmd` (Windows) or `pwsh Dev.Scripts/setup-semantic-embedding.ps1`
 - Providers: TEI (recommended), Ollama, Memory
 - Config: `Run.Config/semantic-config.json`
-- Check availability: `get_capabilities()` → `semanticMode.enabled`
+- Verify after setup: `get_capabilities()` → `semanticMode.enabled`
 
 **Build Configuration**:
 - Use `--build-configuration Debug` for full debugging symbols
