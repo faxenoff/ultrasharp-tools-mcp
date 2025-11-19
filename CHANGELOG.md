@@ -6,7 +6,22 @@
 
 ---
 
-### [3.0.1] - 2025-11-19
+### [3.0.2] - 2025-11-19
+
+### 🎯 Статус
+**TBD** - Brief description of this release
+
+### Добавлено
+- TODO: Add new features here
+
+### Изменено
+- TODO: Add changes here
+
+### Исправлено
+- TODO: Add fixes here
+
+---
+## [3.0.1] - 2025-11-19
 
 ### 🎯 Статус
 **TBD** - Brief description of this release
