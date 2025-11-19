@@ -147,6 +147,15 @@ if (Test-Path $oldSetupSh) {
 # Copy entire Config directory structure
 $targetConfigDir = Join-Path $mcpOutput "Config"
 if (Test-Path $sourceConfigDir) {
+    # Backup semantic-config.json if it exists in target (user-generated file)
+    $existingSemanticConfig = Join-Path $targetConfigDir "semantic-config.json"
+    $tempSemanticConfig = $null
+    if (Test-Path $existingSemanticConfig) {
+        $tempSemanticConfig = [System.IO.Path]::GetTempFileName()
+        Copy-Item -Path $existingSemanticConfig -Destination $tempSemanticConfig -Force
+        Write-Success "Backed up existing semantic-config.json"
+    }
+
     # Remove old Config if exists
     if (Test-Path $targetConfigDir) {
         Remove-Item -Path $targetConfigDir -Recurse -Force
@@ -155,6 +164,13 @@ if (Test-Path $sourceConfigDir) {
     # Copy Config directory recursively
     Copy-Item -Path $sourceConfigDir -Destination $targetConfigDir -Recurse -Force
     Write-Success "Copied Config/ directory with all contents"
+
+    # Restore semantic-config.json if it was backed up
+    if ($tempSemanticConfig -and (Test-Path $tempSemanticConfig)) {
+        Copy-Item -Path $tempSemanticConfig -Destination $existingSemanticConfig -Force
+        Remove-Item -Path $tempSemanticConfig -Force
+        Write-Success "Restored semantic-config.json from backup"
+    }
 
     # List what was copied
     $copiedFiles = Get-ChildItem -Path $targetConfigDir -Recurse -File
