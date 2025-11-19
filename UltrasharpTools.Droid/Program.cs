@@ -4,6 +4,7 @@ using UltrasharpTools.Tools.Mcp.Tools;
 using UltrasharpTools.Tools.Extensions;
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Logging;
+using UltrasharpTools.Tools.Models;
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Reflection;
@@ -270,36 +271,95 @@ public static class Program {
         var hasSemanticConfig = File.Exists(configDirPath) || File.Exists(legacyPath);
         var semanticConfigPath = File.Exists(configDirPath) ? configDirPath : legacyPath;
 
+        bool semanticEnabled = false;
+
         if (hasSemanticConfig)
         {
-            Console.WriteLine($"[Semantic] Found {Path.GetFileName(semanticConfigPath)}, enabling semantic RAG...");
+            Console.WriteLine($"[Semantic] Found {Path.GetFileName(semanticConfigPath)}");
 
-            // Determine database path based on solution
-            string? databasePath = null;
-            if (!string.IsNullOrEmpty(solutionPath))
+            try
             {
-                var solutionDir = Path.GetDirectoryName(solutionPath);
-                if (!string.IsNullOrEmpty(solutionDir))
+                // Load config
+                var configJson = await File.ReadAllTextAsync(semanticConfigPath);
+                var config = JsonSerializer.Deserialize<SemanticEmbeddingConfig>(configJson);
+
+                if (config != null)
                 {
-                    databasePath = Path.Combine(solutionDir, ".ultrasharp", "semantic.db");
+                    // Quick check if service is available (2s timeout)
+                    var healthCheck = new SemanticServiceHealthCheck(httpClientFactory: null, logger: null);
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+                    var isAvailable = await healthCheck.QuickCheckAsync(config, cts.Token);
+
+                    if (isAvailable)
+                    {
+                        Console.WriteLine($"[Semantic] ✓ {config.Embedding.Platform.ToUpperInvariant()} service is available");
+
+                        // Determine database path based on solution
+                        string? databasePath = null;
+                        if (!string.IsNullOrEmpty(solutionPath))
+                        {
+                            var solutionDir = Path.GetDirectoryName(solutionPath);
+                            if (!string.IsNullOrEmpty(solutionDir))
+                            {
+                                databasePath = Path.Combine(solutionDir, ".ultrasharp", "semantic.db");
+                            }
+                        }
+
+                        // Register semantic RAG services
+                        builder.Services.WithSemanticRag(
+                            databasePath: databasePath,
+                            dimension: 384, // Default for granite-embedding and all-MiniLM-L6-v2
+                            configureEmbedding: null,
+                            indexerConfig: null
+                        );
+
+                        Console.WriteLine($"[Semantic] Semantic RAG enabled (database: {databasePath ?? "in-memory"})");
+                        semanticEnabled = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[Semantic] {config.Embedding.Platform.ToUpperInvariant()} service not responding");
+                        Console.WriteLine($"[Semantic] Starting auto-recovery in background...");
+
+                        // Start background auto-recovery (non-blocking)
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var result = await healthCheck.CheckAndStartAsync(config, CancellationToken.None);
+
+                                if (result.IsAvailable)
+                                {
+                                    Console.WriteLine($"[Semantic] ✓ {result.Message}");
+                                    Console.WriteLine($"[Semantic] Restart MCP server to enable semantic mode");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"[Semantic] ✗ {result.Message}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[Semantic] Auto-recovery failed: {ex.Message}");
+                            }
+                        });
+                    }
                 }
             }
-
-            // Register semantic RAG services
-            builder.Services.WithSemanticRag(
-                databasePath: databasePath,
-                dimension: 384, // Default for granite-embedding and all-MiniLM-L6-v2
-                configureEmbedding: null,
-                indexerConfig: null
-            );
-
-            Console.WriteLine($"[Semantic] Semantic RAG enabled (database: {databasePath ?? "in-memory"})");
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Semantic] Failed to load config: {ex.Message}");
+            }
         }
         else
         {
             Console.WriteLine("[Semantic] No semantic-config.json found, semantic mode disabled");
-            Console.WriteLine("[Semantic] Run Scripts\\setup-semantic-embedding.cmd to configure semantic search");
+            Console.WriteLine("[Semantic] Run Config\\setup-semantic-embedding.cmd to configure semantic search");
+        }
 
+        if (!semanticEnabled)
+        {
             // CRITICAL: Register dummy SemanticSearchService to prevent "No service of the requested type was found"
             // MCP framework requires all parameters to be resolvable, even if nullable
             // This allows pattern_search to work in entity/content modes without semantic mode configured
