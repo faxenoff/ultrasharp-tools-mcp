@@ -15,6 +15,7 @@ using System.IO;
 using System;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Text.Json;
 
 namespace UltrasharpTools.Droid;
 
@@ -454,19 +455,21 @@ public static class Program {
                 };
 
                 // Add experimental capabilities for semantic mode discovery
+                // Using JsonElement to avoid source-generated serializer issues
+                var semanticModeJson = JsonSerializer.SerializeToElement(new {
+                    enabled = semanticAvailability.IsAvailable,
+                    source = semanticAvailability.Source.ToString(),
+                    modelName = semanticAvailability.ModelName ?? "",
+                    vectorDimension = semanticAvailability.VectorDimension,
+                    dynamic = true,
+                    note = "Use get_capabilities tool for real-time status"
+                });
+
                 options.Capabilities = new ServerCapabilities
                 {
                     Experimental = new Dictionary<string, object>
                     {
-                        ["semanticMode"] = new Dictionary<string, object>
-                        {
-                            ["enabled"] = semanticAvailability.IsAvailable,
-                            ["source"] = semanticAvailability.Source.ToString(),
-                            ["modelName"] = semanticAvailability.ModelName ?? "",
-                            ["vectorDimension"] = semanticAvailability.VectorDimension,
-                            ["dynamic"] = true,
-                            ["note"] = "Use get_capabilities tool for real-time status"
-                        }
+                        ["semanticMode"] = semanticModeJson
                     }
                 };
             })
