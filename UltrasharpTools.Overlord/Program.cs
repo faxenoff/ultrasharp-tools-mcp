@@ -15,7 +15,7 @@ namespace UltrasharpTools.Overlord;
 public class Program {
     // --- Application ---
     public const string ApplicationName = "UltrasharpToolsMcpOverlord";
-    public const string ApplicationVersion = "1.0.0";
+    public const string ApplicationVersion = "3.0.6";
     public static async Task<int> Main(string[] args) {
         // Ensure tool assemblies are loaded for MCP SDK's WithToolsFromAssembly
         _ = typeof(SolutionTools);
@@ -302,7 +302,7 @@ public class Program {
 
             // 3. Standard ASP.NET Core middleware (HTTPS redirection, routing, auth, etc. - not used here yet)
             // if (app.Environment.IsDevelopment()) { }
-            // app.UseHttpsRedirection(); 
+            // app.UseHttpsRedirection();
 
             // 4. Controllers (Agent API endpoints)
             app.MapControllers();

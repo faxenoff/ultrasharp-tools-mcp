@@ -206,7 +206,7 @@ public class AgentController : ControllerBase
         {
             status = "healthy",
             timestamp = DateTime.UtcNow,
-            version = "1.0.0",
+            version = "3.0.6",
             activeClients = _notificationService.GetActiveClientsCount()
         });
     }

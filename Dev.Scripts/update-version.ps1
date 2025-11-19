@@ -105,6 +105,50 @@ $filesToUpdate = @(
         Description = "Dockerfile (k8s version)"
     },
 
+    # Program.cs files - ApplicationVersion constants
+    @{
+        Path = "UltrasharpTools.Droid\Program.cs"
+        Pattern = 'ApplicationVersion = "[\d\.]+(-[a-zA-Z0-9\.\-]+)?"'
+        Replacement = "ApplicationVersion = `"$Version`""
+        Description = "Program.cs (Droid)"
+    },
+    @{
+        Path = "UltrasharpTools.Overlord\Program.cs"
+        Pattern = 'ApplicationVersion = "[\d\.]+(-[a-zA-Z0-9\.\-]+)?"'
+        Replacement = "ApplicationVersion = `"$Version`""
+        Description = "Program.cs (Overlord)"
+    },
+
+    # AgentController.cs - health endpoint version
+    @{
+        Path = "UltrasharpTools.Overlord\Controllers\AgentController.cs"
+        Pattern = 'version = "[\d\.]+(-[a-zA-Z0-9\.\-]+)?"'
+        Replacement = "version = `"$Version`""
+        Description = "AgentController.cs (health endpoint)"
+    },
+
+    # Helm Chart
+    @{
+        Path = "Run.Docs\Deployment\helm\ultrasharp-tools\Chart.yaml"
+        Pattern = 'version: [\d\.]+(-[a-zA-Z0-9\.\-]+)?'
+        Replacement = "version: $Version"
+        Description = "Chart.yaml (version)"
+    },
+    @{
+        Path = "Run.Docs\Deployment\helm\ultrasharp-tools\Chart.yaml"
+        Pattern = 'appVersion: "[\d\.]+(-[a-zA-Z0-9\.\-]+)?"'
+        Replacement = "appVersion: `"$Version`""
+        Description = "Chart.yaml (appVersion)"
+    },
+
+    # Deployment README - Docker examples
+    @{
+        Path = "Run.Docs\Deployment\README.md"
+        Pattern = 'ghcr\.io/YOUR_ORG/ultrasharp-tools-overlord:v[\d\.]+(-[a-zA-Z0-9\.\-]+)?'
+        Replacement = "ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v$Version"
+        Description = "Deployment README (Docker examples)"
+    },
+
     # Markdown documentation
     @{
         Path = "ARCHITECTURE.md"

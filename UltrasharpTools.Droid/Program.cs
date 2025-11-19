@@ -23,7 +23,7 @@ namespace UltrasharpTools.Droid;
 
 public static class Program {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
-    public const string ApplicationVersion = "1.0.0";
+    public const string ApplicationVersion = "3.0.6";
     public static async Task<int> Main(string[] args) {
         _ = typeof(SolutionTools);
         _ = typeof(AnalysisTools);

@@ -725,7 +725,7 @@ dotnet run
 
 ## 📝 **Что нового?**
 
-### v1.0.0 (2025-11-17) - Production Release
+### v3.0.6 (2025-11-20) - Production Release
 
 **Ключевые улучшения:**
 
