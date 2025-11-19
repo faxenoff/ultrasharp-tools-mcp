@@ -4,7 +4,7 @@ using UltrasharpTools.Tools.Mcp.Tools;
 using UltrasharpTools.Tools.Extensions;
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Logging;
-using UltrasharpTools.Tools.Models;
+using UltrasharpTools.Tools.Config;
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Reflection;
