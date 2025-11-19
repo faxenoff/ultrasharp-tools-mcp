@@ -263,8 +263,21 @@ public static class Program {
 
         builder.Services.WithUltrasharpToolsServices(!disableGit, buildConfiguration, gitOptions, reloadOptions, symbolCacheOptions);
 
-        // Register null SemanticSearchService if not already registered (for pattern_search fallback)
-        builder.Services.TryAddSingleton<UltrasharpTools.Tools.Semantic.SemanticSearchService>(sp => null!);
+        // CRITICAL: Register dummy SemanticSearchService to prevent "No service of the requested type was found"
+        // MCP framework requires all parameters to be resolvable, even if nullable
+        // This allows pattern_search to work in entity/content modes without semantic mode configured
+        if (!builder.Services.Any(sd => sd.ServiceType == typeof(UltrasharpTools.Tools.Semantic.SemanticSearchService)))
+        {
+            builder.Services.AddSingleton<UltrasharpTools.Tools.Semantic.SemanticSearchService>(sp =>
+            {
+                // Return a real instance with null dependencies - pattern_search checks for null and falls back
+                return new UltrasharpTools.Tools.Semantic.SemanticSearchService(
+                    indexer: null!,
+                    solutionManager: null!,
+                    config: null,
+                    logger: null);
+            });
+        }
 
         // Register hybrid mode services if enabled
         if (isHybridMode)

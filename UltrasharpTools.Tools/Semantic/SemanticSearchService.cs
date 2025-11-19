@@ -20,6 +20,12 @@ private readonly SemanticSearchServiceConfig _config;
 
 private bool _isIndexed;
 
+/// <summary>
+/// Indicates whether semantic search is available (has valid indexer).
+/// Returns false for dummy instances when semantic mode is not configured.
+/// </summary>
+public bool IsAvailable => _indexer != null && _solutionManager != null;
+
 public SemanticSearchService(
 CodeSemanticIndexer indexer,
 ISolutionManager solutionManager,
