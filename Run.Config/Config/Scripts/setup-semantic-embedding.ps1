@@ -13,8 +13,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Determine config path - always ../Config from Scripts folder
-$configDir = Join-Path $PSScriptRoot ".." "Config"
+# Determine config path - parent directory (Config)
+# When running from Config/Scripts/, parent is Config/
+$configDir = Split-Path -Parent $PSScriptRoot
 if (!(Test-Path $configDir)) {
     New-Item -ItemType Directory -Path $configDir -Force | Out-Null
 }
@@ -172,19 +173,106 @@ if ($platform -eq "tei") {
     Write-Host "  Ollama Endpoint: $ollamaEndpoint" -ForegroundColor White
 }
 Write-Host ""
-Write-Host "Next steps:" -ForegroundColor Yellow
-
-# Script is in Dev.Scripts or Scripts directory
-$scriptsFolder = Split-Path -Leaf $PSScriptRoot
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "Setting Up Embedding Service" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host ""
 
 if ($platform -eq "tei") {
-    Write-Host "  1. Start TEI server: .\$scriptsFolder\setup-tei.ps1" -ForegroundColor White
-    Write-Host "  2. Run your MCP server" -ForegroundColor White
+    Write-Host "[TEI Setup]" -ForegroundColor Yellow
+    Write-Host ""
+
+    $setupTei = Join-Path $PSScriptRoot "setup-tei.ps1"
+    if (Test-Path $setupTei) {
+        Write-Host "Launching TEI setup..." -ForegroundColor Cyan
+        Write-Host ""
+
+        $choice = Read-Host "Start TEI server now? [y/N]"
+        if ($choice -eq "y" -or $choice -eq "Y") {
+            & $setupTei -Architecture $architecture
+            Write-Host ""
+            Write-Host "✓ TEI server setup completed" -ForegroundColor Green
+        } else {
+            Write-Host "Skipped. Run manually: .\Scripts\setup-tei.ps1 -Architecture $architecture" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "⚠ setup-tei.ps1 not found" -ForegroundColor Yellow
+        Write-Host "Manual setup required for TEI" -ForegroundColor Gray
+    }
+
 } elseif ($platform -eq "ollama") {
-    Write-Host "  1. Install Ollama: https://ollama.ai" -ForegroundColor White
-    Write-Host "  2. Pull model: ollama pull granite-embedding" -ForegroundColor White
-    Write-Host "  3. Run your MCP server" -ForegroundColor White
+    Write-Host "[Ollama Setup]" -ForegroundColor Yellow
+    Write-Host ""
+
+    # Check if Ollama is installed
+    try {
+        $ollamaVersion = ollama --version 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✓ Ollama is installed: $ollamaVersion" -ForegroundColor Green
+        } else {
+            throw "Ollama not found"
+        }
+    } catch {
+        Write-Host "✗ Ollama is not installed" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Please install Ollama:" -ForegroundColor Yellow
+        Write-Host "  1. Visit: https://ollama.ai" -ForegroundColor Cyan
+        Write-Host "  2. Download and install for your OS" -ForegroundColor Cyan
+        Write-Host "  3. Re-run this setup script" -ForegroundColor Cyan
+        Write-Host ""
+        exit 1
+    }
+
+    Write-Host ""
+
+    # Check if model is available
+    $modelName = "granite-embedding"
+    Write-Host "Checking for model: $modelName..." -ForegroundColor Cyan
+
+    try {
+        $models = ollama list 2>&1
+        if ($models -match $modelName) {
+            Write-Host "✓ Model '$modelName' is already available" -ForegroundColor Green
+        } else {
+            Write-Host "Model '$modelName' not found" -ForegroundColor Yellow
+            Write-Host ""
+
+            $pullChoice = Read-Host "Download $modelName model now? (requires ~250MB) [y/N]"
+            if ($pullChoice -eq "y" -or $pullChoice -eq "Y") {
+                Write-Host ""
+                Write-Host "Pulling model (this may take a few minutes)..." -ForegroundColor Cyan
+                ollama pull $modelName
+
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host ""
+                    Write-Host "✓ Model pulled successfully" -ForegroundColor Green
+                } else {
+                    Write-Host ""
+                    Write-Host "✗ Failed to pull model" -ForegroundColor Red
+                    Write-Host "Try manually: ollama pull $modelName" -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "Skipped. Run manually: ollama pull $modelName" -ForegroundColor Yellow
+            }
+        }
+    } catch {
+        Write-Host "⚠ Could not check Ollama models" -ForegroundColor Yellow
+    }
+
+} elseif ($platform -eq "memory") {
+    Write-Host "[Memory Setup]" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "✓ No additional setup required for in-memory embeddings" -ForegroundColor Green
 }
+
+Write-Host ""
+Write-Host "============================================================" -ForegroundColor Green
+Write-Host "✓ Setup Complete!" -ForegroundColor Green
+Write-Host "============================================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "Configuration: $configPath" -ForegroundColor Cyan
+Write-Host "Platform: $platform" -ForegroundColor Cyan
+Write-Host "Architecture: $architecture" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Environment variables can override config:" -ForegroundColor Gray
 Write-Host "  SEMANTIC_PLATFORM, SEMANTIC_ARCHITECTURE" -ForegroundColor DarkGray
