@@ -55,6 +55,9 @@ public static partial class PatternSearchTools
     {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
         {
+            logger.LogDebug("PatternSearch invoked: pattern='{Pattern}', mode='{Mode}', semanticService is {ServiceStatus}",
+                pattern, mode, semanticService == null ? "NULL" : "NOT NULL");
+
             ErrorHandlingHelpers.ValidateStringParameter(pattern, nameof(pattern), logger);
             await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(solutionManager, logger, nameof(PatternSearch), cancellationToken);
 
@@ -82,6 +85,8 @@ public static partial class PatternSearchTools
                 effectiveMode, mode, pattern, limit);
 
             var solution = solutionManager.CurrentWorkspace!.CurrentSolution;
+            logger.LogDebug("Solution retrieved: {SolutionPath}, Projects count: {ProjectsCount}",
+                solution.FilePath ?? "(in-memory)", solution.Projects.Count());
 
             switch (effectiveMode.ToLowerInvariant())
             {
@@ -117,7 +122,8 @@ public static partial class PatternSearchTools
         ILogger<PatternSearchToolsLogCategory> logger,
         CancellationToken cancellationToken)
     {
-        logger.LogDebug("Entity mode search: pattern='{Pattern}'", pattern);
+        logger.LogDebug("Entity mode search started: pattern='{Pattern}', entityTypes={EntityTypes}, namespaceFilter={NamespaceFilter}",
+            pattern, entityTypes != null ? string.Join(",", entityTypes) : "(all)", namespaceFilter ?? "(all)");
 
         var regex = new Regex(pattern, RegexOptions.IgnoreCase);
         var results = new List<EntityMatch>();
@@ -190,6 +196,9 @@ public static partial class PatternSearchTools
             .Take(limit)
             .ToList();
 
+        logger.LogDebug("Entity mode search completed: totalFound={TotalFound}, returning={Returned}",
+            results.Count, topResults.Count);
+
         return ToolHelpers.ToJson(new
         {
             mode = "entity",
@@ -220,7 +229,8 @@ public static partial class PatternSearchTools
         ILogger<PatternSearchToolsLogCategory> logger,
         CancellationToken cancellationToken)
     {
-        logger.LogDebug("Content mode search: pattern='{Pattern}'", pattern);
+        logger.LogDebug("Content mode search started: pattern='{Pattern}', namespaceFilter={NamespaceFilter}",
+            pattern, namespaceFilter ?? "(all)");
 
         var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
         var results = new List<ContentMatch>();
@@ -289,6 +299,9 @@ public static partial class PatternSearchTools
             .ThenByDescending(r => r.MatchCount)
             .Take(limit)
             .ToList();
+
+        logger.LogDebug("Content mode search completed: totalFound={TotalFound}, returning={Returned}",
+            results.Count, topResults.Count);
 
         return ToolHelpers.ToJson(new
         {
