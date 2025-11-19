@@ -458,14 +458,14 @@ public static class Program {
                 {
                     Experimental = new Dictionary<string, object>
                     {
-                        ["semanticMode"] = new
+                        ["semanticMode"] = new Dictionary<string, object>
                         {
-                            enabled = semanticAvailability.IsAvailable,
-                            source = semanticAvailability.Source.ToString(),
-                            modelName = semanticAvailability.ModelName,
-                            vectorDimension = semanticAvailability.VectorDimension,
-                            dynamic = true,
-                            note = "Use get_capabilities tool for real-time status"
+                            ["enabled"] = semanticAvailability.IsAvailable,
+                            ["source"] = semanticAvailability.Source.ToString(),
+                            ["modelName"] = semanticAvailability.ModelName ?? "",
+                            ["vectorDimension"] = semanticAvailability.VectorDimension,
+                            ["dynamic"] = true,
+                            ["note"] = "Use get_capabilities tool for real-time status"
                         }
                     }
                 };
