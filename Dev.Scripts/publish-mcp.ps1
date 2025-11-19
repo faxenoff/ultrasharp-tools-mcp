@@ -227,8 +227,8 @@ Write-Host ""
 Write-Header "First Time Setup"
 Write-Info "Configure semantic embedding (required for semantic search):"
 Write-Host "  cd $(Resolve-Path $mcpOutput)" -ForegroundColor Cyan
-Write-Host "  .\Config\setup-semantic-embedding.cmd" -ForegroundColor Cyan
+Write-Host "  .\Scripts\setup-semantic-embedding.cmd" -ForegroundColor Cyan
 Write-Host ""
-Write-Info "Or double-click: Config\setup-semantic-embedding.cmd in $mcpOutput" -ForegroundColor Yellow
+Write-Info "Or double-click: Scripts\setup-semantic-embedding.cmd in $mcpOutput" -ForegroundColor Yellow
 Write-Host ""
 Write-Info "Documentation: Read.me\README.md" -ForegroundColor Gray

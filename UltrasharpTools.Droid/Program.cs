@@ -264,12 +264,15 @@ public static class Program {
         builder.Services.WithUltrasharpToolsServices(!disableGit, buildConfiguration, gitOptions, reloadOptions, symbolCacheOptions);
 
         // Auto-enable semantic RAG if semantic-config.json exists
-        var semanticConfigPath = Path.Combine(Directory.GetCurrentDirectory(), "semantic-config.json");
-        var hasSemanticConfig = File.Exists(semanticConfigPath);
+        // Check Config\semantic-config.json (recommended) or semantic-config.json (legacy)
+        var configDirPath = Path.Combine(Directory.GetCurrentDirectory(), "Config", "semantic-config.json");
+        var legacyPath = Path.Combine(Directory.GetCurrentDirectory(), "semantic-config.json");
+        var hasSemanticConfig = File.Exists(configDirPath) || File.Exists(legacyPath);
+        var semanticConfigPath = File.Exists(configDirPath) ? configDirPath : legacyPath;
 
         if (hasSemanticConfig)
         {
-            Console.WriteLine($"[Semantic] Found semantic-config.json, enabling semantic RAG...");
+            Console.WriteLine($"[Semantic] Found {Path.GetFileName(semanticConfigPath)}, enabling semantic RAG...");
 
             // Determine database path based on solution
             string? databasePath = null;
@@ -295,7 +298,7 @@ public static class Program {
         else
         {
             Console.WriteLine("[Semantic] No semantic-config.json found, semantic mode disabled");
-            Console.WriteLine("[Semantic] Run setup-semantic-embedding.cmd to configure semantic search");
+            Console.WriteLine("[Semantic] Run Scripts\\setup-semantic-embedding.cmd to configure semantic search");
 
             // CRITICAL: Register dummy SemanticSearchService to prevent "No service of the requested type was found"
             // MCP framework requires all parameters to be resolvable, even if nullable
