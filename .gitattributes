@@ -1,0 +1,21 @@
+# Авто-определение текстовых файлов
+* text=auto
+
+# Windows scripts должны иметь CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts должны иметь LF
+*.sh text eol=lf
+
+# Явно бинарные файлы
+*.png binary
+*.jpg binary
+*.exe binary
+*.dll binary
+
+# Текстовые файлы в UTF-8
+*.txt text encoding=utf-8
+*.md text encoding=utf-8
+*.json text encoding=utf-8
