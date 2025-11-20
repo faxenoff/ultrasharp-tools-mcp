@@ -445,9 +445,10 @@ public sealed class FastSymbolIndex {
             var entries = new List<SymbolIndexEntry>(cachedEntries.Count);
             var failedCount = 0;
 
-            // Progress tracking
+            // Progress tracking with early success rate check
             var lastProgressReport = 0;
             var progressThreshold = Math.Max(1, cachedEntries.Count / 20); // Report every 5%
+            var earlyCheckThreshold = Math.Min(10000, cachedEntries.Count / 10); // Check after 10% or 10K symbols
 
             var results = await resolver.ResolveSymbolsAsync(
                 cachedEntries,
@@ -485,6 +486,19 @@ public sealed class FastSymbolIndex {
                 };
 
                 entries.Add(symbolEntry);
+
+                // Early success rate check after processing earlyCheckThreshold symbols
+                if (entries.Count + failedCount >= earlyCheckThreshold) {
+                    var currentSuccessRate = (entries.Count / (double)(entries.Count + failedCount)) * 100;
+                    if (currentSuccessRate < 50) {
+                        _logger.LogWarning(
+                            "Early cache check: success rate too low ({Rate:F1}% after {Count} symbols), aborting cache restoration",
+                            currentSuccessRate, entries.Count + failedCount);
+                        return null;
+                    }
+                    // Only check once at the threshold
+                    earlyCheckThreshold = int.MaxValue;
+                }
             }
 
             var successRate = (entries.Count / (double)cachedEntries.Count) * 100;

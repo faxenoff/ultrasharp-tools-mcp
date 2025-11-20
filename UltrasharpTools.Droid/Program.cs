@@ -366,7 +366,22 @@ public static class Program {
                         builder.Services.WithSemanticRag(
                             databasePath: databasePath,
                             dimension: 384, // Default for granite-embedding and all-MiniLM-L6-v2
-                            configureEmbedding: null,
+                            configureEmbedding: options =>
+                            {
+                                options.Provider = config.Embedding.Platform;
+                                options.AutoDetectGPU = false; // Already detected
+
+                                if (config.Embedding.Platform.ToLowerInvariant() == "ollama")
+                                {
+                                    options.Ollama.BaseUrl = config.Embedding.Ollama?.Endpoint ?? "http://127.0.0.1:11434";
+                                    options.Ollama.Model = config.Embedding.Ollama?.SelectedModel ?? "nomic-embed-text";
+                                }
+                                else if (config.Embedding.Platform.ToLowerInvariant() == "tei")
+                                {
+                                    options.TEI.BaseUrl = config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080";
+                                    options.TEI.Model = config.Embedding.Tei?.SelectedModel;
+                                }
+                            },
                             indexerConfig: null
                         );
 
@@ -590,8 +605,18 @@ public static class Program {
             builder.Services.AddSingleton<ISemanticModeProvider>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
+
+                // Пытаемся получить IEmbeddingProvider (если semantic RAG был зарегистрирован)
+                UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService? localEmbedding = null;
+                var embeddingProvider = sp.GetService<UltrasharpTools.Tools.Semantic.Embedding.IEmbeddingProvider>();
+                if (embeddingProvider != null)
+                {
+                    // Создаём адаптер IEmbeddingProvider -> IEmbeddingService
+                    localEmbedding = new UltrasharpTools.Droid.Services.Hybrid.EmbeddingProviderAdapter(embeddingProvider);
+                }
+
                 // В local mode нет serverBridge и Overlord
-                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, null, null, null, semanticConfig);
+                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, localEmbedding, null, null, semanticConfig);
             });
 
             // ToolEnricher для semantic enrichment

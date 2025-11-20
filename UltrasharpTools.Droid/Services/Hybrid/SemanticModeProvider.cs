@@ -265,28 +265,64 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
             return false;
         }
 
-        try
-        {
-            // Проверяем доступность через тестовый запрос с timeout из конфига
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(_config.Availability.LocalCheckTimeoutSeconds));
+        // Retry logic: 3 attempts with exponential backoff (1s, 2s, 4s)
+        var maxRetries = 3;
+        var baseDelay = TimeSpan.FromSeconds(1);
 
-            var testVector = await _localEmbedding.GetEmbeddingAsync("test", cts.Token);
-            var isAvailable = testVector != null && testVector.Length > 0;
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                // Проверяем доступность через тестовый запрос с timeout из конфига
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(_config.Availability.LocalCheckTimeoutSeconds));
 
-            _logger.LogTrace("Local embedding availability: {Available}", isAvailable);
-            return isAvailable;
+                var testVector = await _localEmbedding.GetEmbeddingAsync("test", cts.Token);
+                var isAvailable = testVector != null && testVector.Length > 0;
+
+                if (isAvailable)
+                {
+                    _logger.LogTrace("Local embedding available (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                    return true;
+                }
+
+                // Not available but no exception - don't retry
+                _logger.LogTrace("Local embedding not available (no exception, attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                if (attempt < maxRetries)
+                {
+                    var delay = baseDelay * Math.Pow(2, attempt - 1);
+                    _logger.LogTrace("Local embedding check timed out (attempt {Attempt}/{MaxRetries}), retrying in {Delay}s...",
+                        attempt, maxRetries, delay.TotalSeconds);
+                    await Task.Delay(delay, ct);
+                }
+                else
+                {
+                    _logger.LogTrace("Local embedding service check timed out after {Attempts} attempts", maxRetries);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (attempt < maxRetries)
+                {
+                    var delay = baseDelay * Math.Pow(2, attempt - 1);
+                    _logger.LogTrace(ex, "Local embedding check failed (attempt {Attempt}/{MaxRetries}), retrying in {Delay}s...",
+                        attempt, maxRetries, delay.TotalSeconds);
+                    await Task.Delay(delay, ct);
+                }
+                else
+                {
+                    _logger.LogTrace(ex, "Local embedding service check failed after {Attempts} attempts", maxRetries);
+                    return false;
+                }
+            }
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogTrace("Local embedding service check timed out after {Timeout}s", _config.Availability.LocalCheckTimeoutSeconds);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogTrace(ex, "Local embedding service check failed");
-            return false;
-        }
+
+        return false;
     }
 
     private async Task<bool> CheckOverlordAvailabilityAsync(CancellationToken ct)
@@ -297,26 +333,63 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
             return false;
         }
 
-        try
-        {
-            // Проверяем доступность с timeout из конфига
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(_config.Availability.OverlordCheckTimeoutSeconds));
+        // Retry logic: 3 attempts with exponential backoff (1s, 2s, 4s)
+        var maxRetries = 3;
+        var baseDelay = TimeSpan.FromSeconds(1);
 
-            var isAvailable = await _serverBridge.IsServerAvailableAsync(cts.Token);
-            _logger.LogTrace("Overlord availability: {Available}", isAvailable);
-            return isAvailable;
-        }
-        catch (OperationCanceledException)
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            _logger.LogTrace("Overlord availability check timed out after {Timeout}s", _config.Availability.OverlordCheckTimeoutSeconds);
-            return false;
+            try
+            {
+                // Проверяем доступность с timeout из конфига
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(_config.Availability.OverlordCheckTimeoutSeconds));
+
+                var isAvailable = await _serverBridge.IsServerAvailableAsync(cts.Token);
+
+                if (isAvailable)
+                {
+                    _logger.LogTrace("Overlord available (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                    return true;
+                }
+
+                // Not available but no exception - don't retry
+                _logger.LogTrace("Overlord not available (no exception, attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                if (attempt < maxRetries)
+                {
+                    var delay = baseDelay * Math.Pow(2, attempt - 1);
+                    _logger.LogTrace("Overlord check timed out (attempt {Attempt}/{MaxRetries}), retrying in {Delay}s...",
+                        attempt, maxRetries, delay.TotalSeconds);
+                    await Task.Delay(delay, ct);
+                }
+                else
+                {
+                    _logger.LogTrace("Overlord availability check timed out after {Attempts} attempts", maxRetries);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                if (attempt < maxRetries)
+                {
+                    var delay = baseDelay * Math.Pow(2, attempt - 1);
+                    _logger.LogTrace(ex, "Overlord check failed (attempt {Attempt}/{MaxRetries}), retrying in {Delay}s...",
+                        attempt, maxRetries, delay.TotalSeconds);
+                    await Task.Delay(delay, ct);
+                }
+                else
+                {
+                    _logger.LogTrace(ex, "Overlord availability check failed after {Attempts} attempts", maxRetries);
+                    return false;
+                }
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogTrace(ex, "Overlord availability check failed");
-            return false;
-        }
+
+        return false;
     }
 
     private async Task<string?> GetModelNameAsync(SemanticModeSource source, CancellationToken ct)

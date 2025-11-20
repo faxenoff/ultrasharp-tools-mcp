@@ -17,69 +17,6 @@ public SymbolResolver(ILogger logger)
 _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 }
 
-/// <summary>
-/// Try to resolve ISymbol from SerializableSymbolEntry
-/// </summary>
-public async Task<ISymbol?> TryResolveSymbolAsync(
-SerializableSymbolEntry entry,
-Solution solution,
-CancellationToken cancellationToken)
-{
-try
-{
-// Find project by name or assembly name
-var project = solution.Projects.FirstOrDefault(p =>
-p.Name == entry.ProjectName ||
-p.AssemblyName == entry.AssemblyName);
-
-if (project == null)
-{
-_logger.LogDebug("Project not found for symbol {FQN}: {ProjectName}/{AssemblyName}",
-entry.CanonicalFqn, entry.ProjectName, entry.AssemblyName);
-return null;
-}
-
-var compilation = await project.GetCompilationAsync(cancellationToken);
-if (compilation == null)
-{
-_logger.LogDebug("Compilation not available for project {ProjectName}", project.Name);
-return null;
-}
-
-// Parse FQN to extract type and member information
-var symbolInfo = ParseFqn(entry.CanonicalFqn);
-
-// Try to find the symbol
-ISymbol? symbol = null;
-
-if (symbolInfo.MemberName == null)
-{
-// It's a type
-symbol = FindType(compilation, symbolInfo.TypeFqn);
-}
-else
-{
-// It's a member (method, property, field, etc.)
-var containingType = FindType(compilation, symbolInfo.TypeFqn);
-if (containingType != null)
-{
-symbol = FindMember(containingType, symbolInfo.MemberName, entry.Flags);
-}
-}
-
-if (symbol == null)
-{
-_logger.LogTrace("Could not resolve symbol: {FQN}", entry.CanonicalFqn);
-}
-
-return symbol;
-}
-catch (Exception ex)
-{
-_logger.LogWarning(ex, "Error resolving symbol {FQN}", entry.CanonicalFqn);
-return null;
-}
-}
 
 /// <summary>
 /// Find type by FQN in compilation
@@ -239,6 +176,7 @@ return (fqn.Substring(0, lastDotIndex), potentialMember);
 
 /// <summary>
 /// Batch resolve symbols for better performance
+/// Uses parallel processing with compilation caching per project
 /// </summary>
 public async Task<List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>> ResolveSymbolsAsync(
 List<SerializableSymbolEntry> entries,
@@ -246,30 +184,110 @@ Solution solution,
 CancellationToken cancellationToken,
 Action<int, int>? progressCallback = null)
 {
+// Pre-load all compilations in parallel (much faster than loading one-by-one)
+var compilationCache = new Dictionary<string, Compilation?>();
+var projects = solution.Projects.ToList();
+
+_logger.LogDebug("Pre-loading {Count} project compilations in parallel...", projects.Count);
+var compilationTasks = projects
+.Select(async p => {
+var compilation = await p.GetCompilationAsync(cancellationToken);
+return (p.Name, compilation);
+})
+.ToList();
+
+var compilations = await Task.WhenAll(compilationTasks);
+foreach (var (name, compilation) in compilations)
+{
+compilationCache[name] = compilation;
+}
+_logger.LogDebug("Loaded {Count} compilations", compilationCache.Count(c => c.Value != null));
+
+// Process symbols in parallel batches (256 at a time to avoid overwhelming the system)
 var results = new List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>(entries.Count);
-
-// Group by project for better compilation reuse
-var byProject = entries
-.GroupBy(e => e.ProjectName)
-.ToDictionary(g => g.Key, g => g.ToList());
-
+var resultsLock = new object();
 var processedCount = 0;
 var totalCount = entries.Count;
+var batchSize = 256;
 
-foreach (var (projectName, projectEntries) in byProject)
+for (int i = 0; i < entries.Count; i += batchSize)
 {
 cancellationToken.ThrowIfCancellationRequested();
 
-foreach (var entry in projectEntries)
-{
-var symbol = await TryResolveSymbolAsync(entry, solution, cancellationToken);
-results.Add((entry, symbol));
+var batch = entries.Skip(i).Take(batchSize).ToList();
 
-processedCount++;
+var batchResults = await Task.WhenAll(
+batch.Select(async entry => {
+var symbol = await TryResolveSymbolAsync(entry, solution, compilationCache, cancellationToken);
+
+// Thread-safe progress reporting
+var current = Interlocked.Increment(ref processedCount);
+if (progressCallback != null && current % 1000 == 0) // Report every 1000 symbols
+{
+progressCallback(current, totalCount);
+}
+
+return (entry, symbol);
+})
+);
+
+lock (resultsLock)
+{
+results.AddRange(batchResults);
+}
+}
+
+// Final progress report
 progressCallback?.Invoke(processedCount, totalCount);
-}
-}
 
 return results;
+}
+
+/// <summary>
+/// Try to resolve ISymbol from SerializableSymbolEntry using cached compilations
+/// </summary>
+private async Task<ISymbol?> TryResolveSymbolAsync(
+SerializableSymbolEntry entry,
+Solution solution,
+Dictionary<string, Compilation?> compilationCache,
+CancellationToken cancellationToken)
+{
+try
+{
+// Use cached compilation instead of loading each time
+if (!compilationCache.TryGetValue(entry.ProjectName, out var compilation) || compilation == null)
+{
+_logger.LogTrace("Compilation not available for project {ProjectName}", entry.ProjectName);
+return null;
+}
+
+// Parse FQN to extract type and member information
+var symbolInfo = ParseFqn(entry.CanonicalFqn);
+
+// Try to find the symbol
+ISymbol? symbol = null;
+
+if (symbolInfo.MemberName == null)
+{
+// It's a type
+symbol = FindType(compilation, symbolInfo.TypeFqn);
+}
+else
+{
+// It's a member (method, property, field, etc.)
+var containingType = FindType(compilation, symbolInfo.TypeFqn);
+if (containingType != null)
+{
+symbol = FindMember(containingType, symbolInfo.MemberName, entry.Flags);
+}
+}
+
+return symbol;
+}
+catch (Exception ex)
+{
+_logger.LogTrace(ex, "Error resolving symbol {FQN}", entry.CanonicalFqn);
+return null;
+}
 }
 }
