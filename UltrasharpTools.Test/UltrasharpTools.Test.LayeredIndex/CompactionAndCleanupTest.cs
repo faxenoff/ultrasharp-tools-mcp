@@ -188,7 +188,7 @@ public class CompactionAndCleanupTest
                 logger.LogInformation("  - Orphaned: {Branch}", branch);
             }
 
-            if (orphanedBranches.Count() > 0)
+            if (orphanedBranches.Count > 0)
             {
                 // Test cleanup
                 startTime = DateTimeOffset.UtcNow;

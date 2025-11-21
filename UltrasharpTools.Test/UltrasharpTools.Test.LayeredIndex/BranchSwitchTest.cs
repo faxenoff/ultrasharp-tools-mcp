@@ -139,7 +139,7 @@ public class BranchSwitchTest
             var resultsList = searchResults.ToList();
             logger.LogInformation("Found {Count} symbols matching 'Service'", resultsList.Count);
 
-            if (resultsList.Count() > 0)
+            if (resultsList.Count > 0)
             {
                 var symbolToUpdate = resultsList.First();
                 logger.LogInformation(

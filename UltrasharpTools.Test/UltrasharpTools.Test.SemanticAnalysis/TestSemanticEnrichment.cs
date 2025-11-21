@@ -413,7 +413,7 @@ public class TestSemanticEnrichment
             Console.WriteLine("Summary (first 500 chars):");
             Console.WriteLine(
                 editorConfig.Summary.Length > 500
-                    ? editorConfig.Summary.Substring(0, 500) + "..."
+                    ? string.Concat(editorConfig.Summary.AsSpan(0, 500), "...")
                     : editorConfig.Summary
             );
             Console.WriteLine();

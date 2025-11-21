@@ -15,6 +15,7 @@ namespace UltrasharpTools.Overlord.Services;
 /// </summary>
 public sealed class McpProxyService : IMcpProxyService
 {
+    private static readonly string[] validScopes = new[] { "method", "class", "project" };
     private readonly ILogger<McpProxyService> _logger;
     private readonly ISolutionManager _solutionManager;
     private readonly ICodeAnalysisService _analysisService;
@@ -269,7 +270,7 @@ public sealed class McpProxyService : IMcpProxyService
                     file = m.FilePath,
                     line = m.Line,
                     similarity = Math.Round(m.Similarity, 4),
-                    code = m.Code?.Length > 200 ? m.Code.Substring(0, 200) + "..." : m.Code,
+                    code = m.Code?.Length > 200 ? string.Concat(m.Code.AsSpan(0, 200), "...") : m.Code,
                 }),
             }
         );
@@ -311,7 +312,7 @@ public sealed class McpProxyService : IMcpProxyService
             var solution = _solutionManager.CurrentSolution;
             var locations = symbol.Locations.Where(l => l.IsInSource).ToList();
 
-            if (locations.Count() == 0)
+            if (locations.Count == 0)
             {
                 // Try external source resolution
                 var sourceResult = await sourceResolutionService.ResolveSourceAsync(
@@ -578,7 +579,7 @@ public sealed class McpProxyService : IMcpProxyService
         try
         {
             var scope = args.Scope.ToLower();
-            if (!new[] { "method", "class", "project" }.Contains(scope))
+            if (!validScopes.Contains(scope))
             {
                 return JsonSerializer.Serialize(
                     new
@@ -878,7 +879,7 @@ public sealed class McpProxyService : IMcpProxyService
                         file = m.FilePath,
                         line = m.Line,
                         similarity = Math.Round(m.Similarity, 4),
-                        code = m.Code?.Length > 200 ? m.Code.Substring(0, 200) + "..." : m.Code,
+                        code = m.Code?.Length > 200 ? string.Concat(m.Code.AsSpan(0, 200), "...") : m.Code,
                     }),
                 }
             );

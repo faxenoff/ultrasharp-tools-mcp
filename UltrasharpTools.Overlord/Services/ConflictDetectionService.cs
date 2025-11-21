@@ -78,7 +78,7 @@ public sealed class ConflictDetectionService : IConflictDetectionService
             }
 
             // Автоматические уведомления о значимых дубликатах
-            if (AutoNotifyEnabled && duplicates.Count() > 0)
+            if (AutoNotifyEnabled && duplicates.Count > 0)
             {
                 await SendDuplicateNotificationsAsync(
                     project,

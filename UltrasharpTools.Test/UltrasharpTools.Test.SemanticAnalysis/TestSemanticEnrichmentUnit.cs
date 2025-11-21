@@ -285,7 +285,7 @@ public class TestSemanticEnrichmentUnit
         Console.WriteLine();
 
         Console.WriteLine("Generated .editorconfig (first 500 chars):");
-        Console.WriteLine(result.Content.Length > 500 ? result.Content.Substring(0, 500) + "..." : result.Content);
+        Console.WriteLine(result.Content.Length > 500 ? string.Concat(result.Content.AsSpan(0, 500), "...") : result.Content);
         Console.WriteLine();
 
         Console.WriteLine("✅ EditorConfig generation test passed");

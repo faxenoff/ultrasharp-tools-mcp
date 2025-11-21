@@ -171,7 +171,7 @@ public sealed class NotificationService : INotificationService
         await writer.WriteLineAsync($"event: {eventType}");
         await writer.WriteLineAsync($"data: {json}");
         await writer.WriteLineAsync();
-        await writer.FlushAsync();
+        await writer.FlushAsync(cancellationToken);
     }
 
     private sealed class ClientConnection : IDisposable

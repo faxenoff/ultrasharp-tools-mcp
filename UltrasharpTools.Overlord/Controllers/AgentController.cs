@@ -257,7 +257,9 @@ public class AgentController : ControllerBase
 
         try
         {
+#pragma warning disable CA2000 // NotificationService owns and disposes StreamWriter
             var writer = new StreamWriter(Response.Body) { AutoFlush = true };
+#pragma warning restore CA2000
 
             await _notificationService.RegisterClientAsync(
                 id,
