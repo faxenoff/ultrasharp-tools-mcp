@@ -14,12 +14,14 @@ namespace UltrasharpTools.Tools.Services;
 public class DiagnosticService(
     ILogger<DiagnosticService> logger,
     ISolutionManager solutionManager,
-    ISemanticDiagnosticEnricher? semanticEnricher = null
+    ISemanticDiagnosticEnricher? semanticEnricher = null,
+    IEditorConfigGenerator? editorConfigGenerator = null
 ) : IDiagnosticService
 {
     private readonly ILogger<DiagnosticService> _logger = logger;
     private readonly ISolutionManager _solutionManager = solutionManager;
     private readonly ISemanticDiagnosticEnricher? _semanticEnricher = semanticEnricher;
+    private readonly IEditorConfigGenerator? _editorConfigGenerator = editorConfigGenerator;
 
     // CACHE: Кеш результатов анализа всего решения
     private readonly ConcurrentDictionary<
@@ -117,11 +119,55 @@ public class DiagnosticService(
                     );
                 }
 
-                // TODO: PHASE 2: EditorConfig Generation (будет реализовано позже)
-                // if (filterOptions.GenerateEditorConfigRecommendations)
-                // {
-                //     editorConfigRecommendations = await _editorConfigGenerator.GenerateAsync(...);
-                // }
+                // PHASE 2: EditorConfig Generation (если включено)
+                if (
+                    filterOptions.GenerateEditorConfigRecommendations
+                    && _editorConfigGenerator != null
+                )
+                {
+                    var editorConfigOptions = new EditorConfigOptions
+                    {
+                        Format = filterOptions.EditorConfigFormat == "Standard"
+                            ? EditorConfigFormat.Standard
+                            : EditorConfigFormat.Detailed,
+                        IncludeStatistics = true,
+                        IncludeExamples = false,
+                        MinConfidenceForAutoApproval = 0.8,
+                        GroupByCategory = true,
+                    };
+
+                    editorConfigRecommendations = await _editorConfigGenerator.GenerateAsync(
+                        semanticEnrichment ?? new SemanticEnrichmentResult
+                        {
+                            Clusters = statistics.CountByDiagnosticId
+                                .Select(kvp => new DiagnosticCluster
+                                {
+                                    DiagnosticId = kvp.Key,
+                                    Category = DiagnosticCategory.NeedsManualReview,
+                                    Pattern = "",
+                                    Occurrences = kvp.Value,
+                                    ConfidenceScore = 0.5,
+                                    RecommendedSeverity = EditorConfigSeverity.Warning,
+                                    Justification = "Требует ручной проверки",
+                                    Severity = statistics.SeverityByDiagnosticId[kvp.Key],
+                                    RepresentativeExamples = new List<DiagnosticExample>(),
+                                    AffectedFiles = statistics.FilesByDiagnosticId[kvp.Key],
+                                    AffectedProjects = statistics.ProjectsByDiagnosticId[kvp.Key],
+                                })
+                                .ToList(),
+                            RelevanceScores = new Dictionary<string, double>(),
+                            Summary = new EnrichmentSummary(),
+                        },
+                        editorConfigOptions,
+                        cancellationToken
+                    );
+
+                    _logger.LogInformation(
+                        "EditorConfig generation complete. Rules: {Rules}, Manual review: {ManualReview}",
+                        editorConfigRecommendations.Rules.Count,
+                        editorConfigRecommendations.RequiresManualReview.Count
+                    );
+                }
             }
             catch (Exception ex)
             {
