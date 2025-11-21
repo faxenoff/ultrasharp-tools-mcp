@@ -305,6 +305,180 @@ ObjectPoolProvider.Instance.ReturnStringBuilder(output);
 }, logger, nameof(ApplyCodeFixes), cancellationToken);
 }
 
+[McpServerTool(Name = "cleanup_usings", Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
+[Description("Removes redundant using directives that duplicate global usings declared in GlobalUsings.cs files. Scans all projects and removes usings that are already declared globally.")]
+public static async Task<object> CleanupUsings(
+    ISolutionManager solutionManager,
+    ILogger<QualityToolsLogCategory> logger,
+    [Description("Path to solution directory")] string path,
+    [Description("If true, only preview changes without applying them (default: true)")] bool preview = true,
+    CancellationToken cancellationToken = default)
+{
+    return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
+    {
+        ErrorHandlingHelpers.ValidateStringParameter(path, nameof(path), logger);
+        await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(solutionManager, logger, nameof(CleanupUsings), cancellationToken);
+
+        logger.LogInformation("Executing {ToolName} for path: {Path}, Preview: {Preview}",
+            nameof(CleanupUsings), path, preview);
+
+        if (!Path.IsPathFullyQualified(path))
+        {
+            throw new McpException($"Path must be absolute: {path}");
+        }
+
+        if (!Directory.Exists(path))
+        {
+            throw new McpException($"Directory does not exist: {path}");
+        }
+
+        if (!solutionManager.IsSolutionLoaded)
+        {
+            throw new McpException("No solution loaded");
+        }
+
+        var output = ObjectPoolProvider.Instance.GetStringBuilder();
+        try
+        {
+            output.AppendLine("=== Redundant Using Directives Cleanup ===");
+            output.AppendLine($"Mode: {(preview ? "PREVIEW (dry run)" : "APPLY CHANGES")}");
+            output.AppendLine();
+
+            var solution = solutionManager.CurrentSolution;
+            var totalFilesChanged = 0;
+            var totalUsingsRemoved = 0;
+
+            // Find all GlobalUsings.cs files across projects
+            var globalUsingsMap = new Dictionary<string, HashSet<string>>();
+
+            foreach (var project in solution.Projects)
+            {
+                var globalUsingsDoc = project.Documents.FirstOrDefault(d =>
+                    Path.GetFileName(d.FilePath ?? "") == "GlobalUsings.cs");
+
+                if (globalUsingsDoc != null)
+                {
+                    var root = await globalUsingsDoc.GetSyntaxRootAsync(cancellationToken);
+                    if (root != null)
+                    {
+                        var globalUsings = root.DescendantNodes()
+                            .OfType<UsingDirectiveSyntax>()
+                            .Where(u => u.GlobalKeyword.IsKind(SyntaxKind.GlobalKeyword))
+                            .Select(u => u.Name?.ToString())
+                            .Where(n => n != null)
+                            .OfType<string>() // Filter out nulls with correct type
+                            .ToHashSet(StringComparer.Ordinal);
+
+                        globalUsingsMap[project.Name] = globalUsings;
+
+                        output.AppendLine($"📁 Project: {project.Name}");
+                        output.AppendLine($"   Found {globalUsings.Count} global using directive(s)");
+                    }
+                }
+            }
+
+            if (globalUsingsMap.Count == 0)
+            {
+                output.AppendLine();
+                output.AppendLine("⚠️  No GlobalUsings.cs files found in solution");
+                return ToolHelpers.ToJson(new {
+                    summary = output.ToString(),
+                    filesChanged = 0,
+                    usingsRemoved = 0
+                });
+            }
+
+            output.AppendLine();
+            output.AppendLine("=== Scanning for redundant usings ===");
+            output.AppendLine();
+
+            // Scan all documents in projects that have global usings
+            foreach (var project in solution.Projects)
+            {
+                if (!globalUsingsMap.TryGetValue(project.Name, out var globalUsings))
+                    continue;
+
+                var projectFilesChanged = 0;
+                var projectUsingsRemoved = 0;
+
+                foreach (var document in project.Documents)
+                {
+                    if (Path.GetFileName(document.FilePath ?? "") == "GlobalUsings.cs")
+                        continue;
+
+                    var root = await document.GetSyntaxRootAsync(cancellationToken);
+                    if (root == null) continue;
+
+                    var usingDirectives = root.DescendantNodes()
+                        .OfType<UsingDirectiveSyntax>()
+                        .Where(u => !u.GlobalKeyword.IsKind(SyntaxKind.GlobalKeyword))
+                        .ToList();
+
+                    var redundantUsings = usingDirectives
+                        .Where(u => globalUsings.Contains(u.Name?.ToString() ?? ""))
+                        .ToList();
+
+                    if (redundantUsings.Count > 0)
+                    {
+                        var relativePath = Path.GetRelativePath(path, document.FilePath ?? "");
+                        output.AppendLine($"📄 {relativePath}");
+
+                        foreach (var redundant in redundantUsings)
+                        {
+                            output.AppendLine($"   - Remove: using {redundant.Name};");
+                        }
+
+                        if (!preview)
+                        {
+                            // Remove redundant usings
+                            var newRoot = root.RemoveNodes(redundantUsings, SyntaxRemoveOptions.KeepNoTrivia)!;
+
+                            // Write back to file
+                            var text = newRoot.ToFullString();
+                            await File.WriteAllTextAsync(document.FilePath!, text, cancellationToken);
+
+                            output.AppendLine($"   ✓ Applied changes");
+                        }
+
+                        projectFilesChanged++;
+                        projectUsingsRemoved += redundantUsings.Count;
+                    }
+                }
+
+                if (projectFilesChanged > 0)
+                {
+                    totalFilesChanged += projectFilesChanged;
+                    totalUsingsRemoved += projectUsingsRemoved;
+                }
+            }
+
+            output.AppendLine();
+            output.AppendLine("=== Summary ===");
+            output.AppendLine($"Files changed: {totalFilesChanged}");
+            output.AppendLine($"Usings removed: {totalUsingsRemoved}");
+
+            if (preview)
+            {
+                output.AppendLine();
+                output.AppendLine("⚠️  This was a PREVIEW. No files were modified.");
+            }
+
+            return ToolHelpers.ToJson(new
+            {
+                summary = output.ToString(),
+                filesChanged = totalFilesChanged,
+                usingsRemoved = totalUsingsRemoved,
+                wasPreview = preview
+            });
+        }
+        finally
+        {
+            ObjectPoolProvider.Instance.ReturnStringBuilder(output);
+        }
+
+    }, logger, nameof(CleanupUsings), cancellationToken);
+}
+
 private static string GetSeverityEmoji(DiagnosticSeverity severity) => severity switch
 {
 DiagnosticSeverity.Error => "❌",

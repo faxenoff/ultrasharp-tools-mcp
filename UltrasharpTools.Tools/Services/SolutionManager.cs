@@ -66,6 +66,9 @@ public sealed class SolutionManager : ISolutionManager {
     private System.Threading.Timer? _reloadDebounceTimer;
     private string? _currentSolutionPath;
 
+    // Protection against concurrent solution loading
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _loadingLocks = new();
+
     // Cache statistics
     private long _compilationCacheHits;
     private long _compilationCacheMisses;
@@ -149,12 +152,26 @@ public sealed class SolutionManager : ISolutionManager {
             _logger.LogError("Solution file not found: {SolutionPath}", solutionPath);
             throw new FileNotFoundException("Solution file not found.", solutionPath);
         }
-        UnloadSolution(); // Clears previous state including _allLoadedReflectionTypesCache
 
-        // Store solution path for auto-reload
-        _currentSolutionPath = solutionPath;
+        // Normalize solution path to prevent duplicate loading from different path formats
+        var normalizedPath = Path.GetFullPath(solutionPath);
+
+        // Get or create semaphore for this solution path
+        var loadLock = _loadingLocks.GetOrAdd(normalizedPath, _ => new SemaphoreSlim(1, 1));
+
+        // Try to acquire lock - if already loading, fail immediately
+        if (!await loadLock.WaitAsync(0, cancellationToken)) {
+            _logger.LogWarning("Solution is already being loaded: {SolutionPath}", normalizedPath);
+            throw new McpException($"Solution '{normalizedPath}' is already being loaded. Please wait for the current loading operation to complete.");
+        }
 
         try {
+            UnloadSolution(); // Clears previous state including _allLoadedReflectionTypesCache
+
+            // Store solution path for auto-reload
+            _currentSolutionPath = solutionPath;
+
+            try {
             _logger.LogInformation("Creating MSBuildWorkspace...");
             var properties = new Dictionary<string, string> {
                 { "DesignTimeBuild", "true" }
@@ -224,10 +241,19 @@ public sealed class SolutionManager : ISolutionManager {
                 _workspace.RegisterWorkspaceChangedHandler(OnWorkspaceChanged);
                 _logger.LogInformation("Subscribed to workspace change events for incremental updates");
             }
-        } catch (Exception ex) {
-            _logger.LogError(ex, "Failed to load solution: {SolutionPath}", solutionPath);
-            UnloadSolution();
-            throw;
+            } catch (Exception ex) {
+                _logger.LogError(ex, "Failed to load solution: {SolutionPath}", solutionPath);
+                UnloadSolution();
+                throw;
+            }
+        } finally {
+            // Release the loading lock
+            loadLock.Release();
+
+            // Clean up completed locks to prevent memory leak
+            if (_loadingLocks.TryRemove(normalizedPath, out var removedLock)) {
+                removedLock.Dispose();
+            }
         }
     }
 
