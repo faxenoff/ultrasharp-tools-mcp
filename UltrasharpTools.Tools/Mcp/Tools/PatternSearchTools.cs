@@ -1,11 +1,7 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.FindSymbols;
-using Microsoft.Extensions.Logging;
+
+
 using ModelContextProtocol;
-using System.Text.RegularExpressions;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Mcp;
 using UltrasharpTools.Tools.Semantic;
 

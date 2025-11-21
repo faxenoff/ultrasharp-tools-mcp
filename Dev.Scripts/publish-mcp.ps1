@@ -75,11 +75,9 @@ if ($useR2R) {
 
 dotnet publish UltrasharpTools.Droid/UltrasharpTools.Droid.csproj `
     -c $Configuration `
+    --self-contained true `
     -r $Runtime `
-    --self-contained false `
-    -o $mcpOutput `
-    -p:PublishReadyToRun=$useR2R `
-    -p:PublishReadyToRunComposite=false
+    -o $mcpOutput
 
 if ($LASTEXITCODE -eq 0) {
     # Clean up PDB files from publish output (only for Release builds)

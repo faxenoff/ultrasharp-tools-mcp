@@ -1,27 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
+
+
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Editing;
-using Microsoft.CodeAnalysis.FindSymbols;
+
 using Microsoft.Extensions.FileSystemGlobbing;
-using Microsoft.Extensions.Logging;
+
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Infrastructure;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Mcp;
 using UltrasharpTools.Tools.Models;
-using UltrasharpTools.Tools.Services;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -423,7 +411,6 @@ public static class ModificationTools {
                     errorMessages = "<errorCheck>No compilation issues detected.</errorCheck>";
 
                 return $"Successfully replaced symbol {fullyQualifiedMemberName}.\n\n{diffResult}\n\n{errorMessages}";
-
 
             } catch (Exception ex) when (ex is not McpException && ex is not OperationCanceledException) {
                 logger.LogError(ex, "Failed to replace symbol {SymbolName}", fullyQualifiedMemberName);

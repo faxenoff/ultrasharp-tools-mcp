@@ -1,8 +1,8 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Logging;
+
+
 using ModelContextProtocol;
 using System.Xml.Linq;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Mcp;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;

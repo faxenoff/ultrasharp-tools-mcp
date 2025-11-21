@@ -1,12 +1,7 @@
-using System;
+
 using System.Collections.Frozen;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+
 using System.Xml;
-using Microsoft.CodeAnalysis.Text;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -80,7 +75,6 @@ public class DocumentOperationsService(
         await File.WriteAllTextAsync(filePath, content, cancellationToken);
         _logger.LogInformation("File {Operation} at {FilePath}",
             File.Exists(filePath) ? "overwritten" : "created", filePath);
-
 
         // Find the most appropriate project for this file path
         var bestProject = FindMostAppropriateProject(filePath);

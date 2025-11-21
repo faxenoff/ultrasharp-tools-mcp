@@ -3,17 +3,8 @@
 // Original code licensed under MIT License
 // Modifications: Enhanced complexity algorithms, added cognitive complexity, recommendations engine
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using UltrasharpTools.Tools.Extensions;
-using UltrasharpTools.Tools.Services;
+
 using ModelContextProtocol;
 
 namespace UltrasharpTools.Tools.Services;

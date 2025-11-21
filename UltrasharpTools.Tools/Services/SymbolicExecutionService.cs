@@ -1,8 +1,7 @@
-using Microsoft.CodeAnalysis;
+
 using Microsoft.CodeAnalysis.FlowAnalysis;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.Extensions.Logging;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;

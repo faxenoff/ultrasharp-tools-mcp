@@ -1,9 +1,6 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Formatting;
-using Microsoft.Extensions.Logging;
+
+
 using System.Xml.Linq;
-using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Tools.Services;
 

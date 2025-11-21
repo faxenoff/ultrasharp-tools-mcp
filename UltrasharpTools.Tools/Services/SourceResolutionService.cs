@@ -1,16 +1,12 @@
-using System.IO;
+
 using System.Net.Http;
-using System.Reflection;
+
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
-using System.Text;
+
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.TypeSystem;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.Extensions.Logging;
-using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Tools.Services {
     public class SourceResolutionService(
@@ -100,7 +96,6 @@ namespace UltrasharpTools.Tools.Services {
                 foreach (var customDebugInfoHandle in metadataReader.CustomDebugInformation) {
                     var customDebugInfo = metadataReader.GetCustomDebugInformation(customDebugInfoHandle);
                     var kind = metadataReader.GetGuid(customDebugInfo.Kind);
-
 
                     // Source Link kind GUID
                     if (kind == new Guid("CC110556-A091-4D38-9FEC-25AB9A351A6A")) {

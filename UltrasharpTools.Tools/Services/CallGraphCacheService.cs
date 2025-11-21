@@ -1,12 +1,10 @@
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging;
+
 using UltrasharpTools.Tools.Infrastructure;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Serialization;
 using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 
 namespace UltrasharpTools.Tools.Services;
 

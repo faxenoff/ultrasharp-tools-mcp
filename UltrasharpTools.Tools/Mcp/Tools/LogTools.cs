@@ -1,8 +1,8 @@
-using System.Text;
-using Microsoft.Extensions.Logging;
+
+
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Mcp;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Infrastructure;
 using LogLevel = UltrasharpTools.Tools.Models.LogLevel;

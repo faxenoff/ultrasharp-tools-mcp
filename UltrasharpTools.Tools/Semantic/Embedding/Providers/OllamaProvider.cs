@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using Microsoft.Extensions.Logging;
+
 using Microsoft.Extensions.Http;
 using UltrasharpTools.Tools.Semantic.Models;
 

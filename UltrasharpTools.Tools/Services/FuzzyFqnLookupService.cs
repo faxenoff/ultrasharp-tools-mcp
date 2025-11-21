@@ -3,20 +3,8 @@
 // Original code licensed under MIT License
 // Significant enhancements: Levenshtein distance, scoring system, constructor shorthand, FastSymbolIndex integration
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using UltrasharpTools.Tools.Interfaces;
-using System;
 using System.Buffers;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+
 using UltrasharpTools.Tools.Mcp;
 
 namespace UltrasharpTools.Tools.Services {

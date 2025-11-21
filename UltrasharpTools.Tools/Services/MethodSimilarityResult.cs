@@ -1,5 +1,4 @@
 
-using System.Collections.Generic;
 
 namespace UltrasharpTools.Tools.Services {
     public class MethodSimilarityResult {

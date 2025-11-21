@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Versioning;
 using UltrasharpTools.Tools.Mcp;

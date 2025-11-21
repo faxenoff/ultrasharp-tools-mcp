@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using System.Text;
+
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;

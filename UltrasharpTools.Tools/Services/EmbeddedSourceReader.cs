@@ -1,12 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+
+
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
-using System.Text;
+
 using System.IO.Compression;
-using Microsoft.CodeAnalysis;
+
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Services {

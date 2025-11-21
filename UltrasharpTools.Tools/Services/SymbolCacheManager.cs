@@ -1,8 +1,5 @@
 using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Logging;
+
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Models;
 

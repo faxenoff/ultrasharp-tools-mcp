@@ -1,12 +1,11 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+
 using Microsoft.CodeAnalysis.FlowAnalysis;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.Extensions.Logging;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Extensions;
-using UltrasharpTools.Tools.Services;
+
 using UltrasharpTools.Tools.Mcp;
 
 namespace UltrasharpTools.Tools.Semantic.Hybrid;
@@ -421,9 +420,6 @@ return methodCode;
 
 // Wrap в temporary class
 return $@"
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 public class QueryClass
 {{

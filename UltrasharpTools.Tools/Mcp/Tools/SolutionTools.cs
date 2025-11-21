@@ -4,14 +4,13 @@
 // Modifications: Adaptive DetailLevel system, token optimization, automatic solution discovery
 
 using ModelContextProtocol;
-using UltrasharpTools.Tools.Services;
+
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
 using System.Xml;
 using System.Xml.Linq;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 // Marker class for ILogger<T> category specific to SolutionTools
 public class SolutionToolsLogCategory { }
@@ -76,6 +75,22 @@ public static class SolutionTools {
             if (string.IsNullOrEmpty(solutionDir)) {
                 logger.LogWarning(".editorconfig provider could not determine solution directory from path: {SolutionPath}", solutionPath);
                 throw new McpException($"Could not determine directory for solution path: {solutionPath}");
+            }
+
+            // Check if this is a C# project by scanning for .csproj files
+            bool hasCSharpProjects = false;
+            try {
+                hasCSharpProjects = Directory.EnumerateFiles(solutionDir, "*.csproj", SearchOption.AllDirectories).Any();
+            } catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) {
+                logger.LogWarning(ex, "Failed to scan directory for .csproj files at {SolutionDir}", solutionDir);
+                // Continue - will let Roslyn fail naturally if projects are missing
+            }
+
+            if (!hasCSharpProjects) {
+                logger.LogWarning("No .csproj files found in solution directory: {SolutionDir}", solutionDir);
+                throw new McpException(
+                    $"This is not a C# project - no .csproj files found in '{solutionDir}' or its subdirectories. " +
+                    "UltrasharpTools MCP server only works with C# projects.");
             }
 
             try {

@@ -1,9 +1,6 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
+
+
 using ModelContextProtocol;
-using UltrasharpTools.Tools.Services;
-using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace UltrasharpTools.Tools.Mcp;
 

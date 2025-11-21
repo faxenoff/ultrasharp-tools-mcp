@@ -1,11 +1,6 @@
 using ModelContextProtocol;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Semantic;
-using UltrasharpTools.Tools.Services;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.Extensions.Logging;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 

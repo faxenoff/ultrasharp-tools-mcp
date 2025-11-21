@@ -1,10 +1,7 @@
-using System.Text;
-using System.Text.RegularExpressions;
+
+
 using DiffPlex.DiffBuilder;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
-using Microsoft.Extensions.Logging;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Mcp.Tools;
 using UltrasharpTools.Tools.Infrastructure;
 namespace UltrasharpTools.Tools.Mcp;

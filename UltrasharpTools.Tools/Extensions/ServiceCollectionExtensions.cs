@@ -1,9 +1,8 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+
+
 using Microsoft.Extensions.Options;
 using UltrasharpTools.Tools.Infrastructure;
-using UltrasharpTools.Tools.Interfaces;
-using UltrasharpTools.Tools.Services;
+
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Semantic;
 using UltrasharpTools.Tools.Semantic.Embedding;
@@ -16,7 +15,6 @@ using UltrasharpTools.Tools.Merge.Matching;
 using UltrasharpTools.Tools.Merge.Engine;
 using UltrasharpTools.Tools.Merge.Analysis;
 using UltrasharpTools.Tools.Layered;
-using System.Reflection;
 
 namespace UltrasharpTools.Tools.Extensions;
 

@@ -1,10 +1,9 @@
-using Microsoft.CodeAnalysis;
+
 using ModelContextProtocol;
-using UltrasharpTools.Tools.Services;
+
 using UltrasharpTools.Tools.Mcp;
 using UltrasharpTools.Tools.Mcp.Tools;
-using System.Security;
-using System.Text;
+
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
 

@@ -1,7 +1,6 @@
-using Microsoft.Extensions.Logging;
-using UltrasharpTools.Tools.Interfaces;
+
+
 using UltrasharpTools.Tools.Infrastructure;
-using System.Text;
 
 namespace UltrasharpTools.Tools.Services;
 

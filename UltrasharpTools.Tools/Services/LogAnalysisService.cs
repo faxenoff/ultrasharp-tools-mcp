@@ -1,8 +1,7 @@
-using System.Text;
-using System.Text.Json;
-using System.Text.RegularExpressions;
+
+
 using System.Xml.Linq;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Models;
 using LogLevel = UltrasharpTools.Tools.Models.LogLevel;
 

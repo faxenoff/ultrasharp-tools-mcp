@@ -1,6 +1,4 @@
 
-using Microsoft.CodeAnalysis; // Keep for potential future use, but not strictly needed for current properties
-using System.Collections.Generic;
 
 namespace UltrasharpTools.Tools.Services {
     public class MethodSemanticFeatures {
@@ -26,7 +24,6 @@ namespace UltrasharpTools.Tools.Services {
         // IOperation Features
         public Dictionary<string, int> OperationCounts { get; }
         public HashSet<string> DistinctAccessedMemberTypes { get; }
-
 
         public MethodSemanticFeatures(
             string fullyQualifiedMethodName, // Changed from IMethodSymbol

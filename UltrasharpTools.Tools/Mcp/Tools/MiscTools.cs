@@ -1,6 +1,4 @@
 using ModelContextProtocol;
-using UltrasharpTools.Tools.Services;
-using System.Text.Json;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 

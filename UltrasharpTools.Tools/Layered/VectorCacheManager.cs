@@ -1,9 +1,8 @@
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
-using System.Text;
-using System.Text.Json;
+
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Layered;

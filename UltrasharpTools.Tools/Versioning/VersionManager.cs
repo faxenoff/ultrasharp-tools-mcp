@@ -1,7 +1,5 @@
-using Microsoft.Extensions.Logging;
+
 using Microsoft.Extensions.Logging.Abstractions;
-using System.Text.Json;
-using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Tools.Versioning;
 

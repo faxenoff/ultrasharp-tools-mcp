@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+
 using Microsoft.Z3;
 
 namespace UltrasharpTools.Tools.Services;

@@ -1,8 +1,7 @@
 using System.Buffers;
 using System.IO.Hashing;
-using System.Runtime.CompilerServices;
+
 using System.Security.Cryptography;
-using System.Text;
 
 namespace UltrasharpTools.Tools.Infrastructure;
 /// <summary>

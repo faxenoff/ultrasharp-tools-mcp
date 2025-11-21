@@ -1,6 +1,5 @@
-using System.ComponentModel;
+
 using ModelContextProtocol;
-using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 

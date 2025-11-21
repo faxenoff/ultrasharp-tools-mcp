@@ -1,9 +1,7 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Logging;
+
+
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Infrastructure;
-using UltrasharpTools.Tools.Interfaces;
-using System.Text;
 
 namespace UltrasharpTools.Tools.Preview;
 

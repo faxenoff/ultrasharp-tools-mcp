@@ -1,9 +1,5 @@
 using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.Extensions.Logging;
+
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UltrasharpTools.Tools.Merge.Indexing;

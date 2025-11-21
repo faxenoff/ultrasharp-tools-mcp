@@ -1,11 +1,10 @@
-using System.Text;
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
+
+
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Mcp;
-using UltrasharpTools.Tools.Interfaces;
+
 using UltrasharpTools.Tools.Models;
-using UltrasharpTools.Tools.Services;
+
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;

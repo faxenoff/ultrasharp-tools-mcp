@@ -1,6 +1,5 @@
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Infrastructure;
-using System.Text;
 
 namespace UltrasharpTools.Tools.Services;
 

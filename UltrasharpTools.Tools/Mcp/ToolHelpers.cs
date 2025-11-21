@@ -2,7 +2,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using ModelContextProtocol;
-using UltrasharpTools.Tools.Services;
+
 using UltrasharpTools.Tools.Serialization;
 
 namespace UltrasharpTools.Tools.Mcp;
@@ -177,7 +177,6 @@ internal static class ToolHelpers {
         return string.Join(" ", parts.Where(p => !string.IsNullOrEmpty(p)));
     }
 
-
     private static string ReflectionAccessibilityToString(MethodBase? member) {
         if (member == null) return "";
         if (member.IsPublic) return "public";
@@ -326,7 +325,6 @@ internal static class ToolHelpers {
 
         return string.Join(" ", parts.Where(p => !string.IsNullOrEmpty(p)).Distinct());
     }
-
 
     public static string GetSymbolKindString(ISymbol symbol) {
         return symbol.Kind switch {

@@ -1,6 +1,5 @@
-using Microsoft.Extensions.Logging;
+
 using Microsoft.Extensions.Logging.Abstractions;
-using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Tools.Layered;
 

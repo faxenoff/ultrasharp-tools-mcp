@@ -1,4 +1,4 @@
-using UltrasharpTools.Tools.Services;
+
 using UltrasharpTools.Tools.Layered;
 
 namespace UltrasharpTools.Tools.Interfaces;
@@ -21,7 +21,6 @@ public interface ISolutionManager : IDisposable {
     /// Returns null if git integration is not enabled.
     /// </summary>
     GitWorkflowService? GitWorkflowService { get; }
-
 
     Task LoadSolutionAsync(string solutionPath, CancellationToken cancellationToken);
     Task<bool> TryAutoLoadSolutionAsync(CancellationToken cancellationToken);

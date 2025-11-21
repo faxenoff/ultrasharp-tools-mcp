@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Http;
 using UltrasharpTools.Tools.Semantic.Embedding.Providers;

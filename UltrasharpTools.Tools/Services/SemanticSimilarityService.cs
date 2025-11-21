@@ -1,20 +1,17 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+
 using Microsoft.CodeAnalysis.FlowAnalysis;
 using Microsoft.CodeAnalysis.Operations;
-using Microsoft.Extensions.Logging;
+
 using UltrasharpTools.Tools.Extensions;
 using UltrasharpTools.Tools.Mcp;
-using System;
+
 using System.Buffers;
-using System.Collections.Concurrent; // Added
+
 using System.Collections.Frozen;
-using System.Collections.Generic;
-using System.Linq;
+
 using System.Numerics; // For SIMD Vector<T>
 using System.Runtime.Intrinsics; // For advanced SIMD
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace UltrasharpTools.Tools.Services {
     public class SemanticSimilarityService(
@@ -806,7 +803,6 @@ namespace UltrasharpTools.Tools.Services {
                     referencedSymbol = semanticModel.GetSymbolInfo(maes.Name, cancellationToken).Symbol;
                 }
 
-
                 if (referencedSymbol is ITypeSymbol typeSym) {
                     AddTypeAndNamespaceIfExternal(typeSym, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
                 } else if (referencedSymbol is IMethodSymbol methodSym) {
@@ -831,7 +827,6 @@ namespace UltrasharpTools.Tools.Services {
                     }
                 }
             }
-
 
             double averageMethodComplexity = analyzedMethodCount > 0 ? totalMethodComplexity / analyzedMethodCount : 0;
 

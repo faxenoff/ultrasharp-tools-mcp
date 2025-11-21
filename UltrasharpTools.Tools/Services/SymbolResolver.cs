@@ -1,5 +1,5 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Logging;
+
+
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -16,7 +16,6 @@ public SymbolResolver(ILogger logger)
 {
 _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 }
-
 
 /// <summary>
 /// Find type by FQN in compilation

@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
-using System.Text;
-using Microsoft.Extensions.Logging;
+
 using UltrasharpTools.Tools.Semantic.Models;
 
 namespace UltrasharpTools.Tools.Semantic.Embedding.Providers;

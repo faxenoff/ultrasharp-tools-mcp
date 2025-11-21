@@ -1,7 +1,6 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
-using Microsoft.CodeAnalysis;
-using Microsoft.Extensions.Logging;
+
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Models;
 
