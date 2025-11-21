@@ -11,6 +11,10 @@ indent_size = 4
 indent_style = space
 tab_width = 4
 
+# CSharpier formatting rules
+max_line_length = 100
+# CSharpier uses its own formatting rules that override most EditorConfig settings
+
 #### .NET Code Actions ####
 
 # Type members
@@ -152,7 +156,7 @@ csharp_style_allow_embedded_statements_on_same_line_experimental = true
 
 #### C# Formatting Rules ####
 
-# New line preferences
+# New line preferences (CSharpier style - K&R/1TBS)
 csharp_new_line_before_catch = false
 csharp_new_line_before_else = false
 csharp_new_line_before_finally = false
@@ -195,4 +199,8 @@ csharp_space_between_square_brackets = false
 
 # Wrapping preferences
 csharp_preserve_single_line_blocks = true
-csharp_preserve_single_line_statements = true
+csharp_preserve_single_line_statements = false
+
+# Additional formatting preferences for CSharpier compatibility
+dotnet_style_prefer_collection_expression = when_types_loosely_match:suggestion
+# Note: CSharpier handles trailing commas automatically
