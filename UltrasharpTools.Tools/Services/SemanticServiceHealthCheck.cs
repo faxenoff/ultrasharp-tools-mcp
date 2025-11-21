@@ -45,8 +45,8 @@ public class SemanticServiceHealthCheck
 
         var result = platform switch
         {
-            "tei" => await CheckTeiHealthAsync(config.Embedding.Tei.Endpoint, cancellationToken),
-            "ollama" => await CheckOllamaHealthAsync(config.Embedding.Ollama.Endpoint, cancellationToken),
+            "tei" => await CheckTeiHealthAsync(config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080", cancellationToken),
+            "ollama" => await CheckOllamaHealthAsync(config.Embedding.Ollama?.Endpoint ?? "http://127.0.0.1:11434", cancellationToken),
             "memory" => true,
             _ => false
         };

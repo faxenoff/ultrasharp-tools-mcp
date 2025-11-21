@@ -379,7 +379,7 @@ public static class Program {
                                 else if (config.Embedding.Platform.ToLowerInvariant() == "tei")
                                 {
                                     options.TEI.BaseUrl = config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080";
-                                    options.TEI.Model = config.Embedding.Tei?.SelectedModel;
+                                    options.TEI.Model = config.Embedding.Tei?.SelectedModel ?? "BAAI/bge-small-en-v1.5";
                                 }
                             },
                             indexerConfig: null
