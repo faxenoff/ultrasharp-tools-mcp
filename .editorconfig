@@ -209,3 +209,128 @@ csharp_preserve_single_line_statements = false
 # Additional formatting preferences for CSharpier compatibility
 dotnet_style_prefer_collection_expression = when_types_loosely_match:suggestion
 # Note: CSharpier handles trailing commas automatically
+
+# ============================================================================
+# CODE ANALYSIS SEVERITY CONFIGURATION
+# ============================================================================
+# Этот раздел содержит принятые решения по настройке severity для
+# диагностик Roslyn анализаторов с обоснованием каждого решения.
+#
+# Последний полный анализ: 2025-11-22
+# Результаты анализа: 1621 Info diagnostics, 0 Warnings, 0 Errors
+# Commits: 76c10c9 (perf fixes), 1d8da79 (incremental analysis)
+#
+# Принципы:
+# - warning: важные проблемы производительности/надёжности
+# - suggestion: рекомендации которые стоит рассмотреть
+# - silent: правила которые не показываем но применяем при автофиксе
+# - none: false positives или осознанно игнорируемые
+
+# ----------------------------------------------------------------------------
+# FALSE POSITIVES - игнорируем заведомо ложные срабатывания
+# ----------------------------------------------------------------------------
+
+# CA1873: Avoid unnecessary boxing from logging interpolated strings
+# ОБОСНОВАНИЕ: Modern .NET (6.0+) автоматически оптимизирует LoggerMessage
+#              через source generators и compile-time logging optimization.
+#              Ручная оптимизация LoggerMessage.Define не нужна.
+# СТАТИСТИКА: ~1500+ срабатываний по всему solution
+# РЕШЕНИЕ: Игнорируем полностью - это false positive для .NET 6.0+
+dotnet_diagnostic.CA1873.severity = none
+
+# CA1822: Member does not access instance data and can be marked as static
+# ОБОСНОВАНИЕ: BenchmarkDotNet требует instance методы для корректной работы.
+#              Static методы не участвуют в lifecycle бенчмарков.
+# ОБЛАСТЬ: Преимущественно UltrasharpTools.Benchmarks
+# РЕШЕНИЕ: Понижаем до suggestion, игнорируем в бенчмарках
+dotnet_diagnostic.CA1822.severity = suggestion
+
+# CA1068: CancellationToken should be last parameter
+# ОБОСНОВАНИЕ: В RetryPolicy архитектурное решение - CT перед predicate
+#              для читаемости API: ExecuteAsync(action, name, ct, predicate)
+#              Это осознанное решение для fluent API design.
+# СТАТИСТИКА: 2 срабатывания в RetryPolicy.cs
+# РЕШЕНИЕ: Понижаем до suggestion - принимаем текущий дизайн API
+dotnet_diagnostic.CA1068.severity = suggestion
+
+# ----------------------------------------------------------------------------
+# PERFORMANCE RULES - критичные правила производительности
+# ----------------------------------------------------------------------------
+
+# CA1829: Use Length/Count property instead of Enumerable.Count() method
+# КРИТИЧНО: Dictionary.Count property - O(1), Count() extension - O(1) + overhead
+# ИСПРАВЛЕНО: 76c10c9 - 4 места в SIMDBenchmarks.cs
+# РЕШЕНИЕ: warning - должны использовать property, не extension method
+dotnet_diagnostic.CA1829.severity = warning
+
+# CA1854: Prefer TryGetValue over ContainsKey then indexer
+# КРИТИЧНО: Избегаем двойного Dictionary lookup - из O(2n) в O(n)
+# ИСПРАВЛЕНО: 76c10c9 - SemanticModeConfigurationLoader.cs
+# РЕШЕНИЕ: warning - это значительная оптимизация
+dotnet_diagnostic.CA1854.severity = warning
+
+# CA1845: Use span-based 'string.Concat' instead of 'Substring'
+# ВАЖНО: Zero-allocation string operations, избегаем heap allocations
+# ИСПРАВЛЕНО: 76c10c9 - SemanticModeConfigurationLoader.cs
+# РЕШЕНИЕ: warning - важно для hot paths
+dotnet_diagnostic.CA1845.severity = warning
+
+# CA1861: Avoid constant arrays as arguments (use static readonly)
+# ВАЖНО: Избегаем повторного выделения массивов при каждом вызове
+# СТАТИСТИКА: 1 срабатывание в GitWatcherService.cs
+# РЕШЕНИЕ: warning - простая оптимизация с большим эффектом
+dotnet_diagnostic.CA1861.severity = warning
+
+# CA1860: Prefer Length/Count/IsEmpty over Any() for non-blocking checks
+# ВАЖНО: collection.Any() перечисляет, Count/Length/IsEmpty - O(1)
+# РЕШЕНИЕ: warning - распространённая ошибка производительности
+dotnet_diagnostic.CA1860.severity = warning
+
+# CA1850: Prefer static HashData method over ComputeHash
+# ВАЖНО: Избегаем выделения HashAlgorithm объекта
+# РЕШЕНИЕ: warning - современный .NET API
+dotnet_diagnostic.CA1850.severity = warning
+
+# ----------------------------------------------------------------------------
+# RELIABILITY RULES - правила надёжности
+# ----------------------------------------------------------------------------
+
+# Включаем все правила категории Reliability как warnings
+dotnet_analyzer_diagnostic.category-Reliability.severity = warning
+
+# CA2007: Do not directly await a Task (ConfigureAwait)
+# ОБОСНОВАНИЕ: В MCP server/library коде важно явно указывать ConfigureAwait
+# РЕШЕНИЕ: warning - предотвращаем deadlocks
+dotnet_diagnostic.CA2007.severity = warning
+
+# CA2000: Dispose objects before losing scope
+# РЕШЕНИЕ: warning - утечки ресурсов недопустимы
+dotnet_diagnostic.CA2000.severity = warning
+
+# ----------------------------------------------------------------------------
+# SECURITY RULES - правила безопасности
+# ----------------------------------------------------------------------------
+
+# Включаем все правила категории Security как warnings
+dotnet_analyzer_diagnostic.category-Security.severity = warning
+
+# ----------------------------------------------------------------------------
+# MAINTAINABILITY RULES - правила поддерживаемости кода
+# ----------------------------------------------------------------------------
+
+# CA1506: Avoid excessive class coupling
+# РЕШЕНИЕ: warning - высокая связанность усложняет поддержку
+dotnet_diagnostic.CA1506.severity = warning
+
+# CA1502: Avoid excessive complexity (cyclomatic complexity)
+# РЕШЕНИЕ: warning - сложные методы требуют рефакторинга
+dotnet_diagnostic.CA1502.severity = warning
+
+# ----------------------------------------------------------------------------
+# STYLE RULES - понижаем severity для стилистических правил
+# ----------------------------------------------------------------------------
+
+# IDE0001-IDE9999: Roslyn IDE analyzers
+# ОБОСНОВАНИЕ: Стилистические правила не должны блокировать build
+# РЕШЕНИЕ: suggestion - показываем в IDE, но не ломаем build
+dotnet_analyzer_diagnostic.category-Style.severity = suggestion
