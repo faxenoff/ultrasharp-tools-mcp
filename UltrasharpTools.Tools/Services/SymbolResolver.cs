@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -180,7 +181,7 @@ public class SymbolResolver
 
     /// <summary>
     /// Batch resolve symbols for better performance
-    /// Uses parallel processing with compilation caching per project
+    /// Uses lazy compilation loading - only loads projects that are actually needed
     /// </summary>
     public async Task<List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>> ResolveSymbolsAsync(
         List<SerializableSymbolEntry> entries,
@@ -189,28 +190,94 @@ public class SymbolResolver
         Action<int, int>? progressCallback = null
     )
     {
-        // Pre-load all compilations in parallel (much faster than loading one-by-one)
-        var compilationCache = new Dictionary<string, Compilation?>();
-        var projects = solution.Projects.ToList();
+        // OPTIMIZATION 1: Analyze which projects are actually needed
+        var neededProjects = entries
+            .Select(e => e.ProjectName)
+            .Distinct()
+            .ToHashSet();
 
-        _logger.LogDebug("Pre-loading {Count} project compilations in parallel...", projects.Count);
-        var compilationTasks = projects
-            .Select(async p =>
+        _logger.LogInformation(
+            "Symbol resolution: {TotalSymbols} symbols from {NeededProjects}/{TotalProjects} projects",
+            entries.Count,
+            neededProjects.Count,
+            solution.Projects.Count()
+        );
+
+        // OPTIMIZATION 2: Lazy compilation loading with concurrency control
+        // Only load compilations as needed, max 2 at a time to avoid memory pressure
+        var compilationCache = new ConcurrentDictionary<string, Compilation?>();
+        var projectLookup = solution.Projects.ToDictionary(p => p.Name);
+        var compilationLoadSemaphore = new SemaphoreSlim(2, 2); // Max 2 parallel compilation loads
+        var compilationTimeout = TimeSpan.FromMinutes(5); // Timeout per compilation
+
+        async Task<Compilation?> GetOrLoadCompilationAsync(string projectName)
+        {
+            // Check cache first
+            if (compilationCache.TryGetValue(projectName, out var cached))
+                return cached;
+
+            // Not in cache - need to load
+            if (!projectLookup.TryGetValue(projectName, out var project))
             {
-                var compilation = await p.GetCompilationAsync(cancellationToken);
-                return (p.Name, compilation);
-            })
+                _logger.LogWarning("Project {ProjectName} not found in solution", projectName);
+                compilationCache[projectName] = null;
+                return null;
+            }
+
+            await compilationLoadSemaphore.WaitAsync(cancellationToken);
+            try
+            {
+                // Double-check after acquiring semaphore
+                if (compilationCache.TryGetValue(projectName, out var cached2))
+                    return cached2;
+
+                _logger.LogDebug("Loading compilation for project {ProjectName}...", projectName);
+
+                // Load with timeout to prevent infinite hangs
+                using var timeoutCts = new CancellationTokenSource(compilationTimeout);
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken,
+                    timeoutCts.Token
+                );
+
+                try
+                {
+                    var compilation = await project.GetCompilationAsync(linkedCts.Token);
+                    compilationCache[projectName] = compilation;
+                    _logger.LogDebug(
+                        "Loaded compilation for {ProjectName} ({TypeCount} types)",
+                        projectName,
+                        compilation?.GlobalNamespace.GetTypeMembers().Length ?? 0
+                    );
+                    return compilation;
+                }
+                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                {
+                    _logger.LogError(
+                        "Compilation loading for {ProjectName} timed out after {Timeout}",
+                        projectName,
+                        compilationTimeout
+                    );
+                    compilationCache[projectName] = null;
+                    return null;
+                }
+            }
+            finally
+            {
+                compilationLoadSemaphore.Release();
+            }
+        }
+
+        // OPTIMIZATION 3: Pre-warm cache for frequently used projects
+        // Load top 2 most-needed projects in background while processing starts
+        var topProjects = entries
+            .GroupBy(e => e.ProjectName)
+            .OrderByDescending(g => g.Count())
+            .Take(2)
+            .Select(g => g.Key)
             .ToList();
 
-        var compilations = await Task.WhenAll(compilationTasks);
-        foreach (var (name, compilation) in compilations)
-        {
-            compilationCache[name] = compilation;
-        }
-        _logger.LogDebug(
-            "Loaded {Count} compilations",
-            compilationCache.Count(c => c.Value != null)
-        );
+        var preloadTasks = topProjects.Select(p => GetOrLoadCompilationAsync(p)).ToList();
 
         // Process symbols in parallel batches (256 at a time to avoid overwhelming the system)
         var results = new List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>(entries.Count);
@@ -228,10 +295,12 @@ public class SymbolResolver
             var batchResults = await Task.WhenAll(
                 batch.Select(async entry =>
                 {
-                    var symbol = await TryResolveSymbolAsync(
+                    // Lazy load compilation only when needed
+                    var compilation = await GetOrLoadCompilationAsync(entry.ProjectName);
+
+                    var symbol = await TryResolveSymbolWithCachedCompilationAsync(
                         entry,
-                        solution,
-                        compilationCache,
+                        compilation,
                         cancellationToken
                     );
 
@@ -255,32 +324,35 @@ public class SymbolResolver
         // Final progress report
         progressCallback?.Invoke(processedCount, totalCount);
 
+        _logger.LogInformation(
+            "Symbol resolution complete: {Loaded}/{Needed} projects loaded, {Resolved}/{Total} symbols resolved",
+            compilationCache.Count(c => c.Value != null),
+            neededProjects.Count,
+            results.Count(r => r.Symbol != null),
+            totalCount
+        );
+
         return results;
     }
 
     /// <summary>
-    /// Try to resolve ISymbol from SerializableSymbolEntry using cached compilations
+    /// Try to resolve ISymbol from SerializableSymbolEntry using a cached compilation
     /// </summary>
-    private async Task<ISymbol?> TryResolveSymbolAsync(
+    private Task<ISymbol?> TryResolveSymbolWithCachedCompilationAsync(
         SerializableSymbolEntry entry,
-        Solution solution,
-        Dictionary<string, Compilation?> compilationCache,
+        Compilation? compilation,
         CancellationToken cancellationToken
     )
     {
         try
         {
-            // Use cached compilation instead of loading each time
-            if (
-                !compilationCache.TryGetValue(entry.ProjectName, out var compilation)
-                || compilation == null
-            )
+            if (compilation == null)
             {
                 _logger.LogTrace(
                     "Compilation not available for project {ProjectName}",
                     entry.ProjectName
                 );
-                return null;
+                return Task.FromResult<ISymbol?>(null);
             }
 
             // Parse FQN to extract type and member information
@@ -304,12 +376,12 @@ public class SymbolResolver
                 }
             }
 
-            return symbol;
+            return Task.FromResult(symbol);
         }
         catch (Exception ex)
         {
             _logger.LogTrace(ex, "Error resolving symbol {FQN}", entry.CanonicalFqn);
-            return null;
+            return Task.FromResult<ISymbol?>(null);
         }
     }
 }
