@@ -391,10 +391,13 @@ public static class Program
                     );
 
                     // Log endpoint before health check
-                    var endpoint =
-                        config.Embedding.Platform.ToLowerInvariant() == "tei"
-                            ? config.Embedding.Tei?.Endpoint
-                            : config.Embedding.Ollama?.Endpoint;
+                    var endpoint = string.Equals(
+                        config.Embedding.Platform,
+                        "tei",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                        ? config.Embedding.Tei?.Endpoint
+                        : config.Embedding.Ollama?.Endpoint;
                     File.AppendAllText(
                         Path.Combine(logDirPath, "semantic-debug.log"),
                         $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Endpoint: {endpoint ?? "NULL"}\n"
@@ -460,7 +463,13 @@ public static class Program
                                 options.Provider = config.Embedding.Platform;
                                 options.AutoDetectGPU = false; // Already detected
 
-                                if (config.Embedding.Platform.ToLowerInvariant() == "ollama")
+                                if (
+                                    string.Equals(
+                                        config.Embedding.Platform,
+                                        "ollama",
+                                        StringComparison.OrdinalIgnoreCase
+                                    )
+                                )
                                 {
                                     options.Ollama.BaseUrl =
                                         config.Embedding.Ollama?.Endpoint
@@ -469,7 +478,13 @@ public static class Program
                                         config.Embedding.Ollama?.SelectedModel
                                         ?? "nomic-embed-text";
                                 }
-                                else if (config.Embedding.Platform.ToLowerInvariant() == "tei")
+                                else if (
+                                    string.Equals(
+                                        config.Embedding.Platform,
+                                        "tei",
+                                        StringComparison.OrdinalIgnoreCase
+                                    )
+                                )
                                 {
                                     options.TEI.BaseUrl =
                                         config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080";
