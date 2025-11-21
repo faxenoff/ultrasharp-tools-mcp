@@ -174,6 +174,46 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
 
         var solution = _solutionManager.CurrentSolution!;
 
+        // INCREMENTAL: Определяем измененные файлы для умного кеширования
+        var changedFiles = GetChangedFiles(solution);
+        HashSet<string>? affectedFiles = null;
+
+        if (changedFiles.Count > 0)
+        {
+            _logger.LogInformation(
+                "INCREMENTAL: Detected {ChangedCount} changed files (out of {TotalFiles} total files)",
+                changedFiles.Count,
+                solution.Projects.SelectMany(p => p.Documents).Count()
+            );
+
+            // Строим/обновляем граф зависимостей (легковесная операция)
+            await BuildDependencyGraphAsync(solution, cancellationToken);
+
+            // Определяем какие файлы затронуты изменениями
+            affectedFiles = GetAffectedFiles(changedFiles);
+            var potentialSavings = 100.0
+                * (
+                    1
+                    - (double)affectedFiles.Count
+                        / solution.Projects.SelectMany(p => p.Documents).Count()
+                );
+
+            _logger.LogInformation(
+                "INCREMENTAL: {AffectedCount} files affected by changes (potential {Savings:F1}% analysis skip)",
+                affectedFiles.Count,
+                potentialSavings
+            );
+
+            // Инвалидируем кеш для затронутых файлов
+            InvalidateFileCache(affectedFiles);
+        }
+        else if (_fileCache.Count > 0)
+        {
+            _logger.LogInformation(
+                "INCREMENTAL: No changed files detected (100% cache hit potential)"
+            );
+        }
+
         // OPTIMIZATION: Ранняя фильтрация проектов (экономия 50-90% времени)
         var projectsToAnalyze = solution.Projects.Where(p => p.SupportsCompilation);
 
@@ -197,15 +237,87 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
             totalProjects
         );
 
-        // Анализируем все проекты параллельно с оптимизациями
-        var diagnosticTasks = projectsToAnalyze.Select(async project =>
-            await AnalyzeProjectAsync(project, filterOptions, cancellationToken)
+        // INCREMENTAL: Собираем диагностики из кеша и определяем какие проекты нужно анализировать
+        var allDiagnostics = new List<(Diagnostic Diagnostic, string FilePath, string ProjectName)>();
+        var projectsNeedingAnalysis = new List<Project>();
+
+        foreach (var project in projectsToAnalyze)
+        {
+            bool needsAnalysis = false;
+            var cachedDiagnostics = new List<(Diagnostic Diagnostic, string FilePath, string ProjectName)>();
+
+            // Проверяем есть ли в проекте файлы которые нужно переанализировать
+            foreach (var document in project.Documents)
+            {
+                if (
+                    string.IsNullOrEmpty(document.FilePath)
+                    || !File.Exists(document.FilePath)
+                )
+                    continue;
+
+                // Если файл затронут изменениями - весь проект нужно переанализировать
+                if (affectedFiles != null && affectedFiles.Contains(document.FilePath))
+                {
+                    needsAnalysis = true;
+                    break;
+                }
+
+                // Пытаемся взять из кеша
+                if (
+                    _fileCache.TryGetValue(
+                        document.FilePath,
+                        out var fileCached
+                    )
+                )
+                {
+                    // Добавляем кешированные диагностики для этого файла
+                    cachedDiagnostics.AddRange(
+                        fileCached.Diagnostics.Select(d => (d, document.FilePath, project.Name))
+                    );
+                }
+                else
+                {
+                    // Нет в кеше - нужно анализировать проект
+                    needsAnalysis = true;
+                    break;
+                }
+            }
+
+            if (needsAnalysis)
+            {
+                projectsNeedingAnalysis.Add(project);
+            }
+            else if (cachedDiagnostics.Count > 0)
+            {
+                // Все файлы проекта в кеше - используем кешированные результаты
+                allDiagnostics.AddRange(cachedDiagnostics);
+                _logger.LogDebug(
+                    "INCREMENTAL: Using cached diagnostics for project {ProjectName} ({Count} diagnostics)",
+                    project.Name,
+                    cachedDiagnostics.Count
+                );
+            }
+        }
+
+        _logger.LogInformation(
+            "INCREMENTAL: {CachedProjects}/{TotalProjects} projects fully cached, analyzing {NeedAnalysis} projects",
+            totalProjects - projectsNeedingAnalysis.Count,
+            totalProjects,
+            projectsNeedingAnalysis.Count
         );
 
-        var projectDiagnostics = await Task.WhenAll(diagnosticTasks);
+        // Анализируем только проекты которые нуждаются в переанализе
+        if (projectsNeedingAnalysis.Count > 0)
+        {
+            var diagnosticTasks = projectsNeedingAnalysis.Select(async project =>
+                await AnalyzeProjectAsync(project, filterOptions, cancellationToken)
+            );
 
-        // Объединяем результаты
-        var allDiagnostics = projectDiagnostics.SelectMany(x => x).ToList();
+            var projectDiagnostics = await Task.WhenAll(diagnosticTasks);
+
+            // Объединяем результаты нового анализа с кешированными
+            allDiagnostics.AddRange(projectDiagnostics.SelectMany(x => x));
+        }
 
         // Сохраняем в кеш
         _cache[normalizedPath] = (DateTime.UtcNow, allDiagnostics);
@@ -334,14 +446,42 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
                 );
             }
 
-            // Возвращаем диагностики с метаданными (фильтруем подавленные)
-            return diagnostics
+            // Собираем диагностики с метаданными (фильтруем подавленные)
+            var projectDiagnostics = diagnostics
                 .Where(d => !d.IsSuppressed)
                 .Select(d =>
                 {
                     var filePath = d.Location.SourceTree?.FilePath ?? "Unknown";
                     return (d, filePath, project.Name);
-                });
+                })
+                .ToList();
+
+            // INCREMENTAL: Сохраняем результаты в file cache по файлам
+            var diagnosticsByFile = projectDiagnostics
+                .Where(item => item.filePath != "Unknown")
+                .GroupBy(item => item.filePath)
+                .ToDictionary(g => g.Key, g => g.Select(item => item.d).ToList());
+
+            foreach (var document in project.Documents)
+            {
+                if (string.IsNullOrEmpty(document.FilePath) || !File.Exists(document.FilePath))
+                    continue;
+
+                var fileHash = ComputeFileHash(document.FilePath);
+                var fileDiagnostics = diagnosticsByFile.ContainsKey(document.FilePath)
+                    ? diagnosticsByFile[document.FilePath]
+                    : new List<Diagnostic>();
+
+                _fileCache[document.FilePath] = (fileHash, DateTime.UtcNow, fileDiagnostics);
+            }
+
+            _logger.LogDebug(
+                "INCREMENTAL: Cached diagnostics for {FileCount} files in project {ProjectName}",
+                diagnosticsByFile.Count,
+                project.Name
+            );
+
+            return projectDiagnostics;
         }
         catch (Exception ex)
         {
