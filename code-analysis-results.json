@@ -1,0 +1,25 @@
+{
+  "totalIssues": 1552,
+  "severity": {
+    "Info": 1552,
+    "Warning": 0,
+    "Error": 0
+  },
+  "topIssueTypes": {
+    "CA1873": "Expensive logging arguments (873+ occurrences)",
+    "CA1822": "Methods can be marked as static (200+ occurrences)",
+    "CA1860": "Prefer Count > 0 over Any() (50+ occurrences)",
+    "CA1862": "Use StringComparison for case-insensitive comparisons",
+    "CA1869": "Cache JsonSerializerOptions instances",
+    "CA1861": "Prefer static readonly fields over constant arrays",
+    "CA1854": "Prefer TryGetValue over ContainsKey + indexer",
+    "CA1847": "Use char overload instead of string",
+    "CA1845": "Use span-based string.Concat and AsSpan",
+    "CA1850": "Prefer static HashData method",
+    "CA1068": "CancellationToken should be last parameter",
+    "CA2016": "Forward CancellationToken parameter",
+    "CA2254": "Logging template should not vary",
+    "CA1816": "Call GC.SuppressFinalize in Dispose"
+  },
+  "note": "Полный список диагностик доступен через MCP инструмент analyze_code_style с пагинацией (skip/take параметры)"
+}

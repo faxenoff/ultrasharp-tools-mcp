@@ -434,7 +434,7 @@ namespace UltrasharpTools.Tools.Services
                         semanticModel,
                         cancellationToken
                     );
-                    if (controlFlowGraph != null && controlFlowGraph.Blocks.Any())
+                    if (controlFlowGraph != null && controlFlowGraph.Blocks.Count() > 0)
                     {
                         basicBlockCount = controlFlowGraph.Blocks.Length;
                     }
@@ -660,10 +660,8 @@ namespace UltrasharpTools.Tools.Services
             double paramCountSimilarity =
                 (method1.ParameterTypeNames.Count == method2.ParameterTypeNames.Count) ? 1.0 : 0.0;
             double paramTypeSimilarity = 0.0;
-            if (
-                method1.ParameterTypeNames.Count == method2.ParameterTypeNames.Count
-                && method1.ParameterTypeNames.Any()
-            )
+            if (method1.ParameterTypeNames.Count == method2.ParameterTypeNames.Count
+                && method1.ParameterTypeNames.Count() > 0)
             {
                 int matchingParams = 0;
                 for (int k = 0; k < method1.ParameterTypeNames.Count; k++)
@@ -681,7 +679,7 @@ namespace UltrasharpTools.Tools.Services
             }
 
             double invokedSimilarity = 0.0;
-            if (method1.InvokedMethodSignatures.Any() || method2.InvokedMethodSignatures.Any())
+            if (method1.InvokedMethodSignatures.Any() || method2.InvokedMethodSignatures.Count() > 0)
             {
                 var intersection = method1
                     .InvokedMethodSignatures.Intersect(method2.InvokedMethodSignatures)
@@ -732,7 +730,7 @@ namespace UltrasharpTools.Tools.Services
 
             if (
                 method1.DistinctAccessedMemberTypes.Any()
-                || method2.DistinctAccessedMemberTypes.Any()
+                || method2.DistinctAccessedMemberTypes.Count() > 0
             )
             {
                 var intersectionTypes = method1
@@ -781,9 +779,9 @@ namespace UltrasharpTools.Tools.Services
             Dictionary<string, int> vec2
         )
         {
-            if (!vec1.Any() && !vec2.Any())
+            if (vec1.Count() == 0 && vec2.Count() == 0)
                 return 1.0;
-            if (!vec1.Any() || !vec2.Any())
+            if (vec1.Count() == 0 || vec2.Count() == 0)
                 return 0.0;
 
             var allKeysSet = vec1.Keys.Union(vec2.Keys);
@@ -1592,7 +1590,7 @@ namespace UltrasharpTools.Tools.Services
             );
 
             double methodMatchingSimilarity = 0.0;
-            if (class1.MethodFeatures.Any() && class2.MethodFeatures.Any())
+            if (class1.MethodFeatures.Any() && class2.MethodFeatures.Count() > 0)
             {
                 var smallerList =
                     class1.MethodFeatures.Count < class2.MethodFeatures.Count
@@ -1628,11 +1626,10 @@ namespace UltrasharpTools.Tools.Services
                         usedLargerListIndices.Add(bestMatchIndex);
                     }
                 }
-                methodMatchingSimilarity = smallerList.Any()
-                    ? totalMaxSimilarity / smallerList.Count
+                methodMatchingSimilarity = smallerList.Count() > 0 ? totalMaxSimilarity / smallerList.Count
                     : 1.0;
             }
-            else if (!class1.MethodFeatures.Any() && !class2.MethodFeatures.Any())
+            else if (class1.MethodFeatures.Count() == 0 && class2.MethodFeatures.Count() == 0)
             {
                 methodMatchingSimilarity = 1.0; // Both have no methods, considered perfectly similar in this aspect
             }
@@ -1811,9 +1808,9 @@ namespace UltrasharpTools.Tools.Services
 
         private double CalculateJaccardSimilarity<T>(ICollection<T> set1, ICollection<T> set2)
         {
-            if (!set1.Any() && !set2.Any())
+            if (set1.Count() == 0 && set2.Count() == 0)
                 return 1.0;
-            if (!set1.Any() || !set2.Any())
+            if (set1.Count() == 0 || set2.Count() == 0)
                 return 0.0;
 
             var intersection = set1.Intersect(set2).Count();
