@@ -68,9 +68,9 @@ public class SIMDBenchmarks
         Dictionary<string, int> vec2
     )
     {
-        if (vec1.Count() == 0 && vec2.Count() == 0)
+        if (vec1.Count == 0 && vec2.Count == 0)
             return 1.0;
-        if (vec1.Count() == 0 || vec2.Count() == 0)
+        if (vec1.Count == 0 || vec2.Count == 0)
             return 0.0;
 
         var allKeys = vec1.Keys.Union(vec2.Keys);
@@ -104,9 +104,9 @@ public class SIMDBenchmarks
         Dictionary<string, int> vec2
     )
     {
-        if (vec1.Count() == 0 && vec2.Count() == 0)
+        if (vec1.Count == 0 && vec2.Count == 0)
             return 1.0;
-        if (vec1.Count() == 0 || vec2.Count() == 0)
+        if (vec1.Count == 0 || vec2.Count == 0)
             return 0.0;
 
         var allKeys = vec1.Keys.Union(vec2.Keys).ToArray();

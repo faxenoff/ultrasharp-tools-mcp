@@ -220,7 +220,7 @@ public sealed class SemanticModeConfigurationLoader
 
             """.TrimEnd();
 
-        json = header + json.Substring(1); // Replace opening brace
+        json = string.Concat(header, json.AsSpan(1)); // Replace opening brace
         await File.WriteAllTextAsync(path, json, cancellationToken);
 
         _logger.LogInformation("Created example semantic mode config at {Path}", path);
@@ -273,10 +273,9 @@ public sealed class SemanticModeConfigurationLoader
 
         foreach (var (toolName, overrideSettings) in overrides.ToolSettings)
         {
-            if (merged.ToolSettings.ContainsKey(toolName))
+            if (merged.ToolSettings.TryGetValue(toolName, out var existing))
             {
                 // Update existing
-                var existing = merged.ToolSettings[toolName];
                 existing.Enabled = overrideSettings.Enabled;
                 existing.TopK = overrideSettings.TopK;
                 existing.Threshold = overrideSettings.Threshold;
