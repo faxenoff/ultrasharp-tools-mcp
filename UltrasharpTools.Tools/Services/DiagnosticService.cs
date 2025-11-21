@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using UltrasharpTools.Tools.Models;
 
@@ -15,11 +16,23 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
     private readonly ILogger<DiagnosticService> _logger = logger;
     private readonly ISolutionManager _solutionManager = solutionManager;
 
-    // Кеш результатов анализа: ключ = solution path, значение = (timestamp, diagnostics)
+    // CACHE: Кеш результатов анализа всего решения
     private readonly ConcurrentDictionary<
         string,
         (DateTime Timestamp, List<(Diagnostic Diagnostic, string FilePath, string ProjectName)> Diagnostics)
     > _cache = new();
+
+    // INCREMENTAL: Кеш диагностик по отдельным файлам с hash для отслеживания изменений
+    private readonly ConcurrentDictionary<
+        string, // file path
+        (string FileHash, DateTime Timestamp, List<Diagnostic> Diagnostics)
+    > _fileCache = new();
+
+    // INCREMENTAL: Граф зависимостей между файлами (кто от кого зависит)
+    private readonly ConcurrentDictionary<
+        string, // file path
+        HashSet<string> // зависимые файлы
+    > _dependencyGraph = new();
 
     // Время жизни кеша - 5 минут
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
@@ -334,6 +347,177 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
         {
             _logger.LogWarning(ex, "Failed to analyze project: {ProjectName}", project.Name);
             return [];
+        }
+    }
+
+    // ============================================================================
+    // INCREMENTAL ANALYSIS HELPERS
+    // ============================================================================
+
+    /// <summary>
+    /// Вычисляет SHA256 hash содержимого файла
+    /// </summary>
+    private static string ComputeFileHash(string filePath)
+    {
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var hashBytes = sha256.ComputeHash(stream);
+            return Convert.ToHexString(hashBytes);
+        }
+        catch
+        {
+            // Если не удалось прочитать файл, возвращаем уникальный hash
+            return Guid.NewGuid().ToString();
+        }
+    }
+
+    /// <summary>
+    /// Определяет какие файлы изменились с момента последнего анализа
+    /// </summary>
+    private HashSet<string> GetChangedFiles(Solution solution)
+    {
+        var changedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var project in solution.Projects)
+        {
+            foreach (var document in project.Documents)
+            {
+                if (string.IsNullOrEmpty(document.FilePath) || !File.Exists(document.FilePath))
+                    continue;
+
+                var currentHash = ComputeFileHash(document.FilePath);
+
+                // Проверяем изменился ли файл
+                if (
+                    !_fileCache.TryGetValue(document.FilePath, out var cached)
+                    || cached.FileHash != currentHash
+                )
+                {
+                    changedFiles.Add(document.FilePath);
+                }
+            }
+        }
+
+        _logger.LogDebug("Found {ChangedCount} changed files", changedFiles.Count);
+        return changedFiles;
+    }
+
+    /// <summary>
+    /// Строит граф зависимостей между файлами на основе using statements
+    /// </summary>
+    private async Task BuildDependencyGraphAsync(
+        Solution solution,
+        CancellationToken cancellationToken
+    )
+    {
+        _logger.LogDebug("Building dependency graph...");
+
+        foreach (var project in solution.Projects)
+        {
+            var compilation = await project.GetCompilationAsync(cancellationToken);
+            if (compilation == null)
+                continue;
+
+            foreach (var document in project.Documents)
+            {
+                if (string.IsNullOrEmpty(document.FilePath))
+                    continue;
+
+                try
+                {
+                    var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+                    if (semanticModel == null)
+                        continue;
+
+                    var root = await document.GetSyntaxRootAsync(cancellationToken);
+                    if (root == null)
+                        continue;
+
+                    // Собираем все referenced symbols
+                    var dependencies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    // Проходим по всем IdentifierNameSyntax узлам
+                    foreach (var identifier in root.DescendantNodes().OfType<IdentifierNameSyntax>())
+                    {
+                        var symbolInfo = semanticModel.GetSymbolInfo(identifier, cancellationToken);
+                        if (symbolInfo.Symbol == null)
+                            continue;
+
+                        // Находим файл где определён символ
+                        var locations = symbolInfo.Symbol.Locations;
+                        foreach (var location in locations)
+                        {
+                            if (location.SourceTree?.FilePath != null)
+                            {
+                                dependencies.Add(location.SourceTree.FilePath);
+                            }
+                        }
+                    }
+
+                    if (dependencies.Count > 0)
+                    {
+                        _dependencyGraph[document.FilePath] = dependencies;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(
+                        ex,
+                        "Failed to build dependencies for {FilePath}",
+                        document.FilePath
+                    );
+                }
+            }
+        }
+
+        _logger.LogDebug("Dependency graph built with {Count} entries", _dependencyGraph.Count);
+    }
+
+    /// <summary>
+    /// Получает все файлы которые зависят от измененных (transitive closure)
+    /// </summary>
+    private HashSet<string> GetAffectedFiles(HashSet<string> changedFiles)
+    {
+        var affectedFiles = new HashSet<string>(
+            changedFiles,
+            StringComparer.OrdinalIgnoreCase
+        );
+
+        // Ищем все файлы которые зависят от измененных
+        var toProcess = new Queue<string>(changedFiles);
+        while (toProcess.Count > 0)
+        {
+            var file = toProcess.Dequeue();
+
+            // Находим все файлы которые зависят от текущего
+            foreach (var (dependentFile, dependencies) in _dependencyGraph)
+            {
+                if (dependencies.Contains(file) && affectedFiles.Add(dependentFile))
+                {
+                    toProcess.Enqueue(dependentFile);
+                }
+            }
+        }
+
+        _logger.LogDebug(
+            "Affected files: {AffectedCount} (changed: {ChangedCount})",
+            affectedFiles.Count,
+            changedFiles.Count
+        );
+
+        return affectedFiles;
+    }
+
+    /// <summary>
+    /// Сбрасывает кеш для указанных файлов
+    /// </summary>
+    private void InvalidateFileCache(IEnumerable<string> filePaths)
+    {
+        foreach (var filePath in filePaths)
+        {
+            _fileCache.TryRemove(filePath, out _);
         }
     }
 }
