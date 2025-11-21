@@ -26,6 +26,13 @@ public static class Program
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
     public const string ApplicationVersion = "3.0.6";
 
+    private static readonly JsonSerializerOptions SemanticConfigJsonOptions =
+        new()
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = null, // Allow both snake_case and PascalCase
+        };
+
     public static async Task<int> Main(string[] args)
     {
         _ = typeof(SolutionTools);
@@ -368,14 +375,9 @@ public static class Program
                     $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Config JSON length: {configJson.Length}\n"
                 );
 
-                var jsonOptions = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    PropertyNamingPolicy = null, // Allow both snake_case and PascalCase
-                };
                 var config = JsonSerializer.Deserialize<SemanticEmbeddingConfig>(
                     configJson,
-                    jsonOptions
+                    SemanticConfigJsonOptions
                 );
 
                 File.AppendAllText(
