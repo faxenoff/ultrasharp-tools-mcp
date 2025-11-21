@@ -145,8 +145,20 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
             );
         }
 
-        // Загружаем solution
-        await _solutionManager.LoadSolutionAsync(solutionPath, cancellationToken);
+        // FIX: Загружаем solution только если ещё не загружено или это другое решение
+        if (
+            !_solutionManager.IsSolutionLoaded
+            || _solutionManager.CurrentSolution?.FilePath != solutionPath
+        )
+        {
+            _logger.LogInformation("Loading solution: {SolutionPath}", solutionPath);
+            await _solutionManager.LoadSolutionAsync(solutionPath, cancellationToken);
+        }
+        else
+        {
+            _logger.LogDebug("Solution already loaded: {SolutionPath}", solutionPath);
+        }
+
         var solution = _solutionManager.CurrentSolution!;
 
         // OPTIMIZATION: Ранняя фильтрация проектов (экономия 50-90% времени)
