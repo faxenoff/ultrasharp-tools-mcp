@@ -13,6 +13,7 @@ public sealed class VectorBasedSemanticSimilarityService : ISemanticSimilaritySe
     private readonly SemanticSearchService _searchService;
     private readonly ILogger<VectorBasedSemanticSimilarityService> _logger;
     private readonly VectorBasedSemanticSimilarityConfig _config;
+    private static readonly string[] separator = new[] { "::", "." };
 
     public VectorBasedSemanticSimilarityService(
         SemanticSearchService searchService,
@@ -178,7 +179,7 @@ public sealed class VectorBasedSemanticSimilarityService : ISemanticSimilaritySe
     private static string ExtractMethodName(string fqn)
     {
         // Extract method name from FQN like "Namespace.Class::MethodName"
-        var parts = fqn.Split(new[] { "::", "." }, StringSplitOptions.RemoveEmptyEntries);
+        var parts = fqn.Split(separator, StringSplitOptions.RemoveEmptyEntries);
         return parts.Length > 0 ? parts[^1] : fqn;
     }
 }

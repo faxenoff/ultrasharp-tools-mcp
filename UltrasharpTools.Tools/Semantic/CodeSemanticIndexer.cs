@@ -301,7 +301,7 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         CancellationToken ct
     )
     {
-        var methodSymbol = semanticModel.GetDeclaredSymbol(methodNode);
+        var methodSymbol = semanticModel.GetDeclaredSymbol(methodNode, cancellationToken: ct);
         if (methodSymbol == null)
         {
             return null;
@@ -338,7 +338,7 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         CancellationToken ct
     )
     {
-        var classSymbol = semanticModel.GetDeclaredSymbol(classNode);
+        var classSymbol = semanticModel.GetDeclaredSymbol(classNode, cancellationToken: ct);
         if (classSymbol == null)
         {
             return null;

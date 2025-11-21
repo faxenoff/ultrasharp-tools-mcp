@@ -297,7 +297,7 @@ namespace UltrasharpTools.Tools.Services
                 }
 
                 // If no embedded sources found, check for standalone PDB
-                if (embeddedSources.Count() == 0)
+                if (embeddedSources.Count == 0)
                 {
                     var pdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
                     if (File.Exists(pdbPath))
@@ -323,7 +323,7 @@ namespace UltrasharpTools.Tools.Services
                     }
                 }
 
-                if (embeddedSources.Count() == 0)
+                if (embeddedSources.Count == 0)
                 {
                     _logger.LogInformation(
                         "No embedded sources found in assembly or PDB for {SymbolName}",

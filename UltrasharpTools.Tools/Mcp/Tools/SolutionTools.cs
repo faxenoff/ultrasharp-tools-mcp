@@ -1012,7 +1012,7 @@ public static class SolutionTools
                 }
 
                 // Add types to the leaf namespace
-                if (namespaceContents.TryGetValue(fullNamespace, out var types) && types.Count() > 0)
+                if (namespaceContents.TryGetValue(fullNamespace, out var types) && types.Count > 0)
                 {
                     var leafNsParts = namespaceParts[fullNamespace];
                     foreach (var type in types)
@@ -1335,7 +1335,7 @@ public static class SolutionTools
                 }
             }
 
-            if (membersContent || type.GetTypeMembers().Count() > 0)
+            if (membersContent || type.GetTypeMembers().Length > 0)
             {
                 sb.Append('\n').Append(indent).Append("}");
             }
@@ -1390,7 +1390,7 @@ public static class SolutionTools
 
             if (type is INamedTypeSymbol namedType)
             {
-                if (namedType.IsTupleType && namedType.TupleElements.Count() > 0)
+                if (namedType.IsTupleType && namedType.TupleElements.Length > 0)
                 {
                     return $"({string.Join(", ", namedType.TupleElements.Select(te => $"{GetTypeShortName(te.Type)} {te.Name}"))})";
                 }
@@ -1663,7 +1663,7 @@ public static class SolutionTools
                 .ToList();
 
             // Fields
-            if (fields.Count() > 0)
+            if (fields.Count > 0)
             {
                 if (detailLevel <= DetailLevel.NoConstantFieldNames)
                 {
@@ -1681,7 +1681,7 @@ public static class SolutionTools
             }
 
             // Constants
-            if (constants.Count() > 0)
+            if (constants.Count > 0)
             {
                 if (detailLevel < DetailLevel.NoConstantFieldNames)
                 { // Show names if detail is Full
@@ -1699,7 +1699,7 @@ public static class SolutionTools
             }
 
             // Enum Members
-            if (enumValues.Count() > 0)
+            if (enumValues.Count > 0)
             {
                 if (detailLevel < DetailLevel.NoEventEnumNames)
                 {
@@ -1715,7 +1715,7 @@ public static class SolutionTools
             }
 
             // Events
-            if (events.Count() > 0)
+            if (events.Count > 0)
             {
                 if (detailLevel < DetailLevel.NoEventEnumNames)
                 {
@@ -1733,7 +1733,7 @@ public static class SolutionTools
             }
 
             // Properties
-            if (properties.Count() > 0)
+            if (properties.Count > 0)
             {
                 if (detailLevel < DetailLevel.NoPropertyTypes)
                 { // Full, NoConstantFieldNames, NoEventEnumNames, NoMethodParamTypes
@@ -1786,7 +1786,7 @@ public static class SolutionTools
             }
 
             // Methods (including constructors)
-            if (methods.Count() > 0)
+            if (methods.Count > 0)
             {
                 if (detailLevel <= DetailLevel.FiftyPercentMethodNames)
                 {

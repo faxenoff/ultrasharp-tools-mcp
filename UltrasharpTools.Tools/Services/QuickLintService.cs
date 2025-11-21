@@ -66,7 +66,7 @@ public class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager
                             )
                             .ToList();
 
-                        if (relevantDocuments.Count() == 0)
+                        if (relevantDocuments.Count == 0)
                             return;
 
                         var compilation = await project.GetCompilationAsync(cancellationToken);

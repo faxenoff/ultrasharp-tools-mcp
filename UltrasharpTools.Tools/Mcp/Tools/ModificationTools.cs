@@ -374,7 +374,7 @@ public static class ModificationTools
                 .Where(m => !m.IsImplicitlyDeclared && m.MethodKind == MethodKind.Ordinary)
                 .ToList();
 
-            if (existingMethods.Count() == 0)
+            if (existingMethods.Count == 0)
             {
                 return true; // No method with the same name exists
             }
@@ -1004,6 +1004,19 @@ public static class ModificationTools
         return SyntaxFacts.IsValidIdentifier(name);
     }
 
+    private static readonly string[] operation = new[]
+                    {
+                        "variable",
+                        "method",
+                        "class",
+                        "property",
+                        "field",
+                        "invocation",
+                        "parameter",
+                        "type",
+                        "identifier",
+                    };
+
     [McpServerTool(
         Name = "replace_all_references",
         Idempotent = false,
@@ -1087,7 +1100,7 @@ public static class ModificationTools
                 // Create a shortened version of the replacement code for the commit message
                 string shortReplacementCode =
                     replacementCode.Length > 30
-                        ? replacementCode.Substring(0, 30) + "..."
+                        ? string.Concat(replacementCode.AsSpan(0, 30), "...")
                         : replacementCode;
 
                 string finalCommitMessage =
@@ -1142,18 +1155,7 @@ public static class ModificationTools
                     );
 
                     // Validate node kinds
-                    var validKinds = new[]
-                    {
-                        "variable",
-                        "method",
-                        "class",
-                        "property",
-                        "field",
-                        "invocation",
-                        "parameter",
-                        "type",
-                        "identifier",
-                    };
+                    var validKinds = operation;
                     foreach (var kind in syntaxNodeKinds)
                     {
                         if (!validKinds.Contains(kind.ToLowerInvariant()))
@@ -2833,7 +2835,7 @@ public static class ModificationTools
                     .Any(n => n.Name.ToString() == namespaceName);
 
                 if (hasNamespace
-                    || (namespaceSymbol.IsGlobalNamespace && compilationUnit.Members.Count() > 0)
+                    || (namespaceSymbol.IsGlobalNamespace && compilationUnit.Members.Count > 0)
                 )
                 {
                     return document;

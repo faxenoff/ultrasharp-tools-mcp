@@ -111,7 +111,7 @@ public sealed class LazyEmbeddingGenerator
 
             case CodeUnitType.Type:
                 // Для типов - signature + имена членов
-                var members = unit.ChildIds.Count() > 0 ? $"members: {string.Join(", ", unit.ChildIds.Take(10))}"
+                var members = unit.ChildIds.Count > 0 ? $"members: {string.Join(", ", unit.ChildIds.Take(10))}"
                     : "";
                 return $"{unit.Signature} {members}";
 

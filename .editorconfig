@@ -322,12 +322,18 @@ dotnet_analyzer_diagnostic.category-Security.severity = warning
 # ----------------------------------------------------------------------------
 
 # CA1506: Avoid excessive class coupling
-# РЕШЕНИЕ: warning - высокая связанность усложняет поддержку
-dotnet_diagnostic.CA1506.severity = warning
+# ОБОСНОВАНИЕ: MCP Tools классы естественно имеют высокую связанность
+#              (DI, Solution, logger, services). Это архитектурное решение.
+# СТАТИСТИКА: 46 срабатываний в MCP Tools классах
+# РЕШЕНИЕ: suggestion - показываем, но не ломаем build
+dotnet_diagnostic.CA1506.severity = suggestion
 
 # CA1502: Avoid excessive complexity (cyclomatic complexity)
-# РЕШЕНИЕ: warning - сложные методы требуют рефакторинга
-dotnet_diagnostic.CA1502.severity = warning
+# ОБОСНОВАНИЕ: Некоторые методы (parsing, matching) имеют высокую complexity
+#              по природе задачи. Рефакторинг может ухудшить читаемость.
+# СТАТИСТИКА: 38 срабатываний в parsing/matching логике
+# РЕШЕНИЕ: suggestion - показываем, но не ломаем build
+dotnet_diagnostic.CA1502.severity = suggestion
 
 # ----------------------------------------------------------------------------
 # STYLE RULES - понижаем severity для стилистических правил

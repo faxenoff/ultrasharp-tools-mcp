@@ -502,7 +502,7 @@ public class CodeModificationService(
 
                     // For a symbol, we'll get its defining document and limit replacements to the symbol's span
                     var syntaxReferences = symbol.DeclaringSyntaxReferences;
-                    if (syntaxReferences.Count() > 0)
+                    if (syntaxReferences.Length > 0)
                     {
                         foreach (var syntaxRef in syntaxReferences)
                         {
@@ -532,9 +532,9 @@ public class CodeModificationService(
                             {
                                 // Create new text by replacing the symbol's span with the modified text
                                 var newFullText =
-                                    originalText.Substring(0, nodeSpan.Start)
-                                    + newSymbolText
-                                    + originalText.Substring(nodeSpan.Start + nodeSpan.Length);
+                                    string.Concat(originalText.AsSpan(0, nodeSpan.Start)
+, newSymbolText
+, originalText.AsSpan(nodeSpan.Start + nodeSpan.Length));
 
                                 var newDocument = document.WithText(
                                     SourceText.From(newFullText, sourceText.Encoding)
@@ -866,7 +866,7 @@ public class CodeModificationService(
                 csFiles.Count
             );
 
-            if (csFiles.Any() && !string.IsNullOrEmpty(solutionPath))
+            if (csFiles.Count > 0 && !string.IsNullOrEmpty(solutionPath))
             {
                 _logger.LogInformation(
                     "Running quick lint on {Count} modified C# files",
@@ -895,7 +895,7 @@ public class CodeModificationService(
             {
                 _logger.LogWarning(
                     "Quick lint skipped: csFiles.Any()={HasCsFiles}, solutionPath isEmpty={IsEmpty}",
-                    csFiles.Any(),
+                    csFiles.Count > 0,
                     string.IsNullOrEmpty(solutionPath)
                 );
             }

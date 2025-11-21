@@ -10,6 +10,7 @@ public sealed class Z3ConstraintSolver : IDisposable
     private readonly ILogger<Z3ConstraintSolver> _logger;
     private readonly Context _context;
     private bool _disposed;
+    private static readonly char[] separator = new[] { ' ' };
 
     public Z3ConstraintSolver(ILogger<Z3ConstraintSolver> logger)
     {
@@ -119,7 +120,7 @@ public sealed class Z3ConstraintSolver : IDisposable
                 var parts = sexpr
                     .TrimStart('(')
                     .TrimEnd(')')
-                    .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    .Split(separator, StringSplitOptions.RemoveEmptyEntries);
                 var op = parts[0];
                 var left = parts[1];
                 var right = parts[2];

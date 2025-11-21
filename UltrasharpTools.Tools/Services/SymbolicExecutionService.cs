@@ -148,7 +148,7 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
                     || paths.Any(p =>
                         p.IsFeasible && p.Steps.Any(s => s.Description.Contains("EXIT"))
                     ),
-                MaxDepthReached = paths.Count() > 0 ? paths.Max(p => p.Depth) : 0,
+                MaxDepthReached = paths.Count > 0 ? paths.Max(p => p.Depth) : 0,
             };
 
             _logger.LogInformation(

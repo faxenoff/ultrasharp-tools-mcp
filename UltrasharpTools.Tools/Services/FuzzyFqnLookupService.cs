@@ -890,7 +890,7 @@ namespace UltrasharpTools.Tools.Services
                             namedType.BaseType.ToDisplayString()
                         );
                     }
-                    if (namedType.Interfaces.Count() > 0)
+                    if (namedType.Interfaces.Length > 0)
                     {
                         _logger.LogInformation(
                             "    Implements: {InterfaceCount} interfaces",
@@ -915,7 +915,7 @@ namespace UltrasharpTools.Tools.Services
                         method.IsExtensionMethod
                     );
                     _logger.LogInformation("    Is Async: {IsAsync}", method.IsAsync);
-                    if (method.Parameters.Count() > 0)
+                    if (method.Parameters.Length > 0)
                     {
                         var parameterTypes = string.Join(
                             ", ",
@@ -1010,7 +1010,7 @@ namespace UltrasharpTools.Tools.Services
                 .OrderByDescending(g => g.Value)
                 .ToList();
 
-            if (symbolKinds.Count() > 0)
+            if (symbolKinds.Count > 0)
             {
                 _logger.LogInformation("  Symbol kinds in high-scoring matches:");
                 foreach (var kind in symbolKinds)
@@ -1052,7 +1052,7 @@ namespace UltrasharpTools.Tools.Services
 
                 // Fallback: look through loaded projects by comparing file paths
                 var syntaxRefs = symbol.DeclaringSyntaxReferences;
-                if (syntaxRefs.Count() > 0)
+                if (syntaxRefs.Length > 0)
                 {
                     var syntaxTree = syntaxRefs.First().SyntaxTree;
                     var filePath = syntaxTree.FilePath;

@@ -109,7 +109,7 @@ public class SymbolPatternMatcher
             if (indexOf >= 0)
             {
                 result =
-                    result.Substring(0, indexOf) + capturedParts[i] + result.Substring(indexOf + 1);
+                    string.Concat(result.AsSpan(0, indexOf), capturedParts[i], result.AsSpan(indexOf + 1));
             }
         }
 

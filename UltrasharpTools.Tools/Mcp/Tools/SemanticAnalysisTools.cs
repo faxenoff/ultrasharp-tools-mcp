@@ -163,7 +163,7 @@ public static partial class SemanticAnalysisTools
                                 type = r.Type.ToString().ToLowerInvariant(),
                                 rank = r.Rank,
                                 codePreview = r.Code.Length > 200
-                                    ? r.Code.Substring(0, 200) + "..."
+                                    ? string.Concat(r.Code.AsSpan(0, 200), "...")
                                     : r.Code,
                             })
                             .ToList(),
@@ -492,7 +492,7 @@ public static partial class SemanticAnalysisTools
         );
 
         // If we find exact match, return perfect similarity
-        if (matches.Any() && matches[0].Code.Trim() == code2.Trim())
+        if (matches.Count > 0 && matches[0].Code.Trim() == code2.Trim())
         {
             return matches[0].Similarity;
         }
@@ -505,7 +505,7 @@ public static partial class SemanticAnalysisTools
             cancellationToken
         );
 
-        return matches.Any() && reverseMatches.Count() > 0 ? (matches[0].Similarity + reverseMatches[0].Similarity) / 2.0f
+        return matches.Count > 0 && reverseMatches.Count > 0 ? (matches[0].Similarity + reverseMatches[0].Similarity) / 2.0f
             : 0.0f;
     }
 

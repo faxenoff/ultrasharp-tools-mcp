@@ -105,7 +105,7 @@ public sealed class StructuralFingerprint
         var newChildren = node.ChildNodes().Select(RemoveAllTrivia).ToArray();
 
         // Заменить дочерние ноды
-        if (newChildren.Count() > 0)
+        if (newChildren.Length > 0)
         {
             node = node.ReplaceNodes(
                 node.ChildNodes(),

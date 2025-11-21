@@ -91,21 +91,21 @@ public record DiagnosticFilterOptions
             return false;
 
         // Diagnostic ID filter
-        if (DiagnosticIds?.Count() > 0)
+        if (DiagnosticIds?.Count > 0)
         {
             if (!DiagnosticIds.Contains(diagnostic.Id))
                 return false;
         }
 
         // Project name filter
-        if (ProjectNames?.Count() > 0)
+        if (ProjectNames?.Count > 0)
         {
             if (!ProjectNames.Contains(projectName, StringComparer.OrdinalIgnoreCase))
                 return false;
         }
 
         // File pattern filter
-        if (FilePatterns?.Count() > 0)
+        if (FilePatterns?.Count > 0)
         {
             var normalizedPath = filePath.Replace('\\', '/');
             var matched = false;

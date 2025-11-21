@@ -719,7 +719,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             if (colonIndex >= 0)
             {
                 timestamp =
-                    timestamp.Substring(0, colonIndex) + " " + timestamp.Substring(colonIndex + 1);
+                    string.Concat(timestamp.AsSpan(0, colonIndex), " ", timestamp.AsSpan(colonIndex + 1));
             }
             return DateTime.Parse(timestamp);
         }

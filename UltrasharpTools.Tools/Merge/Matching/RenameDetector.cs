@@ -15,6 +15,8 @@ public sealed class RenameDetector
     private const float HighConfidenceThreshold = 0.95f; // Очень похоже - скорее всего rename
     private const float MediumConfidenceThreshold = 0.85f; // Вероятно rename
     private const float LowConfidenceThreshold = 0.70f; // Возможно rename
+    private static readonly char[] separator = new[] { '\r', '\n' };
+    private static readonly char[] separatorArray = new[] { ' ', '\t' };
 
     public RenameDetector(ILogger<RenameDetector>? logger = null)
     {
@@ -540,7 +542,7 @@ public sealed class RenameDetector
     private string ExtractMethodSignatureFromContent(string content)
     {
         // Берём первую строку (обычно это объявление метода)
-        var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var lines = content.Split(separator, StringSplitOptions.RemoveEmptyEntries);
         if (lines.Length == 0)
         {
             return string.Empty;
@@ -587,7 +589,7 @@ public sealed class RenameDetector
             var beforeParen = signature.Split('(')[0].Trim();
             // Убрать имя метода (последнее слово перед скобкой)
             var words = beforeParen.Split(
-                new[] { ' ', '\t' },
+                separatorArray,
                 StringSplitOptions.RemoveEmptyEntries
             );
             if (words.Length > 0)
@@ -619,7 +621,7 @@ public sealed class RenameDetector
             );
 
             // Взять первое слово (тип)
-            var words = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            var words = trimmed.Split(separatorArray, StringSplitOptions.RemoveEmptyEntries);
             if (words.Length > 0)
             {
                 normalizedParams.Add(words[0]);
@@ -631,7 +633,7 @@ public sealed class RenameDetector
         // Извлечь возвращаемый тип (всё до имени метода перед скобкой)
         var beforeParams = signature.Substring(0, match.Index).Trim();
         var returnTypeParts = beforeParams.Split(
-            new[] { ' ', '\t' },
+            separatorArray,
             StringSplitOptions.RemoveEmptyEntries
         );
 

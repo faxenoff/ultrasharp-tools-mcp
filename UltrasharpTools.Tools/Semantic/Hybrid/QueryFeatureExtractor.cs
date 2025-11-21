@@ -188,7 +188,7 @@ public sealed class QueryFeatureExtractor
             {
                 // CFG analysis
                 var controlFlowGraph = ControlFlowGraph.Create(methodDecl, semanticModel, ct);
-                if (controlFlowGraph != null && controlFlowGraph.Blocks.Count() > 0)
+                if (controlFlowGraph != null && controlFlowGraph.Blocks.Length > 0)
                 {
                     basicBlockCount = controlFlowGraph.Blocks.Length;
 

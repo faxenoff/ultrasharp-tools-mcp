@@ -320,7 +320,7 @@ public class DiagnosticService(
         var projectsToAnalyze = solution.Projects.Where(p => p.SupportsCompilation);
 
         // Если указаны конкретные проекты - фильтруем ДО анализа
-        if (filterOptions.ProjectNames?.Count() > 0)
+        if (filterOptions.ProjectNames?.Count > 0)
         {
             projectsToAnalyze = projectsToAnalyze.Where(p =>
                 filterOptions.ProjectNames.Contains(p.Name, StringComparer.OrdinalIgnoreCase)
@@ -473,7 +473,7 @@ public class DiagnosticService(
 
             // OPTIMIZATION: Фильтрация анализаторов по DiagnosticId (экономия 10-50x времени!)
             // Если указаны конкретные DiagnosticIds - запускаем только нужные анализаторы
-            if (filterOptions.DiagnosticIds?.Count() > 0)
+            if (filterOptions.DiagnosticIds?.Count > 0)
             {
                 var requestedIds = filterOptions
                     .DiagnosticIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -535,13 +535,13 @@ public class DiagnosticService(
                         project.Name
                     );
                     // Fallback к базовым диагностикам компиляции
-                    diagnostics = compilation.GetDiagnostics();
+                    diagnostics = compilation.GetDiagnostics(cancellationToken);
                 }
             }
             else
             {
                 // Нет анализаторов, используем базовые диагностики компиляции
-                diagnostics = compilation.GetDiagnostics();
+                diagnostics = compilation.GetDiagnostics(cancellationToken);
                 _logger.LogDebug(
                     "No analyzers found for project {ProjectName}, using compilation diagnostics only",
                     project.Name
@@ -570,9 +570,8 @@ public class DiagnosticService(
                     continue;
 
                 var fileHash = ComputeFileHash(document.FilePath);
-                var fileDiagnostics = diagnosticsByFile.ContainsKey(document.FilePath)
-                    ? diagnosticsByFile[document.FilePath]
-                    : new List<Diagnostic>();
+                var fileDiagnostics = diagnosticsByFile.TryGetValue(document.FilePath, out List<Diagnostic>? value)
+                    ? value : new List<Diagnostic>();
 
                 _fileCache[document.FilePath] = (fileHash, DateTime.UtcNow, fileDiagnostics);
             }

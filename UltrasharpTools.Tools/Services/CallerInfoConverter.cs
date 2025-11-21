@@ -59,7 +59,7 @@ internal static class CallerInfoConverter
             // Limit snippet length
             if (snippet.Length > 100)
             {
-                snippet = snippet.Substring(0, 97) + "...";
+                snippet = string.Concat(snippet.AsSpan(0, 97), "...");
             }
 
             return snippet.Trim();

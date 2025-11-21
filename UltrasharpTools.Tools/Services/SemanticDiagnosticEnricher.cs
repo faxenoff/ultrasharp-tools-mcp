@@ -44,15 +44,16 @@ public class SemanticDiagnosticEnricher(
             var diagnosticId = diagnostic.Id;
 
             // Count
-            if (!statistics.CountByDiagnosticId.ContainsKey(diagnosticId))
+            if (!statistics.CountByDiagnosticId.TryGetValue(diagnosticId, out int value))
             {
-                statistics.CountByDiagnosticId[diagnosticId] = 0;
+                value = 0;
+                statistics.CountByDiagnosticId[diagnosticId] = value;
                 filesSetByDiagnostic[diagnosticId] = new HashSet<string>();
                 projectsSetByDiagnostic[diagnosticId] = new HashSet<string>();
                 statistics.SeverityByDiagnosticId[diagnosticId] = diagnostic.Severity;
             }
 
-            statistics.CountByDiagnosticId[diagnosticId]++;
+            statistics.CountByDiagnosticId[diagnosticId] = ++value;
             filesSetByDiagnostic[diagnosticId].Add(filePath);
             projectsSetByDiagnostic[diagnosticId].Add(projectName);
         }
@@ -414,7 +415,7 @@ public class SemanticDiagnosticEnricher(
                         _logger.LogWarning(
                             ex,
                             "Failed to generate embedding for message: {Message}",
-                            message.Length > 50 ? message.Substring(0, 50) + "..." : message
+                            message.Length > 50 ? string.Concat(message.AsSpan(0, 50), "...") : message
                         );
                     }
                 }
@@ -676,7 +677,7 @@ public class SemanticDiagnosticEnricher(
         const int maxLength = 100;
         if (snippet.Length > maxLength)
         {
-            snippet = snippet.Substring(0, maxLength) + "...";
+            snippet = string.Concat(snippet.AsSpan(0, maxLength), "...");
         }
 
         return snippet;
@@ -693,11 +694,12 @@ public class SemanticDiagnosticEnricher(
         var categoriesFound = new Dictionary<DiagnosticCategory, int>();
         foreach (var cluster in clusters)
         {
-            if (!categoriesFound.ContainsKey(cluster.Category))
+            if (!categoriesFound.TryGetValue(cluster.Category, out int value))
             {
-                categoriesFound[cluster.Category] = 0;
+                value = 0;
+                categoriesFound[cluster.Category] = value;
             }
-            categoriesFound[cluster.Category]++;
+            categoriesFound[cluster.Category] = ++value;
         }
 
         var totalDiagnostics = clusters.Sum(c => c.Occurrences);

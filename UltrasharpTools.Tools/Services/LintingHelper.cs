@@ -31,7 +31,7 @@ public static class LintingHelper
             var changedFiles = await modificationAction();
             var changedFilesList = changedFiles.ToList();
 
-            if (changedFilesList.Count() == 0)
+            if (changedFilesList.Count == 0)
             {
                 logger.LogDebug("No files changed, skipping lint");
                 return new LintingResult
@@ -120,7 +120,7 @@ public static class LintingHelper
             }
 
             // Топ проблемы
-            if (after.TopIssues.Count() > 0)
+            if (after.TopIssues.Count > 0)
             {
                 sb.AppendLine();
                 sb.AppendLine("**Top issues:**");

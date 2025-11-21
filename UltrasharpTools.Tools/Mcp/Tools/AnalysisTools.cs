@@ -123,9 +123,10 @@ public static partial class AnalysisTools
             var kind = ToolHelpers.GetSymbolKindString(member);
 
             // Create an entry for this kind if it doesn't exist
-            if (!membersByKind.ContainsKey(kind))
+            if (!membersByKind.TryGetValue(kind, out List<object>? value))
             {
-                membersByKind[kind] = new List<object>();
+                value = new List<object>();
+                membersByKind[kind] = value;
             }
 
             var memberInfo = new
@@ -143,8 +144,7 @@ public static partial class AnalysisTools
                     )
                     : null,
             };
-
-            membersByKind[kind].Add(memberInfo);
+            value.Add(memberInfo);
         }
 
         // Sort members within each kind by signature
@@ -370,18 +370,20 @@ public static partial class AnalysisTools
                                 }
                                 string memberInfo = signature;
 
-                                if (!membersByLocation.ContainsKey(locationKey))
+                                if (!membersByLocation.TryGetValue(locationKey, out Dictionary<string, List<string>>? membersByKind))
                                 {
+                                    membersByKind = new Dictionary<string, List<string>>();
                                     membersByLocation[locationKey] =
-                                        new Dictionary<string, List<string>>();
+membersByKind;
                                 }
-                                var membersByKind = membersByLocation[locationKey];
 
-                                if (!membersByKind.ContainsKey(kind))
+                                if (!membersByKind.TryGetValue(kind, out List<string>? value))
                                 {
-                                    membersByKind[kind] = new List<string>();
+                                    value = new List<string>();
+                                    membersByKind[kind] = value;
                                 }
-                                membersByKind[kind].Add(memberInfo);
+
+                                value.Add(memberInfo);
                             }
                             catch (Exception ex)
                             {
@@ -398,18 +400,20 @@ public static partial class AnalysisTools
                                     + member.ToDisplayString();
 
                                 var kind = ToolHelpers.GetSymbolKindString(member);
-                                if (!membersByLocation.ContainsKey(defaultLocation))
+                                if (!membersByLocation.TryGetValue(defaultLocation, out Dictionary<string, List<string>>? membersByKind))
                                 {
+                                    membersByKind = new Dictionary<string, List<string>>();
                                     membersByLocation[defaultLocation] =
-                                        new Dictionary<string, List<string>>();
+membersByKind;
                                 }
-                                var membersByKind = membersByLocation[defaultLocation];
 
-                                if (!membersByKind.ContainsKey(kind))
+                                if (!membersByKind.TryGetValue(kind, out List<string>? value))
                                 {
-                                    membersByKind[kind] = new List<string>();
+                                    value = new List<string>();
+                                    membersByKind[kind] = value;
                                 }
-                                membersByKind[kind].Add(memberInfo);
+
+                                value.Add(memberInfo);
                             }
                         }
                     }
@@ -634,6 +638,8 @@ public static partial class AnalysisTools
         );
     }
 
+    private static readonly string[] separator = new[] { "\r\n", "\r", "\n" };
+
     [McpServerTool(
         Name = "view_definition",
         Idempotent = true,
@@ -684,7 +690,7 @@ public static partial class AnalysisTools
                 var solution = solutionManager.CurrentSolution;
                 var locations = roslynSymbol.Locations.Where(l => l.IsInSource).ToList();
 
-                if (locations.Count() == 0)
+                if (locations.Count == 0)
                 {
                     // No source locations found in the solution, try to resolve from external sources
                     logger.LogInformation(
@@ -720,7 +726,7 @@ public static partial class AnalysisTools
 
                         // Remove leading whitespace from each line of the resolved source
                         var sourceLines = sourceResult.Source.Split(
-                            new[] { "\r\n", "\r", "\n" },
+                            separator,
                             StringSplitOptions.None
                         );
                         for (int i = 0; i < sourceLines.Length; i++)
@@ -740,7 +746,7 @@ public static partial class AnalysisTools
                 // Check if this is a partial type with multiple declarations
                 var isPartialType =
                     roslynSymbol is Microsoft.CodeAnalysis.INamedTypeSymbol namedTypeSymbol
-                    && roslynSymbol.DeclaringSyntaxReferences.Count() > 1;
+                    && roslynSymbol.DeclaringSyntaxReferences.Length > 1;
 
                 if (isPartialType)
                 {
@@ -1083,7 +1089,7 @@ public static partial class AnalysisTools
             var lineInfo = definitionNode.GetLocation().GetLineSpan();
 
             // Remove leading whitespace from each line
-            var lines = result.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var lines = result.Split(separator, StringSplitOptions.None);
             for (int i = 0; i < lines.Length; i++)
             {
                 lines[i] = TrimLeadingWhitespace(lines[i]);
@@ -1190,7 +1196,7 @@ public static partial class AnalysisTools
         };
 
         // Remove leading whitespace from each line
-        var lines = result.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        var lines = result.Split(separator, StringSplitOptions.None);
         for (int i = 0; i < lines.Length; i++)
         {
             lines[i] = TrimLeadingWhitespace(lines[i]);
@@ -1251,7 +1257,7 @@ public static partial class AnalysisTools
         }
 
         // If we couldn't get any locations from DeclaringSyntaxReferences (rare), fall back to Locations
-        if (locations.Count() == 0)
+        if (locations.Count == 0)
         {
             foreach (var location in symbol.Locations.Where(l => l.IsInSource))
             {
@@ -3220,6 +3226,8 @@ public static partial class AnalysisTools
         );
     }
 
+    private static readonly string[] sourceArray = new[] { "method", "class", "project" };
+
     [McpServerTool(
         Name = "analyze_complexity",
         Idempotent = true,
@@ -3247,7 +3255,7 @@ public static partial class AnalysisTools
                 ErrorHandlingHelpers.ValidateStringParameter(scope, nameof(scope), logger);
                 ErrorHandlingHelpers.ValidateStringParameter(target, nameof(target), logger);
 
-                if (!new[] { "method", "class", "project" }.Contains(scope.ToLower()))
+                if (!sourceArray.Contains(scope.ToLower()))
                 {
                     throw new McpException(
                         $"Invalid scope '{scope}'. Must be 'method', 'class', or 'project'."
@@ -3390,7 +3398,7 @@ public static partial class AnalysisTools
                     cancellationToken
                 );
 
-                if (similarityResults.Count() == 0)
+                if (similarityResults.Count == 0)
                 {
                     return "No semantically similar method groups found with the given threshold.";
                 }

@@ -281,7 +281,7 @@ public sealed class HybridSearchService
             (query.ParameterTypeNames.Count == candidate.ParameterTypeNames.Count) ? 1.0 : 0.0;
         double paramTypeSimilarity = 0.0;
         if (query.ParameterTypeNames.Count == candidate.ParameterTypeNames.Count
-            && query.ParameterTypeNames.Count() > 0)
+            && query.ParameterTypeNames.Count > 0)
         {
             int matchingParams = query
                 .ParameterTypeNames.Zip(candidate.ParameterTypeNames, (a, b) => a == b ? 1 : 0)
@@ -295,7 +295,7 @@ public sealed class HybridSearchService
 
         // Invoked methods (Jaccard)
         double invokedSimilarity = 1.0;
-        if (query.InvokedMethodSignatures.Any() || candidate.InvokedMethodSignatures.Count() > 0)
+        if (query.InvokedMethodSignatures.Count > 0 || candidate.InvokedMethodSignatures.Count > 0)
         {
             var intersection = query
                 .InvokedMethodSignatures.Intersect(candidate.InvokedMethodSignatures)
@@ -344,7 +344,7 @@ public sealed class HybridSearchService
 
         // Accessed types (Jaccard)
         double accessedTypesSimilarity = 1.0;
-        if (query.DistinctAccessedMemberTypes.Any() || candidate.DistinctAccessedMemberTypes.Count() > 0)
+        if (query.DistinctAccessedMemberTypes.Count > 0 || candidate.DistinctAccessedMemberTypes.Count > 0)
         {
             var intersection = query
                 .DistinctAccessedMemberTypes.Intersect(candidate.DistinctAccessedMemberTypes)
@@ -406,9 +406,9 @@ public sealed class HybridSearchService
         Dictionary<string, int> vec2
     )
     {
-        if (vec1.Count() == 0 && vec2.Count() == 0)
+        if (vec1.Count == 0 && vec2.Count == 0)
             return 1.0;
-        if (vec1.Count() == 0 || vec2.Count() == 0)
+        if (vec1.Count == 0 || vec2.Count == 0)
             return 0.0;
 
         var allKeys = vec1.Keys.Union(vec2.Keys).ToList();

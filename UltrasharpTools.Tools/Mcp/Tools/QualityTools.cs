@@ -281,17 +281,17 @@ public static partial class QualityTools
                     {
                         output.AppendLine($"**Preset:** {preset}");
                     }
-                    if (filterOptions.DiagnosticIds?.Count() > 0)
+                    if (filterOptions.DiagnosticIds?.Count > 0)
                     {
                         output.AppendLine(
-                            $"**Filtered IDs:** {string.Join(", ", filterOptions.DiagnosticIds.Take(10))}{(filterOptions.DiagnosticIds.Count() > 10 ? $" (+{filterOptions.DiagnosticIds.Count() - 10} more)" : "")}"
+                            $"**Filtered IDs:** {string.Join(", ", filterOptions.DiagnosticIds.Take(10))}{(filterOptions.DiagnosticIds.Count > 10 ? $" (+{filterOptions.DiagnosticIds.Count - 10} more)" : "")}"
                         );
                     }
-                    if (filterOptions.FilePatterns?.Count() > 0)
+                    if (filterOptions.FilePatterns?.Count > 0)
                     {
                         output.AppendLine($"**File patterns:** {string.Join(", ", filterOptions.FilePatterns)}");
                     }
-                    if (filterOptions.ProjectNames?.Count() > 0)
+                    if (filterOptions.ProjectNames?.Count > 0)
                     {
                         output.AppendLine($"**Projects:** {string.Join(", ", filterOptions.ProjectNames)}");
                     }

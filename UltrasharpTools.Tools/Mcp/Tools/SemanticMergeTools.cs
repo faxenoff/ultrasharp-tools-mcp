@@ -11,6 +11,7 @@ public sealed class SemanticMergeTools
 {
     private readonly SemanticMergeService _mergeService;
     private readonly ILogger<SemanticMergeTools> _logger;
+    private static readonly string[] operation = new[] { "*.cs", "*.json" };
 
     public SemanticMergeTools(SemanticMergeService mergeService, ILogger<SemanticMergeTools> logger)
     {
@@ -40,7 +41,7 @@ public sealed class SemanticMergeTools
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
             async () =>
             {
-                var patterns = filePatterns?.Split(',') ?? new[] { "*.cs", "*.json" };
+                var patterns = filePatterns?.Split(',') ?? operation;
 
                 var request = new IndexingRequest
                 {

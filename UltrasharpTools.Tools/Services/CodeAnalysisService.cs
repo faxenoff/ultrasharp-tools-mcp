@@ -580,7 +580,7 @@ public class CodeAnalysisService(
                 }
 
                 // Get all referenced symbols from the member's syntax (implementation)
-                if (member.DeclaringSyntaxReferences.Count() > 0)
+                if (member.DeclaringSyntaxReferences.Length > 0)
                 {
                     foreach (var syntaxRef in member.DeclaringSyntaxReferences)
                     {

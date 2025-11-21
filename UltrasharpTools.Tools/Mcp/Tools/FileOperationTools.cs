@@ -435,12 +435,13 @@ public static partial class FileOperationTools
                     foreach (var ns in root.Members.OfType<BaseNamespaceDeclarationSyntax>())
                     {
                         var nsName = ns.Name.ToString();
-                        if (!allNamespaces.ContainsKey(nsName))
+                        if (!allNamespaces.TryGetValue(nsName, out List<TypeDeclarationSyntax>? value))
                         {
-                            allNamespaces[nsName] = new List<TypeDeclarationSyntax>();
+                            value = new List<TypeDeclarationSyntax>();
+                            allNamespaces[nsName] = value;
                         }
 
-                        allNamespaces[nsName].AddRange(ns.Members.OfType<TypeDeclarationSyntax>());
+                        value.AddRange(ns.Members.OfType<TypeDeclarationSyntax>());
                     }
                 }
 

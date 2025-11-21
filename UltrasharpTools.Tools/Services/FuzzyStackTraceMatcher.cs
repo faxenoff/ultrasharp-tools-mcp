@@ -112,6 +112,9 @@ public static class FuzzyStackTraceMatcher
         return Math.Max(0.0, similarity);
     }
 
+    private static readonly char[] separator = new[] { '.', ',', '<', '>', ' ', '(', ')' };
+    private static readonly char[] separatorArray = new[] { '.', '<', '>' };
+
     /// <summary>
     /// Partial matching for FQN-like strings (handles dots, generics, nested types).
     /// </summary>
@@ -127,11 +130,11 @@ public static class FuzzyStackTraceMatcher
 
         // Split by dots and match segments
         var hintSegments = hint.Split(
-            new[] { '.', ',', '<', '>', ' ', '(', ')' },
+            separator,
             StringSplitOptions.RemoveEmptyEntries
         );
         var targetSegments = target.Split(
-            new[] { '.', '<', '>' },
+            separatorArray,
             StringSplitOptions.RemoveEmptyEntries
         );
 

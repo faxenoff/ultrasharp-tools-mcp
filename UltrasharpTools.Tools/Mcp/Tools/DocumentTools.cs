@@ -222,7 +222,7 @@ public static class DocumentTools
 
                     var projectStatus = "but was not detected by any project";
 
-                    if (documents?.Any() == true)
+                    if (documents?.Count > 0)
                     {
                         var document = documents.First();
                         projectStatus = $"and was added to project {document.Project.Name}";

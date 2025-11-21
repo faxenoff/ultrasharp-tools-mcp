@@ -266,9 +266,9 @@ public class ComplexityAnalysisService(
                 compilation
             );
 
-            if (methodDict.ContainsKey("cyclomaticComplexity"))
+            if (methodDict.TryGetValue("cyclomaticComplexity", out object? value))
             {
-                methodComplexitySum += (int)methodDict["cyclomaticComplexity"];
+                methodComplexitySum += (int)value;
                 methodCount++;
             }
 
@@ -417,7 +417,7 @@ public class ComplexityAnalysisService(
             // Analyze each type in the file
             foreach (var typeDecl in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
             {
-                var typeSymbol = semanticModel.GetDeclaredSymbol(typeDecl) as INamedTypeSymbol;
+                var typeSymbol = semanticModel.GetDeclaredSymbol(typeDecl, cancellationToken: cancellationToken) as INamedTypeSymbol;
                 if (typeSymbol != null)
                 {
                     var typeDict = new Dictionary<string, object>();

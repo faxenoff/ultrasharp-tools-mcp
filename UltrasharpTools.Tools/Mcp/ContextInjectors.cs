@@ -80,7 +80,7 @@ internal static class ContextInjectors
                 .OrderByDescending(d => d.Severity) // Errors first, then warnings
                 .ThenBy(d => d.Location.SourceSpan.Start)
                 .ToList();
-            if (diagnostics.Count() == 0)
+            if (diagnostics.Count == 0)
                 return (false, string.Empty);
             // Focus specifically on member access errors
             var memberAccessErrors = diagnostics
@@ -135,6 +135,8 @@ internal static class ContextInjectors
         }
     }
 
+    internal static readonly char[] separator = new[] { '\r', '\n' };
+
     /// <summary>
     /// Creates a pretty diff between old and new code, with whitespace and formatting normalized
     /// </summary>
@@ -148,7 +150,7 @@ internal static class ContextInjectors
         static string trimLines(string code) =>
             string.Join(
                 "\n",
-                code.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                code.Split(separator, StringSplitOptions.RemoveEmptyEntries)
                     .Select(line => line.Trim())
                     .Where(line => !string.IsNullOrWhiteSpace(line))
             );

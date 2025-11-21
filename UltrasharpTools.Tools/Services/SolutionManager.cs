@@ -1156,7 +1156,7 @@ public sealed class SolutionManager : ISolutionManager
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var members = parentTypeSymbol.GetMembers(memberName);
-                if (members.Count() > 0)
+                if (members.Length > 0)
                 {
                     // TODO: Handle overloads if necessary, for now, take the first.
                     var memberSymbol = members.First();
@@ -1213,7 +1213,7 @@ public sealed class SolutionManager : ISolutionManager
             );
             return Task.FromResult<IEnumerable<Type>>([]);
         }
-        if (_allLoadedReflectionTypesCache.Count() == 0)
+        if (_allLoadedReflectionTypesCache.Count == 0)
         {
             _logger.LogInformation("Reflection type cache is empty. Search will yield no results.");
             return Task.FromResult<IEnumerable<Type>>([]);

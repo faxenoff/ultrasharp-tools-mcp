@@ -492,6 +492,8 @@ public static partial class TraceTools
         return formatted;
     }
 
+    private static readonly string[] operation = new[] { "dot", "mermaid", "graphml" };
+
     /// <summary>
     /// Exports call graph visualization from backtrace result.
     /// </summary>
@@ -548,7 +550,7 @@ public static partial class TraceTools
                 );
 
                 // Validate format
-                var validFormats = new[] { "dot", "mermaid", "graphml" };
+                var validFormats = operation;
                 if (!validFormats.Contains(format.ToLowerInvariant()))
                 {
                     throw new McpException(

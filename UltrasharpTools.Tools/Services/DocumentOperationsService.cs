@@ -326,7 +326,7 @@ public class DocumentOperationsService(
         }
 
         var projects = _solutionManager.GetProjects().ToList();
-        if (projects.Count() == 0)
+        if (projects.Count == 0)
         {
             return null;
         }
@@ -560,7 +560,7 @@ public class DocumentOperationsService(
     )
     {
         var filesList = filePaths.Where(f => !string.IsNullOrEmpty(f) && File.Exists(f)).ToList();
-        if (filesList.Count() == 0)
+        if (filesList.Count == 0)
         {
             return;
         }

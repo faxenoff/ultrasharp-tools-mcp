@@ -762,7 +762,7 @@ public static partial class PatternSearchTools
             return "";
         if (text.Length <= maxLength)
             return text;
-        return text.Substring(0, maxLength) + "...";
+        return string.Concat(text.AsSpan(0, maxLength), "...");
     }
 
     // ==================== Models ====================

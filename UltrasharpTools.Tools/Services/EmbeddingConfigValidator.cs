@@ -28,7 +28,7 @@ public class EmbeddingConfigValidator
 
         public bool HasCriticalIssues => Issues.Any(i => i.Severity == IssueSeverity.Critical);
         public bool HasWarnings =>
-            Issues.Any(i => i.Severity == IssueSeverity.Warning) || Warnings.Count() > 0;
+            Issues.Any(i => i.Severity == IssueSeverity.Warning) || Warnings.Count > 0;
     }
 
     public class ValidationIssue
@@ -229,7 +229,7 @@ public class EmbeddingConfigValidator
         }
 
         // Check models
-        if (!teiConfig.Models.Any())
+        if (teiConfig.Models.Count == 0)
         {
             result.Issues.Add(
                 new ValidationIssue
@@ -362,7 +362,7 @@ public class EmbeddingConfigValidator
         var criticalIssues = result
             .Issues.Where(i => i.Severity == IssueSeverity.Critical)
             .ToList();
-        if (criticalIssues.Count() > 0)
+        if (criticalIssues.Count > 0)
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"✗ CRITICAL ISSUES ({criticalIssues.Count}):");
@@ -377,7 +377,7 @@ public class EmbeddingConfigValidator
 
         // Warnings
         var warnings = result.Issues.Where(i => i.Severity == IssueSeverity.Warning).ToList();
-        if (warnings.Count() > 0)
+        if (warnings.Count > 0)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"⚠ WARNINGS ({warnings.Count}):");
@@ -391,7 +391,7 @@ public class EmbeddingConfigValidator
         }
 
         // Recommendations
-        if (result.Recommendations.Count() > 0)
+        if (result.Recommendations.Count > 0)
         {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("💡 RECOMMENDATIONS:");

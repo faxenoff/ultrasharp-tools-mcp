@@ -16,6 +16,7 @@ public class CodebaseLanguageDetector
         @"[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF]+",
         RegexOptions.Compiled
     );
+    private static readonly char[] separator = new[] { ' ', '\t', '\n', '\r' };
 
     public class LanguageStats
     {
@@ -141,7 +142,7 @@ public class CodebaseLanguageDetector
             {
                 // Cyrillic/other: split by whitespace
                 var words = nonAsciiText.Split(
-                    new[] { ' ', '\t', '\n', '\r' },
+                    separator,
                     StringSplitOptions.RemoveEmptyEntries
                 );
                 stats.NonEnglishWords += words.Length;
