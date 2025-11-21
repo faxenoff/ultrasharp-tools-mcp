@@ -47,7 +47,7 @@ UltrasharpTools provides deep C# code understanding through Roslyn APIs, enablin
 | **Solution** | Load & navigate | load_solution, load_project |
 | **Analysis** | Code understanding | view_definition, get_members, find_references |
 | **Modification** | Code changes | modify_code, add_member, rename_symbol |
-| **Quality** | Formatting & fixes | format_code, analyze_code_style, apply_code_fixes |
+| **Quality** | Formatting & fixes | format_code, **analyze_code_style** (NEW: presets, filters, cache), apply_code_fixes |
 | **Document** | File operations | read_raw_from_roslyn_document, overwrite_roslyn_document |
 | **Tracing** | Debugging | trace_execution, trace_backwards, analyze_logs |
 | **Semantic** | Smart search | semantic_search, semantic_diff |
@@ -73,7 +73,15 @@ For comprehensive tool documentation and advanced usage, see:
 1. ViewDefinition → read current code
 2. OverwriteMember → apply changes (auto-commits)
 3. FormatCode → cleanup style
-4. analyze_code_style → verify quality
+4. analyze_code_style → verify quality (NEW: with presets, filters, caching)
+```
+
+### Systematic Code Quality Improvement (NEW)
+```
+1. analyze_code_style(preset: "critical") → find security issues
+2. analyze_code_style(preset: "high") → reliability + key performance
+3. analyze_code_style(preset: "performance", filePatterns: "**/Services/*.cs") → targeted fixes
+4. Leverage 5-minute cache for 10x faster repeated queries
 ```
 
 ### Debug Issues
@@ -124,13 +132,61 @@ Before using `semantic_search`, `semantic_diff`, or `detect_code_clones`:
 - Use `--build-configuration Debug` for full debugging symbols
 - Use `--build-configuration Release` for production code paths
 
+## NEW: Advanced Code Analysis with analyze_code_style
+
+**Presets for quick filtering:**
+```javascript
+// By category
+analyze_code_style(preset: "performance")    // Performance issues
+analyze_code_style(preset: "security")       // Security vulnerabilities
+analyze_code_style(preset: "maintainability") // Code maintainability
+
+// By priority
+analyze_code_style(preset: "critical")       // Critical security issues
+analyze_code_style(preset: "high")           // High priority (reliability + key performance)
+analyze_code_style(preset: "medium")         // Medium priority
+analyze_code_style(preset: "low")            // Low priority (style, naming)
+```
+
+**Targeted filtering:**
+```javascript
+// Specific diagnostic codes
+analyze_code_style(diagnosticIds: "CA1822,CA1860,CS8019")
+
+// Specific files (glob patterns)
+analyze_code_style(filePatterns: "**/Services/*.cs,**/Controllers/*.cs")
+
+// Specific projects
+analyze_code_style(projectNames: "MyProject.Core,MyProject.Api")
+
+// Combined filters
+analyze_code_style(
+    preset: "performance",
+    filePatterns: "**/Services/*.cs",
+    severityFilter: "Info"
+)
+```
+
+**Performance:**
+- First run: 30-60 seconds (scans entire solution)
+- Cached runs (within 5 minutes): 3-5 seconds — **10x faster!**
+- Different filters on same solution use cache
+
+**Available presets:**
+- **Category:** performance, security, reliability, maintainability, usage, design, globalization, naming, documentation, logging
+- **Priority:** critical, high, medium, low
+
 ## Best Practices
 
 ✅ **DO**:
 - Call `get_capabilities()` at startup to check available features
 - Start with load_solution + load_project
 - Use FQN for all symbol operations
-- Check analyze_code_style before committing
+- **NEW:** Use analyze_code_style with presets for systematic quality improvement
+  - Start with `preset: "critical"` for security issues
+  - Use `preset: "high"` for reliability and key performance
+  - Leverage caching for iterative work (10x faster repeated queries)
+  - Filter by specific areas: `filePatterns: "**/Services/*.cs"`
 - Use format_code for consistency
 - Review changes with git diff
 

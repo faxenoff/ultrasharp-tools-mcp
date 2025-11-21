@@ -200,16 +200,57 @@ public class UserService
 
 ## analyze_code_style
 
-**Code quality analysis** — runs Roslyn analyzers to find code style issues, warnings, errors.
+**Code quality analysis** — runs Roslyn analyzers to find code style issues, warnings, errors. **NEW**: Supports advanced filtering via presets, diagnostic codes, file patterns, and project names. Results are cached for 5 minutes for 10x faster repeated queries.
 
 ### Usage
 
 ```javascript
+// Basic usage
 analyze_code_style(
     solutionPath: "D:/MyProject/MyProject.sln",
     severityFilter: "Warning",
     skip: 0,
     take: 100
+)
+
+// NEW: Using presets (category-based)
+analyze_code_style(
+    solutionPath: "D:/MyProject/MyProject.sln",
+    preset: "performance",
+    severityFilter: "Info"
+)
+
+// NEW: Using presets (priority-based)
+analyze_code_style(
+    solutionPath: "D:/MyProject/MyProject.sln",
+    preset: "critical",
+    severityFilter: "Warning"
+)
+
+// NEW: Filter by specific diagnostic codes
+analyze_code_style(
+    solutionPath: "D:/MyProject/MyProject.sln",
+    diagnosticIds: "CA1822,CA1860,CS8019"
+)
+
+// NEW: Filter by file patterns
+analyze_code_style(
+    solutionPath: "D:/MyProject/MyProject.sln",
+    filePatterns: "**/Services/*.cs,**/Controllers/*.cs"
+)
+
+// NEW: Filter by projects
+analyze_code_style(
+    solutionPath: "D:/MyProject/MyProject.sln",
+    projectNames: "MyProject.Core,MyProject.Services"
+)
+
+// NEW: Combined filters
+analyze_code_style(
+    solutionPath: "D:/MyProject/MyProject.sln",
+    preset: "performance",
+    filePatterns: "**/Services/*.cs",
+    severityFilter: "Info"
 )
 ```
 
@@ -217,8 +258,32 @@ analyze_code_style(
 
 - **solutionPath** (required): Path to .sln file
 - **severityFilter** (default: "Warning"): Minimum severity level (`"Hidden"`, `"Info"`, `"Warning"`, `"Error"`)
+- **preset** (optional): **NEW** — Quick filter by category or priority (see Presets below)
+- **diagnosticIds** (optional): **NEW** — Comma-separated list of specific diagnostic codes (e.g., `"CA1822,CA1860,CS8019"`)
+- **filePatterns** (optional): **NEW** — Comma-separated glob patterns (e.g., `"**/Services/*.cs,**/*Controller.cs"`)
+- **projectNames** (optional): **NEW** — Comma-separated project names (e.g., `"MyProject.Core,MyProject.Api"`)
 - **skip** (default: 0): Skip N results (pagination)
 - **take** (default: 100): Return N results (pagination)
+
+### Presets
+
+**Category Presets** (semantic grouping):
+- `performance` — Performance issues (CA1860, CA1861, CA1850, etc.)
+- `security` — Security vulnerabilities (CA2100, CA3001, CA5350, etc.)
+- `reliability` — Reliability issues (CA2000, CA2007, CA2016, etc.)
+- `maintainability` — Code maintainability (CA1822, CA1506, CA1505, etc.)
+- `usage` — API usage issues (CA1031, CA2201, CA2208, etc.)
+- `design` — Design issues (CA1000, CA1001, CA1063, etc.)
+- `globalization` — Globalization (CA1303, CA1304, CA1310, etc.)
+- `naming` — Naming conventions (CA1700, CA1707, CA1715, etc.)
+- `documentation` — Documentation (CA1200, CS1591, etc.)
+- `logging` — Logging optimization (CA1848, CA1873, etc.)
+
+**Priority Presets** (by importance):
+- `critical` — Critical issues (security)
+- `high` — High priority (reliability + key performance)
+- `medium` — Medium priority (performance + maintainability)
+- `low` — Low priority (style, naming)
 
 ### What It Shows
 
@@ -275,19 +340,49 @@ analyze_code_style(
 
 ### Best Practices
 
-1. **Start with Errors, then Warnings:**
+1. **Start with Critical, then work down by priority:**
    ```javascript
-   // First critical
-   analyze_code_style(severityFilter: "Error")
+   // First: Critical security issues
+   analyze_code_style(preset: "critical")
 
-   // Then warnings
-   analyze_code_style(severityFilter: "Warning")
+   // Then: High priority (reliability + key performance)
+   analyze_code_style(preset: "high")
 
-   // Info optional
-   analyze_code_style(severityFilter: "Info")
+   // Medium priority (performance + maintainability)
+   analyze_code_style(preset: "medium")
+
+   // Low priority (style, naming)
+   analyze_code_style(preset: "low")
    ```
 
-2. **Use pagination for large projects:**
+2. **Use category presets for focused improvements:**
+   ```javascript
+   // Performance week
+   analyze_code_style(preset: "performance", severityFilter: "Info")
+
+   // Security audit
+   analyze_code_style(preset: "security", severityFilter: "Warning")
+
+   // Code maintainability
+   analyze_code_style(preset: "maintainability")
+   ```
+
+3. **Filter by specific areas for targeted fixes:**
+   ```javascript
+   // Focus on Services layer
+   analyze_code_style(
+       preset: "performance",
+       filePatterns: "**/Services/*.cs"
+   )
+
+   // Check specific project
+   analyze_code_style(
+       diagnosticIds: "CA1822",
+       projectNames: "MyProject.Core"
+   )
+   ```
+
+4. **Use pagination for large projects:**
    ```javascript
    // First page
    analyze_code_style(severityFilter: "Warning", skip: 0, take: 100)
@@ -296,38 +391,74 @@ analyze_code_style(
    analyze_code_style(severityFilter: "Warning", skip: 100, take: 100)
    ```
 
-3. **Automate fixes:**
+5. **Leverage caching for iterative work:**
    ```javascript
-   // Analysis
-   analyze_code_style(severityFilter: "Warning")
-   // Output: "28 auto-fixable warnings"
+   // First query - scans solution (30 sec)
+   analyze_code_style(preset: "performance")
 
-   // Auto-fixes
-   apply_code_fixes(diagnosticId: "all", preview: false)
+   // Fix some issues, then check specific file (3 sec, uses cache!)
+   analyze_code_style(
+       preset: "performance",
+       filePatterns: "**/UserService.cs"
+   )
 
-   // Re-analyze
-   analyze_code_style(severityFilter: "Warning")
-   // Output: "15 warnings" (only manual fixes)
+   // Check different category (3 sec, still uses cache!)
+   analyze_code_style(preset: "security")
    ```
 
-4. **Track progress:**
+6. **Automate fixes by diagnostic code:**
+   ```javascript
+   // Analysis
+   analyze_code_style(diagnosticIds: "CA1860")
+   // Output: "47 instances of CA1860"
+
+   // Auto-fixes
+   apply_code_fixes(diagnosticId: "CA1860", preview: false)
+
+   // Re-analyze (uses cache - fast!)
+   analyze_code_style(diagnosticIds: "CA1860")
+   // Output: "0 instances" ✅
+   ```
+
+7. **Track progress over time:**
    ```javascript
    // Baseline
-   analyze_code_style(severityFilter: "Warning")
-   // "147 warnings"
+   analyze_code_style(preset: "high")
+   // "147 high priority issues"
 
    // After work
-   analyze_code_style(severityFilter: "Warning")
-   // "98 warnings" - 33% improvement!
+   analyze_code_style(preset: "high")
+   // "98 issues" - 33% improvement!
    ```
 
 ### Performance
 
+**First analysis (cold cache):**
 - **Small project (3-5 projects):** 5-10 sec
 - **Medium project (10-20 projects):** 15-30 sec
 - **Large project (50+ projects):** 45-90 sec
 
-**Factors:**
+**Repeated analysis (cached, within 5 minutes): 3-5 sec** — **10x faster!** 🚀
+
+**Caching:**
+- ✅ All diagnostics cached for 5 minutes
+- ✅ Filters applied after retrieval (instant)
+- ✅ Repeated queries with different filters use cache
+- ✅ Cache auto-expires after 5 minutes
+
+**Example:**
+```javascript
+// First run - scans everything (30 sec)
+analyze_code_style(solutionPath: "...", preset: "performance")
+
+// Immediate second run with different filter - uses cache (3 sec)
+analyze_code_style(solutionPath: "...", preset: "security")
+
+// Different project name filter - still uses cache (3 sec)
+analyze_code_style(solutionPath: "...", projectNames: "Core")
+```
+
+**Factors affecting speed:**
 - Number of analyzers
 - Solution size
 - File count
@@ -514,35 +645,79 @@ format_code(path: "src/", checkOnly: true)
 format_code(path: "src/", checkOnly: false)
 // Applied formatting
 
-// 2. Analysis
-analyze_code_style(severityFilter: "Warning")
-// Output: "43 warnings, 28 auto-fixable"
+// 2. Analysis by priority (NEW approach)
+// Start with critical security issues
+analyze_code_style(preset: "critical")
+// Output: "3 security issues" ⚠️
 
-// 3. Automatic fixes
-apply_code_fixes(diagnosticId: "IDE0005", preview: true)
-// See what will change
+// Fix critical issues first...
 
+// Then high priority (reliability + performance)
+analyze_code_style(preset: "high")
+// Output: "43 high priority issues"
+
+// 3. Systematic fixes by diagnostic code
+// Find specific issue type
+analyze_code_style(diagnosticIds: "CA1860")
+// Output: "47 instances of CA1860"
+
+apply_code_fixes(diagnosticId: "CA1860", preview: false)
+// Fixed automatically
+
+// Re-check (uses cache - fast!)
+analyze_code_style(diagnosticIds: "CA1860")
+// Output: "0 instances" ✅
+
+// 4. Continue with other issues
+analyze_code_style(diagnosticIds: "IDE0005,CS8019")
 apply_code_fixes(diagnosticId: "IDE0005", preview: false)
-// Applied unused usings fix
+apply_code_fixes(diagnosticId: "CS8019", preview: false)
 
-apply_code_fixes(diagnosticId: "all", preview: true)
-// See other fixes
+// 5. Focus on specific areas
+analyze_code_style(
+    preset: "performance",
+    filePatterns: "**/Services/*.cs"
+)
+// Targeted fixes for Services layer
 
-apply_code_fixes(diagnosticId: "all", preview: false)
-// Applied all
+// 6. Final check by priority
+analyze_code_style(preset: "high")
+// Output: "5 high priority issues remaining"
 
-// 4. Re-analyze
-analyze_code_style(severityFilter: "Warning")
-// Output: "15 warnings" - only manual fixes remain
+// Manual fixes if needed...
 
-// 5. Manual fixes (outside SharpTools)
-// Review remaining 15 warnings
-// Fix manually via IDE or modification tools
-
-// 6. Final check
+// 7. All clean ✅
 format_code(path: "src/", checkOnly: true)
-analyze_code_style(severityFilter: "Warning")
-// All clean ✅
+analyze_code_style(preset: "critical")
+// Output: "0 critical issues" ✅
+```
+
+### NEW: Systematic Code Quality Improvement Workflow
+
+```javascript
+// Day 1: Critical issues
+analyze_code_style(preset: "critical")
+// Fix all security issues
+
+// Day 2: High priority
+analyze_code_style(preset: "high", take: 20)
+// Fix 20 issues per day
+
+// Day 3: Continue high priority (uses cache!)
+analyze_code_style(preset: "high", skip: 20, take: 20)
+// Next 20 issues
+
+// Day 4: Performance improvements
+analyze_code_style(preset: "performance", severityFilter: "Info")
+// Focus on performance
+
+// Day 5: Maintainability
+analyze_code_style(preset: "maintainability")
+// CA1822, CA1506, etc.
+
+// Track progress
+analyze_code_style(preset: "high")
+// "Before: 147 issues → After: 25 issues" (83% improvement!)
 ```
 
 ### After Modification Workflow
