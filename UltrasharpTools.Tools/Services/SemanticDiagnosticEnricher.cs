@@ -352,14 +352,199 @@ public class SemanticDiagnosticEnricher(
             }
 
             _logger.LogInformation(
-                "Semantic mode available: {Source}, Model: {Model}",
+                "Semantic mode available: {Source}, Model: {Model}, Dimension: {Dimension}",
                 availability.Source,
-                availability.ModelName
+                availability.ModelName,
+                availability.VectorDimension
             );
 
-            // TODO: Implement semantic clustering with embeddings
-            // Это будет реализовано в следующих итерациях
-            _logger.LogInformation("Semantic clustering not yet implemented");
+            // Шаг 1: Собираем все уникальные сообщения диагностик
+            var messagesToEmbed = new Dictionary<string, List<string>>(); // DiagnosticId -> List<Message>
+            foreach (var cluster in clusters)
+            {
+                var messages = diagnostics
+                    .Where(d => d.Diagnostic.Id == cluster.DiagnosticId)
+                    .Select(d => d.Diagnostic.GetMessage())
+                    .Distinct()
+                    .ToList();
+
+                if (messages.Count > 0)
+                {
+                    messagesToEmbed[cluster.DiagnosticId] = messages;
+                }
+            }
+
+            if (messagesToEmbed.Count == 0)
+            {
+                _logger.LogWarning("No messages to embed for clustering");
+                return;
+            }
+
+            _logger.LogInformation(
+                "Generating embeddings for {ClusterCount} diagnostic types with {MessageCount} unique messages",
+                messagesToEmbed.Count,
+                messagesToEmbed.Values.Sum(m => m.Count)
+            );
+
+            // Шаг 2: Генерируем embeddings для всех сообщений
+            var embeddingCache = new Dictionary<string, float[]>(); // Message -> Embedding
+            foreach (var kvp in messagesToEmbed)
+            {
+                var diagnosticId = kvp.Key;
+                var messages = kvp.Value;
+
+                foreach (var message in messages)
+                {
+                    if (embeddingCache.ContainsKey(message))
+                        continue;
+
+                    try
+                    {
+                        var embedding = await _semanticModeProvider.GetEmbeddingAsync(
+                            message,
+                            cancellationToken
+                        );
+                        if (embedding != null && embedding.Length > 0)
+                        {
+                            embeddingCache[message] = embedding;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to generate embedding for message: {Message}",
+                            message.Length > 50 ? message.Substring(0, 50) + "..." : message
+                        );
+                    }
+                }
+            }
+
+            _logger.LogInformation(
+                "Generated {EmbeddingCount} embeddings successfully",
+                embeddingCache.Count
+            );
+
+            if (embeddingCache.Count == 0)
+            {
+                _logger.LogWarning("No embeddings generated, skipping clustering");
+                return;
+            }
+
+            // Шаг 3: Вычисляем центроиды для каждого кластера
+            var clusterCentroids = new Dictionary<string, float[]>(); // DiagnosticId -> Centroid
+            foreach (var cluster in clusters)
+            {
+                if (!messagesToEmbed.ContainsKey(cluster.DiagnosticId))
+                    continue;
+
+                var messages = messagesToEmbed[cluster.DiagnosticId];
+                var embeddings = messages
+                    .Select(m => embeddingCache.TryGetValue(m, out var emb) ? emb : null)
+                    .Where(e => e != null)
+                    .ToList();
+
+                if (embeddings.Count > 0)
+                {
+                    var centroid = ComputeCentroid(embeddings!);
+                    clusterCentroids[cluster.DiagnosticId] = centroid;
+                }
+            }
+
+            _logger.LogInformation(
+                "Computed {CentroidCount} cluster centroids",
+                clusterCentroids.Count
+            );
+
+            // Шаг 4: Находим семантически похожие кластеры
+            var similarClusters = FindSimilarClusters(
+                clusterCentroids,
+                similarityThreshold
+            );
+
+            if (similarClusters.Count > 0)
+            {
+                _logger.LogInformation(
+                    "Found {PairCount} pairs of similar clusters (threshold: {Threshold:F2})",
+                    similarClusters.Count,
+                    similarityThreshold
+                );
+
+                // Обновляем confidence и pattern для похожих кластеров
+                foreach (var (id1, id2, similarity) in similarClusters)
+                {
+                    var cluster1 = clusters.FirstOrDefault(c => c.DiagnosticId == id1);
+                    var cluster2 = clusters.FirstOrDefault(c => c.DiagnosticId == id2);
+
+                    if (cluster1 != null && cluster2 != null)
+                    {
+                        // Повышаем confidence если оба кластера в одной категории
+                        if (cluster1.Category == cluster2.Category)
+                        {
+                            cluster1.ConfidenceScore = Math.Min(
+                                1.0,
+                                cluster1.ConfidenceScore + 0.05
+                            );
+                            cluster2.ConfidenceScore = Math.Min(
+                                1.0,
+                                cluster2.ConfidenceScore + 0.05
+                            );
+
+                            _logger.LogDebug(
+                                "Increased confidence for similar clusters: {Id1} <-> {Id2} (similarity: {Similarity:F2})",
+                                id1,
+                                id2,
+                                similarity
+                            );
+                        }
+                    }
+                }
+            }
+
+            // Шаг 5: Обновляем similarity scores в примерах
+            foreach (var cluster in clusters)
+            {
+                if (!clusterCentroids.ContainsKey(cluster.DiagnosticId))
+                    continue;
+
+                var centroid = clusterCentroids[cluster.DiagnosticId];
+
+                foreach (var example in cluster.RepresentativeExamples)
+                {
+                    // Находим embedding для snippet
+                    if (embeddingCache.TryGetValue(example.Snippet, out var exampleEmbedding))
+                    {
+                        example.SimilarityToCentroid = CalculateCosineSimilarity(
+                            centroid,
+                            exampleEmbedding
+                        );
+                    }
+                    else
+                    {
+                        // Fallback: ищем embedding для любого похожего сообщения
+                        var diagnosticMessages = diagnostics
+                            .Where(d =>
+                                d.Diagnostic.Id == cluster.DiagnosticId
+                                && d.Diagnostic.Location.SourceTree != null
+                            )
+                            .Select(d => d.Diagnostic.GetMessage())
+                            .FirstOrDefault();
+
+                        if (
+                            diagnosticMessages != null
+                            && embeddingCache.TryGetValue(diagnosticMessages, out var msgEmbedding)
+                        )
+                        {
+                            example.SimilarityToCentroid = CalculateCosineSimilarity(
+                                centroid,
+                                msgEmbedding
+                            );
+                        }
+                    }
+                }
+            }
+
+            _logger.LogInformation("Semantic clustering complete");
         }
         catch (Exception ex)
         {
@@ -534,5 +719,97 @@ public class SemanticDiagnosticEnricher(
             ManualReviewRequired = manualReviewRequired,
             ProcessingStats = processingStats,
         };
+    }
+
+    // ========================================================================
+    // SEMANTIC CLUSTERING HELPERS
+    // ========================================================================
+
+    /// <summary>
+    /// Вычисляет центроид (средний вектор) для набора embeddings
+    /// </summary>
+    private float[] ComputeCentroid(List<float[]> embeddings)
+    {
+        if (embeddings.Count == 0)
+            throw new ArgumentException("Cannot compute centroid for empty list");
+
+        var dimension = embeddings[0].Length;
+        var centroid = new float[dimension];
+
+        // Суммируем все векторы
+        foreach (var embedding in embeddings)
+        {
+            for (int i = 0; i < dimension; i++)
+            {
+                centroid[i] += embedding[i];
+            }
+        }
+
+        // Делим на количество векторов
+        for (int i = 0; i < dimension; i++)
+        {
+            centroid[i] /= embeddings.Count;
+        }
+
+        return centroid;
+    }
+
+    /// <summary>
+    /// Находит пары похожих кластеров на основе центроидов
+    /// </summary>
+    private List<(string Id1, string Id2, double Similarity)> FindSimilarClusters(
+        Dictionary<string, float[]> centroids,
+        double threshold
+    )
+    {
+        var similarPairs = new List<(string, string, double)>();
+        var ids = centroids.Keys.ToList();
+
+        // Попарно сравниваем все центроиды
+        for (int i = 0; i < ids.Count; i++)
+        {
+            for (int j = i + 1; j < ids.Count; j++)
+            {
+                var id1 = ids[i];
+                var id2 = ids[j];
+
+                var similarity = CalculateCosineSimilarity(centroids[id1], centroids[id2]);
+
+                if (similarity >= threshold)
+                {
+                    similarPairs.Add((id1, id2, similarity));
+                }
+            }
+        }
+
+        return similarPairs.OrderByDescending(p => p.Item3).ToList();
+    }
+
+    /// <summary>
+    /// Вычисляет cosine similarity между двумя векторами
+    /// </summary>
+    private double CalculateCosineSimilarity(float[] a, float[] b)
+    {
+        if (a.Length != b.Length)
+            throw new ArgumentException("Vectors must have the same dimension");
+
+        double dotProduct = 0;
+        double normA = 0;
+        double normB = 0;
+
+        for (int i = 0; i < a.Length; i++)
+        {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+
+        normA = Math.Sqrt(normA);
+        normB = Math.Sqrt(normB);
+
+        if (normA == 0 || normB == 0)
+            return 0;
+
+        return dotProduct / (normA * normB);
     }
 }
