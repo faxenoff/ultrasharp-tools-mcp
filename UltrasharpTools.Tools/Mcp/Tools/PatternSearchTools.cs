@@ -194,7 +194,7 @@ public static partial class PatternSearchTools
             namespaceFilter ?? "(all)"
         );
 
-        var regex = new Regex(pattern, RegexOptions.IgnoreCase);
+        var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled);
         var results = new List<EntityMatch>();
 
         foreach (var project in solution.Projects)
@@ -330,7 +330,10 @@ public static partial class PatternSearchTools
             namespaceFilter ?? "(all)"
         );
 
-        var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+        var regex = new Regex(
+            pattern,
+            RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled
+        );
         var results = new List<ContentMatch>();
 
         foreach (var project in solution.Projects)
