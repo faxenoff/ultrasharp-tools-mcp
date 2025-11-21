@@ -1,3 +1,5 @@
+using UltrasharpTools.Tools.Models;
+
 namespace UltrasharpTools.Tools.Interfaces;
 
 /// <summary>
@@ -6,7 +8,20 @@ namespace UltrasharpTools.Tools.Interfaces;
 public interface IDiagnosticService
 {
     /// <summary>
-    /// Анализирует код решения и возвращает диагностики
+    /// Анализирует код решения и возвращает диагностики (новая версия с фильтрами)
+    /// </summary>
+    /// <param name="solutionPath">Путь к .sln файлу</param>
+    /// <param name="filterOptions">Опции фильтрации диагностик</param>
+    /// <param name="cancellationToken">Токен отмены</param>
+    /// <returns>Результат анализа с диагностиками</returns>
+    Task<DiagnosticAnalysisResult> AnalyzeAsync(
+        string solutionPath,
+        DiagnosticFilterOptions filterOptions,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Анализирует код решения и возвращает диагностики (legacy версия для совместимости)
     /// </summary>
     /// <param name="solutionPath">Путь к .sln файлу</param>
     /// <param name="severityFilter">Минимальный уровень серьезности</param>
@@ -21,6 +36,11 @@ public interface IDiagnosticService
         int take,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Очищает кеш результатов анализа
+    /// </summary>
+    void ClearCache();
 }
 
 /// <summary>

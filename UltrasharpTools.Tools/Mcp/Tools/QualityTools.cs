@@ -1,5 +1,6 @@
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -152,7 +153,7 @@ public static partial class QualityTools
         OpenWorld = false
     )]
     [Description(
-        "Analyzes C# code using Roslyn analyzers to find code style issues, warnings, and errors. Returns diagnostics grouped by severity."
+        "Analyzes C# code using Roslyn analyzers with advanced filtering. Supports presets (performance, security, critical, etc.), specific diagnostic IDs, file patterns, and project filters."
     )]
     public static async Task<object> AnalyzeCodeStyle(
         IDiagnosticService diagnosticService,
@@ -160,9 +161,25 @@ public static partial class QualityTools
         ILogger<QualityToolsLogCategory> logger,
         [Description("Path to the solution file (.sln)")] string solutionPath,
         [Description(
-            "Minimum diagnostic severity to return: 'Hidden', 'Info', 'Warning', 'Error' (default: 'Warning')"
+            "Minimum diagnostic severity: 'Hidden', 'Info', 'Warning', 'Error' (default: 'Warning')"
         )]
-            string severityFilter = "Warning",
+            string? severityFilter = null,
+        [Description(
+            "Preset name for quick rule selection: 'performance', 'security', 'reliability', 'maintainability', 'critical', 'high', 'medium', 'low', etc. See DiagnosticPresets for full list."
+        )]
+            string? preset = null,
+        [Description(
+            "Specific diagnostic IDs to filter (e.g., 'CA1822,CA1860,CS8019'). Comma-separated list."
+        )]
+            string? diagnosticIds = null,
+        [Description(
+            "File patterns to filter (glob syntax, e.g., '**/Services/*.cs,**/Controllers/*.cs'). Comma-separated list."
+        )]
+            string? filePatterns = null,
+        [Description(
+            "Project names to filter (e.g., 'UltrasharpTools.Tools,UltrasharpTools.Droid'). Comma-separated list."
+        )]
+            string? projectNames = null,
         [Description("Number of results to skip for pagination (default: 0)")] int skip = 0,
         [Description("Number of results to return (default: 100)")] int take = 100,
         CancellationToken cancellationToken = default
@@ -184,23 +201,73 @@ public static partial class QualityTools
                 );
 
                 logger.LogInformation(
-                    "Executing {ToolName} for solution: {SolutionPath}",
+                    "Executing {ToolName} with preset={Preset}, diagnosticIds={DiagnosticIds}",
                     nameof(AnalyzeCodeStyle),
-                    solutionPath
+                    preset ?? "none",
+                    diagnosticIds ?? "all"
                 );
 
-                if (!Enum.TryParse<DiagnosticSeverity>(severityFilter, true, out var severity))
+                // Parse severity filter
+                var severity = DiagnosticSeverity.Warning;
+                if (severityFilter != null)
                 {
-                    throw new McpException(
-                        $"Invalid severity filter: {severityFilter}. Valid values: Hidden, Info, Warning, Error"
-                    );
+                    if (!Enum.TryParse<DiagnosticSeverity>(severityFilter, true, out severity))
+                    {
+                        throw new McpException(
+                            $"Invalid severity filter: {severityFilter}. Valid: Hidden, Info, Warning, Error"
+                        );
+                    }
+                }
+
+                // Build filter options
+                var filterOptions = new DiagnosticFilterOptions
+                {
+                    SeverityFilter = severity,
+                    Skip = skip,
+                    Take = take,
+                };
+
+                // Apply preset if specified
+                if (!string.IsNullOrEmpty(preset))
+                {
+                    filterOptions = DiagnosticFilterOptions.WithPreset(preset, severity);
+                    filterOptions = filterOptions with
+                    {
+                        Skip = skip,
+                        Take = take,
+                    };
+                }
+
+                // Override with specific diagnostic IDs if provided
+                if (!string.IsNullOrEmpty(diagnosticIds))
+                {
+                    var ids = diagnosticIds
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .ToArray();
+                    filterOptions = filterOptions with { DiagnosticIds = ids };
+                }
+
+                // Apply file patterns if provided
+                if (!string.IsNullOrEmpty(filePatterns))
+                {
+                    var patterns = filePatterns
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .ToArray();
+                    filterOptions = filterOptions with { FilePatterns = patterns };
+                }
+
+                // Apply project names if provided
+                if (!string.IsNullOrEmpty(projectNames))
+                {
+                    var projects = projectNames
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .ToArray();
+                    filterOptions = filterOptions with { ProjectNames = projects };
                 }
 
                 var result = await diagnosticService.AnalyzeAsync(
                     solutionPath,
-                    severity,
-                    skip,
-                    take,
+                    filterOptions,
                     cancellationToken
                 );
 
@@ -208,6 +275,29 @@ public static partial class QualityTools
                 try
                 {
                     output.AppendLine("## Code Style Analysis Results\n");
+
+                    // Show filters
+                    if (!string.IsNullOrEmpty(preset))
+                    {
+                        output.AppendLine($"**Preset:** {preset}");
+                    }
+                    if (filterOptions.DiagnosticIds?.Count() > 0)
+                    {
+                        output.AppendLine(
+                            $"**Filtered IDs:** {string.Join(", ", filterOptions.DiagnosticIds.Take(10))}{(filterOptions.DiagnosticIds.Count() > 10 ? $" (+{filterOptions.DiagnosticIds.Count() - 10} more)" : "")}"
+                        );
+                    }
+                    if (filterOptions.FilePatterns?.Count() > 0)
+                    {
+                        output.AppendLine($"**File patterns:** {string.Join(", ", filterOptions.FilePatterns)}");
+                    }
+                    if (filterOptions.ProjectNames?.Count() > 0)
+                    {
+                        output.AppendLine($"**Projects:** {string.Join(", ", filterOptions.ProjectNames)}");
+                    }
+                    output.AppendLine($"**Severity filter:** {filterOptions.SeverityFilter}");
+                    output.AppendLine();
+
                     output.AppendLine($"**Total diagnostics found:** {result.TotalCount}");
                     output.AppendLine(
                         $"**Showing:** {result.Diagnostics.Count} (skip: {skip}, take: {take})"
