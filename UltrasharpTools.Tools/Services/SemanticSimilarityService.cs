@@ -13,29 +13,35 @@ using System.Collections.Frozen;
 using System.Numerics; // For SIMD Vector<T>
 using System.Runtime.Intrinsics; // For advanced SIMD
 
-namespace UltrasharpTools.Tools.Services {
+namespace UltrasharpTools.Tools.Services
+{
     public class SemanticSimilarityService(
         ISolutionManager solutionManager,
         ICodeAnalysisService codeAnalysisService,
         ILogger<SemanticSimilarityService> logger,
-        IComplexityAnalysisService complexityAnalysisService) : ISemanticSimilarityService {
+        IComplexityAnalysisService complexityAnalysisService) : ISemanticSimilarityService
+    {
 
-        private static class Tuning {
+        private static class Tuning
+        {
 
             public static readonly int MaxDegreesOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
 
             public const int MethodLineCountFilter = 10;
             public const double DefaultSimilarityThreshold = 0.7;
 
-            public static class Normalization {
+            public static class Normalization
+            {
                 public const int MaxBasicBlockCount = 60;
                 public const int MaxConditionalBranchCount = 25;
                 public const int MaxLoopCount = 8;
                 public const int MaxCyclomaticComplexity = 30;
             }
 
-            public static class Weights {
-                public enum Feature {
+            public static class Weights
+            {
+                public enum Feature
+                {
                     ReturnType,
                     ParamCount,
                     ParamTypes,
@@ -77,7 +83,8 @@ namespace UltrasharpTools.Tools.Services {
 
             public const int ClassLineCountFilter = 20;
 
-            public static class ClassNormalization {
+            public static class ClassNormalization
+            {
                 public const int MaxPropertyCount = 30;
                 public const int MaxFieldCount = 50;
                 public const int MaxMethodCount = 50;
@@ -87,8 +94,10 @@ namespace UltrasharpTools.Tools.Services {
                 public const double MaxAverageMethodComplexity = 15.0;
             }
 
-            public static class ClassWeights {
-                public enum Feature {
+            public static class ClassWeights
+            {
+                public enum Feature
+                {
                     BaseClassName,
                     ImplementedInterfaceNames,
                     PublicMethodCount,
@@ -182,34 +191,40 @@ namespace UltrasharpTools.Tools.Services {
 
         public async Task<List<MethodSimilarityResult>> FindSimilarMethodsAsync(
         double similarityThreshold,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken)
+        {
             await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(_solutionManager, _logger, nameof(FindSimilarMethodsAsync), cancellationToken);
             _logger.LogInformation("Starting semantic similarity analysis with threshold {Threshold}, MaxDOP: {MaxDop}", similarityThreshold, Tuning.MaxDegreesOfParallelism);
 
             var allMethodFeatures = new System.Collections.Concurrent.ConcurrentBag<MethodSemanticFeatures>();
 
-            var parallelOptions = new ParallelOptions {
+            var parallelOptions = new ParallelOptions
+            {
                 MaxDegreeOfParallelism = Tuning.MaxDegreesOfParallelism,
                 CancellationToken = cancellationToken
             };
 
             var projects = _solutionManager.GetProjects().ToList(); // Materialize to avoid issues with concurrent modification if GetProjects() is lazy
 
-            await Parallel.ForEachAsync(projects, parallelOptions, async (project, ct) => {
-                if (ct.IsCancellationRequested) {
+            await Parallel.ForEachAsync(projects, parallelOptions, async (project, ct) =>
+            {
+                if (ct.IsCancellationRequested)
+                {
                     _logger.LogInformation("Semantic similarity analysis cancelled during project iteration for {ProjectName}.", project.Name);
                     return;
                 }
 
                 _logger.LogDebug("Analyzing project: {ProjectName}", project.Name);
                 var compilation = await project.GetCompilationAsync(ct);
-                if (compilation == null) {
+                if (compilation == null)
+                {
                     _logger.LogWarning("Could not get compilation for project {ProjectName}", project.Name);
                     return;
                 }
                 var documents = project.Documents.ToList(); // Materialize documents for the current project
 
-                await Parallel.ForEachAsync(documents, parallelOptions, async (document, docCt) => {
+                await Parallel.ForEachAsync(documents, parallelOptions, async (document, docCt) =>
+                {
                     if (docCt.IsCancellationRequested) return;
                     if (!document.SupportsSyntaxTree || !document.SupportsSemanticModel) return;
 
@@ -220,29 +235,38 @@ namespace UltrasharpTools.Tools.Services {
 
                     var methodDeclarations = syntaxTree.GetRoot(docCt).DescendantNodes().OfType<MethodDeclarationSyntax>();
 
-                    foreach (var methodDecl in methodDeclarations) {
+                    foreach (var methodDecl in methodDeclarations)
+                    {
                         if (docCt.IsCancellationRequested) break;
 
                         var methodSymbol = semanticModel.GetDeclaredSymbol(methodDecl, docCt) as IMethodSymbol;
-                        if (methodSymbol == null || methodSymbol.IsAbstract || methodSymbol.IsExtern || ToolHelpers.IsPropertyAccessor(methodSymbol)) {
+                        if (methodSymbol == null || methodSymbol.IsAbstract || methodSymbol.IsExtern || ToolHelpers.IsPropertyAccessor(methodSymbol))
+                        {
                             continue;
                         }
 
-                        try {
+                        try
+                        {
                             var features = await ExtractFeaturesAsync(methodSymbol, methodDecl, document, semanticModel, docCt, compilation);
-                            if (features != null) {
+                            if (features != null)
+                            {
                                 allMethodFeatures.Add(features);
                             }
-                        } catch (OperationCanceledException) {
+                        }
+                        catch (OperationCanceledException)
+                        {
                             _logger.LogInformation("Feature extraction cancelled for method {MethodName} in {FilePath}", methodSymbol?.Name ?? "Unknown", document.FilePath);
-                        } catch (Exception ex) {
+                        }
+                        catch (Exception ex)
+                        {
                             _logger.LogWarning(ex, "Failed to extract features for method {MethodName} in {FilePath}", methodSymbol?.Name ?? "Unknown", document.FilePath);
                         }
                     }
                 });
             });
 
-            if (cancellationToken.IsCancellationRequested) {
+            if (cancellationToken.IsCancellationRequested)
+            {
                 _logger.LogInformation("Semantic similarity analysis was cancelled before comparison.");
                 throw new OperationCanceledException("Semantic similarity analysis was cancelled.");
             }
@@ -257,13 +281,15 @@ namespace UltrasharpTools.Tools.Services {
             Document document,
             SemanticModel semanticModel,
             CancellationToken cancellationToken,
-            Compilation compilation) {
+            Compilation compilation)
+        {
             var filePath = document.FilePath ?? "unknown";
             var startLine = methodDecl.GetLocation().GetLineSpan().StartLinePosition.Line;
             var endLine = methodDecl.GetLocation().GetLineSpan().EndLinePosition.Line;
             var lineCount = endLine - startLine + 1;
 
-            if (lineCount < Tuning.MethodLineCountFilter) {
+            if (lineCount < Tuning.MethodLineCountFilter)
+            {
                 _logger.LogDebug("Method {MethodName} in {FilePath} has {LineCount} lines, which is less than the filter of {FilterCount}. Skipping.", methodSymbol.Name, filePath, lineCount, Tuning.MethodLineCountFilter);
                 return null;
             }
@@ -288,39 +314,55 @@ namespace UltrasharpTools.Tools.Services {
 
             SyntaxNode? bodyOrExpressionBody = methodDecl.Body ?? (SyntaxNode?)methodDecl.ExpressionBody?.Expression;
 
-            if (bodyOrExpressionBody != null) {
-                try {
+            if (bodyOrExpressionBody != null)
+            {
+                try
+                {
                     // Use methodDecl directly for CFG creation
                     var controlFlowGraph = ControlFlowGraph.Create(methodDecl, semanticModel, cancellationToken);
-                    if (controlFlowGraph != null && controlFlowGraph.Blocks.Any()) {
+                    if (controlFlowGraph != null && controlFlowGraph.Blocks.Any())
+                    {
                         basicBlockCount = controlFlowGraph.Blocks.Length;
                     }
                     _logger.LogDebug("ControlFlowGraph created for method {MethodName} in {FilePath}. BasicBlockCount: {BasicBlockCount}", methodName, filePath, basicBlockCount);
-                } catch (Exception ex) {
+                }
+                catch (Exception ex)
+                {
                     _logger.LogWarning(ex, "Failed to create ControlFlowGraph for method {MethodName} in {FilePath}. CFG-based features will be zero.", methodName, filePath);
                 }
 
                 var operation = semanticModel.GetOperation(bodyOrExpressionBody, cancellationToken);
-                if (operation != null) {
-                    foreach (var opNode in operation.DescendantsAndSelf()) {
-                        if (cancellationToken.IsCancellationRequested) {
+                if (operation != null)
+                {
+                    foreach (var opNode in operation.DescendantsAndSelf())
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
                             return null;
                         }
 
                         var opKindName = opNode.Kind.ToString();
                         operationCounts[opKindName] = operationCounts.GetValueOrDefault(opKindName, 0) + 1;
 
-                        if (opNode is IInvocationOperation invocation) {
+                        if (opNode is IInvocationOperation invocation)
+                        {
                             invokedMethodSignatures.Add(invocation.TargetMethod.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat));
-                        } else if (opNode is IFieldReferenceOperation fieldRef) {
+                        }
+                        else if (opNode is IFieldReferenceOperation fieldRef)
+                        {
                             distinctAccessedMemberTypes.Add(fieldRef.Field.Type.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal));
-                        } else if (opNode is IPropertyReferenceOperation propRef) {
+                        }
+                        else if (opNode is IPropertyReferenceOperation propRef)
+                        {
                             distinctAccessedMemberTypes.Add(propRef.Property.Type.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal));
                         }
 
-                        if (opNode is ILoopOperation) {
+                        if (opNode is ILoopOperation)
+                        {
                             loopCount++;
-                        } else if (opNode is IConditionalOperation) {
+                        }
+                        else if (opNode is IConditionalOperation)
+                        {
                             conditionalBranchCount++;
                         }
                     }
@@ -346,22 +388,27 @@ namespace UltrasharpTools.Tools.Services {
         private List<MethodSimilarityResult> CompareFeatures(
             List<MethodSemanticFeatures> allMethodFeatures,
             double similarityThreshold,
-            CancellationToken cancellationToken) {
+            CancellationToken cancellationToken)
+        {
             var results = new ConcurrentBag<MethodSimilarityResult>();
             var processedIndices = new System.Collections.Concurrent.ConcurrentDictionary<int, byte>();
             _logger.LogInformation("Starting parallel similarity comparison for {MethodCount} methods.", allMethodFeatures.Count);
 
             // Process comparisons in parallel using Parallel.For
-            var parallelOptions = new ParallelOptions {
+            var parallelOptions = new ParallelOptions
+            {
                 MaxDegreeOfParallelism = Tuning.MaxDegreesOfParallelism,
                 CancellationToken = cancellationToken
             };
 
-            Parallel.For(0, allMethodFeatures.Count, parallelOptions, i => {
-                if (cancellationToken.IsCancellationRequested) {
+            Parallel.For(0, allMethodFeatures.Count, parallelOptions, i =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
                     throw new OperationCanceledException("Semantic similarity analysis was cancelled.");
                 }
-                if (processedIndices.ContainsKey(i)) {
+                if (processedIndices.ContainsKey(i))
+                {
                     return;
                 }
 
@@ -372,11 +419,14 @@ namespace UltrasharpTools.Tools.Services {
                 int comparisonsMade = 0;
                 _logger.LogDebug("Comparing method {MethodName} ({FQN}) with other methods (parallel mode).", currentMethod.MethodName, currentMethod.FullyQualifiedMethodName);
 
-                for (int j = i + 1; j < allMethodFeatures.Count; j++) {
-                    if (cancellationToken.IsCancellationRequested) {
+                for (int j = i + 1; j < allMethodFeatures.Count; j++)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
                         throw new OperationCanceledException("Semantic similarity analysis was cancelled.");
                     }
-                    if (processedIndices.ContainsKey(j)) {
+                    if (processedIndices.ContainsKey(j))
+                    {
                         continue;
                     }
 
@@ -384,7 +434,8 @@ namespace UltrasharpTools.Tools.Services {
 
                     // Skip comparison if methods are overloads of each other
                     if (currentMethod.FullyQualifiedMethodName == otherMethod.FullyQualifiedMethodName &&
-                        !currentMethod.ParameterTypeNames.SequenceEqual(otherMethod.ParameterTypeNames)) {
+                        !currentMethod.ParameterTypeNames.SequenceEqual(otherMethod.ParameterTypeNames))
+                    {
                         _logger.LogDebug("Skipping comparison between overloads: {Method1FQN} ({Params1}) and {Method2FQN} ({Params2})",
                                         currentMethod.FullyQualifiedMethodName, string.Join(", ", currentMethod.ParameterTypeNames),
                                         otherMethod.FullyQualifiedMethodName, string.Join(", ", otherMethod.ParameterTypeNames));
@@ -393,7 +444,8 @@ namespace UltrasharpTools.Tools.Services {
 
                     double similarity = CalculateSimilarity(currentMethod, otherMethod);
 
-                    if (similarity >= similarityThreshold) {
+                    if (similarity >= similarityThreshold)
+                    {
                         similarGroup.Add(otherMethod);
                         processedIndices.TryAdd(j, 0);
                         groupTotalScore += similarity;
@@ -405,7 +457,8 @@ namespace UltrasharpTools.Tools.Services {
                     }
                 }
 
-                if (similarGroup.Count > 1) {
+                if (similarGroup.Count > 1)
+                {
                     double averageScore = comparisonsMade > 0 ? groupTotalScore / comparisonsMade : 1.0; // Avoid division by zero if only self-comparison
                     results.Add(new MethodSimilarityResult(similarGroup, averageScore));
                     _logger.LogInformation("Found similarity group of {GroupSize} methods, starting with {MethodName} ({FQN}), Avg Score: {Score:F2}",
@@ -420,28 +473,37 @@ namespace UltrasharpTools.Tools.Services {
             return results.OrderByDescending(r => r.AverageSimilarityScore).ToList();
         }
 
-        private double CalculateSimilarity(MethodSemanticFeatures method1, MethodSemanticFeatures method2) {
+        private double CalculateSimilarity(MethodSemanticFeatures method1, MethodSemanticFeatures method2)
+        {
             double returnTypeSimilarity = (method1.ReturnTypeName == method2.ReturnTypeName) ? 1.0 : 0.0;
             double paramCountSimilarity = (method1.ParameterTypeNames.Count == method2.ParameterTypeNames.Count) ? 1.0 : 0.0;
             double paramTypeSimilarity = 0.0;
-            if (method1.ParameterTypeNames.Count == method2.ParameterTypeNames.Count && method1.ParameterTypeNames.Any()) {
+            if (method1.ParameterTypeNames.Count == method2.ParameterTypeNames.Count && method1.ParameterTypeNames.Any())
+            {
                 int matchingParams = 0;
-                for (int k = 0; k < method1.ParameterTypeNames.Count; k++) {
-                    if (method1.ParameterTypeNames[k] == method2.ParameterTypeNames[k]) {
+                for (int k = 0; k < method1.ParameterTypeNames.Count; k++)
+                {
+                    if (method1.ParameterTypeNames[k] == method2.ParameterTypeNames[k])
+                    {
                         matchingParams++;
                     }
                 }
                 paramTypeSimilarity = (double)matchingParams / method1.ParameterTypeNames.Count;
-            } else if (method1.ParameterTypeNames.Count == 0 && method2.ParameterTypeNames.Count == 0) {
+            }
+            else if (method1.ParameterTypeNames.Count == 0 && method2.ParameterTypeNames.Count == 0)
+            {
                 paramTypeSimilarity = 1.0;
             }
 
             double invokedSimilarity = 0.0;
-            if (method1.InvokedMethodSignatures.Any() || method2.InvokedMethodSignatures.Any()) {
+            if (method1.InvokedMethodSignatures.Any() || method2.InvokedMethodSignatures.Any())
+            {
                 var intersection = method1.InvokedMethodSignatures.Intersect(method2.InvokedMethodSignatures).Count();
                 var union = method1.InvokedMethodSignatures.Union(method2.InvokedMethodSignatures).Count();
                 invokedSimilarity = union > 0 ? (double)intersection / union : 1.0;
-            } else {
+            }
+            else
+            {
                 invokedSimilarity = 1.0;
             }
 
@@ -452,11 +514,14 @@ namespace UltrasharpTools.Tools.Services {
             double operationCountsSimilarity = CalculateCosineSimilarity(method1.OperationCounts, method2.OperationCounts);
             double accessedTypesSimilarity = 0.0;
 
-            if (method1.DistinctAccessedMemberTypes.Any() || method2.DistinctAccessedMemberTypes.Any()) {
+            if (method1.DistinctAccessedMemberTypes.Any() || method2.DistinctAccessedMemberTypes.Any())
+            {
                 var intersectionTypes = method1.DistinctAccessedMemberTypes.Intersect(method2.DistinctAccessedMemberTypes).Count();
                 var unionTypes = method1.DistinctAccessedMemberTypes.Union(method2.DistinctAccessedMemberTypes).Count();
                 accessedTypesSimilarity = unionTypes > 0 ? (double)intersectionTypes / unionTypes : 1.0;
-            } else {
+            }
+            else
+            {
                 accessedTypesSimilarity = 1.0;
             }
 
@@ -475,7 +540,8 @@ namespace UltrasharpTools.Tools.Services {
             return totalWeightedScore / Tuning.Weights.TotalWeight;
         }
 
-        private double CalculateNormalizedDifference(int val1, int val2, int maxValue) {
+        private double CalculateNormalizedDifference(int val1, int val2, int maxValue)
+        {
             if (maxValue == 0) return (val1 == val2) ? 0.0 : 1.0;
             double diff = Math.Abs(val1 - val2);
             return diff / maxValue;
@@ -485,7 +551,8 @@ namespace UltrasharpTools.Tools.Services {
         /// Calculate cosine similarity using SIMD vectorization for 4-8x performance improvement.
         /// Falls back to scalar computation for small vectors (&lt;16 elements).
         /// </summary>
-        private double CalculateCosineSimilarity(Dictionary<string, int> vec1, Dictionary<string, int> vec2) {
+        private double CalculateCosineSimilarity(Dictionary<string, int> vec1, Dictionary<string, int> vec2)
+        {
             if (!vec1.Any() && !vec2.Any()) return 1.0;
             if (!vec1.Any() || !vec2.Any()) return 0.0;
 
@@ -494,7 +561,8 @@ namespace UltrasharpTools.Tools.Services {
 
             // For very small vectors, use scalar computation (SIMD overhead not worth it)
             const int simdThreshold = 16;
-            if (count < simdThreshold) {
+            if (count < simdThreshold)
+            {
                 return CalculateCosineSimilarityScalar(vec1, vec2, allKeysSet, count);
             }
 
@@ -503,10 +571,12 @@ namespace UltrasharpTools.Tools.Services {
             var values1 = ArrayPool<int>.Shared.Rent(count);
             var values2 = ArrayPool<int>.Shared.Rent(count);
 
-            try {
+            try
+            {
                 // Fill buffers with keys and values
                 int index = 0;
-                foreach (var key in allKeysSet) {
+                foreach (var key in allKeysSet)
+                {
                     keyBuffer[index] = key;
                     values1[index] = vec1.GetValueOrDefault(key, 0);
                     values2[index] = vec2.GetValueOrDefault(key, 0);
@@ -522,7 +592,8 @@ namespace UltrasharpTools.Tools.Services {
                 int i = 0;
 
                 // Process vectors in SIMD chunks
-                for (; i <= count - vectorSize; i += vectorSize) {
+                for (; i <= count - vectorSize; i += vectorSize)
+                {
                     var v1 = new Vector<int>(values1, i);
                     var v2 = new Vector<int>(values2, i);
 
@@ -537,7 +608,8 @@ namespace UltrasharpTools.Tools.Services {
                 }
 
                 // Process remaining elements scalar
-                for (; i < count; i++) {
+                for (; i < count; i++)
+                {
                     int val1 = values1[i];
                     int val2 = values2[i];
 
@@ -552,7 +624,9 @@ namespace UltrasharpTools.Tools.Services {
                 if (magnitude1 == 0 || magnitude2 == 0) return 0.0;
 
                 return dotProduct / (magnitude1 * magnitude2);
-            } finally {
+            }
+            finally
+            {
                 ArrayPool<string>.Shared.Return(keyBuffer);
                 ArrayPool<int>.Shared.Return(values1);
                 ArrayPool<int>.Shared.Return(values2);
@@ -566,13 +640,16 @@ namespace UltrasharpTools.Tools.Services {
             Dictionary<string, int> vec1,
             Dictionary<string, int> vec2,
             IEnumerable<string> allKeys,
-            int count) {
+            int count)
+        {
 
             var keyBuffer = ArrayPool<string>.Shared.Rent(count);
 
-            try {
+            try
+            {
                 int index = 0;
-                foreach (var key in allKeys) {
+                foreach (var key in allKeys)
+                {
                     keyBuffer[index++] = key;
                 }
 
@@ -580,7 +657,8 @@ namespace UltrasharpTools.Tools.Services {
                 double magnitude1 = 0.0;
                 double magnitude2 = 0.0;
 
-                for (int i = 0; i < count; i++) {
+                for (int i = 0; i < count; i++)
+                {
                     string key = keyBuffer[i];
                     int val1 = vec1.GetValueOrDefault(key, 0);
                     int val2 = vec2.GetValueOrDefault(key, 0);
@@ -596,41 +674,49 @@ namespace UltrasharpTools.Tools.Services {
                 if (magnitude1 == 0 || magnitude2 == 0) return 0.0;
 
                 return dotProduct / (magnitude1 * magnitude2);
-            } finally {
+            }
+            finally
+            {
                 ArrayPool<string>.Shared.Return(keyBuffer);
             }
         }
 
         public async Task<List<ClassSimilarityResult>> FindSimilarClassesAsync(
         double similarityThreshold,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken)
+        {
             await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(_solutionManager, _logger, nameof(FindSimilarClassesAsync), cancellationToken);
             _logger.LogInformation("Starting class semantic similarity analysis with threshold {Threshold}, MaxDOP: {MaxDop}", similarityThreshold, Tuning.MaxDegreesOfParallelism);
 
             var allClassFeatures = new System.Collections.Concurrent.ConcurrentBag<ClassSemanticFeatures>();
 
-            var parallelOptions = new ParallelOptions {
+            var parallelOptions = new ParallelOptions
+            {
                 MaxDegreeOfParallelism = Tuning.MaxDegreesOfParallelism,
                 CancellationToken = cancellationToken
             };
 
             var projects = _solutionManager.GetProjects().ToList(); // Materialize
 
-            await Parallel.ForEachAsync(projects, parallelOptions, async (project, ct) => {
-                if (ct.IsCancellationRequested) {
+            await Parallel.ForEachAsync(projects, parallelOptions, async (project, ct) =>
+            {
+                if (ct.IsCancellationRequested)
+                {
                     _logger.LogInformation("Class semantic similarity analysis cancelled during project iteration for {ProjectName}.", project.Name);
                     return;
                 }
 
                 _logger.LogDebug("Analyzing project for classes: {ProjectName}", project.Name);
                 var compilation = await project.GetCompilationAsync(ct);
-                if (compilation == null) {
+                if (compilation == null)
+                {
                     _logger.LogWarning("Could not get compilation for project {ProjectName}", project.Name);
                     return;
                 }
                 var documents = project.Documents.ToList(); // Materialize
 
-                await Parallel.ForEachAsync(documents, parallelOptions, async (document, docCt) => {
+                await Parallel.ForEachAsync(documents, parallelOptions, async (document, docCt) =>
+                {
                     if (docCt.IsCancellationRequested) return;
                     if (!document.SupportsSyntaxTree || !document.SupportsSemanticModel) return;
 
@@ -644,29 +730,38 @@ namespace UltrasharpTools.Tools.Services {
                         .Where(tds => tds.Kind() == Microsoft.CodeAnalysis.CSharp.SyntaxKind.ClassDeclaration ||
                                       tds.Kind() == Microsoft.CodeAnalysis.CSharp.SyntaxKind.RecordDeclaration);
 
-                    foreach (var classDecl in classDeclarations) {
+                    foreach (var classDecl in classDeclarations)
+                    {
                         if (docCt.IsCancellationRequested) break;
 
                         var classSymbol = semanticModel.GetDeclaredSymbol(classDecl, docCt) as INamedTypeSymbol;
-                        if (classSymbol == null || classSymbol.IsAbstract || classSymbol.IsStatic) {
+                        if (classSymbol == null || classSymbol.IsAbstract || classSymbol.IsStatic)
+                        {
                             continue;
                         }
 
-                        try {
+                        try
+                        {
                             var features = await ExtractClassFeaturesAsync(classSymbol, classDecl, document, semanticModel, docCt, compilation);
-                            if (features != null) {
+                            if (features != null)
+                            {
                                 allClassFeatures.Add(features);
                             }
-                        } catch (OperationCanceledException) {
+                        }
+                        catch (OperationCanceledException)
+                        {
                             _logger.LogInformation("Feature extraction cancelled for class {ClassName} in {FilePath}", classSymbol?.Name ?? "Unknown", document.FilePath);
-                        } catch (Exception ex) {
+                        }
+                        catch (Exception ex)
+                        {
                             _logger.LogWarning(ex, "Failed to extract features for class {ClassName} in {FilePath}", classSymbol?.Name ?? "Unknown", document.FilePath);
                         }
                     }
                 });
             });
 
-            if (cancellationToken.IsCancellationRequested) {
+            if (cancellationToken.IsCancellationRequested)
+            {
                 _logger.LogInformation("Class semantic similarity analysis was cancelled before comparison.");
                 throw new OperationCanceledException("Class semantic similarity analysis was cancelled.");
             }
@@ -681,13 +776,15 @@ namespace UltrasharpTools.Tools.Services {
             Document document,
             SemanticModel semanticModel,
             CancellationToken cancellationToken,
-            Compilation compilation) {
+            Compilation compilation)
+        {
             var filePath = document.FilePath ?? "unknown";
             var startLine = classDecl.GetLocation().GetLineSpan().StartLinePosition.Line;
             var endLine = classDecl.GetLocation().GetLineSpan().EndLinePosition.Line;
             var totalLinesOfCode = endLine - startLine + 1;
 
-            if (totalLinesOfCode < Tuning.ClassLineCountFilter) {
+            if (totalLinesOfCode < Tuning.ClassLineCountFilter)
+            {
                 _logger.LogDebug("Class {ClassName} in {FilePath} has {LineCount} lines, less than filter {FilterCount}. Skipping.",
                     classSymbol.Name, filePath, totalLinesOfCode, Tuning.ClassLineCountFilter);
                 return null;
@@ -703,7 +800,8 @@ namespace UltrasharpTools.Tools.Services {
             var baseClassName = classSymbol.BaseType?.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal);
 
             var implementedInterfaceNames = new List<string>();
-            foreach (var iface in classSymbol.AllInterfaces) {
+            foreach (var iface in classSymbol.AllInterfaces)
+            {
                 AddTypeAndNamespaceIfExternal(iface, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
                 implementedInterfaceNames.Add(iface.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal));
             }
@@ -718,21 +816,27 @@ namespace UltrasharpTools.Tools.Services {
             var classMethodFeatures = new List<MethodSemanticFeatures>();
 
             // Collect used namespaces from using directives in the current file
-            if (classDecl.SyntaxTree.GetRoot(cancellationToken) is CompilationUnitSyntax compilationUnit) {
-                foreach (var usingDirective in compilationUnit.Usings) {
-                    if (usingDirective.Name != null) {
+            if (classDecl.SyntaxTree.GetRoot(cancellationToken) is CompilationUnitSyntax compilationUnit)
+            {
+                foreach (var usingDirective in compilationUnit.Usings)
+                {
+                    if (usingDirective.Name != null)
+                    {
                         var namespaceSymbol = semanticModel.GetSymbolInfo(usingDirective.Name, cancellationToken).Symbol as INamespaceSymbol;
-                        if (namespaceSymbol != null && !namespaceSymbol.IsGlobalNamespace) {
+                        if (namespaceSymbol != null && !namespaceSymbol.IsGlobalNamespace)
+                        {
                             distinctUsedNamespaceFqns.Add(namespaceSymbol.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal));
                         }
                     }
                 }
             }
 
-            foreach (var memberSymbol in classSymbol.GetMembers()) {
+            foreach (var memberSymbol in classSymbol.GetMembers())
+            {
                 if (cancellationToken.IsCancellationRequested) return null;
 
-                if (memberSymbol is IMethodSymbol methodMember) {
+                if (memberSymbol is IMethodSymbol methodMember)
+                {
                     if (ToolHelpers.IsPropertyAccessor(methodMember) || methodMember.IsImplicitlyDeclared) continue;
 
                     if (methodMember.DeclaredAccessibility == Accessibility.Public) publicMethodCount++;
@@ -743,42 +847,55 @@ namespace UltrasharpTools.Tools.Services {
                     if (methodMember.IsVirtual) virtualMethodCount++;
 
                     AddTypeAndNamespaceIfExternal(methodMember.ReturnType, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                    foreach (var param in methodMember.Parameters) {
+                    foreach (var param in methodMember.Parameters)
+                    {
                         AddTypeAndNamespaceIfExternal(param.Type, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
                     }
 
-                    if (memberSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) is MethodDeclarationSyntax methodDeclSyntax) {
+                    if (memberSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) is MethodDeclarationSyntax methodDeclSyntax)
+                    {
                         var features = await ExtractFeaturesAsync(methodMember, methodDeclSyntax, document, semanticModel, cancellationToken, compilation);
-                        if (features != null) {
+                        if (features != null)
+                        {
                             classMethodFeatures.Add(features);
                             totalMethodComplexity += features.CyclomaticComplexity;
                             analyzedMethodCount++;
 
                             // Add types and namespaces from method body analysis
-                            foreach (var invokedSig in features.InvokedMethodSignatures) {
+                            foreach (var invokedSig in features.InvokedMethodSignatures)
+                            {
                                 // This is tricky as InvokedMethodSignatures are strings. A more robust way would be to get IMethodSymbol during ExtractFeaturesAsync
                                 // For now, we'll skip adding these to avoid parsing strings back to symbols.
                             }
-                            foreach (var accessedType in features.DistinctAccessedMemberTypes) {
+                            foreach (var accessedType in features.DistinctAccessedMemberTypes)
+                            {
                                 // Similar to above, these are strings.
                             }
                         }
                     }
-                } else if (memberSymbol is IPropertySymbol propertyMember) {
+                }
+                else if (memberSymbol is IPropertySymbol propertyMember)
+                {
                     propertyCount++;
                     if (propertyMember.IsReadOnly) readOnlyPropertyCount++;
                     if (propertyMember.IsStatic) staticPropertyCount++;
                     AddTypeAndNamespaceIfExternal(propertyMember.Type, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                } else if (memberSymbol is IFieldSymbol fieldMember) {
+                }
+                else if (memberSymbol is IFieldSymbol fieldMember)
+                {
                     fieldCount++;
                     if (fieldMember.IsStatic) staticFieldCount++;
                     if (fieldMember.IsReadOnly) readonlyFieldCount++;
                     if (fieldMember.IsConst) constFieldCount++;
                     AddTypeAndNamespaceIfExternal(fieldMember.Type, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                } else if (memberSymbol is IEventSymbol eventMember) {
+                }
+                else if (memberSymbol is IEventSymbol eventMember)
+                {
                     eventCount++;
                     AddTypeAndNamespaceIfExternal(eventMember.Type, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                } else if (memberSymbol is INamedTypeSymbol nestedTypeMember) {
+                }
+                else if (memberSymbol is INamedTypeSymbol nestedTypeMember)
+                {
                     if (nestedTypeMember.TypeKind == TypeKind.Class) nestedClassCount++;
                     else if (nestedTypeMember.TypeKind == TypeKind.Struct) nestedStructCount++;
                     else if (nestedTypeMember.TypeKind == TypeKind.Enum) nestedEnumCount++;
@@ -789,39 +906,62 @@ namespace UltrasharpTools.Tools.Services {
 
             // Deeper scan for referenced types and namespaces within method bodies and other syntax elements
             // This is more robust than just looking at IdentifierNameSyntax.
-            foreach (var node in classDecl.DescendantNodes(descendIntoChildren: n => n is not TypeDeclarationSyntax || n == classDecl)) { // Avoid descending into nested types again
+            foreach (var node in classDecl.DescendantNodes(descendIntoChildren: n => n is not TypeDeclarationSyntax || n == classDecl))
+            { // Avoid descending into nested types again
                 if (cancellationToken.IsCancellationRequested) return null;
 
                 ISymbol? referencedSymbol = null;
-                if (node is IdentifierNameSyntax identifierName) {
+                if (node is IdentifierNameSyntax identifierName)
+                {
                     referencedSymbol = semanticModel.GetSymbolInfo(identifierName, cancellationToken).Symbol;
-                } else if (node is MemberAccessExpressionSyntax memberAccess) {
+                }
+                else if (node is MemberAccessExpressionSyntax memberAccess)
+                {
                     referencedSymbol = semanticModel.GetSymbolInfo(memberAccess.Name, cancellationToken).Symbol;
-                } else if (node is ObjectCreationExpressionSyntax objectCreation) {
+                }
+                else if (node is ObjectCreationExpressionSyntax objectCreation)
+                {
                     referencedSymbol = semanticModel.GetSymbolInfo(objectCreation.Type, cancellationToken).Symbol;
-                } else if (node is InvocationExpressionSyntax invocation && invocation.Expression is MemberAccessExpressionSyntax maes) {
+                }
+                else if (node is InvocationExpressionSyntax invocation && invocation.Expression is MemberAccessExpressionSyntax maes)
+                {
                     referencedSymbol = semanticModel.GetSymbolInfo(maes.Name, cancellationToken).Symbol;
                 }
 
-                if (referencedSymbol is ITypeSymbol typeSym) {
+                if (referencedSymbol is ITypeSymbol typeSym)
+                {
                     AddTypeAndNamespaceIfExternal(typeSym, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                } else if (referencedSymbol is IMethodSymbol methodSym) {
+                }
+                else if (referencedSymbol is IMethodSymbol methodSym)
+                {
                     AddTypeAndNamespaceIfExternal(methodSym.ReturnType, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                    foreach (var param in methodSym.Parameters) {
+                    foreach (var param in methodSym.Parameters)
+                    {
                         AddTypeAndNamespaceIfExternal(param.Type, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
                     }
-                } else if (referencedSymbol is IPropertySymbol propSym) {
+                }
+                else if (referencedSymbol is IPropertySymbol propSym)
+                {
                     AddTypeAndNamespaceIfExternal(propSym.Type, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                } else if (referencedSymbol is IFieldSymbol fieldSym) {
+                }
+                else if (referencedSymbol is IFieldSymbol fieldSym)
+                {
                     AddTypeAndNamespaceIfExternal(fieldSym.Type, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                } else if (referencedSymbol is IEventSymbol eventSym) {
+                }
+                else if (referencedSymbol is IEventSymbol eventSym)
+                {
                     AddTypeAndNamespaceIfExternal(eventSym.Type, classSymbol, distinctReferencedExternalTypeFqns, distinctUsedNamespaceFqns);
-                } else if (referencedSymbol is INamespaceSymbol nsSym && !nsSym.IsGlobalNamespace) {
+                }
+                else if (referencedSymbol is INamespaceSymbol nsSym && !nsSym.IsGlobalNamespace)
+                {
                     // Check if the namespace itself is from an external assembly (less common for direct usage like this, but possible)
                     if (nsSym.ContainingAssembly != null && classSymbol.ContainingAssembly != null &&
-                        !SymbolEqualityComparer.Default.Equals(nsSym.ContainingAssembly, classSymbol.ContainingAssembly)) {
+                        !SymbolEqualityComparer.Default.Equals(nsSym.ContainingAssembly, classSymbol.ContainingAssembly))
+                    {
                         distinctUsedNamespaceFqns.Add(nsSym.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal));
-                    } else if (nsSym.ContainingAssembly == null && classSymbol.ContainingAssembly != null) {
+                    }
+                    else if (nsSym.ContainingAssembly == null && classSymbol.ContainingAssembly != null)
+                    {
                         // Namespace is likely global or part of the current compilation but not tied to a specific assembly in the same way types are.
                         // We primarily add namespaces based on types they contain.
                     }
@@ -866,22 +1006,27 @@ namespace UltrasharpTools.Tools.Services {
         private List<ClassSimilarityResult> CompareClassFeatures(
             List<ClassSemanticFeatures> allClassFeatures,
             double similarityThreshold,
-            CancellationToken cancellationToken) {
+            CancellationToken cancellationToken)
+        {
             var results = new ConcurrentBag<ClassSimilarityResult>();
             var processedIndices = new System.Collections.Concurrent.ConcurrentDictionary<int, byte>();
             _logger.LogInformation("Starting parallel class similarity comparison for {ClassCount} classes.", allClassFeatures.Count);
 
             // Process comparisons in parallel using Parallel.For
-            var parallelOptions = new ParallelOptions {
+            var parallelOptions = new ParallelOptions
+            {
                 MaxDegreeOfParallelism = Tuning.MaxDegreesOfParallelism,
                 CancellationToken = cancellationToken
             };
 
-            Parallel.For(0, allClassFeatures.Count, parallelOptions, i => {
-                if (cancellationToken.IsCancellationRequested) {
+            Parallel.For(0, allClassFeatures.Count, parallelOptions, i =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
                     throw new OperationCanceledException("Class similarity analysis was cancelled.");
                 }
-                if (processedIndices.ContainsKey(i)) {
+                if (processedIndices.ContainsKey(i))
+                {
                     return;
                 }
 
@@ -891,18 +1036,22 @@ namespace UltrasharpTools.Tools.Services {
                 double groupTotalScore = 0;
                 int comparisonsMade = 0;
 
-                for (int j = i + 1; j < allClassFeatures.Count; j++) {
-                    if (cancellationToken.IsCancellationRequested) {
+                for (int j = i + 1; j < allClassFeatures.Count; j++)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
                         throw new OperationCanceledException("Class similarity analysis was cancelled.");
                     }
-                    if (processedIndices.ContainsKey(j)) {
+                    if (processedIndices.ContainsKey(j))
+                    {
                         continue;
                     }
 
                     var otherClass = allClassFeatures[j];
                     double similarity = CalculateClassSimilarity(currentClass, otherClass);
 
-                    if (similarity >= similarityThreshold) {
+                    if (similarity >= similarityThreshold)
+                    {
                         similarGroup.Add(otherClass);
                         processedIndices.TryAdd(j, 0);
                         groupTotalScore += similarity;
@@ -910,7 +1059,8 @@ namespace UltrasharpTools.Tools.Services {
                     }
                 }
 
-                if (similarGroup.Count > 1) {
+                if (similarGroup.Count > 1)
+                {
                     double averageScore = comparisonsMade > 0 ? groupTotalScore / comparisonsMade : 1.0;
                     results.Add(new ClassSimilarityResult(similarGroup, averageScore));
                     _logger.LogInformation("Found class similarity group of {GroupSize}, starting with {ClassName}, Avg Score: {Score:F2}",
@@ -922,7 +1072,8 @@ namespace UltrasharpTools.Tools.Services {
             return results.OrderByDescending(r => r.AverageSimilarityScore).ToList();
         }
 
-        private double CalculateClassSimilarity(ClassSemanticFeatures class1, ClassSemanticFeatures class2) {
+        private double CalculateClassSimilarity(ClassSemanticFeatures class1, ClassSemanticFeatures class2)
+        {
             double baseClassSimilarity = (class1.BaseClassName == class2.BaseClassName) ? 1.0 :
                 (string.IsNullOrEmpty(class1.BaseClassName) && string.IsNullOrEmpty(class2.BaseClassName) ? 1.0 : 0.0);
 
@@ -931,32 +1082,40 @@ namespace UltrasharpTools.Tools.Services {
             double usedNamespacesSimilarity = CalculateJaccardSimilarity(class1.DistinctUsedNamespaceFqns, class2.DistinctUsedNamespaceFqns);
 
             double methodMatchingSimilarity = 0.0;
-            if (class1.MethodFeatures.Any() && class2.MethodFeatures.Any()) {
+            if (class1.MethodFeatures.Any() && class2.MethodFeatures.Any())
+            {
                 var smallerList = class1.MethodFeatures.Count < class2.MethodFeatures.Count ? class1.MethodFeatures : class2.MethodFeatures;
                 var largerList = class1.MethodFeatures.Count < class2.MethodFeatures.Count ? class2.MethodFeatures : class1.MethodFeatures;
                 double totalMaxSimilarity = 0.0;
                 HashSet<int> usedLargerListIndices = new HashSet<int>();
 
-                foreach (var method1Feat in smallerList) {
+                foreach (var method1Feat in smallerList)
+                {
                     double maxSimForMethod1 = 0.0;
                     int bestMatchIndex = -1;
-                    for (int k = 0; k < largerList.Count; k++) {
-                        if (usedLargerListIndices.Contains(k)) {
+                    for (int k = 0; k < largerList.Count; k++)
+                    {
+                        if (usedLargerListIndices.Contains(k))
+                        {
                             continue;
                         }
                         double sim = CalculateSimilarity(method1Feat, largerList[k]); // Uses existing method similarity
-                        if (sim > maxSimForMethod1) {
+                        if (sim > maxSimForMethod1)
+                        {
                             maxSimForMethod1 = sim;
                             bestMatchIndex = k;
                         }
                     }
-                    if (bestMatchIndex != -1) {
+                    if (bestMatchIndex != -1)
+                    {
                         totalMaxSimilarity += maxSimForMethod1;
                         usedLargerListIndices.Add(bestMatchIndex);
                     }
                 }
                 methodMatchingSimilarity = smallerList.Any() ? totalMaxSimilarity / smallerList.Count : 1.0;
-            } else if (!class1.MethodFeatures.Any() && !class2.MethodFeatures.Any()) {
+            }
+            else if (!class1.MethodFeatures.Any() && !class2.MethodFeatures.Any())
+            {
                 methodMatchingSimilarity = 1.0; // Both have no methods, considered perfectly similar in this aspect
             }
 
@@ -992,7 +1151,8 @@ namespace UltrasharpTools.Tools.Services {
             return totalWeight > 0 ? totalWeightedScore / totalWeight : 0.0;
         }
 
-        private double CalculateJaccardSimilarity<T>(ICollection<T> set1, ICollection<T> set2) {
+        private double CalculateJaccardSimilarity<T>(ICollection<T> set1, ICollection<T> set2)
+        {
             if (!set1.Any() && !set2.Any()) return 1.0;
             if (!set1.Any() || !set2.Any()) return 0.0;
 
@@ -1001,8 +1161,10 @@ namespace UltrasharpTools.Tools.Services {
             return union > 0 ? (double)intersection / union : 0.0;
         }
 
-        private double CalculateNormalizedDifference(double val1, double val2, double maxValue) {
-            if (maxValue == 0.0) {
+        private double CalculateNormalizedDifference(double val1, double val2, double maxValue)
+        {
+            if (maxValue == 0.0)
+            {
                 return (val1 == val2) ? 0.0 : 1.0;
             }
             double diff = Math.Abs(val1 - val2);
@@ -1013,34 +1175,42 @@ namespace UltrasharpTools.Tools.Services {
             ITypeSymbol? typeSymbol,
             INamedTypeSymbol containingClassSymbol,
             HashSet<string> externalTypeFqns,
-            HashSet<string> usedNamespaceFqns) {
-            if (typeSymbol == null || typeSymbol.TypeKind == TypeKind.Error || typeSymbol.SpecialType == SpecialType.System_Void) {
+            HashSet<string> usedNamespaceFqns)
+        {
+            if (typeSymbol == null || typeSymbol.TypeKind == TypeKind.Error || typeSymbol.SpecialType == SpecialType.System_Void)
+            {
                 return;
             }
 
             // Add namespace
-            if (typeSymbol.ContainingNamespace != null && !typeSymbol.ContainingNamespace.IsGlobalNamespace) {
+            if (typeSymbol.ContainingNamespace != null && !typeSymbol.ContainingNamespace.IsGlobalNamespace)
+            {
                 usedNamespaceFqns.Add(typeSymbol.ContainingNamespace.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal));
             }
 
             // Add type if external
             if (typeSymbol.ContainingAssembly != null && containingClassSymbol.ContainingAssembly != null &&
-                !SymbolEqualityComparer.Default.Equals(typeSymbol.ContainingAssembly, containingClassSymbol.ContainingAssembly)) {
+                !SymbolEqualityComparer.Default.Equals(typeSymbol.ContainingAssembly, containingClassSymbol.ContainingAssembly))
+            {
                 externalTypeFqns.Add(typeSymbol.OriginalDefinition.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal));
             }
 
             // Handle generic type arguments
-            if (typeSymbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.IsGenericType) {
-                foreach (var typeArg in namedTypeSymbol.TypeArguments) {
+            if (typeSymbol is INamedTypeSymbol namedTypeSymbol && namedTypeSymbol.IsGenericType)
+            {
+                foreach (var typeArg in namedTypeSymbol.TypeArguments)
+                {
                     AddTypeAndNamespaceIfExternal(typeArg, containingClassSymbol, externalTypeFqns, usedNamespaceFqns);
                 }
             }
             // Handle array element type
-            if (typeSymbol is IArrayTypeSymbol arrayTypeSymbol) {
+            if (typeSymbol is IArrayTypeSymbol arrayTypeSymbol)
+            {
                 AddTypeAndNamespaceIfExternal(arrayTypeSymbol.ElementType, containingClassSymbol, externalTypeFqns, usedNamespaceFqns);
             }
             // Handle pointer element type
-            if (typeSymbol is IPointerTypeSymbol pointerTypeSymbol) {
+            if (typeSymbol is IPointerTypeSymbol pointerTypeSymbol)
+            {
                 AddTypeAndNamespaceIfExternal(pointerTypeSymbol.PointedAtType, containingClassSymbol, externalTypeFqns, usedNamespaceFqns);
             }
         }

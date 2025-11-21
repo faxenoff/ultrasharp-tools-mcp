@@ -1,7 +1,9 @@
 
 
-namespace UltrasharpTools.Tools.Services {
-    public class MethodSemanticFeatures {
+namespace UltrasharpTools.Tools.Services
+{
+    public class MethodSemanticFeatures
+    {
         // Store the fully qualified name instead of the IMethodSymbol object
         public string FullyQualifiedMethodName { get; }
         public string FilePath { get; }
@@ -38,7 +40,8 @@ namespace UltrasharpTools.Tools.Services {
             int loopCount,
             int cyclomaticComplexity,
             Dictionary<string, int> operationCounts,
-            HashSet<string> distinctAccessedMemberTypes) {
+            HashSet<string> distinctAccessedMemberTypes)
+        {
             FullyQualifiedMethodName = fullyQualifiedMethodName;
             FilePath = filePath;
             StartLine = startLine;

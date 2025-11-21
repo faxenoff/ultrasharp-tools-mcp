@@ -16,10 +16,12 @@ using System.Xml.Linq;
 public class SolutionToolsLogCategory { }
 
 [McpServerToolType]
-public static class SolutionTools {
+public static class SolutionTools
+{
 
     private const int MaxOutputLength = 50000;
-    private enum DetailLevel {
+    private enum DetailLevel
+    {
         Full,
         NoConstantFieldNames,
         NoCommonDerivedOrImplementedClasses,
@@ -46,56 +48,71 @@ public static class SolutionTools {
     IEditorConfigProvider editorConfigProvider,
     ILogger<SolutionToolsLogCategory> logger,
     [Description("The absolute file path to the .sln solution file.")] string solutionPath,
-    CancellationToken cancellationToken) {
+    CancellationToken cancellationToken)
+    {
 
-        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
+        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
+        {
             ErrorHandlingHelpers.ValidateStringParameter(solutionPath, "solutionPath", logger);
             logger.LogInformation("Executing '{LoadSolution}' tool for path: {SolutionPath}", nameof(LoadSolution), solutionPath);
 
             // Validate solution file exists and has correct extension
-            if (!File.Exists(solutionPath)) {
+            if (!File.Exists(solutionPath))
+            {
                 logger.LogError("Solution file not found at path: {SolutionPath}", solutionPath);
                 throw new McpException($"Solution file does not exist at path: {solutionPath}");
             }
 
-            if (!Path.GetExtension(solutionPath).Equals(".sln", StringComparison.OrdinalIgnoreCase)) {
+            if (!Path.GetExtension(solutionPath).Equals(".sln", StringComparison.OrdinalIgnoreCase))
+            {
                 logger.LogError("File is not a valid solution file: {SolutionPath}", solutionPath);
                 throw new McpException($"File at path '{solutionPath}' is not a .sln file.");
             }
 
-            try {
+            try
+            {
                 await solutionManager.LoadSolutionAsync(solutionPath, cancellationToken);
-            } catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException)) {
+            }
+            catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException))
+            {
                 logger.LogError(ex, "Failed to load solution at {SolutionPath}", solutionPath);
                 throw new McpException($"Failed to load solution: {ex.Message}");
             }
 
             // Get solution directory and initialize editor config
             var solutionDir = Path.GetDirectoryName(solutionPath);
-            if (string.IsNullOrEmpty(solutionDir)) {
+            if (string.IsNullOrEmpty(solutionDir))
+            {
                 logger.LogWarning(".editorconfig provider could not determine solution directory from path: {SolutionPath}", solutionPath);
                 throw new McpException($"Could not determine directory for solution path: {solutionPath}");
             }
 
             // Check if this is a C# project by scanning for .csproj files
             bool hasCSharpProjects = false;
-            try {
+            try
+            {
                 hasCSharpProjects = Directory.EnumerateFiles(solutionDir, "*.csproj", SearchOption.AllDirectories).Any();
-            } catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) {
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
                 logger.LogWarning(ex, "Failed to scan directory for .csproj files at {SolutionDir}", solutionDir);
                 // Continue - will let Roslyn fail naturally if projects are missing
             }
 
-            if (!hasCSharpProjects) {
+            if (!hasCSharpProjects)
+            {
                 logger.LogWarning("No .csproj files found in solution directory: {SolutionDir}", solutionDir);
                 throw new McpException(
                     $"This is not a C# project - no .csproj files found in '{solutionDir}' or its subdirectories. " +
                     "UltrasharpTools MCP server only works with C# projects.");
             }
 
-            try {
+            try
+            {
                 await editorConfigProvider.InitializeAsync(solutionDir, cancellationToken);
-            } catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException)) {
+            }
+            catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException))
+            {
                 // Log but don't fail - editor config is helpful but not critical
                 logger.LogWarning(ex, "Failed to initialize .editorconfig from {SolutionDir}", solutionDir);
                 // Continue execution, don't throw
@@ -105,12 +122,16 @@ public static class SolutionTools {
             var successMessage = $"Solution '{Path.GetFileName(solutionPath)}' loaded successfully with {projectCount} project(s). Caches and .editorconfig initialized.";
             logger.LogInformation(successMessage);
 
-            try {
+            try
+            {
                 return await GetProjectStructure(solutionManager, logger, cancellationToken);
-            } catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException)) {
+            }
+            catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException))
+            {
                 logger.LogWarning(ex, "Successfully loaded solution but failed to retrieve project structure");
                 // Return basic info instead of detailed structure
-                return ToolHelpers.ToJson(new {
+                return ToolHelpers.ToJson(new
+                {
                     solutionName = Path.GetFileName(solutionPath),
                     projectCount,
                     status = "Solution loaded successfully, but project structure retrieval failed."
@@ -121,79 +142,104 @@ public static class SolutionTools {
     private static async Task<object> GetProjectStructure(
     ISolutionManager solutionManager,
     ILogger<SolutionToolsLogCategory> logger,
-    CancellationToken cancellationToken) {
+    CancellationToken cancellationToken)
+    {
 
-        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
+        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
+        {
             ToolHelpers.EnsureSolutionLoaded(solutionManager);
 
             var projectsData = new List<object>();
 
-            try {
-                foreach (var project in solutionManager.GetProjects()) {
+            try
+            {
+                foreach (var project in solutionManager.GetProjects())
+                {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    try {
+                    try
+                    {
                         var compilation = await solutionManager.GetCompilationAsync(project.Id, cancellationToken);
                         var targetFramework = "Unknown";
 
                         // Get the actual target framework from the project file
-                        if (!string.IsNullOrEmpty(project.FilePath) && File.Exists(project.FilePath)) {
+                        if (!string.IsNullOrEmpty(project.FilePath) && File.Exists(project.FilePath))
+                        {
                             targetFramework = ExtractTargetFrameworkFromProjectFile(project.FilePath);
                         }
 
                         // Get top level namespaces
                         var topLevelNamespaces = new HashSet<string>();
 
-                        try {
-                            foreach (var document in project.Documents) {
-                                if (document.SourceCodeKind != SourceCodeKind.Regular || !document.SupportsSyntaxTree) {
+                        try
+                        {
+                            foreach (var document in project.Documents)
+                            {
+                                if (document.SourceCodeKind != SourceCodeKind.Regular || !document.SupportsSyntaxTree)
+                                {
                                     continue;
                                 }
 
-                                try {
+                                try
+                                {
                                     var syntaxRoot = await document.GetSyntaxRootAsync(cancellationToken);
-                                    if (syntaxRoot == null) {
+                                    if (syntaxRoot == null)
+                                    {
                                         continue;
                                     }
-                                    foreach (var nsNode in syntaxRoot.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>()) {
+                                    foreach (var nsNode in syntaxRoot.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>())
+                                    {
                                         topLevelNamespaces.Add(nsNode.Name.ToString());
                                     }
-                                } catch (Exception ex) {
+                                }
+                                catch (Exception ex)
+                                {
                                     logger.LogWarning(ex, "Error getting namespaces from document {DocumentPath}", document.FilePath);
                                     // Continue with other documents
                                 }
                             }
-                        } catch (Exception ex) {
+                        }
+                        catch (Exception ex)
+                        {
                             logger.LogWarning(ex, "Error getting namespaces for project {ProjectName}", project.Name);
                             // Continue with basic project info
                         }
 
                         // Get project references safely
                         var projectRefs = new List<string>();
-                        try {
-                            if (solutionManager.CurrentSolution != null) {
+                        try
+                        {
+                            if (solutionManager.CurrentSolution != null)
+                            {
                                 projectRefs = project.ProjectReferences
                                 .Select(pr => solutionManager.CurrentSolution.GetProject(pr.ProjectId)?.Name)
                                 .Where(name => name != null)
                                 .OrderBy(name => name)
                                 .ToList()!;
                             }
-                        } catch (Exception ex) {
+                        }
+                        catch (Exception ex)
+                        {
                             logger.LogWarning(ex, "Error getting project references for {ProjectName}", project.Name);
                             // Continue with empty project references
                         }
 
                         // Get NuGet package references from project file (with enhanced format detection)
                         var packageRefs = new List<string>();
-                        try {
-                            if (!string.IsNullOrEmpty(project.FilePath) && File.Exists(project.FilePath)) {
+                        try
+                        {
+                            if (!string.IsNullOrEmpty(project.FilePath) && File.Exists(project.FilePath))
+                            {
                                 // Get all packages
                                 var packages = Services.LegacyNuGetPackageReader.GetAllPackages(project.FilePath);
-                                foreach (var package in packages) {
+                                foreach (var package in packages)
+                                {
                                     packageRefs.Add($"{package.PackageId} ({package.Version})");
                                 }
                             }
-                        } catch (Exception ex) {
+                        }
+                        catch (Exception ex)
+                        {
                             logger.LogWarning(ex, "Error getting NuGet package references for {ProjectName}", project.Name);
                             // Continue with empty package references
                         }
@@ -201,15 +247,18 @@ public static class SolutionTools {
                         // Build namespace hierarchy as a nested tree representation
                         var namespaceTree = new Dictionary<string, HashSet<string>>();
 
-                        foreach (var ns in topLevelNamespaces) {
+                        foreach (var ns in topLevelNamespaces)
+                        {
                             var parts = ns.Split('.');
                             var current = "";
 
-                            for (int i = 0; i < parts.Length; i++) {
+                            for (int i = 0; i < parts.Length; i++)
+                            {
                                 var part = parts[i];
                                 var nextNamespace = string.IsNullOrEmpty(current) ? part : $"{current}.{part}";
 
-                                if (!namespaceTree.TryGetValue(current, out var children)) {
+                                if (!namespaceTree.TryGetValue(current, out var children))
+                                {
                                     children = new HashSet<string>();
                                     namespaceTree[current] = children;
                                 }
@@ -225,14 +274,18 @@ public static class SolutionTools {
                         var namespaceStructure = namespaceTreeBuilder.ToString();
 
                         // Local function to recursively build the tree string
-                        void BuildNamespaceTreeString(string current, Dictionary<string, HashSet<string>> tree, StringBuilder builder) {
-                            if (!tree.TryGetValue(current, out var children) || children.Count == 0) {
+                        void BuildNamespaceTreeString(string current, Dictionary<string, HashSet<string>> tree, StringBuilder builder)
+                        {
+                            if (!tree.TryGetValue(current, out var children) || children.Count == 0)
+                            {
                                 return;
                             }
 
                             bool first = true;
-                            foreach (var child in children.OrderBy(c => c)) {
-                                if (!first) {
+                            foreach (var child in children.OrderBy(c => c))
+                            {
+                                if (!first)
+                                {
                                     builder.Append(',');
                                 }
                                 first = false;
@@ -240,7 +293,8 @@ public static class SolutionTools {
                                 builder.Append(child);
 
                                 string nextNamespace = string.IsNullOrEmpty(current) ? child : $"{current}.{child}";
-                                if (tree.ContainsKey(nextNamespace)) {
+                                if (tree.ContainsKey(nextNamespace))
+                                {
                                     builder.Append('{');
                                     BuildNamespaceTreeString(nextNamespace, tree, builder);
                                     builder.Append('}');
@@ -249,7 +303,8 @@ public static class SolutionTools {
                         }
 
                         // Build the project data
-                        projectsData.Add(new Dictionary<string, object> {
+                        projectsData.Add(new Dictionary<string, object>
+                        {
                             ["name"] = project.Name + (project.AssemblyName.Equals(project.Name, StringComparison.OrdinalIgnoreCase) ? "" : $" ({project.AssemblyName})"),
                             ["version"] = project.Version.ToString(),
                             ["targetFramework"] = targetFramework,
@@ -258,10 +313,13 @@ public static class SolutionTools {
                             ["projectReferences"] = projectRefs,
                             ["packageReferences"] = packageRefs
                         });
-                    } catch (Exception ex) when (!(ex is OperationCanceledException)) {
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
+                    {
                         logger.LogWarning(ex, "Error processing project {ProjectName}, adding basic info only", project.Name);
                         // Add minimal project info when there's an error
-                        projectsData.Add(new Dictionary<string, object> {
+                        projectsData.Add(new Dictionary<string, object>
+                        {
                             ["name"] = project.Name,
                             //filePath = project.FilePath,
                             ["language"] = project.Language,
@@ -273,13 +331,17 @@ public static class SolutionTools {
 
                 // Create the result safely
                 string? solutionName = null;
-                try {
+                try
+                {
                     solutionName = Path.GetFileName(solutionManager.CurrentSolution?.FilePath ?? "unknown");
-                } catch {
+                }
+                catch
+                {
                     solutionName = "unknown";
                 }
 
-                var result = new Dictionary<string, object> {
+                var result = new Dictionary<string, object>
+                {
                     ["solutionName"] = solutionName,
                     ["projects"] = projectsData.OrderBy(p => ((Dictionary<string, object>)p)["name"]).ToList(),
                     ["nextStep"] = $"Use `{ToolHelpers.SharpToolPrefix}{nameof(LoadProject)}` to get a detailed view of a specific project's structure."
@@ -287,19 +349,25 @@ public static class SolutionTools {
 
                 logger.LogInformation("Project structure retrieved successfully for {ProjectCount} projects.", projectsData.Count);
                 return ToolHelpers.ToJson(result);
-            } catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException)) {
+            }
+            catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException))
+            {
                 logger.LogError(ex, "Error retrieving project structure");
                 throw new McpException($"Failed to retrieve project structure: {ex.Message}");
             }
         }, logger, nameof(GetProjectStructure), cancellationToken);
     }
-    public static string ExtractTargetFrameworkFromProjectFile(string projectFilePath) {
-        try {
-            if (string.IsNullOrEmpty(projectFilePath)) {
+    public static string ExtractTargetFrameworkFromProjectFile(string projectFilePath)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(projectFilePath))
+            {
                 return "Unknown";
             }
 
-            if (!File.Exists(projectFilePath)) {
+            if (!File.Exists(projectFilePath))
+            {
                 return "Unknown";
             }
 
@@ -307,15 +375,18 @@ public static class SolutionTools {
 
             // New-style .csproj (SDK-style)
             var propertyGroupElements = xDoc.Descendants("PropertyGroup");
-            foreach (var propertyGroup in propertyGroupElements) {
+            foreach (var propertyGroup in propertyGroupElements)
+            {
                 var targetFrameworkElement = propertyGroup.Element("TargetFramework");
-                if (targetFrameworkElement != null) {
+                if (targetFrameworkElement != null)
+                {
                     var value = targetFrameworkElement.Value.Trim();
                     return !string.IsNullOrEmpty(value) ? value : "Unknown";
                 }
 
                 var targetFrameworksElement = propertyGroup.Element("TargetFrameworks");
-                if (targetFrameworksElement != null) {
+                if (targetFrameworksElement != null)
+                {
                     var value = targetFrameworksElement.Value.Trim();
                     return !string.IsNullOrEmpty(value) ? value : "Unknown";
                 }
@@ -323,12 +394,15 @@ public static class SolutionTools {
 
             // Old-style .csproj format
             var targetFrameworkVersionElement = xDoc.Descendants("TargetFrameworkVersion").FirstOrDefault();
-            if (targetFrameworkVersionElement != null) {
+            if (targetFrameworkVersionElement != null)
+            {
                 var version = targetFrameworkVersionElement.Value.Trim();
 
                 // Map from old-style version format (v4.x) to new-style (.NETFramework,Version=v4.x)
-                if (!string.IsNullOrEmpty(version)) {
-                    if (version.StartsWith("v")) {
+                if (!string.IsNullOrEmpty(version))
+                {
+                    if (version.StartsWith("v"))
+                    {
                         return $"net{version.Substring(1).Replace(".", "")}";
                     }
                     return version;
@@ -339,27 +413,37 @@ public static class SolutionTools {
             var targetFrameworkProfile = xDoc.Descendants("TargetFrameworkProfile").FirstOrDefault()?.Value?.Trim();
             var targetFrameworkIdentifier = xDoc.Descendants("TargetFrameworkIdentifier").FirstOrDefault()?.Value?.Trim();
 
-            if (!string.IsNullOrEmpty(targetFrameworkIdentifier)) {
+            if (!string.IsNullOrEmpty(targetFrameworkIdentifier))
+            {
                 // Parse the old-style framework identifier
-                if (targetFrameworkIdentifier.Contains(".NETFramework")) {
+                if (targetFrameworkIdentifier.Contains(".NETFramework"))
+                {
                     var version = xDoc.Descendants("TargetFrameworkVersion").FirstOrDefault()?.Value?.Trim();
-                    if (!string.IsNullOrEmpty(version) && version.StartsWith("v")) {
+                    if (!string.IsNullOrEmpty(version) && version.StartsWith("v"))
+                    {
                         return $"net{version.Substring(1).Replace(".", "")}";
                     }
-                } else if (targetFrameworkIdentifier.Contains(".NETCore")) {
+                }
+                else if (targetFrameworkIdentifier.Contains(".NETCore"))
+                {
                     var version = xDoc.Descendants("TargetFrameworkVersion").FirstOrDefault()?.Value?.Trim();
-                    if (!string.IsNullOrEmpty(version) && version.StartsWith("v")) {
+                    if (!string.IsNullOrEmpty(version) && version.StartsWith("v"))
+                    {
                         return $"netcoreapp{version.Substring(1).Replace(".", "")}";
                     }
-                } else if (targetFrameworkIdentifier.Contains(".NETStandard")) {
+                }
+                else if (targetFrameworkIdentifier.Contains(".NETStandard"))
+                {
                     var version = xDoc.Descendants("TargetFrameworkVersion").FirstOrDefault()?.Value?.Trim();
-                    if (!string.IsNullOrEmpty(version) && version.StartsWith("v")) {
+                    if (!string.IsNullOrEmpty(version) && version.StartsWith("v"))
+                    {
                         return $"netstandard{version.Substring(1).Replace(".", "")}";
                     }
                 }
 
                 // Add profile if present
-                if (!string.IsNullOrEmpty(targetFrameworkProfile)) {
+                if (!string.IsNullOrEmpty(targetFrameworkProfile))
+                {
                     return $"{targetFrameworkIdentifier},{targetFrameworkProfile}";
                 }
 
@@ -367,13 +451,19 @@ public static class SolutionTools {
             }
 
             return "Unknown";
-        } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException) {
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
             // File access issues
             return "Unknown (Access Error)";
-        } catch (Exception ex) when (ex is XmlException) {
+        }
+        catch (Exception ex) when (ex is XmlException)
+        {
             // XML parsing issues
             return "Unknown (XML Error)";
-        } catch (Exception) {
+        }
+        catch (Exception)
+        {
             // Any other exceptions
             return "Unknown";
         }
@@ -385,9 +475,11 @@ public static class SolutionTools {
         ILogger<SolutionToolsLogCategory> logger,
         ICodeAnalysisService codeAnalysisService,
         string projectName,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken)
+    {
 
-        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
+        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
+        {
             ErrorHandlingHelpers.ValidateStringParameter(projectName, "projectName", logger);
             logger.LogInformation("Executing '{LoadProjectToolName}' tool for project: {ProjectName}", nameof(LoadProject), projectName);
 
@@ -401,7 +493,8 @@ public static class SolutionTools {
                 p => p.Name == projectName
                 || p.AssemblyName == projectName
                 || p.Name == projectNameNormalized);
-            if (project == null) {
+            if (project == null)
+            {
                 logger.LogError("Project '{ProjectName}' not found in the loaded solution", projectName);
                 throw new McpException($"Project '{projectName}' not found in the solution.");
             }
@@ -411,13 +504,17 @@ public static class SolutionTools {
 
             // Get the compilation for the project
             Compilation? compilation;
-            try {
+            try
+            {
                 compilation = await solutionManager.GetCompilationAsync(project.Id, cancellationToken);
-                if (compilation == null) {
+                if (compilation == null)
+                {
                     logger.LogError("Failed to get compilation for project: {ProjectName}", project.Name);
                     throw new McpException($"Failed to get compilation for project: {project.Name}");
                 }
-            } catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException)) {
+            }
+            catch (Exception ex) when (!(ex is McpException || ex is OperationCanceledException))
+            {
                 logger.LogError(ex, "Error getting compilation for project {ProjectName}", project.Name);
                 throw new McpException($"Error getting compilation for project '{project.Name}': {ex.Message}");
             }
@@ -430,16 +527,20 @@ public static class SolutionTools {
             var allNamespaceContents = new Dictionary<string, List<INamedTypeSymbol>>();
             var allTypesByNamespace = new Dictionary<string, List<INamedTypeSymbol>>();
 
-            try {
+            try
+            {
                 // First pass: Collect all source symbols and organize types by namespace
-                foreach (var document in project.Documents) {
+                foreach (var document in project.Documents)
+                {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    if (document.SourceCodeKind != SourceCodeKind.Regular || !document.SupportsSyntaxTree) {
+                    if (document.SourceCodeKind != SourceCodeKind.Regular || !document.SupportsSyntaxTree)
+                    {
                         continue;
                     }
 
-                    try {
+                    try
+                    {
                         var syntaxTree = await document.GetSyntaxTreeAsync(cancellationToken);
                         if (syntaxTree == null) continue;
 
@@ -449,41 +550,53 @@ public static class SolutionTools {
                         var root = await syntaxTree.GetRootAsync(cancellationToken);
 
                         // Get all type declarations
-                        foreach (var typeDecl in root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>()) {
+                        foreach (var typeDecl in root.DescendantNodes().OfType<BaseTypeDeclarationSyntax>())
+                        {
                             cancellationToken.ThrowIfCancellationRequested();
 
-                            try {
-                                if (semanticModel.GetDeclaredSymbol(typeDecl, cancellationToken) is INamedTypeSymbol symbol) {
+                            try
+                            {
+                                if (semanticModel.GetDeclaredSymbol(typeDecl, cancellationToken) is INamedTypeSymbol symbol)
+                                {
                                     var nsName = symbol.ContainingNamespace?.ToDisplayString() ?? "global";
 
                                     // Always add to the "all types" collection for analysis
-                                    if (!allTypesByNamespace.TryGetValue(nsName, out var allTypeList)) {
+                                    if (!allTypesByNamespace.TryGetValue(nsName, out var allTypeList))
+                                    {
                                         allTypeList = new List<INamedTypeSymbol>();
                                         allTypesByNamespace[nsName] = allTypeList;
                                     }
                                     allTypeList.Add(symbol);
 
                                     // Only add non-nested types to the display collection
-                                    if (symbol.ContainingType == null) {
-                                        if (!typesByNamespace.TryGetValue(nsName, out var typeList)) {
+                                    if (symbol.ContainingType == null)
+                                    {
+                                        if (!typesByNamespace.TryGetValue(nsName, out var typeList))
+                                        {
                                             typeList = new List<INamedTypeSymbol>();
                                             typesByNamespace[nsName] = typeList;
                                         }
                                         typeList.Add(symbol);
                                     }
                                 }
-                            } catch (Exception ex) when (!(ex is OperationCanceledException)) {
+                            }
+                            catch (Exception ex) when (!(ex is OperationCanceledException))
+                            {
                                 logger.LogWarning(ex, "Error processing type declaration in document {DocumentPath}", document.FilePath);
                             }
                         }
-                    } catch (Exception ex) when (!(ex is OperationCanceledException)) {
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
+                    {
                         logger.LogWarning(ex, "Error processing document {DocumentPath}", document.FilePath);
                     }
                 }
 
                 // Populate the display namespace contents
-                foreach (var nsEntry in typesByNamespace) {
-                    if (!namespaceContents.TryGetValue(nsEntry.Key, out var globalTypeList)) {
+                foreach (var nsEntry in typesByNamespace)
+                {
+                    if (!namespaceContents.TryGetValue(nsEntry.Key, out var globalTypeList))
+                    {
                         globalTypeList = new List<INamedTypeSymbol>();
                         namespaceContents[nsEntry.Key] = globalTypeList;
                     }
@@ -491,8 +604,10 @@ public static class SolutionTools {
                 }
 
                 // Populate the analysis namespace contents
-                foreach (var nsEntry in allTypesByNamespace) {
-                    if (!allNamespaceContents.TryGetValue(nsEntry.Key, out var globalTypeList)) {
+                foreach (var nsEntry in allTypesByNamespace)
+                {
+                    if (!allNamespaceContents.TryGetValue(nsEntry.Key, out var globalTypeList))
+                    {
                         globalTypeList = new List<INamedTypeSymbol>();
                         allNamespaceContents[nsEntry.Key] = globalTypeList;
                     }
@@ -512,47 +627,57 @@ public static class SolutionTools {
                 var structureBuilder = ObjectPoolProvider.Instance.GetStringBuilder();
                 try
                 {
-                DetailLevel currentDetailLevel = DetailLevel.Full;
-                string output = "";
-                bool lengthAcceptable = false;
-                Random random = new Random();
+                    DetailLevel currentDetailLevel = DetailLevel.Full;
+                    string output = "";
+                    bool lengthAcceptable = false;
+                    Random random = new Random();
 
-                while (!lengthAcceptable && currentDetailLevel <= DetailLevel.NamespacesAndTypesOnly) {
-                    structureBuilder.Clear();
-                    var sortedNamespaces = namespaceContents.Keys.OrderBy(ns => ns).ToList();
-                    var namespaceParts = BuildNamespaceHierarchy(sortedNamespaces, namespaceContents, logger);
-                    var rootNamespaces = namespaceParts.Keys.Where(ns => ns.IndexOf('.') == -1).OrderBy(n => n).ToList();
+                    while (!lengthAcceptable && currentDetailLevel <= DetailLevel.NamespacesAndTypesOnly)
+                    {
+                        structureBuilder.Clear();
+                        var sortedNamespaces = namespaceContents.Keys.OrderBy(ns => ns).ToList();
+                        var namespaceParts = BuildNamespaceHierarchy(sortedNamespaces, namespaceContents, logger);
+                        var rootNamespaces = namespaceParts.Keys.Where(ns => ns.IndexOf('.') == -1).OrderBy(n => n).ToList();
 
-                    foreach (var rootNs in rootNamespaces) {
-                        structureBuilder.Append(BuildNamespaceStructureText(rootNs, namespaceParts, namespaceContents, logger, currentDetailLevel, random, commonImplementationInfo));
-                    }
+                        foreach (var rootNs in rootNamespaces)
+                        {
+                            structureBuilder.Append(BuildNamespaceStructureText(rootNs, namespaceParts, namespaceContents, logger, currentDetailLevel, random, commonImplementationInfo));
+                        }
 
-                    output = structureBuilder.ToString();
+                        output = structureBuilder.ToString();
 
-                    if (output.Length <= MaxOutputLength) {
-                        lengthAcceptable = true;
-                    } else {
-                        logger.LogInformation("Output string length ({Length}) exceeds limit ({Limit}). Reducing detail from {OldLevel} to {NewLevel}.", output.Length, MaxOutputLength, currentDetailLevel, currentDetailLevel + 1);
-                        currentDetailLevel++;
-                        if (currentDetailLevel > DetailLevel.NamespacesAndTypesOnly) {
-                            logger.LogWarning("Even at the most compressed level, output length ({Length}) exceeds limit ({Limit}). Returning compressed output.", output.Length, MaxOutputLength);
+                        if (output.Length <= MaxOutputLength)
+                        {
+                            lengthAcceptable = true;
+                        }
+                        else
+                        {
+                            logger.LogInformation("Output string length ({Length}) exceeds limit ({Limit}). Reducing detail from {OldLevel} to {NewLevel}.", output.Length, MaxOutputLength, currentDetailLevel, currentDetailLevel + 1);
+                            currentDetailLevel++;
+                            if (currentDetailLevel > DetailLevel.NamespacesAndTypesOnly)
+                            {
+                                logger.LogWarning("Even at the most compressed level, output length ({Length}) exceeds limit ({Limit}). Returning compressed output.", output.Length, MaxOutputLength);
+                            }
                         }
                     }
-                }
 
-                return $"<typeTree note=\"Use {ToolHelpers.SharpToolPrefix}{nameof(AnalysisTools.GetMembers)} for more detailed information about specific types.\">" +
-                    output +
-                    "\n</typeTree>";
+                    return $"<typeTree note=\"Use {ToolHelpers.SharpToolPrefix}{nameof(AnalysisTools.GetMembers)} for more detailed information about specific types.\">" +
+                        output +
+                        "\n</typeTree>";
                 }
                 finally
                 {
                     ObjectPoolProvider.Instance.ReturnStringBuilder(structureBuilder);
                 }
 
-            } catch (OperationCanceledException) {
+            }
+            catch (OperationCanceledException)
+            {
                 logger.LogInformation("Operation was cancelled while analyzing project {ProjectName}", project.Name);
                 throw;
-            } catch (Exception ex) when (!(ex is McpException)) {
+            }
+            catch (Exception ex) when (!(ex is McpException))
+            {
                 logger.LogError(ex, "Error analyzing project structure for {ProjectName}", project.Name);
                 throw new McpException($"Error analyzing project structure: {ex.Message}");
             }
@@ -561,15 +686,19 @@ public static class SolutionTools {
     private static Dictionary<string, Dictionary<string, List<INamedTypeSymbol>>> BuildNamespaceHierarchy(
                     List<string> sortedNamespaces,
                     Dictionary<string, List<INamedTypeSymbol>> namespaceContents,
-                    ILogger<SolutionToolsLogCategory> logger) {
+                    ILogger<SolutionToolsLogCategory> logger)
+    {
 
         // Process namespaces to build the hierarchy
         var namespaceParts = new Dictionary<string, Dictionary<string, List<INamedTypeSymbol>>>();
 
-        foreach (var fullNamespace in sortedNamespaces) {
-            try {
+        foreach (var fullNamespace in sortedNamespaces)
+        {
+            try
+            {
                 // Skip empty global namespace
-                if (string.IsNullOrEmpty(fullNamespace) || fullNamespace == "global") {
+                if (string.IsNullOrEmpty(fullNamespace) || fullNamespace == "global")
+                {
                     continue;
                 }
 
@@ -579,41 +708,51 @@ public static class SolutionTools {
                 // Create entries for each namespace part
                 var currentNs = "";
 
-                for (int i = 0; i < parts.Length; i++) {
+                for (int i = 0; i < parts.Length; i++)
+                {
                     var part = parts[i];
 
-                    if (!string.IsNullOrEmpty(currentNs)) {
+                    if (!string.IsNullOrEmpty(currentNs))
+                    {
                         currentNs += ".";
                     }
                     currentNs += part;
 
-                    if (!namespaceParts.TryGetValue(currentNs, out var children)) {
+                    if (!namespaceParts.TryGetValue(currentNs, out var children))
+                    {
                         children = new Dictionary<string, List<INamedTypeSymbol>>();
                         namespaceParts[currentNs] = children;
                     }
 
                     // If not the last part, add the next part as child namespace
-                    if (i < parts.Length - 1) {
+                    if (i < parts.Length - 1)
+                    {
                         var nextPart = parts[i + 1];
-                        if (!children.ContainsKey(nextPart)) {
+                        if (!children.ContainsKey(nextPart))
+                        {
                             children[nextPart] = new List<INamedTypeSymbol>();
                         }
                     }
                 }
 
                 // Add types to the leaf namespace
-                if (namespaceContents.TryGetValue(fullNamespace, out var types) && types.Any()) {
+                if (namespaceContents.TryGetValue(fullNamespace, out var types) && types.Any())
+                {
                     var leafNsParts = namespaceParts[fullNamespace];
-                    foreach (var type in types) {
+                    foreach (var type in types)
+                    {
                         var typeName = type.Name;
-                        if (!leafNsParts.TryGetValue(typeName, out var typeList)) {
+                        if (!leafNsParts.TryGetValue(typeName, out var typeList))
+                        {
                             typeList = new List<INamedTypeSymbol>();
                             leafNsParts[typeName] = typeList;
                         }
                         typeList.Add(type);
                     }
                 }
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 logger.LogWarning(ex, "Error processing namespace {Namespace} in hierarchy", fullNamespace);
             }
         }
@@ -626,10 +765,12 @@ public static class SolutionTools {
         ILogger<SolutionToolsLogCategory> logger,
         DetailLevel detailLevel,
         Random random,
-        CommonImplementationInfo? commonImplementationInfo = null) {
+        CommonImplementationInfo? commonImplementationInfo = null)
+    {
 
         var sb = new StringBuilder();
-        try {
+        try
+        {
             var simpleName = namespaceName.Contains('.')
                 ? namespaceName.Substring(namespaceName.LastIndexOf('.') + 1)
                 : namespaceName;
@@ -639,23 +780,28 @@ public static class SolutionTools {
             // If we're at NoCommonDerivedOrImplementedClasses level or above
             // show derived class counts for common base types in this namespace
             if (commonImplementationInfo != null &&
-                detailLevel >= DetailLevel.NoCommonDerivedOrImplementedClasses) {
+                detailLevel >= DetailLevel.NoCommonDerivedOrImplementedClasses)
+            {
 
                 // Build a dictionary of base types to their derived classes in this namespace
                 var derivedCountsInNamespace = new Dictionary<INamedTypeSymbol, int>(SymbolEqualityComparer.Default);
 
-                foreach (var baseType in commonImplementationInfo.CommonBaseTypes) {
+                foreach (var baseType in commonImplementationInfo.CommonBaseTypes)
+                {
                     if (commonImplementationInfo.DerivedTypesByNamespace.TryGetValue(baseType, out var derivedByNs) &&
                         derivedByNs.TryGetValue(namespaceName, out var derivedTypes) &&
-                        derivedTypes.Count > 0) {
+                        derivedTypes.Count > 0)
+                    {
 
                         derivedCountsInNamespace[baseType] = derivedTypes.Count;
                     }
                 }
 
                 // If there are any derived classes from common base types in this namespace, show their counts
-                if (derivedCountsInNamespace.Count > 0) {
-                    foreach (var entry in derivedCountsInNamespace) {
+                if (derivedCountsInNamespace.Count > 0)
+                {
+                    foreach (var entry in derivedCountsInNamespace)
+                    {
                         var baseType = entry.Key;
                         var count = entry.Value;
                         string typeKindStr = baseType.TypeKind == TypeKind.Interface ? "implementation" : "derived class";
@@ -671,45 +817,57 @@ public static class SolutionTools {
             try
             {
 
-            if (typesInNamespace != null) {
-                foreach (var type in typesInNamespace.OrderBy(t => t.Name)) {
-                    try {
-                        var typeStructure = BuildTypeStructure(type, logger, detailLevel, random, 1, commonImplementationInfo);
-                        if (!string.IsNullOrEmpty(typeStructure)) { // Skip empty results (filtered derived types)
-                            typeContent.Append(typeStructure);
+                if (typesInNamespace != null)
+                {
+                    foreach (var type in typesInNamespace.OrderBy(t => t.Name))
+                    {
+                        try
+                        {
+                            var typeStructure = BuildTypeStructure(type, logger, detailLevel, random, 1, commonImplementationInfo);
+                            if (!string.IsNullOrEmpty(typeStructure))
+                            { // Skip empty results (filtered derived types)
+                                typeContent.Append(typeStructure);
+                            }
                         }
-                    } catch (Exception ex) {
-                        logger.LogWarning(ex, "Error building structure for type {TypeName} in namespace {Namespace}", type.Name, namespaceName);
-                        typeContent.Append($"\n{new string(' ', 2 * 1)}{type.Name}{{/* Error: {ex.Message} */}}");
+                        catch (Exception ex)
+                        {
+                            logger.LogWarning(ex, "Error building structure for type {TypeName} in namespace {Namespace}", type.Name, namespaceName);
+                            typeContent.Append($"\n{new string(' ', 2 * 1)}{type.Name}{{/* Error: {ex.Message} */}}");
+                        }
                     }
                 }
-            }
 
-            var childNamespaceContent = ObjectPoolProvider.Instance.GetStringBuilder();
-            try
-            {
-                if (namespaceParts.TryGetValue(namespaceName, out var children)) {
-                    foreach (var child in children.OrderBy(c => c.Key)) {
-                        if (child.Value?.Count == 0) { // This indicates a child namespace rather than a type within the current namespace
-                            var childNamespace = namespaceName + "." + child.Key;
-                            try {
-                                childNamespaceContent.Append(BuildNamespaceStructureText(childNamespace, namespaceParts, namespaceContents, logger, detailLevel, random, commonImplementationInfo));
-                            } catch (Exception ex) {
-                                logger.LogWarning(ex, "Error building structure for child namespace {Namespace}", childNamespace);
-                                childNamespaceContent.Append($"\n{child.Key}{{/* Error: {ex.Message} */}}");
+                var childNamespaceContent = ObjectPoolProvider.Instance.GetStringBuilder();
+                try
+                {
+                    if (namespaceParts.TryGetValue(namespaceName, out var children))
+                    {
+                        foreach (var child in children.OrderBy(c => c.Key))
+                        {
+                            if (child.Value?.Count == 0)
+                            { // This indicates a child namespace rather than a type within the current namespace
+                                var childNamespace = namespaceName + "." + child.Key;
+                                try
+                                {
+                                    childNamespaceContent.Append(BuildNamespaceStructureText(childNamespace, namespaceParts, namespaceContents, logger, detailLevel, random, commonImplementationInfo));
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.LogWarning(ex, "Error building structure for child namespace {Namespace}", childNamespace);
+                                    childNamespaceContent.Append($"\n{child.Key}{{/* Error: {ex.Message} */}}");
+                                }
                             }
                         }
                     }
-                }
 
-                sb.Append(typeContent);
-                sb.Append(childNamespaceContent);
-                sb.Append("\n}");
-            }
-            finally
-            {
-                ObjectPoolProvider.Instance.ReturnStringBuilder(childNamespaceContent);
-            }
+                    sb.Append(typeContent);
+                    sb.Append(childNamespaceContent);
+                    sb.Append("\n}");
+                }
+                finally
+                {
+                    ObjectPoolProvider.Instance.ReturnStringBuilder(childNamespaceContent);
+                }
 
             }
             finally
@@ -717,7 +875,9 @@ public static class SolutionTools {
                 ObjectPoolProvider.Instance.ReturnStringBuilder(typeContent);
             }
 
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             logger.LogError(ex, "Error building namespace structure text for {Namespace}", namespaceName);
             return $"\n{namespaceName}{{/* Error: {ex.Message} */}}";
         }
@@ -729,54 +889,69 @@ public static class SolutionTools {
             DetailLevel detailLevel,
             Random random,
             int indentLevel,
-            CommonImplementationInfo? commonImplementationInfo = null) {
+            CommonImplementationInfo? commonImplementationInfo = null)
+    {
 
         var sb = new StringBuilder();
         var indent = string.Empty; // new string(' ', 2 * indentLevel);
-        try {
+        try
+        {
             // Skip derived classes that are part of a common base type at NoCommonDerivedOrImplementedClasses level or above
             if (commonImplementationInfo != null &&
-                detailLevel >= DetailLevel.NoCommonDerivedOrImplementedClasses) {
+                detailLevel >= DetailLevel.NoCommonDerivedOrImplementedClasses)
+            {
 
                 // Check if this type inherits from or implements a common base type
                 bool shouldSkip = false;
-                foreach (var commonBaseType in commonImplementationInfo.CommonBaseTypes) {
+                foreach (var commonBaseType in commonImplementationInfo.CommonBaseTypes)
+                {
                     // Check if this type directly inherits from a common base type
-                    if (SymbolEqualityComparer.Default.Equals(type.BaseType, commonBaseType)) {
+                    if (SymbolEqualityComparer.Default.Equals(type.BaseType, commonBaseType))
+                    {
                         shouldSkip = true;
                         break;
                     }
 
                     // Check if this type implements a common interface
-                    foreach (var iface in type.AllInterfaces) {
-                        if (SymbolEqualityComparer.Default.Equals(iface, commonBaseType)) {
+                    foreach (var iface in type.AllInterfaces)
+                    {
+                        if (SymbolEqualityComparer.Default.Equals(iface, commonBaseType))
+                        {
                             shouldSkip = true;
                             break;
                         }
                     }
 
-                    if (shouldSkip) {
+                    if (shouldSkip)
+                    {
                         break;
                     }
                 }
 
-                if (shouldSkip) {
+                if (shouldSkip)
+                {
                     return string.Empty; // Skip this type
                 }
             }
 
             sb.Append('\n').Append(indent).Append(type.Name);
 
-            if (type.TypeParameters.Length > 0 && detailLevel < DetailLevel.NamespacesAndTypesOnly) {
+            if (type.TypeParameters.Length > 0 && detailLevel < DetailLevel.NamespacesAndTypesOnly)
+            {
                 sb.Append('<').Append(type.TypeParameters.Length).Append('>');
             }
             sb.Append("{");
 
-            if (detailLevel == DetailLevel.NamespacesAndTypesOnly) {
-                foreach (var nestedType in type.GetTypeMembers().OrderBy(t => t.Name)) {
-                    try {
+            if (detailLevel == DetailLevel.NamespacesAndTypesOnly)
+            {
+                foreach (var nestedType in type.GetTypeMembers().OrderBy(t => t.Name))
+                {
+                    try
+                    {
                         sb.Append(BuildTypeStructure(nestedType, logger, detailLevel, random, indentLevel + 1, commonImplementationInfo));
-                    } catch (Exception ex) {
+                    }
+                    catch (Exception ex)
+                    {
                         logger.LogWarning(ex, "Error building structure for nested type {TypeName} in {ParentType}", nestedType.Name, type.Name);
                         sb.Append($"\n{new string(' ', 2 * (indentLevel + 1))}{nestedType.Name}{{/* Error: {ex.Message} */}}");
                     }
@@ -789,33 +964,46 @@ public static class SolutionTools {
             var membersContent = AppendMemberInfo(sb, type, logger, detailLevel, random, indent);
 
             // Nested Types
-            foreach (var nestedType in type.GetTypeMembers().OrderBy(t => t.Name)) {
-                try {
+            foreach (var nestedType in type.GetTypeMembers().OrderBy(t => t.Name))
+            {
+                try
+                {
                     sb.Append(BuildTypeStructure(nestedType, logger, detailLevel, random, indentLevel + 1, commonImplementationInfo));
-                } catch (Exception ex) {
+                }
+                catch (Exception ex)
+                {
                     logger.LogWarning(ex, "Error building structure for nested type {TypeName} in {ParentType}", nestedType.Name, type.Name);
                     sb.Append($"\n{new string(' ', 2 * (indentLevel + 1))}{nestedType.Name}{{/* Error: {ex.Message} */}}");
                 }
             }
 
-            if (membersContent || type.GetTypeMembers().Any()) {
+            if (membersContent || type.GetTypeMembers().Any())
+            {
                 sb.Append('\n').Append(indent).Append("}");
-            } else {
+            }
+            else
+            {
                 sb.Append("}"); // No newline if type is empty and no members shown
             }
 
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             logger.LogError(ex, "Error building structure for type {TypeName}", type.Name);
             return $"\n{indent}{type.Name}{{/* Error: {ex.Message} */}}";
         }
         return sb.ToString();
     }
-    private static string GetTypeShortName(ITypeSymbol type) {
-        try {
+    private static string GetTypeShortName(ITypeSymbol type)
+    {
+        try
+        {
             if (type == null) return "?";
 
-            if (type.SpecialType != SpecialType.None) {
-                return type.SpecialType switch {
+            if (type.SpecialType != SpecialType.None)
+            {
+                return type.SpecialType switch
+                {
                     SpecialType.System_Boolean => "bool",
                     SpecialType.System_Byte => "byte",
                     SpecialType.System_SByte => "sbyte",
@@ -836,19 +1024,24 @@ public static class SolutionTools {
                 };
             }
 
-            if (type is IArrayTypeSymbol arrayType) {
+            if (type is IArrayTypeSymbol arrayType)
+            {
                 return $"{GetTypeShortName(arrayType.ElementType)}[]";
             }
 
-            if (type is INamedTypeSymbol namedType) {
-                if (namedType.IsTupleType && namedType.TupleElements.Any()) {
+            if (type is INamedTypeSymbol namedType)
+            {
+                if (namedType.IsTupleType && namedType.TupleElements.Any())
+                {
                     return $"({string.Join(", ", namedType.TupleElements.Select(te => $"{GetTypeShortName(te.Type)} {te.Name}"))})";
                 }
-                if (namedType.TypeArguments.Length > 0) {
+                if (namedType.TypeArguments.Length > 0)
+                {
                     var typeArgs = string.Join(", ", namedType.TypeArguments.Select(GetTypeShortName));
                     var baseName = namedType.Name;
                     // Handle common nullable syntax
-                    if (namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T) {
+                    if (namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+                    {
                         return $"{GetTypeShortName(namedType.TypeArguments[0])}?";
                     }
                     return $"{baseName}<{typeArgs}>";
@@ -856,7 +1049,9 @@ public static class SolutionTools {
             }
 
             return type.Name;
-        } catch (Exception) {
+        }
+        catch (Exception)
+        {
             return type?.Name ?? "?";
         }
     }
@@ -864,58 +1059,72 @@ public static class SolutionTools {
         Dictionary<string, List<INamedTypeSymbol>> namespaceContents,
         ICodeAnalysisService codeAnalysisService,
         ILogger<SolutionToolsLogCategory> logger,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken)
+    {
 
         // Dictionary of base types to their derived types, organized by namespace
         var baseTypeImplementations = new Dictionary<INamedTypeSymbol, Dictionary<string, List<INamedTypeSymbol>>>(SymbolEqualityComparer.Default);
         var processedSymbols = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-        try {
+        try
+        {
             // Process each namespace and its types
-            foreach (var typesList in namespaceContents.Values) {
-                foreach (var typeSymbol in typesList) {
+            foreach (var typesList in namespaceContents.Values)
+            {
+                foreach (var typeSymbol in typesList)
+                {
                     cancellationToken.ThrowIfCancellationRequested();
 
                     // Skip if we've already processed this type
-                    if (processedSymbols.Contains(typeSymbol)) {
+                    if (processedSymbols.Contains(typeSymbol))
+                    {
                         continue;
                     }
 
                     processedSymbols.Add(typeSymbol);
 
                     // Skip types that can't have derived classes (static, sealed, etc.) or implementations (non-interfaces)
-                    if ((typeSymbol.IsStatic || typeSymbol.IsSealed) && typeSymbol.TypeKind != TypeKind.Interface) {
+                    if ((typeSymbol.IsStatic || typeSymbol.IsSealed) && typeSymbol.TypeKind != TypeKind.Interface)
+                    {
                         continue;
                     }
 
-                    try {
+                    try
+                    {
                         var derivedTypes = new List<INamedTypeSymbol>();
 
                         // Find classes derived from this type
-                        if (typeSymbol.TypeKind == TypeKind.Class) {
+                        if (typeSymbol.TypeKind == TypeKind.Class)
+                        {
                             derivedTypes.AddRange(await codeAnalysisService.FindDerivedClassesAsync(typeSymbol, cancellationToken));
                         }
 
                         // Find implementations of this interface
-                        if (typeSymbol.TypeKind == TypeKind.Interface) {
+                        if (typeSymbol.TypeKind == TypeKind.Interface)
+                        {
                             var implementations = await codeAnalysisService.FindImplementationsAsync(typeSymbol, cancellationToken);
-                            foreach (var impl in implementations) {
-                                if (impl is INamedTypeSymbol namedTypeImpl) {
+                            foreach (var impl in implementations)
+                            {
+                                if (impl is INamedTypeSymbol namedTypeImpl)
+                                {
                                     derivedTypes.Add(namedTypeImpl);
                                 }
                             }
                         }
 
                         // Skip if there are no derived types or implementations
-                        if (derivedTypes.Count == 0) {
+                        if (derivedTypes.Count == 0)
+                        {
                             continue;
                         }
 
                         // Group derived types by namespace
                         var byNamespace = new Dictionary<string, List<INamedTypeSymbol>>();
-                        foreach (var derivedType in derivedTypes) {
+                        foreach (var derivedType in derivedTypes)
+                        {
                             var namespaceName = derivedType.ContainingNamespace?.ToDisplayString() ?? "global";
-                            if (!byNamespace.TryGetValue(namespaceName, out var nsTypes)) {
+                            if (!byNamespace.TryGetValue(namespaceName, out var nsTypes))
+                            {
                                 nsTypes = new List<INamedTypeSymbol>();
                                 byNamespace[namespaceName] = nsTypes;
                             }
@@ -924,18 +1133,23 @@ public static class SolutionTools {
 
                         // Store the grouped derived types
                         baseTypeImplementations[typeSymbol] = byNamespace;
-                    } catch (Exception ex) when (!(ex is OperationCanceledException)) {
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
+                    {
                         logger.LogWarning(ex, "Error analyzing derived/implemented types for {TypeName}", typeSymbol.Name);
                     }
                 }
             }
-        } catch (Exception ex) when (!(ex is OperationCanceledException)) {
+        }
+        catch (Exception ex) when (!(ex is OperationCanceledException))
+        {
             logger.LogError(ex, "Error collecting derived/implemented type counts");
         }
 
         return baseTypeImplementations;
     }
-    private class CommonImplementationInfo {
+    private class CommonImplementationInfo
+    {
         // Maps base types to their derived/implemented types grouped by namespace
         public Dictionary<INamedTypeSymbol, Dictionary<string, List<INamedTypeSymbol>>> DerivedTypesByNamespace { get; }
 
@@ -948,21 +1162,25 @@ public static class SolutionTools {
         // Base types with above-average number of derived/implemented types
         public HashSet<INamedTypeSymbol> CommonBaseTypes { get; }
 
-        public CommonImplementationInfo(Dictionary<INamedTypeSymbol, Dictionary<string, List<INamedTypeSymbol>>> derivedTypesByNamespace) {
+        public CommonImplementationInfo(Dictionary<INamedTypeSymbol, Dictionary<string, List<INamedTypeSymbol>>> derivedTypesByNamespace)
+        {
             DerivedTypesByNamespace = derivedTypesByNamespace;
 
             // Calculate total counts for each base type
             TotalImplementationCounts = new Dictionary<INamedTypeSymbol, int>(SymbolEqualityComparer.Default);
-            foreach (var baseType in derivedTypesByNamespace.Keys) {
+            foreach (var baseType in derivedTypesByNamespace.Keys)
+            {
                 int totalCount = 0;
-                foreach (var nsTypes in derivedTypesByNamespace[baseType].Values) {
+                foreach (var nsTypes in derivedTypesByNamespace[baseType].Values)
+                {
                     totalCount += nsTypes.Count;
                 }
                 TotalImplementationCounts[baseType] = totalCount;
             }
 
             // Calculate the mean implementation count
-            if (TotalImplementationCounts.Count > 0) {
+            if (TotalImplementationCounts.Count > 0)
+            {
                 var counts = TotalImplementationCounts.Values.OrderBy(c => c).ToList();
                 MedianImplementationCount = counts.Count % 2 == 0
                     ? (counts[counts.Count / 2 - 1] + counts[counts.Count / 2]) / 2.0
@@ -970,19 +1188,24 @@ public static class SolutionTools {
 
                 // Identify base types with above-average number of implementations
                 CommonBaseTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-                foreach (var pair in TotalImplementationCounts) {
-                    if (pair.Value > MedianImplementationCount) {
+                foreach (var pair in TotalImplementationCounts)
+                {
+                    if (pair.Value > MedianImplementationCount)
+                    {
                         CommonBaseTypes.Add(pair.Key);
                     }
                 }
-            } else {
+            }
+            else
+            {
                 MedianImplementationCount = 0;
                 CommonBaseTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
             }
         }
 
         // Get the full qualified display name of a type for display purposes
-        public static string GetTypeDisplayName(INamedTypeSymbol type) {
+        public static string GetTypeDisplayName(INamedTypeSymbol type)
+        {
             return FuzzyFqnLookupService.GetSearchableString(type);
         }
     }
@@ -993,149 +1216,199 @@ public static class SolutionTools {
         ILogger<SolutionToolsLogCategory> logger,
         DetailLevel detailLevel,
         Random random,
-        string indent) {
+        string indent)
+    {
 
         var membersContent = ObjectPoolProvider.Instance.GetStringBuilder();
         try
         {
-        var publicOrInternalMembers = type.GetMembers()
-            .Where(m => !m.IsImplicitlyDeclared &&
-                       !(m is INamedTypeSymbol) &&
-                       (m.DeclaredAccessibility == Accessibility.Public ||
-                        m.DeclaredAccessibility == Accessibility.Internal ||
-                        m.DeclaredAccessibility == Accessibility.ProtectedOrInternal))
-            .ToList();
+            var publicOrInternalMembers = type.GetMembers()
+                .Where(m => !m.IsImplicitlyDeclared &&
+                           !(m is INamedTypeSymbol) &&
+                           (m.DeclaredAccessibility == Accessibility.Public ||
+                            m.DeclaredAccessibility == Accessibility.Internal ||
+                            m.DeclaredAccessibility == Accessibility.ProtectedOrInternal))
+                .ToList();
 
-        var fields = publicOrInternalMembers.OfType<IFieldSymbol>()
-            .Where(f => !f.IsImplicitlyDeclared && !f.Name.Contains("k__BackingField") && !f.IsConst && type.TypeKind != TypeKind.Enum)
-            .ToList();
-        var constants = publicOrInternalMembers.OfType<IFieldSymbol>().Where(f => f.IsConst).ToList();
-        var enumValues = type.TypeKind == TypeKind.Enum ? publicOrInternalMembers.OfType<IFieldSymbol>().ToList() : new List<IFieldSymbol>();
-        var events = publicOrInternalMembers.OfType<IEventSymbol>().ToList();
-        var properties = publicOrInternalMembers.OfType<IPropertySymbol>().ToList();
-        var methods = publicOrInternalMembers.OfType<IMethodSymbol>()
-            .Where(m => m.MethodKind != MethodKind.PropertyGet &&
-                       m.MethodKind != MethodKind.PropertySet &&
-                       m.MethodKind != MethodKind.EventAdd &&
-                       m.MethodKind != MethodKind.EventRemove &&
-                       !m.Name.StartsWith("<"))
-            .ToList();
+            var fields = publicOrInternalMembers.OfType<IFieldSymbol>()
+                .Where(f => !f.IsImplicitlyDeclared && !f.Name.Contains("k__BackingField") && !f.IsConst && type.TypeKind != TypeKind.Enum)
+                .ToList();
+            var constants = publicOrInternalMembers.OfType<IFieldSymbol>().Where(f => f.IsConst).ToList();
+            var enumValues = type.TypeKind == TypeKind.Enum ? publicOrInternalMembers.OfType<IFieldSymbol>().ToList() : new List<IFieldSymbol>();
+            var events = publicOrInternalMembers.OfType<IEventSymbol>().ToList();
+            var properties = publicOrInternalMembers.OfType<IPropertySymbol>().ToList();
+            var methods = publicOrInternalMembers.OfType<IMethodSymbol>()
+                .Where(m => m.MethodKind != MethodKind.PropertyGet &&
+                           m.MethodKind != MethodKind.PropertySet &&
+                           m.MethodKind != MethodKind.EventAdd &&
+                           m.MethodKind != MethodKind.EventRemove &&
+                           !m.Name.StartsWith("<"))
+                .ToList();
 
-        // Fields
-        if (fields.Any()) {
-            if (detailLevel <= DetailLevel.NoConstantFieldNames) {
-                foreach (var field in fields.OrderBy(f => f.Name)) {
-                    membersContent.Append($"\n{indent}  {field.Name}:{GetTypeShortName(field.Type)}");
+            // Fields
+            if (fields.Any())
+            {
+                if (detailLevel <= DetailLevel.NoConstantFieldNames)
+                {
+                    foreach (var field in fields.OrderBy(f => f.Name))
+                    {
+                        membersContent.Append($"\n{indent}  {field.Name}:{GetTypeShortName(field.Type)}");
+                    }
                 }
-            } else {
-                membersContent.Append($"\n{indent}  {fields.Count}fie");
+                else
+                {
+                    membersContent.Append($"\n{indent}  {fields.Count}fie");
+                }
             }
-        }
 
-        // Constants
-        if (constants.Any()) {
-            if (detailLevel < DetailLevel.NoConstantFieldNames) { // Show names if detail is Full
-                foreach (var cnst in constants.OrderBy(c => c.Name)) {
-                    membersContent.Append($"\n{indent}  const {cnst.Name}:{GetTypeShortName(cnst.Type)}");
+            // Constants
+            if (constants.Any())
+            {
+                if (detailLevel < DetailLevel.NoConstantFieldNames)
+                { // Show names if detail is Full
+                    foreach (var cnst in constants.OrderBy(c => c.Name))
+                    {
+                        membersContent.Append($"\n{indent}  const {cnst.Name}:{GetTypeShortName(cnst.Type)}");
+                    }
                 }
-            } else {
-                membersContent.Append($"\n{indent}  {constants.Count}const");
+                else
+                {
+                    membersContent.Append($"\n{indent}  {constants.Count}const");
+                }
             }
-        }
 
-        // Enum Members
-        if (enumValues.Any()) {
-            if (detailLevel < DetailLevel.NoEventEnumNames) {
-                foreach (var enumVal in enumValues.OrderBy(e => e.Name)) {
-                    membersContent.Append($"\n{indent}  {enumVal.Name}");
+            // Enum Members
+            if (enumValues.Any())
+            {
+                if (detailLevel < DetailLevel.NoEventEnumNames)
+                {
+                    foreach (var enumVal in enumValues.OrderBy(e => e.Name))
+                    {
+                        membersContent.Append($"\n{indent}  {enumVal.Name}");
+                    }
                 }
-            } else {
-                membersContent.Append($"\n{indent}  {enumValues.Count}enu");
+                else
+                {
+                    membersContent.Append($"\n{indent}  {enumValues.Count}enu");
+                }
             }
-        }
 
-        // Events
-        if (events.Any()) {
-            if (detailLevel < DetailLevel.NoEventEnumNames) {
-                foreach (var evt in events.OrderBy(e => e.Name)) {
-                    membersContent.Append($"\n{indent}  evt {evt.Name}:{GetTypeShortName(evt.Type)}");
+            // Events
+            if (events.Any())
+            {
+                if (detailLevel < DetailLevel.NoEventEnumNames)
+                {
+                    foreach (var evt in events.OrderBy(e => e.Name))
+                    {
+                        membersContent.Append($"\n{indent}  evt {evt.Name}:{GetTypeShortName(evt.Type)}");
+                    }
                 }
-            } else {
-                membersContent.Append($"\n{indent}  {events.Count}eve");
+                else
+                {
+                    membersContent.Append($"\n{indent}  {events.Count}eve");
+                }
             }
-        }
 
-        // Properties
-        if (properties.Any()) {
-            if (detailLevel < DetailLevel.NoPropertyTypes) { // Full, NoConstantFieldNames, NoEventEnumNames, NoMethodParamTypes
-                foreach (var prop in properties.OrderBy(p => p.Name)) {
-                    membersContent.Append($"\n{indent}  {prop.Name}:{GetTypeShortName(prop.Type)}");
+            // Properties
+            if (properties.Any())
+            {
+                if (detailLevel < DetailLevel.NoPropertyTypes)
+                { // Full, NoConstantFieldNames, NoEventEnumNames, NoMethodParamTypes
+                    foreach (var prop in properties.OrderBy(p => p.Name))
+                    {
+                        membersContent.Append($"\n{indent}  {prop.Name}:{GetTypeShortName(prop.Type)}");
+                    }
                 }
-            } else if (detailLevel == DetailLevel.NoPropertyTypes || detailLevel == DetailLevel.NoMethodParamNames) { // Retain property names without types
-                foreach (var prop in properties.OrderBy(p => p.Name)) {
-                    membersContent.Append($"\n{indent}  {prop.Name}");
+                else if (detailLevel == DetailLevel.NoPropertyTypes || detailLevel == DetailLevel.NoMethodParamNames)
+                { // Retain property names without types
+                    foreach (var prop in properties.OrderBy(p => p.Name))
+                    {
+                        membersContent.Append($"\n{indent}  {prop.Name}");
+                    }
                 }
-            } else if (detailLevel == DetailLevel.FiftyPercentPropertyNames) {
-                var shuffledProps = properties.OrderBy(_ => random.Next()).ToList();
-                var propsToShow = shuffledProps.Take(Math.Max(1, properties.Count / 2)).ToList();
-                foreach (var prop in propsToShow.OrderBy(p => p.Name)) {
-                    membersContent.Append($"\n{indent}  {prop.Name}"); // Type omitted
+                else if (detailLevel == DetailLevel.FiftyPercentPropertyNames)
+                {
+                    var shuffledProps = properties.OrderBy(_ => random.Next()).ToList();
+                    var propsToShow = shuffledProps.Take(Math.Max(1, properties.Count / 2)).ToList();
+                    foreach (var prop in propsToShow.OrderBy(p => p.Name))
+                    {
+                        membersContent.Append($"\n{indent}  {prop.Name}"); // Type omitted
+                    }
+                    if (propsToShow.Count < properties.Count)
+                    {
+                        membersContent.Append($"\n{indent}  +{properties.Count - propsToShow.Count}prop");
+                    }
                 }
-                if (propsToShow.Count < properties.Count) {
-                    membersContent.Append($"\n{indent}  +{properties.Count - propsToShow.Count}prop");
+                else if (detailLevel == DetailLevel.NoPropertyNames || detailLevel == DetailLevel.FiftyPercentMethodNames)
+                { // Only count for NoPropertyNames or if method names are also being reduced
+                    membersContent.Append($"\n{indent}  {properties.Count}prop");
                 }
-            } else if (detailLevel == DetailLevel.NoPropertyNames || detailLevel == DetailLevel.FiftyPercentMethodNames) { // Only count for NoPropertyNames or if method names are also being reduced
-                membersContent.Append($"\n{indent}  {properties.Count}prop");
-            } else if (detailLevel < DetailLevel.NamespacesAndTypesOnly) { // Default for levels more compressed than NoPropertyNames but not NamespacesAndTypesOnly (e.g. NoMethodNames)
-                membersContent.Append($"\n{indent}  {properties.Count}prop");
+                else if (detailLevel < DetailLevel.NamespacesAndTypesOnly)
+                { // Default for levels more compressed than NoPropertyNames but not NamespacesAndTypesOnly (e.g. NoMethodNames)
+                    membersContent.Append($"\n{indent}  {properties.Count}prop");
+                }
+                // If detailLevel is NamespacesAndTypesOnly, properties are skipped entirely by the initial check.
             }
-            // If detailLevel is NamespacesAndTypesOnly, properties are skipped entirely by the initial check.
-        }
 
-        // Methods (including constructors)
-        if (methods.Any()) {
-            if (detailLevel <= DetailLevel.FiftyPercentMethodNames) {
-                var methodsToShow = methods;
-                if (detailLevel == DetailLevel.FiftyPercentMethodNames) {
-                    var shuffledMethods = methods.OrderBy(_ => random.Next()).ToList();
-                    methodsToShow = shuffledMethods.Take(Math.Max(1, methods.Count / 2)).ToList();
-                }
-                foreach (var method in methodsToShow.OrderBy(m => m.Name)) {
-                    membersContent.Append($"\n{indent}  {method.Name}");
-                    if (detailLevel < DetailLevel.NoMethodParamNames) {
-                        membersContent.Append("(");
-                        if (method.Parameters.Length > 0) {
-                            var paramStrings = method.Parameters.Select(p =>
-                                detailLevel < DetailLevel.NoMethodParamTypes ? $"{p.Name}:{GetTypeShortName(p.Type)}" : p.Name
-                            );
-                            membersContent.Append(string.Join(", ", paramStrings));
+            // Methods (including constructors)
+            if (methods.Any())
+            {
+                if (detailLevel <= DetailLevel.FiftyPercentMethodNames)
+                {
+                    var methodsToShow = methods;
+                    if (detailLevel == DetailLevel.FiftyPercentMethodNames)
+                    {
+                        var shuffledMethods = methods.OrderBy(_ => random.Next()).ToList();
+                        methodsToShow = shuffledMethods.Take(Math.Max(1, methods.Count / 2)).ToList();
+                    }
+                    foreach (var method in methodsToShow.OrderBy(m => m.Name))
+                    {
+                        membersContent.Append($"\n{indent}  {method.Name}");
+                        if (detailLevel < DetailLevel.NoMethodParamNames)
+                        {
+                            membersContent.Append("(");
+                            if (method.Parameters.Length > 0)
+                            {
+                                var paramStrings = method.Parameters.Select(p =>
+                                    detailLevel < DetailLevel.NoMethodParamTypes ? $"{p.Name}:{GetTypeShortName(p.Type)}" : p.Name
+                                );
+                                membersContent.Append(string.Join(", ", paramStrings));
+                            }
+                            membersContent.Append(")");
                         }
-                        membersContent.Append(")");
-                    } else if (method.Parameters.Length > 0) {
-                        membersContent.Append($"({method.Parameters.Length}para)");
-                    } else {
-                        membersContent.Append("()");
+                        else if (method.Parameters.Length > 0)
+                        {
+                            membersContent.Append($"({method.Parameters.Length}para)");
+                        }
+                        else
+                        {
+                            membersContent.Append("()");
+                        }
+                        if (method.MethodKind != MethodKind.Constructor && !method.ReturnsVoid)
+                        {
+                            membersContent.Append($":{GetTypeShortName(method.ReturnType)}");
+                        }
+                        membersContent.Append(";");
                     }
-                    if (method.MethodKind != MethodKind.Constructor && !method.ReturnsVoid) {
-                        membersContent.Append($":{GetTypeShortName(method.ReturnType)}");
+                    if (detailLevel == DetailLevel.FiftyPercentMethodNames && methodsToShow.Count < methods.Count)
+                    {
+                        membersContent.Append($"\n{indent}  and {methods.Count - methodsToShow.Count} more method{(methods.Count - methodsToShow.Count == 1 ? "" : "s")};");
                     }
-                    membersContent.Append(";");
                 }
-                if (detailLevel == DetailLevel.FiftyPercentMethodNames && methodsToShow.Count < methods.Count) {
-                    membersContent.Append($"\n{indent}  and {methods.Count - methodsToShow.Count} more method{(methods.Count - methodsToShow.Count == 1 ? "" : "s")};");
+                else
+                { // NoMethodNames or higher compression
+                    membersContent.Append($"\n{indent}  {methods.Count} methods;");
                 }
-            } else { // NoMethodNames or higher compression
-                membersContent.Append($"\n{indent}  {methods.Count} methods;");
             }
-        }
 
-        // Append the members content to the main StringBuilder
-        if (membersContent.Length > 0) {
-            sb.Append(membersContent);
-            return true;
-        }
+            // Append the members content to the main StringBuilder
+            if (membersContent.Length > 0)
+            {
+                sb.Append(membersContent);
+                return true;
+            }
 
-        return false;
+            return false;
         }
         finally
         {

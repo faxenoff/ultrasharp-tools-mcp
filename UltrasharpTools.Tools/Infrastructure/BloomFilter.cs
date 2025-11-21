@@ -16,7 +16,8 @@ namespace UltrasharpTools.Tools.Infrastructure;
 /// Use case: Quickly filter out symbols that definitely don't match search query.
 /// Example: For 10,000 symbols, this filters out ~9,900 in microseconds before expensive fuzzy matching.
 /// </summary>
-public sealed class BloomFilter {
+public sealed class BloomFilter
+{
     private readonly BitArray _bits;
     private readonly int _hashCount;
     private readonly int _bitCount;
@@ -26,7 +27,8 @@ public sealed class BloomFilter {
     /// </summary>
     /// <param name="expectedElements">Expected number of elements to be added</param>
     /// <param name="falsePositiveRate">Desired false positive rate (0.01 = 1%)</param>
-    public BloomFilter(int expectedElements, double falsePositiveRate = 0.01) {
+    public BloomFilter(int expectedElements, double falsePositiveRate = 0.01)
+    {
         if (expectedElements <= 0)
             throw new ArgumentException("Expected elements must be positive", nameof(expectedElements));
         if (falsePositiveRate <= 0 || falsePositiveRate >= 1)
@@ -45,11 +47,13 @@ public sealed class BloomFilter {
     /// <summary>
     /// Adds an item to the Bloom filter.
     /// </summary>
-    public void Add(string item) {
+    public void Add(string item)
+    {
         if (string.IsNullOrEmpty(item))
             return;
 
-        foreach (var hash in GetHashes(item)) {
+        foreach (var hash in GetHashes(item))
+        {
             _bits[hash % _bitCount] = true;
         }
     }
@@ -57,8 +61,10 @@ public sealed class BloomFilter {
     /// <summary>
     /// Adds multiple items efficiently.
     /// </summary>
-    public void AddRange(IEnumerable<string> items) {
-        foreach (var item in items) {
+    public void AddRange(IEnumerable<string> items)
+    {
+        foreach (var item in items)
+        {
             Add(item);
         }
     }
@@ -70,11 +76,13 @@ public sealed class BloomFilter {
     /// - false: Item is definitely NOT in the set (100% certainty)
     /// - true: Item might be in the set (false positive rate ~1%)
     /// </summary>
-    public bool MightContain(string item) {
+    public bool MightContain(string item)
+    {
         if (string.IsNullOrEmpty(item))
             return false;
 
-        foreach (var hash in GetHashes(item)) {
+        foreach (var hash in GetHashes(item))
+        {
             if (!_bits[hash % _bitCount])
                 return false; // Definitely not in set
         }
@@ -88,13 +96,15 @@ public sealed class BloomFilter {
     ///
     /// Formula: hash_i = (hash1 + i * hash2) mod m
     /// </summary>
-    private IEnumerable<int> GetHashes(string item) {
+    private IEnumerable<int> GetHashes(string item)
+    {
         // Use two independent hash codes
         int hash1 = GetStableHashCode(item);
         int hash2 = HashCode.Combine(item.Length, hash1, item[0]);
 
         // Double hashing: generate k hash values from 2 hash functions
-        for (int i = 0; i < _hashCount; i++) {
+        for (int i = 0; i < _hashCount; i++)
+        {
             yield return Math.Abs(hash1 + i * hash2);
         }
     }
@@ -106,22 +116,29 @@ public sealed class BloomFilter {
     /// Optimized with Span&lt;T&gt; to avoid heap allocations.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int GetStableHashCode(string str) {
+    private static int GetStableHashCode(string str)
+    {
         const int stackAllocThreshold = 256; // Use stackalloc for typical symbol names
         int maxByteCount = Encoding.UTF8.GetMaxByteCount(str.Length);
 
-        if (maxByteCount <= stackAllocThreshold) {
+        if (maxByteCount <= stackAllocThreshold)
+        {
             // Zero heap allocations for typical symbol names
             Span<byte> buffer = stackalloc byte[maxByteCount];
             int actualByteCount = Encoding.UTF8.GetBytes(str.AsSpan(), buffer);
             return unchecked((int)XxHash32.HashToUInt32(buffer.Slice(0, actualByteCount)));
-        } else {
+        }
+        else
+        {
             // Use ArrayPool for very long strings
             byte[] rented = ArrayPool<byte>.Shared.Rent(maxByteCount);
-            try {
+            try
+            {
                 int actualByteCount = Encoding.UTF8.GetBytes(str.AsSpan(), rented.AsSpan());
                 return unchecked((int)XxHash32.HashToUInt32(rented.AsSpan(0, actualByteCount)));
-            } finally {
+            }
+            finally
+            {
                 ArrayPool<byte>.Shared.Return(rented);
             }
         }
@@ -130,9 +147,11 @@ public sealed class BloomFilter {
     /// <summary>
     /// Gets statistics about the Bloom filter.
     /// </summary>
-    public BloomFilterStats GetStatistics() {
+    public BloomFilterStats GetStatistics()
+    {
         int setBits = 0;
-        for (int i = 0; i < _bitCount; i++) {
+        for (int i = 0; i < _bitCount; i++)
+        {
             if (_bits[i])
                 setBits++;
         }
@@ -143,7 +162,8 @@ public sealed class BloomFilter {
         // Formula: (1 - e^(-kn/m))^k where k = hash count, n = elements, m = bits
         double estimatedFpr = Math.Pow(fillRatio, _hashCount);
 
-        return new BloomFilterStats {
+        return new BloomFilterStats
+        {
             TotalBits = _bitCount,
             SetBits = setBits,
             FillRatio = fillRatio,
@@ -157,7 +177,8 @@ public sealed class BloomFilter {
 /// <summary>
 /// Statistics about a Bloom filter's current state.
 /// </summary>
-public sealed record BloomFilterStats {
+public sealed record BloomFilterStats
+{
     public required int TotalBits { get; init; }
     public required int SetBits { get; init; }
     public required double FillRatio { get; init; }
@@ -165,7 +186,8 @@ public sealed record BloomFilterStats {
     public required double EstimatedFalsePositiveRate { get; init; }
     public required int MemoryBytes { get; init; }
 
-    public override string ToString() {
+    public override string ToString()
+    {
         return $"BloomFilter: {MemoryBytes:N0} bytes, {FillRatio:P1} full, {EstimatedFalsePositiveRate:P2} FPR, {HashFunctionCount} hashes";
     }
 }

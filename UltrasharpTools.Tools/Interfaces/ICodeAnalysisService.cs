@@ -1,5 +1,7 @@
 namespace UltrasharpTools.Tools.Interfaces;
-public interface ICodeAnalysisService {
+
+public interface ICodeAnalysisService
+{
     Task<IEnumerable<ISymbol>> FindImplementationsAsync(ISymbol symbol, CancellationToken cancellationToken);
     Task<IEnumerable<ISymbol>> FindOverridesAsync(ISymbol symbol, CancellationToken cancellationToken);
     Task<IEnumerable<ReferencedSymbol>> FindReferencesAsync(ISymbol symbol, CancellationToken cancellationToken);

@@ -1,10 +1,12 @@
 
 
-namespace UltrasharpTools.Tools.Interfaces {
+namespace UltrasharpTools.Tools.Interfaces
+{
     /// <summary>
     /// Service for performing fuzzy lookups of fully qualified names in the solution
     /// </summary>
-    public interface IFuzzyFqnLookupService {
+    public interface IFuzzyFqnLookupService
+    {
         /// <summary>
         /// Finds symbols matching the provided fuzzy FQN input
         /// </summary>

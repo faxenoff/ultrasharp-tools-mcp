@@ -1,8 +1,10 @@
 
 
-namespace UltrasharpTools.Tools.Interfaces {
+namespace UltrasharpTools.Tools.Interfaces
+{
 
-    public interface ISemanticSimilarityService {
+    public interface ISemanticSimilarityService
+    {
         Task<List<MethodSimilarityResult>> FindSimilarMethodsAsync(
             double similarityThreshold,
             CancellationToken cancellationToken);

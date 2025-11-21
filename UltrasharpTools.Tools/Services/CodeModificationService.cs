@@ -12,26 +12,31 @@ public class CodeModificationService(
     ISolutionManager solutionManager,
     IGitService gitService,
     IQuickLintService quickLintService,
-    ILogger<CodeModificationService> logger) : ICodeModificationService {
+    ILogger<CodeModificationService> logger) : ICodeModificationService
+{
 
     private readonly ISolutionManager _solutionManager = solutionManager ?? throw new ArgumentNullException(nameof(solutionManager));
     private readonly IGitService _gitService = gitService ?? throw new ArgumentNullException(nameof(gitService));
     private readonly IQuickLintService _quickLintService = quickLintService ?? throw new ArgumentNullException(nameof(quickLintService));
     private readonly ILogger<CodeModificationService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    private Solution GetCurrentSolutionOrThrow() {
-        if (!_solutionManager.IsSolutionLoaded) {
+    private Solution GetCurrentSolutionOrThrow()
+    {
+        if (!_solutionManager.IsSolutionLoaded)
+        {
             throw new InvalidOperationException("No solution is currently loaded.");
         }
         return _solutionManager.CurrentSolution;
     }
 
-    public async Task<Solution> AddMemberAsync(DocumentId documentId, INamedTypeSymbol targetTypeSymbol, MemberDeclarationSyntax newMember, int lineNumberHint = -1, CancellationToken cancellationToken = default) {
+    public async Task<Solution> AddMemberAsync(DocumentId documentId, INamedTypeSymbol targetTypeSymbol, MemberDeclarationSyntax newMember, int lineNumberHint = -1, CancellationToken cancellationToken = default)
+    {
         var solution = GetCurrentSolutionOrThrow();
         var document = solution.GetDocument(documentId) ?? throw new ArgumentException($"Document with ID '{documentId}' not found in the current solution.", nameof(documentId));
 
         var typeDeclarationNode = targetTypeSymbol.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) as TypeDeclarationSyntax;
-        if (typeDeclarationNode == null) {
+        if (typeDeclarationNode == null)
+        {
             throw new InvalidOperationException($"Could not find syntax node for type '{targetTypeSymbol.Name}'.");
         }
 
@@ -39,13 +44,16 @@ public class CodeModificationService(
 
         NormalizeMemberDeclarationTrivia(newMember);
 
-        if (lineNumberHint > 0) {
+        if (lineNumberHint > 0)
+        {
             var root = await document.GetSyntaxRootAsync(cancellationToken);
-            if (root != null) {
+            if (root != null)
+            {
                 var sourceText = await document.GetTextAsync(cancellationToken);
 
                 var members = typeDeclarationNode.Members
-                    .Select(member => new {
+                    .Select(member => new
+                    {
                         Member = member,
                         LineSpan = member.GetLocation().GetLineSpan()
                     })
@@ -53,8 +61,10 @@ public class CodeModificationService(
                     .ToList();
 
                 int insertIndex = 0;
-                for (int i = 0; i < members.Count; i++) {
-                    if (members[i].LineSpan.StartLinePosition.Line >= lineNumberHint) {
+                for (int i = 0; i < members.Count; i++)
+                {
+                    if (members[i].LineSpan.StartLinePosition.Line >= lineNumberHint)
+                    {
                         insertIndex = i;
                         break;
                     }
@@ -82,30 +92,40 @@ public class CodeModificationService(
         return finalDocument.Project.Solution;
     }
 
-    public async Task<Solution> AddStatementAsync(DocumentId documentId, MethodDeclarationSyntax targetMethodNode, StatementSyntax newStatement, CancellationToken cancellationToken, bool addToBeginning = false) {
+    public async Task<Solution> AddStatementAsync(DocumentId documentId, MethodDeclarationSyntax targetMethodNode, StatementSyntax newStatement, CancellationToken cancellationToken, bool addToBeginning = false)
+    {
         var solution = GetCurrentSolutionOrThrow();
         var document = solution.GetDocument(documentId) ?? throw new ArgumentException($"Document with ID '{documentId}' not found in the current solution.", nameof(documentId));
 
         _logger.LogInformation("Adding statement to method {MethodName} in document {DocumentPath}", targetMethodNode.Identifier.Text, document.FilePath);
         var editor = await DocumentEditor.CreateAsync(document, cancellationToken);
 
-        if (targetMethodNode.Body != null) {
+        if (targetMethodNode.Body != null)
+        {
             var currentBody = targetMethodNode.Body;
             BlockSyntax newBody;
-            if (addToBeginning) {
+            if (addToBeginning)
+            {
                 var newStatements = currentBody.Statements.Insert(0, newStatement);
                 newBody = currentBody.WithStatements(newStatements);
-            } else {
+            }
+            else
+            {
                 newBody = currentBody.AddStatements(newStatement);
             }
             editor.ReplaceNode(currentBody, newBody);
-        } else if (targetMethodNode.ExpressionBody != null) {
+        }
+        else if (targetMethodNode.ExpressionBody != null)
+        {
             // Converting expression body to block body
             var returnStatement = SyntaxFactory.ReturnStatement(targetMethodNode.ExpressionBody.Expression);
             BlockSyntax bodyBlock;
-            if (addToBeginning) {
+            if (addToBeginning)
+            {
                 bodyBlock = SyntaxFactory.Block(newStatement, returnStatement);
-            } else {
+            }
+            else
+            {
                 bodyBlock = SyntaxFactory.Block(returnStatement, newStatement);
             }
             // Create a new method node with the block body
@@ -113,7 +133,9 @@ public class CodeModificationService(
                 .WithExpressionBody(null) // Remove expression body
                 .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.None)); // Remove semicolon if any
             editor.ReplaceNode(targetMethodNode, newMethod);
-        } else {
+        }
+        else
+        {
             // Method has no body (e.g. abstract, partial, extern). Create one.
             var bodyBlock = SyntaxFactory.Block(newStatement);
             var newMethodWithBody = targetMethodNode.WithBody(bodyBlock)
@@ -128,7 +150,8 @@ public class CodeModificationService(
     }
 
     private static SyntaxTrivia newline = SyntaxFactory.EndOfLine("\n");
-    private SyntaxTriviaList NormalizeLeadingTrivia(SyntaxTriviaList trivia) {
+    private SyntaxTriviaList NormalizeLeadingTrivia(SyntaxTriviaList trivia)
+    {
         // Remove all newlines
         var filtered = trivia.Where(t => !t.IsKind(SyntaxKind.EndOfLineTrivia));
 
@@ -136,7 +159,8 @@ public class CodeModificationService(
         return SyntaxFactory.TriviaList(newline, newline).AddRange(filtered);
     }
 
-    private SyntaxTriviaList NormalizeTrailingTrivia(SyntaxTriviaList trivia) {
+    private SyntaxTriviaList NormalizeTrailingTrivia(SyntaxTriviaList trivia)
+    {
         // Remove all newlines
         var filtered = trivia.Where(t => !t.IsKind(SyntaxKind.EndOfLineTrivia));
 
@@ -147,8 +171,10 @@ public class CodeModificationService(
         return result.Add(newline).Add(newline);
     }
 
-    private SyntaxNode NormalizeMemberDeclarationTrivia(SyntaxNode member) {
-        if (member is MemberDeclarationSyntax memberDeclaration) {
+    private SyntaxNode NormalizeMemberDeclarationTrivia(SyntaxNode member)
+    {
+        if (member is MemberDeclarationSyntax memberDeclaration)
+        {
             var leadingTrivia = memberDeclaration.GetLeadingTrivia();
             var trailingTrivia = memberDeclaration.GetTrailingTrivia();
 
@@ -162,7 +188,8 @@ public class CodeModificationService(
         }
         return member;
     }
-    public async Task<Solution> ReplaceNodeAsync(DocumentId documentId, SyntaxNode oldNode, SyntaxNode newNode, CancellationToken cancellationToken) {
+    public async Task<Solution> ReplaceNodeAsync(DocumentId documentId, SyntaxNode oldNode, SyntaxNode newNode, CancellationToken cancellationToken)
+    {
         var solution = GetCurrentSolutionOrThrow();
         var document = solution.GetDocument(documentId) ?? throw new ArgumentException($"Document with ID '{documentId}' not found in the current solution.", nameof(documentId));
 
@@ -174,52 +201,72 @@ public class CodeModificationService(
                                  emptyStmt.GetLeadingTrivia().Any(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia) &&
                                                                      t.ToString().StartsWith("// Delete", StringComparison.OrdinalIgnoreCase));
 
-        if (isDeleteOperation) {
+        if (isDeleteOperation)
+        {
             _logger.LogInformation("Detected deletion operation for node {NodeKind}", oldNode.Kind());
 
             // For deletion, we need to remove the node from its parent
             var root = await document.GetSyntaxRootAsync(cancellationToken);
-            if (root == null) {
+            if (root == null)
+            {
                 throw new InvalidOperationException("Could not get syntax root for document.");
             }
 
             // Different approach based on the node's parent context
             SyntaxNode newRoot;
 
-            if (oldNode.Parent is Microsoft.CodeAnalysis.CSharp.Syntax.CompilationUnitSyntax compilationUnit) {
+            if (oldNode.Parent is Microsoft.CodeAnalysis.CSharp.Syntax.CompilationUnitSyntax compilationUnit)
+            {
                 // Handle top-level members in the compilation unit
-                if (oldNode is Microsoft.CodeAnalysis.CSharp.Syntax.MemberDeclarationSyntax memberToRemove) {
+                if (oldNode is Microsoft.CodeAnalysis.CSharp.Syntax.MemberDeclarationSyntax memberToRemove)
+                {
                     var newMembers = compilationUnit.Members.Remove(memberToRemove);
                     newRoot = compilationUnit.WithMembers(newMembers);
-                } else {
+                }
+                else
+                {
                     throw new InvalidOperationException($"Cannot delete node of type {oldNode.GetType().Name} directly from compilation unit.");
                 }
-            } else if (oldNode.Parent is Microsoft.CodeAnalysis.CSharp.Syntax.NamespaceDeclarationSyntax namespaceDecl) {
+            }
+            else if (oldNode.Parent is Microsoft.CodeAnalysis.CSharp.Syntax.NamespaceDeclarationSyntax namespaceDecl)
+            {
                 // Handle members in a namespace
-                if (oldNode is Microsoft.CodeAnalysis.CSharp.Syntax.MemberDeclarationSyntax memberToRemove) {
+                if (oldNode is Microsoft.CodeAnalysis.CSharp.Syntax.MemberDeclarationSyntax memberToRemove)
+                {
                     var newMembers = namespaceDecl.Members.Remove(memberToRemove);
                     var newNamespace = namespaceDecl.WithMembers(newMembers);
                     newRoot = root.ReplaceNode(namespaceDecl, newNamespace);
-                } else {
+                }
+                else
+                {
                     throw new InvalidOperationException($"Cannot delete node of type {oldNode.GetType().Name} from namespace declaration.");
                 }
-            } else if (oldNode.Parent is Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax typeDecl) {
+            }
+            else if (oldNode.Parent is Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax typeDecl)
+            {
                 // Handle members in a type declaration (class, struct, interface, etc.)
-                if (oldNode is Microsoft.CodeAnalysis.CSharp.Syntax.MemberDeclarationSyntax memberToRemove) {
+                if (oldNode is Microsoft.CodeAnalysis.CSharp.Syntax.MemberDeclarationSyntax memberToRemove)
+                {
                     var newMembers = typeDecl.Members.Remove(memberToRemove);
                     var newType = typeDecl.WithMembers(newMembers);
                     newRoot = root.ReplaceNode(typeDecl, newType);
-                } else {
+                }
+                else
+                {
                     throw new InvalidOperationException($"Cannot delete node of type {oldNode.GetType().Name} from type declaration.");
                 }
-            } else {
+            }
+            else
+            {
                 throw new InvalidOperationException($"Cannot delete node of type {oldNode.GetType().Name} from parent of type {oldNode.Parent?.GetType().Name ?? "null"}.");
             }
 
             var newDocument = document.WithSyntaxRoot(newRoot);
             var formattedDocument = await FormatDocumentAsync(newDocument, cancellationToken);
             return formattedDocument.Project.Solution;
-        } else {
+        }
+        else
+        {
             // Standard node replacement
             NormalizeMemberDeclarationTrivia(newNode);
 
@@ -231,7 +278,8 @@ public class CodeModificationService(
             return formattedDocument.Project.Solution;
         }
     }
-    public async Task<Solution> RenameSymbolAsync(ISymbol symbol, string newName, CancellationToken cancellationToken) {
+    public async Task<Solution> RenameSymbolAsync(ISymbol symbol, string newName, CancellationToken cancellationToken)
+    {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogInformation("Renaming symbol {SymbolName} to {NewName}", symbol.ToDisplayString(), newName);
 
@@ -245,7 +293,8 @@ public class CodeModificationService(
 
         return newSolution;
     }
-    public async Task<Solution> ReplaceAllReferencesAsync(ISymbol symbol, string replacementText, CancellationToken cancellationToken, Func<SyntaxNode, bool>? predicateFilter = null) {
+    public async Task<Solution> ReplaceAllReferencesAsync(ISymbol symbol, string replacementText, CancellationToken cancellationToken, Func<SyntaxNode, bool>? predicateFilter = null)
+    {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogInformation("Replacing all references to symbol {SymbolName} with text '{ReplacementText}'",
             symbol.ToDisplayString(), replacementText);
@@ -254,8 +303,10 @@ public class CodeModificationService(
         var referencedSymbols = await SymbolFinder.FindReferencesAsync(symbol, solution, cancellationToken);
         var changedSolution = solution;
 
-        foreach (var referencedSymbol in referencedSymbols) {
-            foreach (var location in referencedSymbol.Locations) {
+        foreach (var referencedSymbol in referencedSymbols)
+        {
+            foreach (var location in referencedSymbol.Locations)
+            {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var document = changedSolution.GetDocument(location.Document.Id);
@@ -267,7 +318,8 @@ public class CodeModificationService(
                 var node = root.FindNode(location.Location.SourceSpan);
 
                 // Apply filter if provided
-                if (predicateFilter != null && !predicateFilter(node)) {
+                if (predicateFilter != null && !predicateFilter(node))
+                {
                     _logger.LogDebug("Skipping replacement for node at {Location} due to filter predicate",
                         location.Location.GetLineSpan());
                     continue;
@@ -290,7 +342,8 @@ public class CodeModificationService(
 
         return changedSolution;
     }
-    public async Task<Solution> FindAndReplaceAsync(string targetString, string regexPattern, string replacementText, CancellationToken cancellationToken, RegexOptions options = RegexOptions.Multiline) {
+    public async Task<Solution> FindAndReplaceAsync(string targetString, string regexPattern, string replacementText, CancellationToken cancellationToken, RegexOptions options = RegexOptions.Multiline)
+    {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogInformation("Performing find and replace with regex '{RegexPattern}' on target '{TargetString}'",
             regexPattern, targetString);
@@ -300,17 +353,22 @@ public class CodeModificationService(
         Solution resultSolution = solution;
 
         // Check if the target is a fully qualified name (no wildcards)
-        if (!targetString.Contains("*") && !targetString.Contains("?")) {
-            try {
+        if (!targetString.Contains("*") && !targetString.Contains("?"))
+        {
+            try
+            {
                 // Try to resolve as a symbol
                 var symbol = await _solutionManager.FindRoslynSymbolAsync(targetString, cancellationToken);
-                if (symbol != null) {
+                if (symbol != null)
+                {
                     _logger.LogInformation("Target is a valid symbol: {SymbolName}", symbol.ToDisplayString());
 
                     // For a symbol, we'll get its defining document and limit replacements to the symbol's span
                     var syntaxReferences = symbol.DeclaringSyntaxReferences;
-                    if (syntaxReferences.Any()) {
-                        foreach (var syntaxRef in syntaxReferences) {
+                    if (syntaxReferences.Any())
+                    {
+                        foreach (var syntaxRef in syntaxReferences)
+                        {
                             cancellationToken.ThrowIfCancellationRequested();
 
                             var node = await syntaxRef.GetSyntaxAsync(cancellationToken);
@@ -330,7 +388,8 @@ public class CodeModificationService(
                             var newSymbolText = regex.Replace(symbolText, replacementText);
 
                             // Only update if changes were made to the symbol text
-                            if (newSymbolText != symbolText) {
+                            if (newSymbolText != symbolText)
+                            {
                                 // Create new text by replacing the symbol's span with the modified text
                                 var newFullText = originalText.Substring(0, nodeSpan.Start) +
                                     newSymbolText +
@@ -345,7 +404,9 @@ public class CodeModificationService(
                         return resultSolution;
                     }
                 }
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 _logger.LogInformation("Target string is not a valid symbol: {Error}", ex.Message);
                 // Fall through to file-based search
             }
@@ -365,11 +426,14 @@ public class CodeModificationService(
         string root = Path.GetPathRoot(solution.FilePath) ?? Path.GetPathRoot(Environment.CurrentDirectory)!;
 
         // Process all projects and documents
-        foreach (var project in solution.Projects) {
-            foreach (var document in project.Documents) {
+        foreach (var project in solution.Projects)
+        {
+            foreach (var document in project.Documents)
+            {
                 if (string.IsNullOrWhiteSpace(document.FilePath)) continue;
                 // Use wildcard matching
-                if (matcher.Match(root, document.FilePath).HasMatches) {
+                if (matcher.Match(root, document.FilePath).HasMatches)
+                {
                     _logger.LogInformation("Document matched pattern: {DocumentPath}", document.FilePath);
                     documentIds.Add(document.Id);
                 }
@@ -381,7 +445,8 @@ public class CodeModificationService(
 
         resultSolution = solution;
         // Process all matching documents
-        foreach (var documentId in documentIds) {
+        foreach (var documentId in documentIds)
+        {
             cancellationToken.ThrowIfCancellationRequested();
 
             // Apply regex replacement
@@ -393,7 +458,8 @@ public class CodeModificationService(
             var newText = regex.Replace(originalText, replacementText);
 
             // Only update if changes were made
-            if (newText != originalText) {
+            if (newText != originalText)
+            {
                 var newDocument = document.WithText(SourceText.From(newText, sourceText.Encoding));
                 var formattedDocument = await FormatDocumentAsync(newDocument, cancellationToken);
                 resultSolution = formattedDocument.Project.Solution;
@@ -402,15 +468,18 @@ public class CodeModificationService(
 
         return resultSolution;
     }
-    public async Task<Document> FormatDocumentAsync(Document document, CancellationToken cancellationToken) {
+    public async Task<Document> FormatDocumentAsync(Document document, CancellationToken cancellationToken)
+    {
         _logger.LogDebug("Formatting document: {DocumentPath}", document.FilePath);
         var formattingOptions = await document.GetOptionsAsync(cancellationToken);
         var formattedDocument = await Formatter.FormatAsync(document, formattingOptions, cancellationToken);
         _logger.LogDebug("Document formatted: {DocumentPath}", document.FilePath);
         return formattedDocument;
     }
-    public async Task<LintingResult> ApplyChangesAsync(Solution newSolution, CancellationToken cancellationToken, string commitMessage, IEnumerable<string>? additionalFilePaths = null) {
-        if (_solutionManager.CurrentWorkspace is not MSBuildWorkspace workspace) {
+    public async Task<LintingResult> ApplyChangesAsync(Solution newSolution, CancellationToken cancellationToken, string commitMessage, IEnumerable<string>? additionalFilePaths = null)
+    {
+        if (_solutionManager.CurrentWorkspace is not MSBuildWorkspace workspace)
+        {
             _logger.LogError("Cannot apply changes: Workspace is not an MSBuildWorkspace or is null.");
             throw new InvalidOperationException("Workspace is not suitable for applying changes.");
         }
@@ -424,30 +493,37 @@ public class CodeModificationService(
         // Collect changed file paths for git operations - include both changed and new documents
         var changedFilePaths = new List<string>();
 
-        foreach (var projectChange in solutionChanges.GetProjectChanges()) {
+        foreach (var projectChange in solutionChanges.GetProjectChanges())
+        {
             // Handle changed documents
-            foreach (var changedDocumentId in projectChange.GetChangedDocuments()) {
+            foreach (var changedDocumentId in projectChange.GetChangedDocuments())
+            {
                 var documentToFormat = finalSolutionToApply.GetDocument(changedDocumentId);
-                if (documentToFormat != null) {
+                if (documentToFormat != null)
+                {
                     _logger.LogDebug("Pre-apply formatting for changed document: {DocumentPath}", documentToFormat.FilePath);
                     var formattedDocument = await FormatDocumentAsync(documentToFormat, cancellationToken);
                     finalSolutionToApply = formattedDocument.Project.Solution;
 
-                    if (!string.IsNullOrEmpty(documentToFormat.FilePath)) {
+                    if (!string.IsNullOrEmpty(documentToFormat.FilePath))
+                    {
                         changedFilePaths.Add(documentToFormat.FilePath);
                     }
                 }
             }
 
             // Handle added documents (new files)
-            foreach (var addedDocumentId in projectChange.GetAddedDocuments()) {
+            foreach (var addedDocumentId in projectChange.GetAddedDocuments())
+            {
                 var addedDocument = finalSolutionToApply.GetDocument(addedDocumentId);
-                if (addedDocument != null) {
+                if (addedDocument != null)
+                {
                     _logger.LogDebug("Pre-apply formatting for added document: {DocumentPath}", addedDocument.FilePath);
                     var formattedDocument = await FormatDocumentAsync(addedDocument, cancellationToken);
                     finalSolutionToApply = formattedDocument.Project.Solution;
 
-                    if (!string.IsNullOrEmpty(addedDocument.FilePath)) {
+                    if (!string.IsNullOrEmpty(addedDocument.FilePath))
+                    {
                         changedFilePaths.Add(addedDocument.FilePath);
                         _logger.LogInformation("Added new document for git tracking: {DocumentPath}", addedDocument.FilePath);
                     }
@@ -455,9 +531,11 @@ public class CodeModificationService(
             }
 
             // Handle removed documents
-            foreach (var removedDocumentId in projectChange.GetRemovedDocuments()) {
+            foreach (var removedDocumentId in projectChange.GetRemovedDocuments())
+            {
                 var removedDocument = originalSolution.GetDocument(removedDocumentId);
-                if (removedDocument != null && !string.IsNullOrEmpty(removedDocument.FilePath)) {
+                if (removedDocument != null && !string.IsNullOrEmpty(removedDocument.FilePath))
+                {
                     changedFilePaths.Add(removedDocument.FilePath);
                     _logger.LogInformation("Marked removed document for git tracking: {DocumentPath}", removedDocument.FilePath);
                 }
@@ -468,11 +546,13 @@ public class CodeModificationService(
             solutionChanges.GetProjectChanges().SelectMany(pc => pc.GetChangedDocuments().Concat(pc.GetAddedDocuments()).Concat(pc.GetRemovedDocuments())).Count(),
             solutionChanges.GetProjectChanges().Count());
 
-        if (workspace.TryApplyChanges(finalSolutionToApply)) {
+        if (workspace.TryApplyChanges(finalSolutionToApply))
+        {
             _logger.LogInformation("Changes applied successfully to the workspace.");
 
             // If additional file paths are provided, add them to the changed file paths
-            if (additionalFilePaths != null) {
+            if (additionalFilePaths != null)
+            {
                 changedFilePaths.AddRange(additionalFilePaths.Where(fp => !string.IsNullOrEmpty(fp) && File.Exists(fp)));
             }
             // Git operations after successful changes
@@ -485,43 +565,54 @@ public class CodeModificationService(
             _logger.LogInformation("Quick lint check: solutionPath='{SolutionPath}', changedFiles={Count}, csFiles={CsCount}",
                 solutionPath, changedFilePaths.Count, csFiles.Count);
 
-            if (csFiles.Any() && !string.IsNullOrEmpty(solutionPath)) {
+            if (csFiles.Any() && !string.IsNullOrEmpty(solutionPath))
+            {
                 _logger.LogInformation("Running quick lint on {Count} modified C# files", csFiles.Count);
                 var lintResult = await _quickLintService.LintFilesAsync(solutionPath, csFiles, cancellationToken);
                 _logger.LogInformation("Quick lint completed: {Errors} errors, {Warnings} warnings",
                     lintResult.ErrorCount, lintResult.WarningCount);
 
-                return new LintingResult {
+                return new LintingResult
+                {
                     Before = null,
                     After = lintResult,
                     ChangedFiles = csFiles,
                     HasLintResults = true
                 };
-            } else {
+            }
+            else
+            {
                 _logger.LogWarning("Quick lint skipped: csFiles.Any()={HasCsFiles}, solutionPath isEmpty={IsEmpty}",
                     csFiles.Any(), string.IsNullOrEmpty(solutionPath));
             }
 
             // No C# files changed, return empty result
-            return new LintingResult {
+            return new LintingResult
+            {
                 Before = null,
                 After = null,
                 ChangedFiles = changedFilePaths,
                 HasLintResults = false
             };
-        } else {
+        }
+        else
+        {
             _logger.LogError("Failed to apply changes to the workspace.");
             throw new InvalidOperationException("Failed to apply changes to the workspace. Files might have been modified externally.");
         }
     }
-    private async Task ProcessGitOperationsAsync(string solutionPath, List<string> changedFilePaths, string commitMessage, CancellationToken cancellationToken) {
-        if (string.IsNullOrEmpty(solutionPath) || changedFilePaths.Count == 0) {
+    private async Task ProcessGitOperationsAsync(string solutionPath, List<string> changedFilePaths, string commitMessage, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(solutionPath) || changedFilePaths.Count == 0)
+        {
             return;
         }
 
-        try {
+        try
+        {
             // Check if solution is in a git repo
-            if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken)) {
+            if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken))
+            {
                 _logger.LogDebug("Solution is not in a Git repository, skipping Git operations");
                 return;
             }
@@ -529,7 +620,8 @@ public class CodeModificationService(
             _logger.LogDebug("Solution is in a Git repository, processing Git operations");
 
             // Check if already on sharptools branch
-            if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken)) {
+            if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken))
+            {
                 _logger.LogInformation("Not on a SharpTools branch, creating one");
                 await _gitService.EnsureSharpToolsBranchAsync(solutionPath, cancellationToken);
             }
@@ -537,20 +629,25 @@ public class CodeModificationService(
             // Commit changes with the provided commit message
             await _gitService.CommitChangesAsync(solutionPath, changedFilePaths, commitMessage, cancellationToken);
             _logger.LogInformation("Git operations completed successfully with commit message: {CommitMessage}", commitMessage);
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             // Log but don't fail the operation if Git operations fail
             _logger.LogWarning(ex, "Git operations failed but code changes were still applied");
         }
     }
-    public async Task<(bool success, string message)> UndoLastChangeAsync(CancellationToken cancellationToken) {
-        if (_solutionManager.CurrentWorkspace is not MSBuildWorkspace workspace) {
+    public async Task<(bool success, string message)> UndoLastChangeAsync(CancellationToken cancellationToken)
+    {
+        if (_solutionManager.CurrentWorkspace is not MSBuildWorkspace workspace)
+        {
             _logger.LogError("Cannot undo changes: Workspace is not an MSBuildWorkspace or is null.");
             var message = "Error: Workspace is not an MSBuildWorkspace or is null. Cannot undo.";
             return (false, message);
         }
 
         var currentSolution = _solutionManager.CurrentSolution;
-        if (currentSolution?.FilePath == null) {
+        if (currentSolution?.FilePath == null)
+        {
             _logger.LogError("Cannot undo changes: Current solution or its file path is null.");
             var message = "Error: No solution loaded or solution file path is null. Cannot undo.";
             return (false, message);
@@ -559,13 +656,15 @@ public class CodeModificationService(
         var solutionPath = currentSolution.FilePath;
 
         // Check if solution is in a git repository
-        if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken)) {
+        if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken))
+        {
             _logger.LogError("Cannot undo changes: Solution is not in a Git repository.");
             throw new McpException("Error: Solution is not in a Git repository. Undo functionality requires Git version control.");
         }
 
         // Check if we're on a sharptools branch
-        if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken)) {
+        if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken))
+        {
             _logger.LogError("Cannot undo changes: Not on a SharpTools branch.");
             var message = "Error: Not on a SharpTools branch. Undo is only available on SharpTools branches.";
             return (false, message);
@@ -575,7 +674,8 @@ public class CodeModificationService(
 
         // Perform git revert with diff
         var (revertSuccess, diff) = await _gitService.RevertLastCommitAsync(solutionPath, cancellationToken);
-        if (!revertSuccess) {
+        if (!revertSuccess)
+        {
             _logger.LogError("Git revert operation failed.");
             var message = "Error: Failed to revert the last Git commit. There may be no commits to revert or the operation failed.";
             return (false, message);
@@ -588,7 +688,8 @@ public class CodeModificationService(
         var successMessage = "Successfully reverted the last change by reverting the last Git commit. Solution reloaded from disk.";
 
         // Add the diff to the success message if available
-        if (!string.IsNullOrEmpty(diff)) {
+        if (!string.IsNullOrEmpty(diff))
+        {
             successMessage += "\n\nChanges undone:\n" + diff;
         }
 

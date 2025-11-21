@@ -7,7 +7,8 @@ namespace UltrasharpTools.Tools.Mcp;
 /// <summary>
 /// Provides centralized error handling helpers for UltrasharpTools.
 /// </summary>
-internal static class ErrorHandlingHelpers {
+internal static class ErrorHandlingHelpers
+{
     /// <summary>
     /// Executes a function with comprehensive error handling and logging.
     /// </summary>
@@ -16,34 +17,52 @@ internal static class ErrorHandlingHelpers {
         ILogger<TLogCategory> logger,
         string operationName,
         CancellationToken cancellationToken,
-        [CallerMemberName] string callerName = "") {
-        try {
+        [CallerMemberName] string callerName = "")
+    {
+        try
+        {
             cancellationToken.ThrowIfCancellationRequested();
             return await operation();
-        } catch (OperationCanceledException) {
+        }
+        catch (OperationCanceledException)
+        {
             logger.LogWarning("{Operation} operation in {Caller} was cancelled", operationName, callerName);
             throw new McpException($"The operation '{operationName}' was cancelled by the user or system.");
-        } catch (McpException ex) {
+        }
+        catch (McpException ex)
+        {
             // McpException is an expected error (validation, precondition check, etc.)
             // Log as Warning instead of Error to avoid cluttering logs with stack traces
             logger.LogWarning("Expected error in {Operation} ({Caller}): {Message}", operationName, callerName, ex.Message);
             throw;
-        } catch (ArgumentException ex) {
+        }
+        catch (ArgumentException ex)
+        {
             logger.LogError(ex, "Invalid argument in {Operation} ({Caller}): {Message}", operationName, callerName, ex.Message);
             throw new McpException($"Invalid argument for '{operationName}': {ex.Message}");
-        } catch (InvalidOperationException ex) {
+        }
+        catch (InvalidOperationException ex)
+        {
             logger.LogError(ex, "Invalid operation in {Operation} ({Caller}): {Message}", operationName, callerName, ex.Message);
             throw new McpException($"Operation '{operationName}' failed: {ex.Message}");
-        } catch (FileNotFoundException ex) {
+        }
+        catch (FileNotFoundException ex)
+        {
             logger.LogError(ex, "File not found in {Operation} ({Caller}): {Message}", operationName, callerName, ex.Message);
             throw new McpException($"File not found during '{operationName}': {ex.Message}");
-        } catch (IOException ex) {
+        }
+        catch (IOException ex)
+        {
             logger.LogError(ex, "IO error in {Operation} ({Caller}): {Message}", operationName, callerName, ex.Message);
             throw new McpException($"File operation error during '{operationName}': {ex.Message}");
-        } catch (UnauthorizedAccessException ex) {
+        }
+        catch (UnauthorizedAccessException ex)
+        {
             logger.LogError(ex, "Access denied in {Operation} ({Caller}): {Message}", operationName, callerName, ex.Message);
             throw new McpException($"Access denied during '{operationName}': {ex.Message}");
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             logger.LogError(ex, "Unhandled exception in {Operation} ({Caller}): {Message}", operationName, callerName, ex.Message);
             throw new McpException($"An unexpected error occurred during '{operationName}': {ex.Message}");
         }
@@ -52,8 +71,10 @@ internal static class ErrorHandlingHelpers {
     /// <summary>
     /// Validates that a parameter is not null or whitespace.
     /// </summary>
-    public static void ValidateStringParameter(string? value, string paramName, ILogger logger) {
-        if (string.IsNullOrWhiteSpace(value)) {
+    public static void ValidateStringParameter(string? value, string paramName, ILogger logger)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
             // Log as Warning - this is an expected validation error
             logger.LogWarning("Parameter validation failed: {ParamName} is null or empty", paramName);
             throw new McpException($"Parameter '{paramName}' cannot be null or empty.");
@@ -63,15 +84,19 @@ internal static class ErrorHandlingHelpers {
     /// <summary>
     /// Validates that a file path is valid and not empty.
     /// </summary>
-    public static void ValidateFilePath(string? filePath, ILogger logger) {
+    public static void ValidateFilePath(string? filePath, ILogger logger)
+    {
         ValidateStringParameter(filePath, "filePath", logger);
 
-        try {
+        try
+        {
             // Check if the path is valid
             var fullPath = Path.GetFullPath(filePath!);
 
             // Additional checks if needed (e.g., file exists, is accessible, etc.)
-        } catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException) {
+        }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        {
             // Log as Warning - this is an expected validation error
             logger.LogWarning(ex, "Invalid file path: {FilePath}", filePath);
             throw new McpException($"Invalid file path: {ex.Message}");
@@ -81,10 +106,12 @@ internal static class ErrorHandlingHelpers {
     /// <summary>
     /// Validates that a file exists at the specified path.
     /// </summary>
-    public static void ValidateFileExists(string? filePath, ILogger logger) {
+    public static void ValidateFileExists(string? filePath, ILogger logger)
+    {
         ValidateFilePath(filePath, logger);
 
-        if (!File.Exists(filePath)) {
+        if (!File.Exists(filePath))
+        {
             // Log as Warning - this is an expected validation error
             logger.LogWarning("File does not exist at path: {FilePath}", filePath);
             throw new McpException($"File does not exist at path: {filePath}");
@@ -102,7 +129,8 @@ internal static class ErrorHandlingHelpers {
         ISolutionManager solutionManager,
         Document document,
         ILogger<TLogCategory> logger,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken)
+    {
 
         // Delegate to the centralized implementation in ContextInjectors
         return await ContextInjectors.CheckCompilationErrorsAsync(solutionManager, document, logger, cancellationToken);

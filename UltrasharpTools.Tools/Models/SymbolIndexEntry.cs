@@ -6,7 +6,8 @@ namespace UltrasharpTools.Tools.Models;
 /// Indexed entry for fast symbol lookup with bitwise metadata.
 /// Optimized for minimal memory footprint and maximum lookup speed.
 /// </summary>
-public sealed class SymbolIndexEntry {
+public sealed class SymbolIndexEntry
+{
     /// <summary>
     /// The actual Roslyn symbol. Kept for full symbol operations after filtering.
     /// </summary>
@@ -93,7 +94,8 @@ public sealed class SymbolIndexEntry {
         ? $"{DocumentId.Id}:{LineNumber}:{SimpleName}"
         : $"cached:{CanonicalFqn.GetHashCode():X8}";
 
-    public override string ToString() {
+    public override string ToString()
+    {
         return $"{CanonicalFqn} [{Flags.GetAccessibility()}]";
     }
 }
@@ -102,7 +104,8 @@ public sealed class SymbolIndexEntry {
 /// Builder for creating SymbolIndexEntry from ISymbol.
 /// Extracts all metadata and computes bitwise flags.
 /// </summary>
-public static class SymbolIndexEntryBuilder {
+public static class SymbolIndexEntryBuilder
+{
     /// <summary>
     /// Creates an indexed entry from a Roslyn symbol with all metadata extracted.
     /// </summary>
@@ -124,17 +127,21 @@ public static class SymbolIndexEntryBuilder {
         var nsDepth = CountNamespaceDepth(ns);
 
         // Extract location info if not provided
-        if (filePath == null || lineNumber == 0) {
+        if (filePath == null || lineNumber == 0)
+        {
             var location = symbol.Locations.FirstOrDefault(loc => loc.IsInSource);
-            if (location != null) {
+            if (location != null)
+            {
                 filePath ??= location.SourceTree?.FilePath;
-                if (lineNumber == 0) {
+                if (lineNumber == 0)
+                {
                     lineNumber = location.GetLineSpan().StartLinePosition.Line + 1; // Convert to 1-based
                 }
             }
         }
 
-        return new SymbolIndexEntry {
+        return new SymbolIndexEntry
+        {
             Symbol = symbol,
             CanonicalFqn = canonicalFqn,
             Flags = flags,
@@ -155,11 +162,13 @@ public static class SymbolIndexEntryBuilder {
     /// Extracts bitwise flags from ISymbol.
     /// This is the core optimization: all metadata in 64 bits.
     /// </summary>
-    public static SymbolMetadataFlags ExtractFlags(ISymbol symbol) {
+    public static SymbolMetadataFlags ExtractFlags(ISymbol symbol)
+    {
         var flags = SymbolMetadataFlags.None;
 
         // Accessibility
-        flags |= symbol.DeclaredAccessibility switch {
+        flags |= symbol.DeclaredAccessibility switch
+        {
             Accessibility.Public => SymbolMetadataFlags.Public,
             Accessibility.Private => SymbolMetadataFlags.Private,
             Accessibility.Internal => SymbolMetadataFlags.Internal,
@@ -169,7 +178,8 @@ public static class SymbolIndexEntryBuilder {
         };
 
         // Symbol kind
-        flags |= symbol.Kind switch {
+        flags |= symbol.Kind switch
+        {
             SymbolKind.Method => SymbolMetadataFlags.IsMethod,
             SymbolKind.Property => SymbolMetadataFlags.IsProperty,
             SymbolKind.Field => SymbolMetadataFlags.IsField,
@@ -181,8 +191,10 @@ public static class SymbolIndexEntryBuilder {
         };
 
         // Type kind (if it's a type)
-        if (symbol is INamedTypeSymbol namedType) {
-            flags |= namedType.TypeKind switch {
+        if (symbol is INamedTypeSymbol namedType)
+        {
+            flags |= namedType.TypeKind switch
+            {
                 TypeKind.Class => SymbolMetadataFlags.IsClass,
                 TypeKind.Interface => SymbolMetadataFlags.IsInterface,
                 TypeKind.Struct => SymbolMetadataFlags.IsStruct,
@@ -204,7 +216,8 @@ public static class SymbolIndexEntryBuilder {
         if (symbol.IsExtern) flags |= SymbolMetadataFlags.IsExtern;
 
         // Special attributes
-        if (symbol is IMethodSymbol methodSymbol) {
+        if (symbol is IMethodSymbol methodSymbol)
+        {
             if (methodSymbol.IsAsync)
                 flags |= SymbolMetadataFlags.IsAsync;
             if (methodSymbol.IsExtensionMethod)
@@ -234,7 +247,8 @@ public static class SymbolIndexEntryBuilder {
         return flags;
     }
 
-    private static string GetNamespace(ISymbol symbol) {
+    private static string GetNamespace(ISymbol symbol)
+    {
         var ns = symbol.ContainingNamespace;
         if (ns == null || ns.IsGlobalNamespace)
             return string.Empty;
@@ -242,12 +256,14 @@ public static class SymbolIndexEntryBuilder {
         return ns.ToDisplayString();
     }
 
-    private static byte CountNamespaceDepth(string ns) {
+    private static byte CountNamespaceDepth(string ns)
+    {
         if (string.IsNullOrEmpty(ns))
             return 0;
 
         byte depth = 1;
-        foreach (var ch in ns) {
+        foreach (var ch in ns)
+        {
             if (ch == '.')
                 depth++;
         }

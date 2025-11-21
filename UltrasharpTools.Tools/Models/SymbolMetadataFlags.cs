@@ -6,7 +6,8 @@ namespace UltrasharpTools.Tools.Models;
 /// Bitwise operations are the fastest CPU instructions available.
 /// </summary>
 [Flags]
-public enum SymbolMetadataFlags : ulong {
+public enum SymbolMetadataFlags : ulong
+{
     None = 0,
 
     // === Accessibility (4 bits: 0-3) ===
@@ -71,32 +72,37 @@ public enum SymbolMetadataFlags : ulong {
 /// <summary>
 /// Extension methods for fast bitwise operations on SymbolMetadataFlags
 /// </summary>
-public static class SymbolMetadataFlagsExtensions {
+public static class SymbolMetadataFlagsExtensions
+{
     /// <summary>
     /// Check if all required flags are present
     /// </summary>
-    public static bool HasAllFlags(this SymbolMetadataFlags flags, SymbolMetadataFlags required) {
+    public static bool HasAllFlags(this SymbolMetadataFlags flags, SymbolMetadataFlags required)
+    {
         return (flags & required) == required;
     }
 
     /// <summary>
     /// Check if any of the specified flags are present
     /// </summary>
-    public static bool HasAnyFlag(this SymbolMetadataFlags flags, SymbolMetadataFlags check) {
+    public static bool HasAnyFlag(this SymbolMetadataFlags flags, SymbolMetadataFlags check)
+    {
         return (flags & check) != 0;
     }
 
     /// <summary>
     /// Check if none of the excluded flags are present
     /// </summary>
-    public static bool HasNoFlags(this SymbolMetadataFlags flags, SymbolMetadataFlags excluded) {
+    public static bool HasNoFlags(this SymbolMetadataFlags flags, SymbolMetadataFlags excluded)
+    {
         return (flags & excluded) == 0;
     }
 
     /// <summary>
     /// Get accessibility flags only
     /// </summary>
-    public static SymbolMetadataFlags GetAccessibility(this SymbolMetadataFlags flags) {
+    public static SymbolMetadataFlags GetAccessibility(this SymbolMetadataFlags flags)
+    {
         return flags & (SymbolMetadataFlags.Public | SymbolMetadataFlags.Private |
                        SymbolMetadataFlags.Internal | SymbolMetadataFlags.Protected);
     }
@@ -104,7 +110,8 @@ public static class SymbolMetadataFlagsExtensions {
     /// <summary>
     /// Get type kind flags only
     /// </summary>
-    public static SymbolMetadataFlags GetTypeKind(this SymbolMetadataFlags flags) {
+    public static SymbolMetadataFlags GetTypeKind(this SymbolMetadataFlags flags)
+    {
         return flags & (SymbolMetadataFlags.IsClass | SymbolMetadataFlags.IsInterface |
                        SymbolMetadataFlags.IsStruct | SymbolMetadataFlags.IsEnum |
                        SymbolMetadataFlags.IsDelegate);
@@ -113,7 +120,8 @@ public static class SymbolMetadataFlagsExtensions {
     /// <summary>
     /// Get member kind flags only
     /// </summary>
-    public static SymbolMetadataFlags GetMemberKind(this SymbolMetadataFlags flags) {
+    public static SymbolMetadataFlags GetMemberKind(this SymbolMetadataFlags flags)
+    {
         return flags & (SymbolMetadataFlags.IsMethod | SymbolMetadataFlags.IsProperty |
                        SymbolMetadataFlags.IsField | SymbolMetadataFlags.IsEvent |
                        SymbolMetadataFlags.IsConstructor | SymbolMetadataFlags.IsOperator);

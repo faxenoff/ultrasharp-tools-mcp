@@ -12,63 +12,76 @@ using System.Reflection;
 using Microsoft.Extensions.Logging;
 namespace UltrasharpTools.Overlord;
 
-public class Program {
+public class Program
+{
     // --- Application ---
     public const string ApplicationName = "UltrasharpToolsMcpOverlord";
     public const string ApplicationVersion = "3.0.6";
-    public static async Task<int> Main(string[] args) {
+    public static async Task<int> Main(string[] args)
+    {
         // Ensure tool assemblies are loaded for MCP SDK's WithToolsFromAssembly
         _ = typeof(SolutionTools);
         _ = typeof(AnalysisTools);
         _ = typeof(ModificationTools);
 
-        var portOption = new Option<int>("--port") {
+        var portOption = new Option<int>("--port")
+        {
             Description = "The port number for the MCP server to listen on.",
             DefaultValueFactory = _ => 3001
         };
 
-        var logFileOption = new Option<string?>("--log-file") {
+        var logFileOption = new Option<string?>("--log-file")
+        {
             Description = "Optional path to a log file. If not specified, uses .ultrasharp/logs/{ApplicationName}-.log in project root."
         };
 
-        var logLevelOption = new Option<LogLevel>("--log-level") {
+        var logLevelOption = new Option<LogLevel>("--log-level")
+        {
             Description = "Minimum log level for console and file.",
             DefaultValueFactory = _ => LogLevel.Information
         };
 
-        var loadSolutionOption = new Option<string?>("--load-solution") {
+        var loadSolutionOption = new Option<string?>("--load-solution")
+        {
             Description = "Path to a solution file (.sln) to load immediately on startup."
         };
 
-        var buildConfigurationOption = new Option<string?>("--build-configuration") {
+        var buildConfigurationOption = new Option<string?>("--build-configuration")
+        {
             Description = "Build configuration to use when loading the solution (Debug, Release, etc.)."
         };
 
-        var disableGitOption = new Option<bool>("--disable-git") {
+        var disableGitOption = new Option<bool>("--disable-git")
+        {
             Description = "Disable Git integration.",
             DefaultValueFactory = _ => false
         };
 
-        var symbolCacheEnabledOption = new Option<bool>("--symbol-cache") {
+        var symbolCacheEnabledOption = new Option<bool>("--symbol-cache")
+        {
             Description = "Enable persistent symbol cache for 10x faster solution initialization (33s → 3-5s).",
             DefaultValueFactory = _ => true
         };
 
-        var symbolCacheClearOption = new Option<bool>("--symbol-cache-clear") {
+        var symbolCacheClearOption = new Option<bool>("--symbol-cache-clear")
+        {
             Description = "Clear all symbol cache data on startup.",
             DefaultValueFactory = _ => false
         };
 
-        var symbolCacheDirectoryOption = new Option<string?>("--symbol-cache-directory") {
+        var symbolCacheDirectoryOption = new Option<string?>("--symbol-cache-directory")
+        {
             Description = "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache)."
         };
 
-        var embeddingUrlOption = new Option<string?>("--embedding-url") {
+        var embeddingUrlOption = new Option<string?>("--embedding-url")
+        {
             Description = "URL of embedding service (Ollama or TEI). If not specified, embedding features are disabled.",
             DefaultValueFactory = _ => null
         };
 
-        var embeddingModelOption = new Option<string>("--embedding-model") {
+        var embeddingModelOption = new Option<string>("--embedding-model")
+        {
             Description = "Name of embedding model to use (default: nomic-embed-text for Ollama).",
             DefaultValueFactory = _ => "nomic-embed-text"
         };
@@ -104,48 +117,61 @@ public class Program {
         string serverUrl = $"http://localhost:{port}";
 
         // Use project-local logs directory if not specified
-        if (string.IsNullOrWhiteSpace(logFilePath)) {
+        if (string.IsNullOrWhiteSpace(logFilePath))
+        {
             var logsDir = ProjectPathHelper.GetLogsPath(solutionPath);
             logFilePath = Path.Combine(logsDir, $"{ApplicationName}-.log");
         }
 
         // Create log directory if it doesn't exist
         var logDirectory = Path.GetDirectoryName(logFilePath);
-        if (!string.IsNullOrWhiteSpace(logDirectory) && !Directory.Exists(logDirectory)) {
+        if (!string.IsNullOrWhiteSpace(logDirectory) && !Directory.Exists(logDirectory))
+        {
             Directory.CreateDirectory(logDirectory);
         }
 
         Console.WriteLine($"Logging to file: {Path.GetFullPath(logFilePath)} with minimum level {minimumLogLevel}");
 
         // Early startup information (before DI/logging is configured)
-        if (disableGit) {
+        if (disableGit)
+        {
             Console.WriteLine("Git integration is disabled.");
         }
 
-        if (!string.IsNullOrEmpty(buildConfiguration)) {
+        if (!string.IsNullOrEmpty(buildConfiguration))
+        {
             Console.WriteLine($"Using build configuration: {buildConfiguration}");
         }
 
-        if (symbolCacheEnabled) {
+        if (symbolCacheEnabled)
+        {
             Console.WriteLine("Symbol cache is enabled (10x faster solution initialization)");
-            if (!string.IsNullOrEmpty(symbolCacheDirectory)) {
+            if (!string.IsNullOrEmpty(symbolCacheDirectory))
+            {
                 Console.WriteLine($"Symbol cache directory: {symbolCacheDirectory}");
             }
-            if (symbolCacheClear) {
+            if (symbolCacheClear)
+            {
                 Console.WriteLine("Symbol cache will be cleared on startup");
             }
-        } else {
+        }
+        else
+        {
             Console.WriteLine("Symbol cache is disabled");
         }
 
-        if (!string.IsNullOrEmpty(embeddingUrl)) {
+        if (!string.IsNullOrEmpty(embeddingUrl))
+        {
             Console.WriteLine($"Embedding service enabled: {embeddingUrl}");
             Console.WriteLine($"Embedding model: {embeddingModel}");
-        } else {
+        }
+        else
+        {
             Console.WriteLine("Embedding service disabled (semantic tools will not be available)");
         }
 
-        try {
+        try
+        {
             Console.WriteLine($"Configuring {ApplicationName} v{ApplicationVersion} to run on {serverUrl} with minimum log level {minimumLogLevel}");
 
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args });
@@ -169,7 +195,8 @@ public class Program {
             builder.Logging.AddFile(logFilePath, minimumLogLevel);
 
             // Add W3CLogging for detailed HTTP request logging
-            builder.Services.AddW3CLogging(logging => {
+            builder.Services.AddW3CLogging(logging =>
+            {
                 logging.LoggingFields = W3CLoggingFields.All; // Log all available fields
                 logging.FileSizeLimit = 5 * 1024 * 1024; // 5 MB
                 logging.RetainedFileCountLimit = 2;
@@ -230,8 +257,10 @@ public class Program {
             builder.Services.AddControllers();
 
             builder.Services
-                .AddMcpServer(options => {
-                    options.ServerInfo = new Implementation {
+                .AddMcpServer(options =>
+                {
+                    options.ServerInfo = new Implementation
+                    {
                         Name = ApplicationName,
                         Version = ApplicationVersion,
                     };
@@ -246,8 +275,10 @@ public class Program {
             var logger = loggerFactory.CreateLogger(ApplicationName);
 
             // Load solution if specified in command line arguments
-            if (!string.IsNullOrEmpty(solutionPath)) {
-                try {
+            if (!string.IsNullOrEmpty(solutionPath))
+            {
+                try
+                {
                     var solutionManager = app.Services.GetRequiredService<ISolutionManager>();
                     var editorConfigProvider = app.Services.GetRequiredService<IEditorConfigProvider>();
 
@@ -255,13 +286,18 @@ public class Program {
                     await solutionManager.LoadSolutionAsync(solutionPath, CancellationToken.None);
 
                     var solutionDir = Path.GetDirectoryName(solutionPath);
-                    if (!string.IsNullOrEmpty(solutionDir)) {
+                    if (!string.IsNullOrEmpty(solutionDir))
+                    {
                         await editorConfigProvider.InitializeAsync(solutionDir, CancellationToken.None);
                         logger.LogInformation("Solution loaded successfully: {SolutionPath}", solutionPath);
-                    } else {
+                    }
+                    else
+                    {
                         logger.LogWarning("Could not determine directory for solution path: {SolutionPath}", solutionPath);
                     }
-                } catch (Exception ex) {
+                }
+                catch (Exception ex)
+                {
                     logger.LogError(ex, "Error loading solution: {SolutionPath}", solutionPath);
                 }
             }
@@ -273,7 +309,8 @@ public class Program {
             // app.UseW3CLogging(); // This is needed if W3CLogging is writing its own files.
 
             // 2. Custom Request Logging Middleware (very early in the pipeline)
-            app.Use(async (context, next) => {
+            app.Use(async (context, next) =>
+            {
                 var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
                 var requestLogger = loggerFactory.CreateLogger(ApplicationName);
                 requestLogger.LogDebug("Incoming Request: {Method} {Path} {QueryString} from {RemoteIpAddress}",
@@ -286,9 +323,12 @@ public class Program {
                 // foreach (var header in context.Request.Headers) {
                 //     logger.LogTrace("Header: {Key}: {Value}", header.Key, header.Value);
                 // }
-                try {
+                try
+                {
                     await next(context);
-                } catch (Exception ex) {
+                }
+                catch (Exception ex)
+                {
                     requestLogger.LogError(ex, "Error processing request: {Method} {Path}", context.Request.Method, context.Request.Path);
                     throw; // Re-throw to let ASP.NET Core handle it
                 }
@@ -316,10 +356,14 @@ public class Program {
 
             return 0;
 
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             Console.Error.WriteLine($"{ApplicationName} terminated unexpectedly: {ex}");
             return 1;
-        } finally {
+        }
+        finally
+        {
             Console.WriteLine($"{ApplicationName} shutting down.");
         }
     }

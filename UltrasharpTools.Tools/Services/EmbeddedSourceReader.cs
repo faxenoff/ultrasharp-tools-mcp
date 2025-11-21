@@ -7,12 +7,15 @@ using System.IO.Compression;
 
 using UltrasharpTools.Tools.Infrastructure;
 
-namespace UltrasharpTools.Tools.Services {
-    public class EmbeddedSourceReader {
+namespace UltrasharpTools.Tools.Services
+{
+    public class EmbeddedSourceReader
+    {
         // GUID for embedded source custom debug information
         private static readonly Guid EmbeddedSourceGuid = new Guid("0E8A571B-6926-466E-B4AD-8AB04611F5FE");
 
-        public class SourceResult {
+        public class SourceResult
+        {
             public string? SourceCode { get; set; }
             public string? FilePath { get; set; }
             public bool IsEmbedded { get; set; }
@@ -22,7 +25,8 @@ namespace UltrasharpTools.Tools.Services {
         /// <summary>
         /// Reads embedded source from a portable PDB file
         /// </summary>
-        public static Dictionary<string, SourceResult> ReadEmbeddedSources(string pdbPath) {
+        public static Dictionary<string, SourceResult> ReadEmbeddedSources(string pdbPath)
+        {
             var results = new Dictionary<string, SourceResult>();
 
             using var fs = new FileStream(pdbPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -35,7 +39,8 @@ namespace UltrasharpTools.Tools.Services {
         /// <summary>
         /// Reads embedded source from an assembly with embedded PDB
         /// </summary>
-        public static Dictionary<string, SourceResult> ReadEmbeddedSourcesFromAssembly(string assemblyPath) {
+        public static Dictionary<string, SourceResult> ReadEmbeddedSourcesFromAssembly(string assemblyPath)
+        {
             using var fs = new FileStream(assemblyPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var peReader = new PEReader(fs);
 
@@ -44,7 +49,8 @@ namespace UltrasharpTools.Tools.Services {
             var embeddedPdbEntry = debugDirectories
                 .FirstOrDefault(entry => entry.Type == DebugDirectoryEntryType.EmbeddedPortablePdb);
 
-            if (embeddedPdbEntry.DataSize == 0) {
+            if (embeddedPdbEntry.DataSize == 0)
+            {
                 return new Dictionary<string, SourceResult>();
             }
 
@@ -57,18 +63,21 @@ namespace UltrasharpTools.Tools.Services {
         /// <summary>
         /// Core method to read embedded sources from a MetadataReader
         /// </summary>
-        public static Dictionary<string, SourceResult> ReadEmbeddedSources(MetadataReader reader) {
+        public static Dictionary<string, SourceResult> ReadEmbeddedSources(MetadataReader reader)
+        {
             var results = new Dictionary<string, SourceResult>();
 
             // Get all documents
             var documents = new Dictionary<DocumentHandle, System.Reflection.Metadata.Document>();
-            foreach (var docHandle in reader.Documents) {
+            foreach (var docHandle in reader.Documents)
+            {
                 var doc = reader.GetDocument(docHandle);
                 documents[docHandle] = doc;
             }
 
             // Look for embedded source in CustomDebugInformation
-            foreach (var cdiHandle in reader.CustomDebugInformation) {
+            foreach (var cdiHandle in reader.CustomDebugInformation)
+            {
                 var cdi = reader.GetCustomDebugInformation(cdiHandle);
 
                 // Check if this is embedded source information
@@ -90,7 +99,8 @@ namespace UltrasharpTools.Tools.Services {
                 // Read the embedded source content
                 var sourceContent = ReadEmbeddedSourceContent(reader, cdi.Value);
 
-                if (sourceContent != null) {
+                if (sourceContent != null)
+                {
                     results[fileName] = sourceContent;
                 }
             }
@@ -101,7 +111,8 @@ namespace UltrasharpTools.Tools.Services {
         /// <summary>
         /// Reads the actual embedded source content from the blob
         /// </summary>
-        private static SourceResult? ReadEmbeddedSourceContent(MetadataReader reader, BlobHandle blobHandle) {
+        private static SourceResult? ReadEmbeddedSourceContent(MetadataReader reader, BlobHandle blobHandle)
+        {
             var blobReader = reader.GetBlobReader(blobHandle);
 
             // Read the format indicator (first 4 bytes)
@@ -114,10 +125,13 @@ namespace UltrasharpTools.Tools.Services {
             string sourceText;
             bool isCompressed = false;
 
-            if (format == 0) {
+            if (format == 0)
+            {
                 // Uncompressed UTF-8 text
                 sourceText = Encoding.UTF8.GetString(contentBytes);
-            } else if (format > 0) {
+            }
+            else if (format > 0)
+            {
                 // Compressed with deflate, format contains uncompressed size
                 isCompressed = true;
                 using var compressed = new MemoryStream(contentBytes);
@@ -126,12 +140,15 @@ namespace UltrasharpTools.Tools.Services {
 
                 deflate.CopyTo(decompressed);
                 sourceText = Encoding.UTF8.GetString(decompressed.ToArray());
-            } else {
+            }
+            else
+            {
                 // Reserved for future formats
                 return null;
             }
 
-            return new SourceResult {
+            return new SourceResult
+            {
                 SourceCode = sourceText,
                 IsEmbedded = true,
                 IsCompressed = isCompressed
@@ -141,28 +158,31 @@ namespace UltrasharpTools.Tools.Services {
         /// <summary>
         /// Reconstructs the document name from the portable PDB format
         /// </summary>
-        private static string GetDocumentName(MetadataReader reader, DocumentNameBlobHandle handle) {
+        private static string GetDocumentName(MetadataReader reader, DocumentNameBlobHandle handle)
+        {
             var blobReader = reader.GetBlobReader(handle);
             var separator = (char)blobReader.ReadByte();
 
             var sb = ObjectPoolProvider.Instance.GetStringBuilder();
             try
             {
-            bool first = true;
+                bool first = true;
 
-            while (blobReader.Offset < blobReader.Length) {
-                var partHandle = blobReader.ReadBlobHandle();
-                if (!partHandle.IsNil) {
-                    if (!first)
-                        sb.Append(separator);
+                while (blobReader.Offset < blobReader.Length)
+                {
+                    var partHandle = blobReader.ReadBlobHandle();
+                    if (!partHandle.IsNil)
+                    {
+                        if (!first)
+                            sb.Append(separator);
 
-                    var nameBytes = reader.GetBlobBytes(partHandle);
-                    sb.Append(Encoding.UTF8.GetString(nameBytes));
-                    first = false;
+                        var nameBytes = reader.GetBlobBytes(partHandle);
+                        sb.Append(Encoding.UTF8.GetString(nameBytes));
+                        first = false;
+                    }
                 }
-            }
 
-            return sb.ToString();
+                return sb.ToString();
             }
             finally
             {
@@ -172,7 +192,8 @@ namespace UltrasharpTools.Tools.Services {
         /// <summary>
         /// Helper method to get source for a specific symbol from Roslyn
         /// </summary>
-        public static SourceResult? GetEmbeddedSourceForSymbol(Microsoft.CodeAnalysis.ISymbol symbol) {
+        public static SourceResult? GetEmbeddedSourceForSymbol(Microsoft.CodeAnalysis.ISymbol symbol)
+        {
             // Get the assembly containing the symbol
             var assembly = symbol.ContainingAssembly;
             if (assembly == null)
@@ -180,23 +201,29 @@ namespace UltrasharpTools.Tools.Services {
 
             // Get the locations from the symbol
             var locations = symbol.Locations;
-            foreach (var location in locations) {
-                if (location.IsInMetadata && location.MetadataModule != null) {
+            foreach (var location in locations)
+            {
+                if (location.IsInMetadata && location.MetadataModule != null)
+                {
                     var moduleName = location.MetadataModule.Name;
 
                     // Try to find the defining document for this symbol
                     string symbolFileName = moduleName;
 
                     // For types, properties, methods, etc., use a more specific name
-                    if (symbol is Microsoft.CodeAnalysis.INamedTypeSymbol namedType) {
+                    if (symbol is Microsoft.CodeAnalysis.INamedTypeSymbol namedType)
+                    {
                         symbolFileName = $"{namedType.Name}.cs";
-                    } else if (symbol.ContainingType != null) {
+                    }
+                    else if (symbol.ContainingType != null)
+                    {
                         symbolFileName = $"{symbol.ContainingType.Name}.cs";
                     }
 
                     // Check if we can find embedded source for this symbol
                     // The actual PDB path lookup will be handled by the calling code
-                    return new SourceResult {
+                    return new SourceResult
+                    {
                         FilePath = symbolFileName,
                         IsEmbedded = true,
                         IsCompressed = false

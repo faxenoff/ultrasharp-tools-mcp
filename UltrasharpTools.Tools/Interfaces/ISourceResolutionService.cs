@@ -1,14 +1,17 @@
 
 
-namespace UltrasharpTools.Tools.Interfaces {
-    public class SourceResult {
+namespace UltrasharpTools.Tools.Interfaces
+{
+    public class SourceResult
+    {
         public string Source { get; set; } = string.Empty;
         public string FilePath { get; set; } = string.Empty;
         public bool IsOriginalSource { get; set; }
         public bool IsDecompiled { get; set; }
         public string ResolutionMethod { get; set; } = string.Empty;
     }
-    public interface ISourceResolutionService {
+    public interface ISourceResolutionService
+    {
         /// <summary>
         /// Resolves source code for a symbol through various methods (Source Link, embedded source, decompilation)
         /// </summary>

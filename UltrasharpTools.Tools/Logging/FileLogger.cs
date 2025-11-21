@@ -64,35 +64,35 @@ internal sealed partial class FileLogger : ILogger
         var sb = ObjectPoolProvider.Instance.GetStringBuilder();
         try
         {
-        if (_options.IncludeTimestamp)
-        {
-            sb.Append(DateTime.Now.ToString(_options.TimestampFormat));
-            sb.Append(' ');
-        }
+            if (_options.IncludeTimestamp)
+            {
+                sb.Append(DateTime.Now.ToString(_options.TimestampFormat));
+                sb.Append(' ');
+            }
 
-        if (_options.IncludeLogLevel)
-        {
-            sb.Append('[');
-            sb.Append(GetLogLevelString(logLevel));
-            sb.Append(']');
-            sb.Append(' ');
-        }
+            if (_options.IncludeLogLevel)
+            {
+                sb.Append('[');
+                sb.Append(GetLogLevelString(logLevel));
+                sb.Append(']');
+                sb.Append(' ');
+            }
 
-        if (_options.IncludeCategory)
-        {
-            sb.Append(category);
-            sb.Append(": ");
-        }
+            if (_options.IncludeCategory)
+            {
+                sb.Append(category);
+                sb.Append(": ");
+            }
 
-        sb.Append(message);
+            sb.Append(message);
 
-        if (exception != null)
-        {
-            sb.AppendLine();
-            sb.Append(exception);
-        }
+            if (exception != null)
+            {
+                sb.AppendLine();
+                sb.Append(exception);
+            }
 
-        return sb.ToString();
+            return sb.ToString();
         }
         finally
         {

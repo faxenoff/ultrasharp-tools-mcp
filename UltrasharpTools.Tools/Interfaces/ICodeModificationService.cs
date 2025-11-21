@@ -1,6 +1,7 @@
 namespace UltrasharpTools.Tools.Interfaces;
 
-public interface ICodeModificationService {
+public interface ICodeModificationService
+{
     Task<Solution> AddMemberAsync(DocumentId documentId, INamedTypeSymbol targetTypeSymbol, MemberDeclarationSyntax newMember, int lineNumberHint = -1, CancellationToken cancellationToken = default);
     Task<Solution> AddStatementAsync(DocumentId documentId, MethodDeclarationSyntax targetMethod, StatementSyntax newStatement, CancellationToken cancellationToken, bool addToBeginning = false);
     Task<Solution> ReplaceNodeAsync(DocumentId documentId, SyntaxNode oldNode, SyntaxNode newNode, CancellationToken cancellationToken);

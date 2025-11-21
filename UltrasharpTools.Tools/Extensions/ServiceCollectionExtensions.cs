@@ -21,13 +21,15 @@ namespace UltrasharpTools.Tools.Extensions;
 /// <summary>
 /// Extension methods for IServiceCollection to register SharpTools services.
 /// </summary>
-public static class ServiceCollectionExtensions {
+public static class ServiceCollectionExtensions
+{
     /// <summary>
     /// Adds all SharpTools services to the service collection.
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection WithUltrasharpToolsServices(this IServiceCollection services, bool enableGit = true, string? buildConfiguration = null, GitOptions? gitOptions = null, SolutionReloadOptions? reloadOptions = null, SymbolCacheOptions? symbolCacheOptions = null) {
+    public static IServiceCollection WithUltrasharpToolsServices(this IServiceCollection services, bool enableGit = true, string? buildConfiguration = null, GitOptions? gitOptions = null, SolutionReloadOptions? reloadOptions = null, SymbolCacheOptions? symbolCacheOptions = null)
+    {
         services.AddSingleton<IFuzzyFqnLookupService, FuzzyFqnLookupService>();
         services.AddSingleton<ISolutionManager>(sp =>
             new SolutionManager(
@@ -59,9 +61,12 @@ public static class ServiceCollectionExtensions {
         // Register GitOptions
         services.AddSingleton(gitOptions ?? new GitOptions());
 
-        if (enableGit) {
+        if (enableGit)
+        {
             services.AddSingleton<IGitService, GitCliService>();
-        } else {
+        }
+        else
+        {
             services.AddSingleton<IGitService, NoOpGitService>();
         }
         services.AddSingleton<ICodeModificationService, CodeModificationService>();
@@ -105,7 +110,8 @@ public static class ServiceCollectionExtensions {
     /// </summary>
     /// <param name="builder">The MCP service builder.</param>
     /// <returns>The MCP service builder for chaining.</returns>
-    public static IMcpServerBuilder WithUltrasharpTools(this IMcpServerBuilder builder) {
+    public static IMcpServerBuilder WithUltrasharpTools(this IMcpServerBuilder builder)
+    {
         var toolAssembly = Assembly.Load("UltrasharpTools.Tools");
 
         return builder

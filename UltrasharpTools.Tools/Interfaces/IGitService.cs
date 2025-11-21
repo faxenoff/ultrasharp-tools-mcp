@@ -1,5 +1,7 @@
 namespace UltrasharpTools.Tools.Interfaces;
-public interface IGitService {
+
+public interface IGitService
+{
     Task<bool> IsRepositoryAsync(string solutionPath, CancellationToken cancellationToken = default);
     Task<bool> IsOnSharpToolsBranchAsync(string solutionPath, CancellationToken cancellationToken = default);
     Task EnsureSharpToolsBranchAsync(string solutionPath, CancellationToken cancellationToken = default);

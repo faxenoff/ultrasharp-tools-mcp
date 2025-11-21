@@ -3,7 +3,8 @@ using UltrasharpTools.Tools.Layered;
 
 namespace UltrasharpTools.Tools.Interfaces;
 
-public interface ISolutionManager : IDisposable {
+public interface ISolutionManager : IDisposable
+{
     [MemberNotNullWhen(true, nameof(CurrentWorkspace), nameof(CurrentSolution))]
     bool IsSolutionLoaded { get; }
     MSBuildWorkspace? CurrentWorkspace { get; }

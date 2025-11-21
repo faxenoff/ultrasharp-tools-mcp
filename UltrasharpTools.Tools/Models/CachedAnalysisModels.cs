@@ -5,17 +5,17 @@ namespace UltrasharpTools.Tools.Models;
 /// </summary>
 public class CachedReferencesResult
 {
-public List<CachedReferenceLocation> Locations { get; set; } = new();
+    public List<CachedReferenceLocation> Locations { get; set; } = new();
 }
 
 public class CachedReferenceLocation
 {
-public string FilePath { get; set; } = "";
-public int StartLine { get; set; }
-public int StartColumn { get; set; }
-public int EndLine { get; set; }
-public int EndColumn { get; set; }
-public string ContainingMemberName { get; set; } = "";
+    public string FilePath { get; set; } = "";
+    public int StartLine { get; set; }
+    public int StartColumn { get; set; }
+    public int EndLine { get; set; }
+    public int EndColumn { get; set; }
+    public string ContainingMemberName { get; set; } = "";
 }
 
 /// <summary>
@@ -23,17 +23,17 @@ public string ContainingMemberName { get; set; } = "";
 /// </summary>
 public class CachedMembersResult
 {
-public List<CachedMemberInfo> Members { get; set; } = new();
+    public List<CachedMemberInfo> Members { get; set; } = new();
 }
 
 public class CachedMemberInfo
 {
-public string Name { get; set; } = "";
-public string Kind { get; set; } = "";
-public string ReturnType { get; set; } = "";
-public string Accessibility { get; set; } = "";
-public string Signature { get; set; } = "";
-public string Documentation { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string ReturnType { get; set; } = "";
+    public string Accessibility { get; set; } = "";
+    public string Signature { get; set; } = "";
+    public string Documentation { get; set; } = "";
 }
 
 /// <summary>
@@ -41,14 +41,14 @@ public string Documentation { get; set; } = "";
 /// </summary>
 public class CachedSymbolSearchResult
 {
-public List<CachedSymbolInfo> Symbols { get; set; } = new();
+    public List<CachedSymbolInfo> Symbols { get; set; } = new();
 }
 
 public class CachedSymbolInfo
 {
-public string FullyQualifiedName { get; set; } = "";
-public string Name { get; set; } = "";
-public string Kind { get; set; } = "";
-public string FilePath { get; set; } = "";
-public int Line { get; set; }
+    public string FullyQualifiedName { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string FilePath { get; set; } = "";
+    public int Line { get; set; }
 }

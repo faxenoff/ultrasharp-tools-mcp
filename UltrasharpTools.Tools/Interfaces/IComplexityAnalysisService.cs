@@ -2,7 +2,8 @@
 
 namespace UltrasharpTools.Tools.Interfaces;
 
-public interface IComplexityAnalysisService {
+public interface IComplexityAnalysisService
+{
     Task AnalyzeMethodAsync(
         IMethodSymbol methodSymbol,
         Dictionary<string, object> metrics,

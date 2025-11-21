@@ -21,93 +21,112 @@ using System.Text.Json;
 
 namespace UltrasharpTools.Droid;
 
-public static class Program {
+public static class Program
+{
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
     public const string ApplicationVersion = "3.0.6";
-    public static async Task<int> Main(string[] args) {
+    public static async Task<int> Main(string[] args)
+    {
         _ = typeof(SolutionTools);
         _ = typeof(AnalysisTools);
         _ = typeof(ModificationTools);
         _ = typeof(SystemTools);
 
-        var logDirOption = new Option<string?>("--log-directory") {
+        var logDirOption = new Option<string?>("--log-directory")
+        {
             Description = "Optional path to a log directory. If not specified, uses .ultrasharp/logs in project root."
         };
 
-        var logLevelOption = new Option<LogLevel>("--log-level") {
+        var logLevelOption = new Option<LogLevel>("--log-level")
+        {
             Description = "Minimum log level for console and file.",
             DefaultValueFactory = _ => LogLevel.Information
         };
 
-        var loadSolutionOption = new Option<string?>("--load-solution") {
+        var loadSolutionOption = new Option<string?>("--load-solution")
+        {
             Description = "Path to a solution file (.sln) to load immediately on startup."
         };
 
-        var buildConfigurationOption = new Option<string?>("--build-configuration") {
+        var buildConfigurationOption = new Option<string?>("--build-configuration")
+        {
             Description = "Build configuration to use when loading the solution (Debug, Release, etc.)."
         };
 
-        var disableGitOption = new Option<bool>("--disable-git") {
+        var disableGitOption = new Option<bool>("--disable-git")
+        {
             Description = "Disable Git integration.",
             DefaultValueFactory = _ => false
         };
 
-        var modeOption = new Option<string>("--mode") {
+        var modeOption = new Option<string>("--mode")
+        {
             Description = "Operation mode: local (default) or hybrid (connect to Overlord server)",
             DefaultValueFactory = _ => "local"
         };
 
-        var serverUrlOption = new Option<string?>("--server-url") {
+        var serverUrlOption = new Option<string?>("--server-url")
+        {
             Description = "Overlord server URL (required for hybrid mode)",
             DefaultValueFactory = _ => null
         };
 
-        var embeddingUrlOption = new Option<string?>("--embedding-url") {
+        var embeddingUrlOption = new Option<string?>("--embedding-url")
+        {
             Description = "Embedding service URL for hybrid mode (Ollama/TEI)",
             DefaultValueFactory = _ => "http://localhost:11434"
         };
 
-        var embeddingModelOption = new Option<string?>("--embedding-model") {
+        var embeddingModelOption = new Option<string?>("--embedding-model")
+        {
             Description = "Embedding model name for hybrid mode",
             DefaultValueFactory = _ => "nomic-embed-text"
         };
 
-        var gitBranchRetentionCountOption = new Option<int?>("--git-branch-retention-count") {
+        var gitBranchRetentionCountOption = new Option<int?>("--git-branch-retention-count")
+        {
             Description = "Keep only the N most recent sharptools/* branches. (null = no limit)",
             DefaultValueFactory = _ => 10
         };
 
-        var gitBranchRetentionDaysOption = new Option<int?>("--git-branch-retention-days") {
+        var gitBranchRetentionDaysOption = new Option<int?>("--git-branch-retention-days")
+        {
             Description = "Keep sharptools/* branches created within the last N days. (null = no limit)",
             DefaultValueFactory = _ => null
         };
 
-        var gitAutoCleanupOption = new Option<bool>("--git-auto-cleanup") {
+        var gitAutoCleanupOption = new Option<bool>("--git-auto-cleanup")
+        {
             Description = "Automatically cleanup old branches after each modification.",
             DefaultValueFactory = _ => true
         };
 
-        var autoReloadOption = new Option<bool>("--auto-reload") {
+        var autoReloadOption = new Option<bool>("--auto-reload")
+        {
             Description = "Enable automatic solution reload when .csproj or .sln files change.",
             DefaultValueFactory = _ => false
         };
 
-        var reloadDebounceOption = new Option<int>("--reload-debounce-ms") {
+        var reloadDebounceOption = new Option<int>("--reload-debounce-ms")
+        {
             Description = "Debounce delay in milliseconds before triggering auto-reload.",
             DefaultValueFactory = _ => 2000
         };
 
-        var symbolCacheEnabledOption = new Option<bool>("--symbol-cache") {
+        var symbolCacheEnabledOption = new Option<bool>("--symbol-cache")
+        {
             Description = "Enable persistent symbol cache for 10x faster solution initialization (33s → 3-5s).",
             DefaultValueFactory = _ => true
         };
 
-        var symbolCacheClearOption = new Option<bool>("--symbol-cache-clear") {
+        var symbolCacheClearOption = new Option<bool>("--symbol-cache-clear")
+        {
             Description = "Clear all symbol cache data on startup.",
             DefaultValueFactory = _ => false
         };
 
-        var symbolCacheDirectoryOption = new Option<string?>("--symbol-cache-directory") {
+        var symbolCacheDirectoryOption = new Option<string?>("--symbol-cache-directory")
+        {
             Description = "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache)."
         };
 
@@ -140,13 +159,17 @@ public static class Program {
         string? solutionPath = parseResult.GetValue(loadSolutionOption);
 
         // Auto-detect solution file if not specified
-        if (string.IsNullOrEmpty(solutionPath)) {
+        if (string.IsNullOrEmpty(solutionPath))
+        {
             var currentDir = Directory.GetCurrentDirectory();
             var solutionFiles = Directory.GetFiles(currentDir, "*.sln");
-            if (solutionFiles.Length == 1) {
+            if (solutionFiles.Length == 1)
+            {
                 solutionPath = solutionFiles[0];
                 Console.WriteLine($"Auto-detected solution: {Path.GetFileName(solutionPath)}");
-            } else if (solutionFiles.Length > 1) {
+            }
+            else if (solutionFiles.Length > 1)
+            {
                 Console.WriteLine($"Multiple solution files found in {currentDir}. Use --load-solution to specify which one to load.");
             }
         }
@@ -167,15 +190,20 @@ public static class Program {
         string? symbolCacheDirectory = parseResult.GetValue(symbolCacheDirectoryOption);
 
         // Use project-local logs directory if not specified
-        if (string.IsNullOrWhiteSpace(logDirPath)) {
+        if (string.IsNullOrWhiteSpace(logDirPath))
+        {
             logDirPath = ProjectPathHelper.GetLogsPath(solutionPath);
         }
 
         // Create log directory if it doesn't exist
-        if (!Directory.Exists(logDirPath)) {
-            try {
+        if (!Directory.Exists(logDirPath))
+        {
+            try
+            {
                 Directory.CreateDirectory(logDirPath);
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
                 Console.Error.WriteLine($"Failed to create log directory: {ex.Message}");
                 return 1;
             }
@@ -188,40 +216,52 @@ public static class Program {
 
         // Hybrid mode validation
         bool isHybridMode = mode == "hybrid";
-        if (isHybridMode && string.IsNullOrEmpty(serverUrl)) {
+        if (isHybridMode && string.IsNullOrEmpty(serverUrl))
+        {
             Console.Error.WriteLine("Error: --server-url is required for hybrid mode");
             return 1;
         }
 
-        if (isHybridMode) {
+        if (isHybridMode)
+        {
             Console.WriteLine($"Running in HYBRID mode, server: {serverUrl}");
             Console.WriteLine($"Embedding service: {embeddingUrl}");
             Console.WriteLine($"Embedding model: {embeddingModel}");
-        } else {
+        }
+        else
+        {
             Console.WriteLine("Running in LOCAL mode");
         }
 
-        if (disableGit) {
+        if (disableGit)
+        {
             Console.WriteLine("Git integration is disabled.");
         }
 
-        if (!string.IsNullOrEmpty(buildConfiguration)) {
+        if (!string.IsNullOrEmpty(buildConfiguration))
+        {
             Console.WriteLine($"Using build configuration: {buildConfiguration}");
         }
 
-        if (autoReload) {
+        if (autoReload)
+        {
             Console.WriteLine($"Auto-reload is enabled with {reloadDebounceMs}ms debounce");
         }
 
-        if (symbolCacheEnabled) {
+        if (symbolCacheEnabled)
+        {
             Console.WriteLine("Symbol cache is enabled (10x faster solution initialization)");
-            if (!string.IsNullOrEmpty(symbolCacheDirectory)) {
+            if (!string.IsNullOrEmpty(symbolCacheDirectory))
+            {
                 Console.WriteLine($"Symbol cache directory: {symbolCacheDirectory}");
             }
-            if (symbolCacheClear) {
+            if (symbolCacheClear)
+            {
                 Console.WriteLine("Symbol cache will be cleared on startup");
             }
-        } else {
+        }
+        else
+        {
             Console.WriteLine("Symbol cache is disabled");
         }
 
@@ -654,8 +694,10 @@ public static class Program {
         }
 
         builder.Services
-            .AddMcpServer(options => {
-                options.ServerInfo = new Implementation {
+            .AddMcpServer(options =>
+            {
+                options.ServerInfo = new Implementation
+                {
                     Name = ApplicationName,
                     Version = ApplicationVersion,
                 };
@@ -666,17 +708,21 @@ public static class Program {
             .WithStdioServerTransport()
             .WithUltrasharpTools();
 
-        try {
+        try
+        {
             Console.WriteLine($"Starting {ApplicationName} v{ApplicationVersion}");
             var host = builder.Build();
             var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger(ApplicationName);
 
             // Start background solution loading if path is available
-            if (!string.IsNullOrEmpty(solutionPath)) {
+            if (!string.IsNullOrEmpty(solutionPath))
+            {
                 var solutionPathCopy = solutionPath; // Capture for closure
-                _ = Task.Run(async () => {
-                    try {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
                         var solutionManager = host.Services.GetRequiredService<ISolutionManager>();
                         var editorConfigProvider = host.Services.GetRequiredService<IEditorConfigProvider>();
 
@@ -684,13 +730,18 @@ public static class Program {
                         await solutionManager.LoadSolutionAsync(solutionPathCopy, CancellationToken.None);
 
                         var solutionDir = Path.GetDirectoryName(solutionPathCopy);
-                        if (!string.IsNullOrEmpty(solutionDir)) {
+                        if (!string.IsNullOrEmpty(solutionDir))
+                        {
                             await editorConfigProvider.InitializeAsync(solutionDir, CancellationToken.None);
                             logger.LogInformation("Solution loaded successfully in background: {SolutionPath}", solutionPathCopy);
-                        } else {
+                        }
+                        else
+                        {
                             logger.LogWarning("Could not determine directory for solution path: {SolutionPath}", solutionPathCopy);
                         }
-                    } catch (Exception ex) {
+                    }
+                    catch (Exception ex)
+                    {
                         logger.LogError(ex, "Error loading solution in background: {SolutionPath}", solutionPathCopy);
                     }
                 });
@@ -699,10 +750,14 @@ public static class Program {
 
             await host.RunAsync();
             return 0;
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             Console.Error.WriteLine($"{ApplicationName} terminated unexpectedly: {ex}");
             return 1;
-        } finally {
+        }
+        finally
+        {
             Console.WriteLine($"{ApplicationName} shutting down.");
         }
     }

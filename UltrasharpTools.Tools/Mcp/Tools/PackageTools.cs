@@ -10,7 +10,8 @@ namespace UltrasharpTools.Tools.Mcp.Tools;
 public class PackageToolsLogCategory { }
 
 [McpServerToolType]
-public static class PackageTools {
+public static class PackageTools
+{
     [McpServerTool(Name = "add_package", Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
     [Description("Adds or modifies a NuGet package in a project. Automatically performs restore and reloads the solution.")]
     public static async Task<string> AddOrModifyNugetPackage(
@@ -22,15 +23,18 @@ public static class PackageTools {
         string nugetPackageId,
         [Description("The version of the NuGet package or 'latest' for latest")] string? version,
         [Description("Skip automatic restore and reload (default: false)")] bool skipRestoreAndReload = false,
-        CancellationToken cancellationToken = default) {
-        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
+        CancellationToken cancellationToken = default)
+    {
+        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
+        {
             // Validate parameters
             ErrorHandlingHelpers.ValidateStringParameter(projectName, nameof(projectName), logger);
             ErrorHandlingHelpers.ValidateStringParameter(nugetPackageId, nameof(nugetPackageId), logger);
             logger.LogInformation("Adding/modifying NuGet package '{PackageId}' {Version} to {ProjectPath}",
                 nugetPackageId, version ?? "latest", projectName);
 
-            if (string.IsNullOrEmpty(version) || version.Equals("latest", StringComparison.OrdinalIgnoreCase)) {
+            if (string.IsNullOrEmpty(version) || version.Equals("latest", StringComparison.OrdinalIgnoreCase))
+            {
                 version = null; // Treat 'latest' as null for processing
             }
 
@@ -44,19 +48,22 @@ public static class PackageTools {
                 || p.AssemblyName == projectName
                 || p.Name == projectNameNormalized);
 
-            if (project == null) {
+            if (project == null)
+            {
                 logger.LogError("Project '{ProjectName}' not found in the loaded solution", projectName);
                 throw new McpException($"Project '{projectName}' not found in the solution.");
             }
 
             // Validate the package exists
             var packageExists = await nugetService.ValidatePackageAsync(nugetPackageId, version, cancellationToken);
-            if (!packageExists) {
+            if (!packageExists)
+            {
                 throw new McpException($"Package '{nugetPackageId}' {(string.IsNullOrEmpty(version) ? "" : $"with version {version} ")}was not found on NuGet.org.");
             }
 
             // If no version specified, get the latest version
-            if (string.IsNullOrEmpty(version)) {
+            if (string.IsNullOrEmpty(version))
+            {
                 version = await nugetService.GetLatestVersionAsync(nugetPackageId, includePrerelease: false, cancellationToken);
                 logger.LogInformation("Using latest version {Version} for package {PackageId}", version, nugetPackageId);
             }
@@ -73,16 +80,20 @@ public static class PackageTools {
             var existingPackage = projectPackages.Packages.FirstOrDefault(p =>
                 string.Equals(p.PackageId, nugetPackageId, StringComparison.OrdinalIgnoreCase));
 
-            if (existingPackage != null) {
+            if (existingPackage != null)
+            {
                 action = "updated";
                 logger.LogInformation("Package {PackageId} already exists with version {OldVersion}, updating to {NewVersion}",
                     nugetPackageId, existingPackage.Version, version);
             }
 
             // Update the project file based on the package format
-            if (packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference) {
+            if (packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference)
+            {
                 await UpdatePackageReferenceAsync(projectPath, nugetPackageId, version, existingPackage != null, documentOperations, logger, cancellationToken);
-            } else {
+            }
+            else
+            {
                 var packagesConfigPath = projectPackages.PackagesConfigPath ?? throw new McpException("packages.config path not found.");
                 await UpdatePackagesConfigAsync(packagesConfigPath, nugetPackageId, version, existingPackage != null, documentOperations, logger, cancellationToken);
             }
@@ -90,14 +101,16 @@ public static class PackageTools {
             logger.LogInformation("Package {PackageId} {Action} with version {Version}", nugetPackageId, action, version);
 
             // Perform automatic restore and reload if not skipped
-            if (!skipRestoreAndReload) {
+            if (!skipRestoreAndReload)
+            {
                 var restoreCommand = packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference
                     ? "dotnet restore"
                     : "nuget restore";
 
                 logger.LogInformation("Performing automatic {RestoreCommand}...", restoreCommand);
 
-                try {
+                try
+                {
                     // Run restore command
                     var (success, output) = await ExecuteRestoreCommandAsync(
                         Path.GetDirectoryName(projectPath)!,
@@ -105,7 +118,8 @@ public static class PackageTools {
                         logger,
                         cancellationToken);
 
-                    if (!success) {
+                    if (!success)
+                    {
                         logger.LogWarning("Restore command failed: {Output}", output);
                         return $"The package {nugetPackageId} has been {action} with version {version}, but restore failed. Please run `{restoreCommand}` manually.\n\nRestore output:\n{output}";
                     }
@@ -118,7 +132,9 @@ public static class PackageTools {
                     logger.LogInformation("Solution reloaded successfully");
 
                     return $"The package {nugetPackageId} has been {action} with version {version}. Restore and solution reload completed successfully.";
-                } catch (Exception ex) {
+                }
+                catch (Exception ex)
+                {
                     logger.LogError(ex, "Error during restore or reload");
                     return $"The package {nugetPackageId} has been {action} with version {version}, but restore/reload failed: {ex.Message}. Please run `{restoreCommand}` and reload manually.";
                 }
@@ -134,9 +150,11 @@ public static class PackageTools {
         bool isUpdate,
         IDocumentOperationsService documentOperations,
         Microsoft.Extensions.Logging.ILogger logger,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken)
+    {
 
-        try {
+        try
+        {
             var (projectContent, _) = await documentOperations.ReadFileAsync(projectPath, false, cancellationToken);
             var xDoc = XDocument.Parse(projectContent);
 
@@ -144,7 +162,8 @@ public static class PackageTools {
             var itemGroup = xDoc.Root?.Elements("ItemGroup")
                 .FirstOrDefault(ig => ig.Elements("PackageReference").Any());
 
-            if (itemGroup == null) {
+            if (itemGroup == null)
+            {
                 // Create a new ItemGroup for PackageReferences
                 itemGroup = new XElement("ItemGroup");
                 xDoc.Root?.Add(itemGroup);
@@ -154,22 +173,31 @@ public static class PackageTools {
             var existingPackage = itemGroup.Elements("PackageReference")
                 .FirstOrDefault(pr => string.Equals(pr.Attribute("Include")?.Value, packageId, StringComparison.OrdinalIgnoreCase));
 
-            if (existingPackage != null) {
+            if (existingPackage != null)
+            {
                 // Update existing package
                 var versionAttr = existingPackage.Attribute("Version");
-                if (versionAttr != null) {
+                if (versionAttr != null)
+                {
                     versionAttr.Value = version;
-                } else {
+                }
+                else
+                {
                     // Version might be in a child element
                     var versionElement = existingPackage.Element("Version");
-                    if (versionElement != null) {
+                    if (versionElement != null)
+                    {
                         versionElement.Value = version;
-                    } else {
+                    }
+                    else
+                    {
                         // Add version as attribute if neither exists
                         existingPackage.Add(new XAttribute("Version", version));
                     }
                 }
-            } else {
+            }
+            else
+            {
                 // Add new package reference
                 var packageRef = new XElement("PackageReference",
                     new XAttribute("Include", packageId),
@@ -181,7 +209,9 @@ public static class PackageTools {
             // Save the updated project file
             await documentOperations.WriteFileAsync(projectPath, xDoc.ToString(), true, cancellationToken,
                 $"{(isUpdate ? "Updated" : "Added")} NuGet package {packageId} with version {version}");
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             logger.LogError(ex, "Error updating PackageReference in project file {ProjectPath}", projectPath);
             throw new McpException($"Failed to update PackageReference in project file: {ex.Message}");
         }
@@ -194,21 +224,27 @@ public static class PackageTools {
         bool isUpdate,
         IDocumentOperationsService documentOperations,
         Microsoft.Extensions.Logging.ILogger logger,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken)
+    {
 
-        if (string.IsNullOrEmpty(packagesConfigPath)) {
+        if (string.IsNullOrEmpty(packagesConfigPath))
+        {
             throw new McpException("packages.config path is null or empty.");
         }
 
-        try {
+        try
+        {
             // Check if packages.config exists, if not create it
             bool fileExists = documentOperations.FileExists(packagesConfigPath);
             XDocument xDoc;
 
-            if (fileExists) {
+            if (fileExists)
+            {
                 var (content, _) = await documentOperations.ReadFileAsync(packagesConfigPath, false, cancellationToken);
                 xDoc = XDocument.Parse(content);
-            } else {
+            }
+            else
+            {
                 // Create a new packages.config file
                 xDoc = new XDocument(
                     new XElement("packages",
@@ -219,10 +255,13 @@ public static class PackageTools {
             var packageElement = xDoc.Root?.Elements("package")
                 .FirstOrDefault(p => string.Equals(p.Attribute("id")?.Value, packageId, StringComparison.OrdinalIgnoreCase));
 
-            if (packageElement != null) {
+            if (packageElement != null)
+            {
                 // Update existing package
                 packageElement.Attribute("version")!.Value = version;
-            } else {
+            }
+            else
+            {
                 // Add new package entry
                 var newPackage = new XElement("package",
                     new XAttribute("id", packageId),
@@ -235,7 +274,9 @@ public static class PackageTools {
             // Save the updated packages.config
             await documentOperations.WriteFileAsync(packagesConfigPath, xDoc.ToString(), true, cancellationToken,
                 $"{(isUpdate ? "Updated" : "Added")} NuGet package {packageId} with version {version} in packages.config");
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             logger.LogError(ex, "Error updating packages.config at {PackagesConfigPath}", packagesConfigPath);
             throw new McpException($"Failed to update packages.config: {ex.Message}");
         }
@@ -245,10 +286,13 @@ public static class PackageTools {
         string workingDirectory,
         string restoreCommand,
         Microsoft.Extensions.Logging.ILogger logger,
-        CancellationToken cancellationToken) {
+        CancellationToken cancellationToken)
+    {
 
-        try {
-            var startInfo = new System.Diagnostics.ProcessStartInfo {
+        try
+        {
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
                 FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "cmd.exe" : "/bin/bash",
                 Arguments = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                     ? $"/c {restoreCommand}"
@@ -264,14 +308,18 @@ public static class PackageTools {
             var outputBuilder = new System.Text.StringBuilder();
             var errorBuilder = new System.Text.StringBuilder();
 
-            process.OutputDataReceived += (sender, args) => {
-                if (args.Data != null) {
+            process.OutputDataReceived += (sender, args) =>
+            {
+                if (args.Data != null)
+                {
                     outputBuilder.AppendLine(args.Data);
                 }
             };
 
-            process.ErrorDataReceived += (sender, args) => {
-                if (args.Data != null) {
+            process.ErrorDataReceived += (sender, args) =>
+            {
+                if (args.Data != null)
+                {
                     errorBuilder.AppendLine(args.Data);
                 }
             };
@@ -287,12 +335,15 @@ public static class PackageTools {
             var fullOutput = string.IsNullOrEmpty(error) ? output : $"{output}\n\nErrors:\n{error}";
 
             var success = process.ExitCode == 0;
-            if (!success) {
+            if (!success)
+            {
                 logger.LogWarning("Restore command exited with code {ExitCode}", process.ExitCode);
             }
 
             return (success, fullOutput);
-        } catch (Exception ex) {
+        }
+        catch (Exception ex)
+        {
             logger.LogError(ex, "Error executing restore command");
             return (false, $"Exception: {ex.Message}");
         }

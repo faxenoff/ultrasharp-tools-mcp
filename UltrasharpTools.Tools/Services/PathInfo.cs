@@ -3,7 +3,8 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Represents information about a path's relationship to a solution
 /// </summary>
-public readonly record struct PathInfo {
+public readonly record struct PathInfo
+{
     /// <summary>
     /// The absolute file path
     /// </summary>

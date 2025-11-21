@@ -4,7 +4,8 @@ namespace UltrasharpTools.Tools.Interfaces;
 /// Service for performing file system operations on documents within a solution.
 /// Provides capabilities for reading, writing, and manipulating files.
 /// </summary>
-public interface IDocumentOperationsService {
+public interface IDocumentOperationsService
+{
     /// <summary>
     /// Reads the content of a file at the specified path
     /// </summary>

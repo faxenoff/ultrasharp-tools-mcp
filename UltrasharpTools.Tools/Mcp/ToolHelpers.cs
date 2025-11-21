@@ -7,14 +7,17 @@ using UltrasharpTools.Tools.Serialization;
 
 namespace UltrasharpTools.Tools.Mcp;
 
-internal static class ToolHelpers {
+internal static class ToolHelpers
+{
     // BREAKING CHANGE: Removed prefix to align with MCP Protocol standard (snake_case without prefixes)
     // Namespace is provided by server name: ultrasharp-tools::tool_name
     // See: TOOL_NAMING_UNIFICATION.md for details
     public const string SharpToolPrefix = "";
 
-    public static void EnsureSolutionLoaded(ISolutionManager solutionManager) {
-        if (!solutionManager.IsSolutionLoaded) {
+    public static void EnsureSolutionLoaded(ISolutionManager solutionManager)
+    {
+        if (!solutionManager.IsSolutionLoaded)
+        {
             throw new McpException($"No solution is currently loaded. Please use '{SharpToolPrefix}{nameof(Tools.SolutionTools.LoadSolution)}' first.");
         }
     }
@@ -22,8 +25,10 @@ internal static class ToolHelpers {
     /// <summary>
     /// Safely ensures that a solution is loaded, with detailed error information.
     /// </summary>
-    public static void EnsureSolutionLoadedWithDetails(ISolutionManager solutionManager, ILogger logger, string operationName) {
-        if (!solutionManager.IsSolutionLoaded) {
+    public static void EnsureSolutionLoadedWithDetails(ISolutionManager solutionManager, ILogger logger, string operationName)
+    {
+        if (!solutionManager.IsSolutionLoaded)
+        {
             // Don't log here - ErrorHandlingHelpers will log the McpException at Warning level
             throw new McpException($"No solution is currently loaded. Please use '{SharpToolPrefix}{nameof(Tools.SolutionTools.LoadSolution)}' before calling '{operationName}'.");
         }
@@ -33,13 +38,16 @@ internal static class ToolHelpers {
     /// Ensures that a solution is loaded, with automatic discovery and loading if needed.
     /// Searches up the directory tree for .sln or .csproj files and loads them automatically.
     /// </summary>
-    public static async Task EnsureSolutionLoadedOrAutoLoadAsync(ISolutionManager solutionManager, ILogger logger, string operationName, CancellationToken cancellationToken) {
-        if (!solutionManager.IsSolutionLoaded) {
+    public static async Task EnsureSolutionLoadedOrAutoLoadAsync(ISolutionManager solutionManager, ILogger logger, string operationName, CancellationToken cancellationToken)
+    {
+        if (!solutionManager.IsSolutionLoaded)
+        {
             logger.LogDebug("No solution loaded, attempting auto-discovery for operation: {Operation}", operationName);
 
             var autoLoaded = await solutionManager.TryAutoLoadSolutionAsync(cancellationToken);
 
-            if (!autoLoaded) {
+            if (!autoLoaded)
+            {
                 throw new McpException($"No solution is currently loaded and auto-discovery failed. Please use '{SharpToolPrefix}{nameof(Tools.SolutionTools.LoadSolution)}' before calling '{operationName}', or ensure you're running from a directory containing a .sln or .csproj file.");
             }
 
@@ -51,13 +59,19 @@ internal static class ToolHelpers {
     public static async Task<ISymbol> GetRoslynSymbolOrThrowAsync(
         ISolutionManager solutionManager,
         string fullyQualifiedSymbolName,
-        CancellationToken cancellationToken) {
-        try {
+        CancellationToken cancellationToken)
+    {
+        try
+        {
             var symbol = await solutionManager.FindRoslynSymbolAsync(fullyQualifiedSymbolName, cancellationToken);
             return symbol ?? throw new McpException($"Roslyn symbol '{fullyQualifiedSymbolName}' not found in the current solution." + FqnHelpMessage);
-        } catch (OperationCanceledException) {
+        }
+        catch (OperationCanceledException)
+        {
             throw;
-        } catch (Exception ex) when (!(ex is McpException)) {
+        }
+        catch (Exception ex) when (!(ex is McpException))
+        {
             throw new McpException($"Error finding Roslyn symbol '{fullyQualifiedSymbolName}': {ex.Message}");
         }
     }
@@ -65,13 +79,19 @@ internal static class ToolHelpers {
     public static async Task<INamedTypeSymbol> GetRoslynNamedTypeSymbolOrThrowAsync(
         ISolutionManager solutionManager,
         string fullyQualifiedTypeName,
-        CancellationToken cancellationToken) {
-        try {
+        CancellationToken cancellationToken)
+    {
+        try
+        {
             var symbol = await solutionManager.FindRoslynNamedTypeSymbolAsync(fullyQualifiedTypeName, cancellationToken);
             return symbol ?? throw new McpException($"Roslyn named type symbol '{fullyQualifiedTypeName}' not found in the current solution." + FqnHelpMessage);
-        } catch (OperationCanceledException) {
+        }
+        catch (OperationCanceledException)
+        {
             throw;
-        } catch (Exception ex) when (!(ex is McpException)) {
+        }
+        catch (Exception ex) when (!(ex is McpException))
+        {
             throw new McpException($"Error finding Roslyn named type symbol '{fullyQualifiedTypeName}': {ex.Message}");
         }
     }
@@ -79,29 +99,41 @@ internal static class ToolHelpers {
     public static async Task<Type> GetReflectionTypeOrThrowAsync(
         ISolutionManager solutionManager,
         string fullyQualifiedTypeName,
-        CancellationToken cancellationToken) {
-        try {
+        CancellationToken cancellationToken)
+    {
+        try
+        {
             var type = await solutionManager.FindReflectionTypeAsync(fullyQualifiedTypeName, cancellationToken);
             return type ?? throw new McpException($"Reflection type '{fullyQualifiedTypeName}' not found in loaded assemblies." + FqnHelpMessage);
-        } catch (OperationCanceledException) {
+        }
+        catch (OperationCanceledException)
+        {
             throw;
-        } catch (Exception ex) when (!(ex is McpException)) {
+        }
+        catch (Exception ex) when (!(ex is McpException))
+        {
             throw new McpException($"Error finding reflection type '{fullyQualifiedTypeName}': {ex.Message}");
         }
     }
 
-    public static Document GetDocumentFromSyntaxNodeOrThrow(Solution solution, SyntaxNode node) {
-        try {
+    public static Document GetDocumentFromSyntaxNodeOrThrow(Solution solution, SyntaxNode node)
+    {
+        try
+        {
             var document = solution.GetDocument(node.SyntaxTree);
             return document ?? throw new McpException("Could not find document for the given syntax node.");
-        } catch (Exception ex) when (!(ex is McpException)) {
+        }
+        catch (Exception ex) when (!(ex is McpException))
+        {
             throw new McpException($"Error finding document for syntax node: {ex.Message}");
         }
     }
-    public static string ToJson(object? data) {
+    public static string ToJson(object? data)
+    {
         // Use source-generated context for known types (2-3x faster)
         // Falls back to reflection-based serializer for anonymous types
-        return JsonSerializer.Serialize(data, new JsonSerializerOptions {
+        return JsonSerializer.Serialize(data, new JsonSerializerOptions
+        {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             WriteIndented = false,
@@ -112,8 +144,10 @@ internal static class ToolHelpers {
         new DefaultJsonTypeInfoResolver())
         });
     }
-    private static string RoslynAccessibilityToString(Accessibility accessibility) {
-        return accessibility switch {
+    private static string RoslynAccessibilityToString(Accessibility accessibility)
+    {
+        return accessibility switch
+        {
             Accessibility.Private => "private",
             Accessibility.ProtectedAndInternal => "private protected",
             Accessibility.Protected => "protected",
@@ -124,10 +158,12 @@ internal static class ToolHelpers {
         };
     }
 
-    public static string GetRoslynSymbolModifiersString(ISymbol symbol) {
+    public static string GetRoslynSymbolModifiersString(ISymbol symbol)
+    {
         var parts = new List<string>();
         string accessibility = RoslynAccessibilityToString(symbol.DeclaredAccessibility);
-        if (!string.IsNullOrEmpty(accessibility)) {
+        if (!string.IsNullOrEmpty(accessibility))
+        {
             parts.Add(accessibility);
         }
 
@@ -138,7 +174,8 @@ internal static class ToolHelpers {
         if (symbol.IsOverride) parts.Add("override");
         if (symbol.IsExtern) parts.Add("extern");
 
-        switch (symbol) {
+        switch (symbol)
+        {
             case IMethodSymbol methodSymbol:
                 if (methodSymbol.IsAsync) parts.Add("async");
                 break;
@@ -158,16 +195,21 @@ internal static class ToolHelpers {
         return string.Join(" ", parts.Where(p => !string.IsNullOrEmpty(p)));
     }
 
-    public static string GetRoslynTypeSpecificModifiersString(INamedTypeSymbol typeSymbol) {
+    public static string GetRoslynTypeSpecificModifiersString(INamedTypeSymbol typeSymbol)
+    {
         var parts = new List<string>();
         string accessibility = RoslynAccessibilityToString(typeSymbol.DeclaredAccessibility);
-        if (!string.IsNullOrEmpty(accessibility)) {
+        if (!string.IsNullOrEmpty(accessibility))
+        {
             parts.Add(accessibility);
         }
 
-        if (typeSymbol.IsStatic) { // Covers static classes
+        if (typeSymbol.IsStatic)
+        { // Covers static classes
             parts.Add("static");
-        } else { // Abstract and Sealed are mutually exclusive with static class modifier
+        }
+        else
+        { // Abstract and Sealed are mutually exclusive with static class modifier
             if (typeSymbol.IsAbstract) parts.Add("abstract");
             if (typeSymbol.IsSealed) parts.Add("sealed");
         }
@@ -177,7 +219,8 @@ internal static class ToolHelpers {
         return string.Join(" ", parts.Where(p => !string.IsNullOrEmpty(p)));
     }
 
-    private static string ReflectionAccessibilityToString(MethodBase? member) {
+    private static string ReflectionAccessibilityToString(MethodBase? member)
+    {
         if (member == null) return "";
         if (member.IsPublic) return "public";
         if (member.IsPrivate) return "private";
@@ -188,7 +231,8 @@ internal static class ToolHelpers {
         return "";
     }
 
-    private static string ReflectionAccessibilityToString(FieldInfo? member) {
+    private static string ReflectionAccessibilityToString(FieldInfo? member)
+    {
         if (member == null) return "";
         if (member.IsPublic) return "public";
         if (member.IsPrivate) return "private";
@@ -199,7 +243,8 @@ internal static class ToolHelpers {
         return "";
     }
 
-    private static string ReflectionAccessibilityToString(Type type) {
+    private static string ReflectionAccessibilityToString(Type type)
+    {
         if (type.IsPublic || type.IsNestedPublic) return "public";
         if (type.IsNestedPrivate) return "private";
         if (type.IsNestedFamANDAssem) return "private protected";
@@ -210,9 +255,11 @@ internal static class ToolHelpers {
         return "";
     }
 
-    public static string GetReflectionMemberModifiersString(MemberInfo memberInfo) {
+    public static string GetReflectionMemberModifiersString(MemberInfo memberInfo)
+    {
         var parts = new List<string>();
-        string accessibility = memberInfo switch {
+        string accessibility = memberInfo switch
+        {
             MethodBase mb => ReflectionAccessibilityToString(mb),
             FieldInfo fi => ReflectionAccessibilityToString(fi),
             PropertyInfo pi => ReflectionAccessibilityToString(pi.GetAccessors(true).FirstOrDefault()),
@@ -222,28 +269,37 @@ internal static class ToolHelpers {
         };
         if (!string.IsNullOrEmpty(accessibility)) parts.Add(accessibility);
 
-        switch (memberInfo) {
+        switch (memberInfo)
+        {
             case MethodInfo mi:
                 if (mi.IsStatic) parts.Add("static");
                 if (mi.IsAbstract) parts.Add("abstract");
                 if (mi.IsVirtual && !mi.IsFinal && !mi.IsAbstract) parts.Add("virtual");
                 if (mi.IsVirtual && mi.IsFinal) parts.Add("sealed override"); // Or just "sealed" if not overriding
-                else {
+                else
+                {
                     // MetadataLoadContext doesn't support GetBaseDefinition()
-                    try {
+                    try
+                    {
                         if (mi.GetBaseDefinition() != mi && !mi.IsVirtual) parts.Add("override"); // Non-virtual override (interface implementation)
                         else if (mi.GetBaseDefinition() != mi) parts.Add("override");
-                    } catch (NotSupportedException) {
+                    }
+                    catch (NotSupportedException)
+                    {
                         // For MetadataLoadContext, we can't check GetBaseDefinition
                         // Infer override status from best available information
-                        if (mi.IsVirtual && !mi.IsAbstract) {
+                        if (mi.IsVirtual && !mi.IsAbstract)
+                        {
                             parts.Add("override");
                         }
                     }
                 }
-                try {
+                try
+                {
                     if (mi.IsDefined(typeof(AsyncStateMachineAttribute), false)) parts.Add("async");
-                } catch (NotSupportedException) {
+                }
+                catch (NotSupportedException)
+                {
                     // MetadataLoadContext doesn't support IsDefined
                     // We can't check for async state machine attribute
                 }
@@ -260,20 +316,26 @@ internal static class ToolHelpers {
                 break;
             case PropertyInfo pi:
                 var accessor = pi.GetAccessors(true).FirstOrDefault();
-                if (accessor != null) {
+                if (accessor != null)
+                {
                     if (accessor.IsStatic) parts.Add("static");
                     if (accessor.IsAbstract) parts.Add("abstract");
                     if (accessor.IsVirtual && !accessor.IsFinal && !accessor.IsAbstract) parts.Add("virtual");
                     if (accessor.IsVirtual && accessor.IsFinal) parts.Add("sealed override");
-                    else {
+                    else
+                    {
                         // MetadataLoadContext doesn't support GetBaseDefinition()
-                        try {
+                        try
+                        {
                             if (accessor.GetBaseDefinition() != accessor && !accessor.IsVirtual) parts.Add("override");
                             else if (accessor.GetBaseDefinition() != accessor) parts.Add("override");
-                        } catch (NotSupportedException) {
+                        }
+                        catch (NotSupportedException)
+                        {
                             // For MetadataLoadContext, we can't check GetBaseDefinition
                             // Infer override status from best available information
-                            if (accessor.IsVirtual && !accessor.IsAbstract) {
+                            if (accessor.IsVirtual && !accessor.IsAbstract)
+                            {
                                 parts.Add("override");
                             }
                         }
@@ -283,20 +345,26 @@ internal static class ToolHelpers {
                 break;
             case EventInfo ei:
                 var addAccessor = ei.GetAddMethod(true);
-                if (addAccessor != null) {
+                if (addAccessor != null)
+                {
                     if (addAccessor.IsStatic) parts.Add("static");
                     if (addAccessor.IsAbstract) parts.Add("abstract");
                     if (addAccessor.IsVirtual && !addAccessor.IsFinal && !addAccessor.IsAbstract) parts.Add("virtual");
                     if (addAccessor.IsVirtual && addAccessor.IsFinal) parts.Add("sealed override");
-                    else {
+                    else
+                    {
                         // MetadataLoadContext doesn't support GetBaseDefinition()
-                        try {
+                        try
+                        {
                             if (addAccessor.GetBaseDefinition() != addAccessor && !addAccessor.IsVirtual) parts.Add("override");
                             else if (addAccessor.GetBaseDefinition() != addAccessor) parts.Add("override");
-                        } catch (NotSupportedException) {
+                        }
+                        catch (NotSupportedException)
+                        {
                             // For MetadataLoadContext, we can't check GetBaseDefinition
                             // Infer override status from best available information
-                            if (addAccessor.IsVirtual && !addAccessor.IsAbstract) {
+                            if (addAccessor.IsVirtual && !addAccessor.IsAbstract)
+                            {
                                 parts.Add("override");
                             }
                         }
@@ -309,14 +377,18 @@ internal static class ToolHelpers {
         return string.Join(" ", parts.Where(p => !string.IsNullOrEmpty(p)).Distinct());
     }
 
-    public static string GetReflectionTypeModifiersString(Type type) {
+    public static string GetReflectionTypeModifiersString(Type type)
+    {
         var parts = new List<string>();
         string accessibility = ReflectionAccessibilityToString(type);
         if (!string.IsNullOrEmpty(accessibility)) parts.Add(accessibility);
 
-        if (type.IsAbstract && type.IsSealed) { // Static class
+        if (type.IsAbstract && type.IsSealed)
+        { // Static class
             parts.Add("static");
-        } else {
+        }
+        else
+        {
             if (type.IsAbstract) parts.Add("abstract");
             if (type.IsSealed) parts.Add("sealed");
         }
@@ -326,8 +398,10 @@ internal static class ToolHelpers {
         return string.Join(" ", parts.Where(p => !string.IsNullOrEmpty(p)).Distinct());
     }
 
-    public static string GetSymbolKindString(ISymbol symbol) {
-        return symbol.Kind switch {
+    public static string GetSymbolKindString(ISymbol symbol)
+    {
+        return symbol.Kind switch
+        {
             SymbolKind.Namespace => "Namespace",
             SymbolKind.NamedType => ((INamedTypeSymbol)symbol).TypeKind.ToString(),
             SymbolKind.Method => "Method",
@@ -341,7 +415,8 @@ internal static class ToolHelpers {
         };
     }
 
-    public static string GetReflectionTypeKindString(Type type) {
+    public static string GetReflectionTypeKindString(Type type)
+    {
         if (type.IsEnum) return "Enum";
         if (type.IsInterface) return "Interface";
         if (type.IsValueType && !type.IsPrimitive && !type.IsEnum && !type.FullName!.StartsWith("System.Nullable")) return "Struct";
@@ -350,8 +425,10 @@ internal static class ToolHelpers {
         return type.IsValueType ? "ValueType" : "Type";
     }
 
-    public static string GetReflectionMemberTypeKindString(MemberInfo memberInfo) {
-        return memberInfo.MemberType switch {
+    public static string GetReflectionMemberTypeKindString(MemberInfo memberInfo)
+    {
+        return memberInfo.MemberType switch
+        {
             MemberTypes.Constructor => "Constructor",
             MemberTypes.Event => "Event",
             MemberTypes.Field => "Field",
@@ -376,8 +453,10 @@ internal static class ToolHelpers {
     /// <summary>
     /// Removes global:: prefix from a fully qualified name
     /// </summary>
-    public static string RemoveGlobalPrefix(string fullyQualifiedName) {
-        if (string.IsNullOrEmpty(fullyQualifiedName)) {
+    public static string RemoveGlobalPrefix(string fullyQualifiedName)
+    {
+        if (string.IsNullOrEmpty(fullyQualifiedName))
+        {
             return fullyQualifiedName;
         }
 
@@ -385,20 +464,25 @@ internal static class ToolHelpers {
             ? fullyQualifiedName.Substring(8)
             : fullyQualifiedName;
     }
-    public static bool IsPropertyAccessor(ISymbol symbol) {
-        if (symbol is IMethodSymbol methodSymbol) {
+    public static bool IsPropertyAccessor(ISymbol symbol)
+    {
+        if (symbol is IMethodSymbol methodSymbol)
+        {
             var associatedSymbol = methodSymbol.AssociatedSymbol;
             return associatedSymbol is IPropertySymbol;  // True for both getters and setters
         }
         return false;
     }
-    public static string TrimBackslash(this string str) {
-        if (str.StartsWith("\\", StringComparison.Ordinal)) {
+    public static string TrimBackslash(this string str)
+    {
+        if (str.StartsWith("\\", StringComparison.Ordinal))
+        {
             return str[1..];
         }
         return str;
     }
-    public static string NormalizeEndOfLines(this string str) {
+    public static string NormalizeEndOfLines(this string str)
+    {
         return str.Replace("\r\n", "\n").Replace("\r", "\n");
     }
 }
