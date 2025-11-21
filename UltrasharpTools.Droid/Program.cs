@@ -709,10 +709,10 @@ public static class Program
 
             // Universal Semantic Mode - Phase 12
             // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
+            using var loggerFactory714 = LoggerFactory.Create(b => b.AddConsole());
             var semanticConfigLoader =
                 new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
-                    LoggerFactory
-                        .Create(b => b.AddConsole())
+                    loggerFactory714
                         .CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>()
                 );
             var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
@@ -813,10 +813,10 @@ public static class Program
 
             // Universal Semantic Mode - Phase 12 (local mode)
             // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
+            using var loggerFactory818 = LoggerFactory.Create(b => b.AddConsole());
             var semanticConfigLoader =
                 new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
-                    LoggerFactory
-                        .Create(b => b.AddConsole())
+                    loggerFactory818
                         .CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>()
                 );
             var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();

@@ -10,8 +10,12 @@
 
 === Publishing Droid (Debug, no R2R) ===
   Determining projects to restore...
-  All projects are up-to-date for restore.
+  Restored D:\github\ultrasharp-tools-mcp\UltrasharpTools.Tools\UltrasharpTools.Tools.csproj (in 1,05 sec).
+  1 of 2 projects are up-to-date for restore.
   UltrasharpTools.Tools -> D:\github\ultrasharp-tools-mcp\UltrasharpTools.Tools\bin\Debug\net10.0\UltrasharpTools.Tools.dll
+D:\github\ultrasharp-tools-mcp\UltrasharpTools.Droid\Services\Hybrid\GitWatcherService.cs(230,24): warning CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861) [D:\github\ultrasharp-tools-mcp\UltrasharpTools.Droid\UltrasharpTools.Droid.csproj]
+D:\github\ultrasharp-tools-mcp\UltrasharpTools.Droid\Program.cs(818,21): warning CA2000: Call System.IDisposable.Dispose on object created by 'LoggerFactory' before all references to it are out of scope (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2000) [D:\github\ultrasharp-tools-mcp\UltrasharpTools.Droid\UltrasharpTools.Droid.csproj]
+D:\github\ultrasharp-tools-mcp\UltrasharpTools.Droid\Program.cs(714,21): warning CA2000: Call System.IDisposable.Dispose on object created by 'LoggerFactory' before all references to it are out of scope (https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2000) [D:\github\ultrasharp-tools-mcp\UltrasharpTools.Droid\UltrasharpTools.Droid.csproj]
   UltrasharpTools.Droid -> D:\github\ultrasharp-tools-mcp\UltrasharpTools.Droid\bin\Debug\net10.0\win-x64\UltrasharpTools.Droid.dll
   UltrasharpTools.Droid -> D:\github\ultrasharp-tools-mcp\Run.Publish\Droid\
 ✓ Kept 2 PDB files for debugging

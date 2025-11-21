@@ -9,6 +9,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// </summary>
 public sealed class GitWatcherService : BackgroundService
 {
+    private static readonly char[] newLineSeparator = new[] { '\r', '\n' };
     private readonly AgentConfig _config;
     private readonly IServerBridgeService _bridge;
     private readonly ILogger<GitWatcherService> _logger;
@@ -227,7 +228,7 @@ public sealed class GitWatcherService : BackgroundService
 
             // Парсим вывод - каждая строка это путь к файлу
             var files = output
-                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Split(newLineSeparator, StringSplitOptions.RemoveEmptyEntries)
                 .Select(f => f.Replace('\\', '/'))
                 .ToArray();
 
