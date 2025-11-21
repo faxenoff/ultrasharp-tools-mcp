@@ -18,12 +18,32 @@ public class SemanticAnalysisTest
 {
     public static async Task Main(string[] args)
     {
+        // Проверяем первый аргумент - тип теста
+        var testType = args.Length > 0 ? args[0].ToLower() : "unit";
+
+        if (testType == "unit")
+        {
+            // Запускаем быстрый юнит-тест (без Roslyn)
+            var exitCode = await TestSemanticEnrichmentUnit.Run();
+            Environment.ExitCode = exitCode;
+            return;
+        }
+
+        if (testType == "enrichment")
+        {
+            // Запускаем тест Semantic Enrichment (интеграционный, с Roslyn)
+            var exitCode = await TestSemanticEnrichment.Run(args.Skip(1).ToArray());
+            Environment.ExitCode = exitCode;
+            return;
+        }
+
+        // Старые тесты semantic_search, semantic_diff, detect_code_clones
         // Load configuration
         var config = TestConfiguration.Load();
 
         // Parse command line arguments
-        var provider = args.Length > 0 ? args[0].ToLower() : "memory";
-        var dimension = args.Length > 1 && int.TryParse(args[1], out var dim) ? dim : 384;
+        var provider = args.Length > 1 ? args[1].ToLower() : "memory";
+        var dimension = args.Length > 2 && int.TryParse(args[2], out var dim) ? dim : 384;
 
         Console.WriteLine("=== UltrasharpTools Semantic Analysis Tools Test ===");
         Console.WriteLine();
