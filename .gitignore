@@ -83,3 +83,7 @@ DS_Store
 secret.yaml
 */secret.yaml
 **/secret.yaml
+*.ps1
+_bak/
+code-*.csv
+code-*.json
