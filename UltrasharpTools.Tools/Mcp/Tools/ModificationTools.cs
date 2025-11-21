@@ -2069,7 +2069,7 @@ public static class ModificationTools
                 try
                 {
                     // Create the regex with multiline option to test it
-                    _ = new Regex(regexPattern, RegexOptions.Multiline);
+                    _ = new Regex(regexPattern, RegexOptions.Multiline | RegexOptions.Compiled);
                 }
                 catch (ArgumentException ex)
                 {
@@ -3010,7 +3010,7 @@ public static class ModificationTools
                 false,
                 cancellationToken
             );
-            var regex = new Regex(regexPattern, RegexOptions.Multiline);
+            var regex = new Regex(regexPattern, RegexOptions.Multiline | RegexOptions.Compiled);
             string newContent = regex.Replace(
                 originalContent.NormalizeEndOfLines(),
                 replacementText
