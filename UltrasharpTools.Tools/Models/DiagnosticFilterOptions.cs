@@ -44,6 +44,39 @@ public record DiagnosticFilterOptions
     /// </summary>
     public int Take { get; init; } = 100;
 
+    // ========================================================================
+    // SEMANTIC ENRICHMENT OPTIONS (Phase 1)
+    // ========================================================================
+
+    /// <summary>
+    /// Включить semantic enrichment с кластеризацией и relevance scoring
+    /// </summary>
+    public bool EnrichWithSemantics { get; init; } = false;
+
+    /// <summary>
+    /// Группировать похожие диагностики по семантическому сходству
+    /// </summary>
+    public bool GroupBySimilarity { get; init; } = false;
+
+    /// <summary>
+    /// Порог сходства для кластеризации (0.0-1.0, default: 0.85)
+    /// </summary>
+    public double SimilarityThreshold { get; init; } = 0.85;
+
+    // ========================================================================
+    // EDITORCONFIG GENERATION OPTIONS (Phase 2)
+    // ========================================================================
+
+    /// <summary>
+    /// Генерировать рекомендации для .editorconfig
+    /// </summary>
+    public bool GenerateEditorConfigRecommendations { get; init; } = false;
+
+    /// <summary>
+    /// Формат .editorconfig (Standard | Detailed)
+    /// </summary>
+    public string EditorConfigFormat { get; init; } = "Detailed";
+
     /// <summary>
     /// Проверяет, нужно ли включить диагностику в результаты
     /// </summary>

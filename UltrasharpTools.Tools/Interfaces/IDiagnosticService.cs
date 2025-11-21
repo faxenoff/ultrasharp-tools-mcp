@@ -1,4 +1,5 @@
 using UltrasharpTools.Tools.Models;
+using UltrasharpTools.Tools.Models.SemanticEnrichment;
 
 namespace UltrasharpTools.Tools.Interfaces;
 
@@ -62,4 +63,22 @@ public record DiagnosticAnalysisResult
     /// Есть ли еще результаты
     /// </summary>
     public required bool HasMore { get; init; }
+
+    // ========================================================================
+    // SEMANTIC ENRICHMENT (Phase 1) - опционально
+    // ========================================================================
+
+    /// <summary>
+    /// Результат semantic enrichment (если EnrichWithSemantics = true)
+    /// </summary>
+    public SemanticEnrichmentResult? SemanticEnrichment { get; init; }
+
+    // ========================================================================
+    // EDITORCONFIG RECOMMENDATIONS (Phase 2) - опционально
+    // ========================================================================
+
+    /// <summary>
+    /// Рекомендации для .editorconfig (если GenerateEditorConfigRecommendations = true)
+    /// </summary>
+    public EditorConfigRecommendations? EditorConfigRecommendations { get; init; }
 }

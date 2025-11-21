@@ -91,7 +91,23 @@ public static class ServiceCollectionExtensions
 
         // Quality tools services (Roslyn formatting, analyzers, code fixes)
         services.AddSingleton<IFormattingService, FormattingService>();
-        services.AddSingleton<IDiagnosticService, DiagnosticService>();
+
+        // Semantic enrichment service (Phase 1) - registered before DiagnosticService
+        services.AddSingleton<ISemanticDiagnosticEnricher>(sp =>
+        {
+            var semanticModeProvider = sp.GetService<ISemanticModeProvider>(); // Nullable
+            var logger = sp.GetRequiredService<ILogger<SemanticDiagnosticEnricher>>();
+            return new SemanticDiagnosticEnricher(semanticModeProvider, logger);
+        });
+
+        services.AddSingleton<IDiagnosticService>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<DiagnosticService>>();
+            var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var semanticEnricher = sp.GetService<ISemanticDiagnosticEnricher>(); // Nullable
+            return new DiagnosticService(logger, solutionManager, semanticEnricher);
+        });
+
         services.AddSingleton<ICodeFixService, CodeFixService>();
         services.AddSingleton<IQuickLintService, QuickLintService>();
 

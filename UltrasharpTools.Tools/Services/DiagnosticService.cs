@@ -4,17 +4,22 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using UltrasharpTools.Tools.Models;
+using UltrasharpTools.Tools.Models.SemanticEnrichment;
 
 namespace UltrasharpTools.Tools.Services;
 
 /// <summary>
 /// Сервис для анализа кода через Roslyn analyzers
 /// </summary>
-public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManager solutionManager)
-    : IDiagnosticService
+public class DiagnosticService(
+    ILogger<DiagnosticService> logger,
+    ISolutionManager solutionManager,
+    ISemanticDiagnosticEnricher? semanticEnricher = null
+) : IDiagnosticService
 {
     private readonly ILogger<DiagnosticService> _logger = logger;
     private readonly ISolutionManager _solutionManager = solutionManager;
+    private readonly ISemanticDiagnosticEnricher? _semanticEnricher = semanticEnricher;
 
     // CACHE: Кеш результатов анализа всего решения
     private readonly ConcurrentDictionary<
@@ -75,6 +80,55 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
 
         var totalCount = filteredDiagnostics.Count;
 
+        // PHASE 1: Semantic Enrichment (если включено)
+        SemanticEnrichmentResult? semanticEnrichment = null;
+        EditorConfigRecommendations? editorConfigRecommendations = null;
+
+        if (
+            _semanticEnricher != null
+            && (
+                filterOptions.EnrichWithSemantics
+                || filterOptions.GenerateEditorConfigRecommendations
+            )
+        )
+        {
+            try
+            {
+                _logger.LogInformation("Starting semantic enrichment for {Count} diagnostics", totalCount);
+
+                // LEVEL 1: Statistical Analysis
+                var statistics = _semanticEnricher.AnalyzeStatistics(filteredDiagnostics);
+
+                // LEVEL 1 + LEVEL 2: Semantic Enrichment
+                if (filterOptions.EnrichWithSemantics)
+                {
+                    semanticEnrichment = await _semanticEnricher.EnrichAsync(
+                        filteredDiagnostics,
+                        statistics,
+                        filterOptions.GroupBySimilarity,
+                        filterOptions.SimilarityThreshold,
+                        cancellationToken
+                    );
+
+                    _logger.LogInformation(
+                        "Semantic enrichment complete. Clusters: {Clusters}, Categories: {Categories}",
+                        semanticEnrichment.Clusters.Count,
+                        semanticEnrichment.Summary.CategoriesFound.Count
+                    );
+                }
+
+                // TODO: PHASE 2: EditorConfig Generation (будет реализовано позже)
+                // if (filterOptions.GenerateEditorConfigRecommendations)
+                // {
+                //     editorConfigRecommendations = await _editorConfigGenerator.GenerateAsync(...);
+                // }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to perform semantic enrichment");
+            }
+        }
+
         // Применяем пагинацию
         var paginatedDiagnostics = filteredDiagnostics
             .Skip(filterOptions.Skip)
@@ -94,6 +148,8 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
             Diagnostics = paginatedDiagnostics,
             TotalCount = totalCount,
             HasMore = filterOptions.Skip + filterOptions.Take < totalCount,
+            SemanticEnrichment = semanticEnrichment,
+            EditorConfigRecommendations = editorConfigRecommendations,
         };
     }
 
