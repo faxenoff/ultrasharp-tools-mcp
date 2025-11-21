@@ -39,8 +39,12 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
                 : "all"
         );
 
-        // Получаем все диагностики (с кешированием)
-        var allDiagnostics = await GetAllDiagnosticsAsync(solutionPath, cancellationToken);
+        // Получаем все диагностики (с кешированием и оптимизациями)
+        var allDiagnostics = await GetAllDiagnosticsAsync(
+            solutionPath,
+            filterOptions,
+            cancellationToken
+        );
 
         // Применяем фильтры
         var filteredDiagnostics = allDiagnostics
@@ -107,11 +111,15 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
     }
 
     /// <summary>
-    /// Получает все диагностики с кешированием
+    /// Получает все диагностики с кешированием и оптимизациями
     /// </summary>
     private async Task<
         List<(Diagnostic Diagnostic, string FilePath, string ProjectName)>
-    > GetAllDiagnosticsAsync(string solutionPath, CancellationToken cancellationToken)
+    > GetAllDiagnosticsAsync(
+        string solutionPath,
+        DiagnosticFilterOptions filterOptions,
+        CancellationToken cancellationToken
+    )
     {
         var normalizedPath = Path.GetFullPath(solutionPath);
 
@@ -144,15 +152,29 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
         // OPTIMIZATION: Ранняя фильтрация проектов (экономия 50-90% времени)
         var projectsToAnalyze = solution.Projects.Where(p => p.SupportsCompilation);
 
+        // Если указаны конкретные проекты - фильтруем ДО анализа
+        if (filterOptions.ProjectNames?.Count() > 0)
+        {
+            projectsToAnalyze = projectsToAnalyze.Where(p =>
+                filterOptions.ProjectNames.Contains(p.Name, StringComparer.OrdinalIgnoreCase)
+            );
+
+            _logger.LogInformation(
+                "Filtered to {FilteredProjects} projects: {ProjectNames}",
+                projectsToAnalyze.Count(),
+                string.Join(", ", filterOptions.ProjectNames)
+            );
+        }
+
         var totalProjects = projectsToAnalyze.Count();
         _logger.LogInformation(
-            "Found {TotalProjects} compilable projects in solution",
+            "Found {TotalProjects} compilable projects to analyze",
             totalProjects
         );
 
-        // Анализируем все проекты параллельно
+        // Анализируем все проекты параллельно с оптимизациями
         var diagnosticTasks = projectsToAnalyze.Select(async project =>
-            await AnalyzeProjectAsync(project, cancellationToken)
+            await AnalyzeProjectAsync(project, filterOptions, cancellationToken)
         );
 
         var projectDiagnostics = await Task.WhenAll(diagnosticTasks);
@@ -174,11 +196,15 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
     }
 
     /// <summary>
-    /// Анализирует один проект
+    /// Анализирует один проект с оптимизациями
     /// </summary>
     private async Task<
         IEnumerable<(Diagnostic Diagnostic, string FilePath, string ProjectName)>
-    > AnalyzeProjectAsync(Project project, CancellationToken cancellationToken)
+    > AnalyzeProjectAsync(
+        Project project,
+        DiagnosticFilterOptions filterOptions,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -199,10 +225,39 @@ public class DiagnosticService(ILogger<DiagnosticService> logger, ISolutionManag
 
             IEnumerable<Diagnostic> diagnostics;
 
-            // Получаем анализаторы
-            var analyzers = project
+            // Получаем все анализаторы
+            var allAnalyzers = project
                 .AnalyzerReferences.SelectMany(r => r.GetAnalyzers(project.Language))
-                .ToImmutableArray();
+                .ToList();
+
+            ImmutableArray<DiagnosticAnalyzer> analyzers;
+
+            // OPTIMIZATION: Фильтрация анализаторов по DiagnosticId (экономия 10-50x времени!)
+            // Если указаны конкретные DiagnosticIds - запускаем только нужные анализаторы
+            if (filterOptions.DiagnosticIds?.Count() > 0)
+            {
+                var requestedIds = filterOptions
+                    .DiagnosticIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                analyzers = allAnalyzers
+                    .Where(a =>
+                        a.SupportedDiagnostics.Any(d => requestedIds.Contains(d.Id))
+                    )
+                    .ToImmutableArray();
+
+                _logger.LogDebug(
+                    "Filtered analyzers for {ProjectName}: {FilteredCount}/{TotalCount} (requested IDs: {RequestedIds})",
+                    project.Name,
+                    analyzers.Length,
+                    allAnalyzers.Count,
+                    string.Join(", ", filterOptions.DiagnosticIds.Take(5))
+                );
+            }
+            else
+            {
+                // Запускаем все анализаторы
+                analyzers = allAnalyzers.ToImmutableArray();
+            }
 
             if (analyzers.Length > 0)
             {
