@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Merge.Engine;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
@@ -87,15 +88,33 @@ Actions:
 
         if (result.Conflicts.Count > 0)
         {
-            summary += "\nConflicts:\n";
-            foreach (var conflict in result.Conflicts.Take(10))
+            var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+            try
             {
-                summary += $"- {conflict.Description} (severity: {conflict.Severity})\n";
-            }
+                sb.Append(summary);
+                sb.Append("\nConflicts:\n");
 
-            if (result.Conflicts.Count > 10)
+                foreach (var conflict in result.Conflicts.Take(10))
+                {
+                    sb.Append("- ");
+                    sb.Append(conflict.Description);
+                    sb.Append(" (severity: ");
+                    sb.Append(conflict.Severity);
+                    sb.Append(")\n");
+                }
+
+                if (result.Conflicts.Count > 10)
+                {
+                    sb.Append("... and ");
+                    sb.Append(result.Conflicts.Count - 10);
+                    sb.Append(" more\n");
+                }
+
+                return sb.ToString();
+            }
+            finally
             {
-                summary += $"... and {result.Conflicts.Count - 10} more\n";
+                ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
             }
         }
 

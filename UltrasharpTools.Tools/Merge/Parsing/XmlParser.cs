@@ -1,6 +1,7 @@
 using System.Xml;
 using System.Xml.Linq;
 using Microsoft.Extensions.Logging.Abstractions;
+using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
 
@@ -220,29 +221,42 @@ public sealed class XmlParser
     /// </summary>
     private string BuildElementSignature(XElement element)
     {
-        var signature = $"<{element.Name.LocalName}";
+        var sb = ObjectPoolProvider.Instance.GetStringBuilder();
+        try
+        {
+            sb.Append('<');
+            sb.Append(element.Name.LocalName);
 
-        // Для .csproj важные атрибуты
-        var importantAttrs = new[]
-        {
-            "Include",
-            "Update",
-            "Remove",
-            "Version",
-            "Name",
-            "Condition",
-        };
-        foreach (var attrName in importantAttrs)
-        {
-            var attr = element.Attribute(attrName);
-            if (attr != null)
+            // Для .csproj важные атрибуты
+            var importantAttrs = new[]
             {
-                signature += $" {attrName}=\"{attr.Value}\"";
+                "Include",
+                "Update",
+                "Remove",
+                "Version",
+                "Name",
+                "Condition",
+            };
+            foreach (var attrName in importantAttrs)
+            {
+                var attr = element.Attribute(attrName);
+                if (attr != null)
+                {
+                    sb.Append(' ');
+                    sb.Append(attrName);
+                    sb.Append("=\"");
+                    sb.Append(attr.Value);
+                    sb.Append('"');
+                }
             }
-        }
 
-        signature += ">";
-        return signature;
+            sb.Append('>');
+            return sb.ToString();
+        }
+        finally
+        {
+            ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
+        }
     }
 
     /// <summary>

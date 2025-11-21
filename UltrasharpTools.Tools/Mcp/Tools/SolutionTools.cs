@@ -982,17 +982,10 @@ public static class SolutionTools
                 var parts = fullNamespace.Split('.');
 
                 // Create entries for each namespace part
-                var currentNs = "";
-
                 for (int i = 0; i < parts.Length; i++)
                 {
-                    var part = parts[i];
-
-                    if (!string.IsNullOrEmpty(currentNs))
-                    {
-                        currentNs += ".";
-                    }
-                    currentNs += part;
+                    // Build current namespace as: parts[0..i+1]
+                    var currentNs = string.Join(".", parts, 0, i + 1);
 
                     if (!namespaceParts.TryGetValue(currentNs, out var children))
                     {
