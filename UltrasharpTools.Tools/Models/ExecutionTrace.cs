@@ -110,7 +110,7 @@ public enum TraceStepType
     LinqQuery,
 
     /// <summary>Lambda expression call</summary>
-    LambdaCall
+    LambdaCall,
 }
 
 /// <summary>

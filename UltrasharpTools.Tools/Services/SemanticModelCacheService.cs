@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Services;
@@ -23,7 +21,8 @@ public sealed class SemanticModelCacheService
     public SemanticModelCacheService(
         ILogger<SemanticModelCacheService> logger,
         int capacity = 200,
-        TimeSpan? ttl = null)
+        TimeSpan? ttl = null
+    )
     {
         _logger = logger;
         _cache = new LruCache<string, CachedSemanticModel>(capacity);
@@ -32,7 +31,8 @@ public sealed class SemanticModelCacheService
         _logger.LogInformation(
             "SemanticModelCache initialized: capacity={Capacity}, TTL={TtlMinutes}m",
             capacity,
-            _ttl.TotalMinutes);
+            _ttl.TotalMinutes
+        );
     }
 
     /// <summary>
@@ -40,10 +40,13 @@ public sealed class SemanticModelCacheService
     /// </summary>
     public async Task<SemanticModel?> GetOrComputeAsync(
         Document document,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var filePath = document.FilePath ?? document.Name;
-        var documentVersion = await document.GetTextVersionAsync(cancellationToken).ConfigureAwait(false);
+        var documentVersion = await document
+            .GetTextVersionAsync(cancellationToken)
+            .ConfigureAwait(false);
         var cacheKey = $"{filePath}|{documentVersion}";
 
         // Check cache
@@ -66,7 +69,9 @@ public sealed class SemanticModelCacheService
 
         // Compute SemanticModel
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        var semanticModel = await document
+            .GetSemanticModelAsync(cancellationToken)
+            .ConfigureAwait(false);
         sw.Stop();
 
         Interlocked.Add(ref _computeTimeMs, sw.ElapsedMilliseconds);
@@ -74,17 +79,21 @@ public sealed class SemanticModelCacheService
         if (semanticModel != null)
         {
             // Add to cache
-            _cache.Add(cacheKey, new CachedSemanticModel
-            {
-                SemanticModel = semanticModel,
-                CreatedAt = DateTimeOffset.UtcNow,
-                FilePath = filePath
-            });
+            _cache.Add(
+                cacheKey,
+                new CachedSemanticModel
+                {
+                    SemanticModel = semanticModel,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    FilePath = filePath,
+                }
+            );
 
             _logger.LogDebug(
                 "SemanticModel computed and cached: {FilePath} ({ElapsedMs}ms)",
                 filePath,
-                sw.ElapsedMilliseconds);
+                sw.ElapsedMilliseconds
+            );
         }
 
         return semanticModel;
@@ -96,8 +105,8 @@ public sealed class SemanticModelCacheService
     public void InvalidateFile(string filePath)
     {
         // Remove all entries for this file (different versions)
-        var keysToRemove = _cache.Keys
-            .Where(k => k.StartsWith(filePath + "|", StringComparison.Ordinal))
+        var keysToRemove = _cache
+            .Keys.Where(k => k.StartsWith(filePath + "|", StringComparison.Ordinal))
             .ToList();
 
         foreach (var key in keysToRemove)
@@ -113,8 +122,8 @@ public sealed class SemanticModelCacheService
     /// </summary>
     public void InvalidateProject(string projectName)
     {
-        var keysToRemove = _cache.Keys
-            .Where(k => k.Contains(projectName, StringComparison.Ordinal))
+        var keysToRemove = _cache
+            .Keys.Where(k => k.Contains(projectName, StringComparison.Ordinal))
             .ToList();
 
         foreach (var key in keysToRemove)
@@ -122,7 +131,11 @@ public sealed class SemanticModelCacheService
             _cache.Remove(key);
         }
 
-        _logger.LogInformation("Invalidated SemanticModel cache for project: {ProjectName} ({Count} entries)", projectName, keysToRemove.Count);
+        _logger.LogInformation(
+            "Invalidated SemanticModel cache for project: {ProjectName} ({Count} entries)",
+            projectName,
+            keysToRemove.Count
+        );
     }
 
     /// <summary>
@@ -151,7 +164,8 @@ public sealed class SemanticModelCacheService
             HitRate = totalRequests > 0 ? (double)hitCount / totalRequests * 100.0 : 0.0,
             CachedEntries = _cache.Count,
             TotalComputeTimeMs = Interlocked.Read(ref _computeTimeMs),
-            AverageComputeTimeMs = missCount > 0 ? (double)Interlocked.Read(ref _computeTimeMs) / missCount : 0.0
+            AverageComputeTimeMs =
+                missCount > 0 ? (double)Interlocked.Read(ref _computeTimeMs) / missCount : 0.0,
         };
     }
 
@@ -168,7 +182,8 @@ public sealed class SemanticModelCacheService
             stats.HitRate,
             stats.CachedEntries,
             stats.TotalComputeTimeMs,
-            stats.AverageComputeTimeMs);
+            stats.AverageComputeTimeMs
+        );
     }
 }
 

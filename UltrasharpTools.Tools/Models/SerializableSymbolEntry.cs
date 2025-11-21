@@ -77,7 +77,11 @@ public class SerializableSymbolEntry
     /// <summary>
     /// Convert from SymbolIndexEntry
     /// </summary>
-    public static SerializableSymbolEntry FromIndexEntry(SymbolIndexEntry entry, string projectName, string assemblyName)
+    public static SerializableSymbolEntry FromIndexEntry(
+        SymbolIndexEntry entry,
+        string projectName,
+        string assemblyName
+    )
     {
         return new SerializableSymbolEntry
         {
@@ -91,7 +95,7 @@ public class SerializableSymbolEntry
             FirstChar = entry.FirstChar,
             SimpleNameHashCode = entry.SimpleNameHashCode,
             AssemblyName = assemblyName,
-            ProjectName = projectName
+            ProjectName = projectName,
         };
     }
 }

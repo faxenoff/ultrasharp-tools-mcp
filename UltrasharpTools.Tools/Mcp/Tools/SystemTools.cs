@@ -1,4 +1,3 @@
-
 using ModelContextProtocol;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
@@ -9,15 +8,14 @@ namespace UltrasharpTools.Tools.Mcp.Tools;
 [McpServerToolType]
 public static class SystemTools
 {
-    [McpServerTool(
-        Name = "get_capabilities",
-        Idempotent = true,
-        ReadOnly = true
+    [McpServerTool(Name = "get_capabilities", Idempotent = true, ReadOnly = true)]
+    [Description(
+        "Returns server capabilities including semantic mode status, hybrid mode availability, and enabled features. Use this to discover available capabilities at runtime."
     )]
-    [Description("Returns server capabilities including semantic mode status, hybrid mode availability, and enabled features. Use this to discover available capabilities at runtime.")]
     public static async Task<object> GetCapabilities(
         ISemanticModeProvider semanticProvider,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var availability = await semanticProvider.CheckAvailabilityAsync(cancellationToken);
 
@@ -27,7 +25,7 @@ public static class SystemTools
             {
                 name = "UltrasharpTools MCP Droid",
                 version = "3.0.0",
-                protocol = "MCP 1.0"
+                protocol = "MCP 1.0",
             },
             capabilities = new
             {
@@ -41,7 +39,7 @@ public static class SystemTools
                     overlordUrl = availability.OverlordUrl,
                     dynamic = true,
                     cacheValiditySeconds = 60,
-                    description = "Semantic code search and similarity analysis using vector embeddings"
+                    description = "Semantic code search and similarity analysis using vector embeddings",
                 },
                 features = new
                 {
@@ -52,10 +50,10 @@ public static class SystemTools
                     tracing = true,
                     codeModification = true,
                     projectAnalysis = true,
-                    symbolCaching = true
-                }
+                    symbolCaching = true,
+                },
             },
-            timestamp = DateTime.UtcNow
+            timestamp = DateTime.UtcNow,
         };
     }
 }

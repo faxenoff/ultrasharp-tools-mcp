@@ -25,9 +25,10 @@ public sealed class VectorliteBackend : IVectorStoreBackend
     }
 
     public async Task InitializeAsync(
-    string connectionString,
-    int dimension,
-    CancellationToken cancellationToken = default)
+        string connectionString,
+        int dimension,
+        CancellationToken cancellationToken = default
+    )
     {
         _dimension = dimension;
         _connection = new SqliteConnection(connectionString);
@@ -46,16 +47,18 @@ public sealed class VectorliteBackend : IVectorStoreBackend
             if (!File.Exists(dllPath))
             {
                 throw new FileNotFoundException(
-                $"vectorlite.dll not found. Expected at: {dllPath}. " +
-                "Download from https://github.com/1yefuwang1/vectorlite/releases",
-                dllPath);
+                    $"vectorlite.dll not found. Expected at: {dllPath}. "
+                        + "Download from https://github.com/1yefuwang1/vectorlite/releases",
+                    dllPath
+                );
             }
 
             _connection.LoadExtension(dllPath);
         }
 
         // Создать таблицу для embeddings
-        var createTableSql = @"
+        var createTableSql =
+            @"
 CREATE TABLE IF NOT EXISTS doc_embeddings (
 id TEXT PRIMARY KEY,
 content TEXT NOT NULL,
@@ -77,12 +80,16 @@ CREATE INDEX IF NOT EXISTS idx_embeddings_provider ON doc_embeddings(provider);
         _initialized = true;
     }
 
-    public async Task InsertAsync(VectorEmbedding embedding, CancellationToken cancellationToken = default)
+    public async Task InsertAsync(
+        VectorEmbedding embedding,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
         using var command = _connection!.CreateCommand();
-        command.CommandText = @"
+        command.CommandText =
+            @"
 INSERT OR REPLACE INTO doc_embeddings (id, content, vector, metadata, created_at, dimension, provider)
 VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
 ";
@@ -99,8 +106,9 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
     }
 
     public async Task InsertBatchAsync(
-    IEnumerable<VectorEmbedding> embeddings,
-    CancellationToken cancellationToken = default)
+        IEnumerable<VectorEmbedding> embeddings,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
@@ -112,7 +120,8 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
             {
                 using var command = _connection.CreateCommand();
                 command.Transaction = transaction;
-                command.CommandText = @"
+                command.CommandText =
+                    @"
 INSERT OR REPLACE INTO doc_embeddings (id, content, vector, metadata, created_at, dimension, provider)
 VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
 ";
@@ -120,10 +129,16 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
                 command.Parameters.AddWithValue("@id", embedding.Id);
                 command.Parameters.AddWithValue("@content", embedding.Content);
                 command.Parameters.AddWithValue("@vector", SerializeVector(embedding.Vector));
-                command.Parameters.AddWithValue("@metadata", embedding.Metadata ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue(
+                    "@metadata",
+                    embedding.Metadata ?? (object)DBNull.Value
+                );
                 command.Parameters.AddWithValue("@created_at", embedding.CreatedAt);
                 command.Parameters.AddWithValue("@dimension", embedding.Dimension);
-                command.Parameters.AddWithValue("@provider", embedding.Provider ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue(
+                    "@provider",
+                    embedding.Provider ?? (object)DBNull.Value
+                );
 
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
@@ -141,10 +156,11 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
     }
 
     public async Task<List<SimilarityResult>> SearchAsync(
-    float[] queryVector,
-    int limit,
-    float minSimilarity = 0.0f,
-    CancellationToken cancellationToken = default)
+        float[] queryVector,
+        int limit,
+        float minSimilarity = 0.0f,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
@@ -159,7 +175,8 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
 
         // Vectorlite использует специальный SQL синтаксис для ANN search
         // Формат: SELECT ... WHERE rowid IN vectorlite_search(table_name, query_vector, k, ef_search)
-        command.CommandText = $@"
+        command.CommandText =
+            $@"
 SELECT id, content, metadata,
 (1.0 - vectorlite_cosine_distance(vector, @query_vector)) as similarity
 FROM doc_embeddings
@@ -184,14 +201,16 @@ LIMIT @limit
             var metadata = reader.IsDBNull(2) ? null : reader.GetString(2);
             var similarity = reader.GetFloat(3);
 
-            results.Add(new SimilarityResult
-            {
-                Id = id,
-                Content = content,
-                Similarity = similarity,
-                Metadata = metadata,
-                Rank = rank++
-            });
+            results.Add(
+                new SimilarityResult
+                {
+                    Id = id,
+                    Content = content,
+                    Similarity = similarity,
+                    Metadata = metadata,
+                    Rank = rank++,
+                }
+            );
         }
 
         return results;
@@ -267,7 +286,9 @@ LIMIT @limit
     {
         if (!_initialized || _connection == null)
         {
-            throw new InvalidOperationException("Backend not initialized. Call InitializeAsync first.");
+            throw new InvalidOperationException(
+                "Backend not initialized. Call InitializeAsync first."
+            );
         }
     }
 
@@ -275,12 +296,14 @@ LIMIT @limit
     {
         // Проверить существует ли уже HNSW индекс
         using var checkCommand = _connection!.CreateCommand();
-        checkCommand.CommandText = @"
+        checkCommand.CommandText =
+            @"
 SELECT COUNT(*) FROM sqlite_master
 WHERE type='table' AND name LIKE 'vectorlite_index_%'
 ";
 
-        var indexExists = Convert.ToInt32(await checkCommand.ExecuteScalarAsync(cancellationToken)) > 0;
+        var indexExists =
+            Convert.ToInt32(await checkCommand.ExecuteScalarAsync(cancellationToken)) > 0;
 
         if (!indexExists)
         {
@@ -297,7 +320,8 @@ WHERE type='table' AND name LIKE 'vectorlite_index_%'
             // ef_construction=100,
             // metric=cosine
             // );
-            command.CommandText = $@"
+            command.CommandText =
+                $@"
 CREATE VIRTUAL TABLE IF NOT EXISTS vectorlite_index_embeddings USING vectorlite(
 doc_embeddings(vector),
 type=hnsw,
@@ -368,7 +392,25 @@ public sealed record VectorliteConfig
 
     public static VectorliteConfig Default => new();
 
-    public static VectorliteConfig ForSmallCodebase => new() { M = 16, EfConstruction = 100, EfSearch = 50 };
-    public static VectorliteConfig ForMediumCodebase => new() { M = 24, EfConstruction = 150, EfSearch = 75 };
-    public static VectorliteConfig ForLargeCodebase => new() { M = 32, EfConstruction = 200, EfSearch = 100 };
+    public static VectorliteConfig ForSmallCodebase =>
+        new()
+        {
+            M = 16,
+            EfConstruction = 100,
+            EfSearch = 50,
+        };
+    public static VectorliteConfig ForMediumCodebase =>
+        new()
+        {
+            M = 24,
+            EfConstruction = 150,
+            EfSearch = 75,
+        };
+    public static VectorliteConfig ForLargeCodebase =>
+        new()
+        {
+            M = 32,
+            EfConstruction = 200,
+            EfSearch = 100,
+        };
 }

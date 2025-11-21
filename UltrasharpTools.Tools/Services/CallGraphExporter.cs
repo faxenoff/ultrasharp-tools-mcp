@@ -1,5 +1,5 @@
-using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -51,7 +51,9 @@ public static class CallGraphExporter
                 var color = GetConfidenceColor(frame.StackTraceConfidence);
                 var style = frame.MatchesStackTrace ? "filled" : "rounded";
 
-                sb.AppendLine($"  {currentNodeId} [label=\"{EscapeDot(label)}\", fillcolor=\"{color}\", style=\"{style}\"];");
+                sb.AppendLine(
+                    $"  {currentNodeId} [label=\"{EscapeDot(label)}\", fillcolor=\"{color}\", style=\"{style}\"];"
+                );
 
                 // Store mapping
                 nodeMapping[frame.MethodFqn] = currentNodeId;
@@ -73,9 +75,15 @@ public static class CallGraphExporter
         sb.AppendLine("  // Legend");
         sb.AppendLine("  subgraph cluster_legend {");
         sb.AppendLine("    label=\"Confidence Legend\";");
-        sb.AppendLine("    legend_high [label=\"High (>0.8)\", fillcolor=\"lightgreen\", style=\"filled\"];");
-        sb.AppendLine("    legend_medium [label=\"Medium (0.5-0.8)\", fillcolor=\"yellow\", style=\"filled\"];");
-        sb.AppendLine("    legend_low [label=\"Low (<0.5)\", fillcolor=\"lightcoral\", style=\"filled\"];");
+        sb.AppendLine(
+            "    legend_high [label=\"High (>0.8)\", fillcolor=\"lightgreen\", style=\"filled\"];"
+        );
+        sb.AppendLine(
+            "    legend_medium [label=\"Medium (0.5-0.8)\", fillcolor=\"yellow\", style=\"filled\"];"
+        );
+        sb.AppendLine(
+            "    legend_low [label=\"Low (<0.5)\", fillcolor=\"lightcoral\", style=\"filled\"];"
+        );
         sb.AppendLine("  }");
 
         sb.AppendLine("}");
@@ -164,8 +172,12 @@ public static class CallGraphExporter
 
         // Define keys for attributes
         sb.AppendLine("  <key id=\"d0\" for=\"node\" attr.name=\"label\" attr.type=\"string\"/>");
-        sb.AppendLine("  <key id=\"d1\" for=\"node\" attr.name=\"confidence\" attr.type=\"double\"/>");
-        sb.AppendLine("  <key id=\"d2\" for=\"node\" attr.name=\"matchesStackTrace\" attr.type=\"boolean\"/>");
+        sb.AppendLine(
+            "  <key id=\"d1\" for=\"node\" attr.name=\"confidence\" attr.type=\"double\"/>"
+        );
+        sb.AppendLine(
+            "  <key id=\"d2\" for=\"node\" attr.name=\"matchesStackTrace\" attr.type=\"boolean\"/>"
+        );
         sb.AppendLine("  <key id=\"d3\" for=\"edge\" attr.name=\"pathId\" attr.type=\"int\"/>");
         sb.AppendLine();
 
@@ -185,9 +197,13 @@ public static class CallGraphExporter
 
                 // Create node
                 sb.AppendLine($"    <node id=\"{currentNodeId}\">");
-                sb.AppendLine($"      <data key=\"d0\">{EscapeXml(SimplifyMethodName(frame.MethodFqn))}</data>");
+                sb.AppendLine(
+                    $"      <data key=\"d0\">{EscapeXml(SimplifyMethodName(frame.MethodFqn))}</data>"
+                );
                 sb.AppendLine($"      <data key=\"d1\">{frame.StackTraceConfidence}</data>");
-                sb.AppendLine($"      <data key=\"d2\">{frame.MatchesStackTrace.ToString().ToLower()}</data>");
+                sb.AppendLine(
+                    $"      <data key=\"d2\">{frame.MatchesStackTrace.ToString().ToLower()}</data>"
+                );
                 sb.AppendLine("    </node>");
 
                 // Store mapping
@@ -200,7 +216,9 @@ public static class CallGraphExporter
                     var nextNodeId = $"n{nodeId}";
                     var edgeId = $"e{nodeId}";
 
-                    sb.AppendLine($"    <edge id=\"{edgeId}\" source=\"{currentNodeId}\" target=\"{nextNodeId}\">");
+                    sb.AppendLine(
+                        $"    <edge id=\"{edgeId}\" source=\"{currentNodeId}\" target=\"{nextNodeId}\">"
+                    );
                     sb.AppendLine($"      <data key=\"d3\">{path.PathId}</data>");
                     sb.AppendLine("    </edge>");
                 }
@@ -242,17 +260,22 @@ public static class CallGraphExporter
 
     private static string GetConfidenceColor(double confidence)
     {
-        if (confidence > 0.8) return "lightgreen";
-        if (confidence > 0.5) return "yellow";
+        if (confidence > 0.8)
+            return "lightgreen";
+        if (confidence > 0.5)
+            return "yellow";
         return "lightcoral";
     }
 
     private static string GetMermaidStyle(double confidence, bool matches)
     {
-        if (!matches) return "";
+        if (!matches)
+            return "";
 
-        if (confidence > 0.8) return "fill:#90EE90,stroke:#333,stroke-width:2px";
-        if (confidence > 0.5) return "fill:#FFFF00,stroke:#333,stroke-width:2px";
+        if (confidence > 0.8)
+            return "fill:#90EE90,stroke:#333,stroke-width:2px";
+        if (confidence > 0.5)
+            return "fill:#FFFF00,stroke:#333,stroke-width:2px";
         return "fill:#F08080,stroke:#333,stroke-width:2px";
     }
 
@@ -268,11 +291,10 @@ public static class CallGraphExporter
 
     private static string EscapeXml(string text)
     {
-        return text
-        .Replace("&", "&amp;")
-        .Replace("<", "&lt;")
-        .Replace(">", "&gt;")
-        .Replace("\"", "&quot;")
-        .Replace("'", "&apos;");
+        return text.Replace("&", "&amp;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;")
+            .Replace("\"", "&quot;")
+            .Replace("'", "&apos;");
     }
 }

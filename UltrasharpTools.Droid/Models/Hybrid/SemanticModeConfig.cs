@@ -42,7 +42,7 @@ public sealed class SemanticModeConfig
             Enabled = true,
             Availability = AvailabilitySettings.CreateDefault(),
             Enrichment = EnrichmentSettings.CreateDefault(),
-            ToolSettings = CreateDefaultToolSettings()
+            ToolSettings = CreateDefaultToolSettings(),
         };
     }
 
@@ -102,7 +102,7 @@ public sealed class SemanticModeConfig
             ["get_project_structure"] = new() { TopK = 3, Threshold = 0.65 },
             ["find_usages"] = new() { TopK = 8, Threshold = 0.7 },
             ["get_diagnostics"] = new() { TopK = 5, Threshold = 0.7 },
-            ["apply_code_fixes"] = new() { TopK = 5, Threshold = 0.75 }
+            ["apply_code_fixes"] = new() { TopK = 5, Threshold = 0.75 },
         };
     }
 }
@@ -169,13 +169,15 @@ public sealed class AvailabilitySettings
         var validPreferences = new[] { "local", "overlord", "auto" };
         if (!validPreferences.Contains(EmbeddingSourcePreference.ToLowerInvariant()))
         {
-            errorMessage = $"Invalid EmbeddingSourcePreference: {EmbeddingSourcePreference}. Must be one of: {string.Join(", ", validPreferences)}";
+            errorMessage =
+                $"Invalid EmbeddingSourcePreference: {EmbeddingSourcePreference}. Must be one of: {string.Join(", ", validPreferences)}";
             return false;
         }
 
         if (!validPreferences.Contains(SearchSourcePreference.ToLowerInvariant()))
         {
-            errorMessage = $"Invalid SearchSourcePreference: {SearchSourcePreference}. Must be one of: {string.Join(", ", validPreferences)}";
+            errorMessage =
+                $"Invalid SearchSourcePreference: {SearchSourcePreference}. Must be one of: {string.Join(", ", validPreferences)}";
             return false;
         }
 

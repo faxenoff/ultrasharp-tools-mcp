@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Services;
 
 /// <summary>
@@ -13,20 +11,22 @@ public class CodebaseSizeDetector
         public long TotalLines { get; set; }
         public long TotalBytes { get; set; }
 
-        public string SizeCategory => TotalFiles switch
-        {
-            < 1000 => "small",
-            < 10000 => "medium",
-            _ => "large"
-        };
+        public string SizeCategory =>
+            TotalFiles switch
+            {
+                < 1000 => "small",
+                < 10000 => "medium",
+                _ => "large",
+            };
 
-        public string RecommendedVectorStore => SizeCategory switch
-        {
-            "small" => "sqlite-vec",
-            "medium" => "sqlite-vec",
-            "large" => "vectorlite",
-            _ => "sqlite-vec"
-        };
+        public string RecommendedVectorStore =>
+            SizeCategory switch
+            {
+                "small" => "sqlite-vec",
+                "medium" => "sqlite-vec",
+                "large" => "vectorlite",
+                _ => "sqlite-vec",
+            };
     }
 
     /// <summary>
@@ -34,7 +34,8 @@ public class CodebaseSizeDetector
     /// </summary>
     public async Task<SizeStats> AnalyzeAsync(
         Solution solution,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var stats = new SizeStats();
 

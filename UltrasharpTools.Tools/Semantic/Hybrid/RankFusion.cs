@@ -27,9 +27,10 @@ public static class RankFusion
     /// <param name="k">RRF константа (default: 60).</param>
     /// <returns>Объединённый список с RRF scores.</returns>
     public static List<RrfResult<T>> ReciprocalRankFusion<T>(
-    IEnumerable<List<T>> rankedLists,
-    Func<T, string> idExtractor,
-    int k = 60)
+        IEnumerable<List<T>> rankedLists,
+        Func<T, string> idExtractor,
+        int k = 60
+    )
     {
         if (k < 0)
         {
@@ -54,7 +55,7 @@ public static class RankFusion
                         Id = id,
                         Item = item,
                         RrfScore = 0.0,
-                        RanksByList = new Dictionary<int, int>()
+                        RanksByList = new Dictionary<int, int>(),
                     };
                     rrfScores[id] = accumulator;
                 }
@@ -69,17 +70,17 @@ public static class RankFusion
         }
 
         // Конвертировать в результаты и сортировать по RRF score (desc)
-        var results = rrfScores.Values
-        .Select(acc => new RrfResult<T>
-        {
-            Id = acc.Id,
-            Item = acc.Item,
-            RrfScore = acc.RrfScore,
-            RanksByList = acc.RanksByList,
-            AppearanceCount = acc.RanksByList.Count
-        })
-        .OrderByDescending(r => r.RrfScore)
-        .ToList();
+        var results = rrfScores
+            .Values.Select(acc => new RrfResult<T>
+            {
+                Id = acc.Id,
+                Item = acc.Item,
+                RrfScore = acc.RrfScore,
+                RanksByList = acc.RanksByList,
+                AppearanceCount = acc.RanksByList.Count,
+            })
+            .OrderByDescending(r => r.RrfScore)
+            .ToList();
 
         // Присвоить финальные ranks
         for (int i = 0; i < results.Count; i++)
@@ -99,9 +100,10 @@ public static class RankFusion
     /// <param name="k">RRF константа.</param>
     /// <returns>Объединённый список с weighted RRF scores.</returns>
     public static List<RrfResult<T>> WeightedReciprocalRankFusion<T>(
-    IEnumerable<(List<T> List, double Weight)> rankedLists,
-    Func<T, string> idExtractor,
-    int k = 60)
+        IEnumerable<(List<T> List, double Weight)> rankedLists,
+        Func<T, string> idExtractor,
+        int k = 60
+    )
     {
         if (k < 0)
         {
@@ -139,7 +141,7 @@ public static class RankFusion
                         Id = id,
                         Item = item,
                         RrfScore = 0.0,
-                        RanksByList = new Dictionary<int, int>()
+                        RanksByList = new Dictionary<int, int>(),
                     };
                     rrfScores[id] = accumulator;
                 }
@@ -152,17 +154,17 @@ public static class RankFusion
         }
 
         // Конвертировать в результаты
-        var results = rrfScores.Values
-        .Select(acc => new RrfResult<T>
-        {
-            Id = acc.Id,
-            Item = acc.Item,
-            RrfScore = acc.RrfScore,
-            RanksByList = acc.RanksByList,
-            AppearanceCount = acc.RanksByList.Count
-        })
-        .OrderByDescending(r => r.RrfScore)
-        .ToList();
+        var results = rrfScores
+            .Values.Select(acc => new RrfResult<T>
+            {
+                Id = acc.Id,
+                Item = acc.Item,
+                RrfScore = acc.RrfScore,
+                RanksByList = acc.RanksByList,
+                AppearanceCount = acc.RanksByList.Count,
+            })
+            .OrderByDescending(r => r.RrfScore)
+            .ToList();
 
         // Присвоить финальные ranks
         for (int i = 0; i < results.Count; i++)
@@ -178,9 +180,10 @@ public static class RankFusion
     /// Полезно когда scores имеют разные масштабы.
     /// </summary>
     public static List<T> NormalizeScores<T>(
-    List<T> items,
-    Func<T, double> scoreExtractor,
-    Func<T, double, T> scoreUpdater)
+        List<T> items,
+        Func<T, double> scoreExtractor,
+        Func<T, double, T> scoreUpdater
+    )
     {
         if (items.Count == 0)
         {
@@ -197,12 +200,14 @@ public static class RankFusion
             return items.Select(item => scoreUpdater(item, 1.0)).ToList();
         }
 
-        return items.Select(item =>
-        {
-            var score = scoreExtractor(item);
-            var normalized = (score - minScore) / (maxScore - minScore);
-            return scoreUpdater(item, normalized);
-        }).ToList();
+        return items
+            .Select(item =>
+            {
+                var score = scoreExtractor(item);
+                var normalized = (score - minScore) / (maxScore - minScore);
+                return scoreUpdater(item, normalized);
+            })
+            .ToList();
     }
 
     // Private helpers

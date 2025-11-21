@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Interfaces;
 
 /// <summary>
@@ -11,9 +9,9 @@ public interface IPdbSymbolResolver
     /// Resolves a sequence point from stack trace information.
     /// </summary>
     SequencePointInfo? ResolveSequencePoint(
-    string assemblyPath,
-    string methodName,
-    int? lineNumber = null
+        string assemblyPath,
+        string methodName,
+        int? lineNumber = null
     );
 
     /// <summary>

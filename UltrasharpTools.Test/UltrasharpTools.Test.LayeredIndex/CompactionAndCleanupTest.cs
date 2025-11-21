@@ -29,9 +29,9 @@ public class CompactionAndCleanupTest
 
         // Configure layered indexing with lower thresholds for testing
         services.WithLayeredIndexing(
-            maxBranchDeltas: 5,  // Low threshold to trigger cleanup faster
+            maxBranchDeltas: 5, // Low threshold to trigger cleanup faster
             enablePersistence: true,
-            deltaCompactionThreshold: 50  // Low threshold to trigger compaction
+            deltaCompactionThreshold: 50 // Low threshold to trigger compaction
         );
 
         var serviceProvider = services.BuildServiceProvider();
@@ -56,7 +56,10 @@ public class CompactionAndCleanupTest
                 return;
             }
 
-            var currentBranch = await gitService.GetCurrentBranchAsync(solutionPath, CancellationToken.None);
+            var currentBranch = await gitService.GetCurrentBranchAsync(
+                solutionPath,
+                CancellationToken.None
+            );
             logger.LogInformation("Current branch: {Branch}", currentBranch);
 
             // Test 1: Create working delta with multiple symbols
@@ -70,7 +73,10 @@ public class CompactionAndCleanupTest
             );
 
             var symbolsToUpdate = searchResults.Take(100).ToList();
-            logger.LogInformation("Found {Count} symbols to add to working delta", symbolsToUpdate.Count);
+            logger.LogInformation(
+                "Found {Count} symbols to add to working delta",
+                symbolsToUpdate.Count
+            );
 
             var startTime = DateTimeOffset.UtcNow;
 
@@ -86,13 +92,19 @@ public class CompactionAndCleanupTest
             }
 
             var elapsed = DateTimeOffset.UtcNow - startTime;
-            logger.LogInformation("✅ Added {Count} symbols to working delta in {Time}ms",
-                symbolsToUpdate.Count, elapsed.TotalMilliseconds);
+            logger.LogInformation(
+                "✅ Added {Count} symbols to working delta in {Time}ms",
+                symbolsToUpdate.Count,
+                elapsed.TotalMilliseconds
+            );
 
             // Test 2: Promote to branch delta and test compaction
             logger.LogInformation("=== Test 7.6.2: Delta Compaction Service ===");
 
-            var currentCommitSha = await gitService.GetCurrentCommitShaAsync(solutionPath, CancellationToken.None);
+            var currentCommitSha = await gitService.GetCurrentCommitShaAsync(
+                solutionPath,
+                CancellationToken.None
+            );
 
             startTime = DateTimeOffset.UtcNow;
             await layeredIndex.PromoteWorkingToBranchAsync(
@@ -103,10 +115,15 @@ public class CompactionAndCleanupTest
             );
             elapsed = DateTimeOffset.UtcNow - startTime;
 
-            logger.LogInformation("✅ Promoted working delta to branch delta in {Time}ms", elapsed.TotalMilliseconds);
+            logger.LogInformation(
+                "✅ Promoted working delta to branch delta in {Time}ms",
+                elapsed.TotalMilliseconds
+            );
 
             // Create compaction service manually (not from DI)
-            var compactionLogger = serviceProvider.GetRequiredService<ILogger<DeltaCompactionService>>();
+            var compactionLogger = serviceProvider.GetRequiredService<
+                ILogger<DeltaCompactionService>
+            >();
             var compactionService = new DeltaCompactionService(
                 layeredIndex,
                 gitService,
@@ -122,21 +139,33 @@ public class CompactionAndCleanupTest
             );
             elapsed = DateTimeOffset.UtcNow - startTime;
 
-            logger.LogInformation("Branch {Branch} needs compaction: {NeedsCompaction} (checked in {Time}ms)",
-                currentBranch, needsCompaction, elapsed.TotalMilliseconds);
+            logger.LogInformation(
+                "Branch {Branch} needs compaction: {NeedsCompaction} (checked in {Time}ms)",
+                currentBranch,
+                needsCompaction,
+                elapsed.TotalMilliseconds
+            );
 
             // Test compacting all large deltas
             startTime = DateTimeOffset.UtcNow;
-            await compactionService.CompactAllLargeDeltasAsync(solutionPath, CancellationToken.None);
+            await compactionService.CompactAllLargeDeltasAsync(
+                solutionPath,
+                CancellationToken.None
+            );
             elapsed = DateTimeOffset.UtcNow - startTime;
 
-            logger.LogInformation("✅ CompactAllLargeDeltasAsync completed in {Time}ms", elapsed.TotalMilliseconds);
+            logger.LogInformation(
+                "✅ CompactAllLargeDeltasAsync completed in {Time}ms",
+                elapsed.TotalMilliseconds
+            );
 
             // Test 3: Orphaned Delta Cleanup
             logger.LogInformation("=== Test 7.6.3: Orphaned Delta Cleanup Service ===");
 
             // Create cleanup service manually (not from DI)
-            var cleanupLogger = serviceProvider.GetRequiredService<ILogger<OrphanedDeltaCleanupService>>();
+            var cleanupLogger = serviceProvider.GetRequiredService<
+                ILogger<OrphanedDeltaCleanupService>
+            >();
             var cleanupService = new OrphanedDeltaCleanupService(
                 gitService,
                 symbolCacheManager: null, // Will skip cache cleanup
@@ -150,7 +179,10 @@ public class CompactionAndCleanupTest
                 CancellationToken.None
             );
 
-            logger.LogInformation("Found {Count} orphaned branches in cache", orphanedBranches.Count);
+            logger.LogInformation(
+                "Found {Count} orphaned branches in cache",
+                orphanedBranches.Count
+            );
             foreach (var branch in orphanedBranches.Take(10))
             {
                 logger.LogInformation("  - Orphaned: {Branch}", branch);
@@ -160,17 +192,26 @@ public class CompactionAndCleanupTest
             {
                 // Test cleanup
                 startTime = DateTimeOffset.UtcNow;
-                await cleanupService.CleanupOrphanedDeltasAsync(solutionPath, CancellationToken.None);
+                await cleanupService.CleanupOrphanedDeltasAsync(
+                    solutionPath,
+                    CancellationToken.None
+                );
                 elapsed = DateTimeOffset.UtcNow - startTime;
 
-                logger.LogInformation("✅ Orphaned deltas cleaned up in {Time}ms", elapsed.TotalMilliseconds);
+                logger.LogInformation(
+                    "✅ Orphaned deltas cleaned up in {Time}ms",
+                    elapsed.TotalMilliseconds
+                );
 
                 // Verify cleanup
                 var remainingOrphaned = await cleanupService.GetOrphanedBranchesAsync(
                     solutionPath,
                     CancellationToken.None
                 );
-                logger.LogInformation("Orphaned branches after cleanup: {Count}", remainingOrphaned.Count);
+                logger.LogInformation(
+                    "Orphaned branches after cleanup: {Count}",
+                    remainingOrphaned.Count
+                );
             }
             else
             {
@@ -181,7 +222,9 @@ public class CompactionAndCleanupTest
             logger.LogInformation("=== Test 7.6.4: Background Cleanup Scheduler ===");
 
             // Create scheduler manually (not from DI since it needs solution path)
-            var schedulerLogger = serviceProvider.GetRequiredService<ILogger<BackgroundCleanupScheduler>>();
+            var schedulerLogger = serviceProvider.GetRequiredService<
+                ILogger<BackgroundCleanupScheduler>
+            >();
             var scheduler = new BackgroundCleanupScheduler(
                 compactionService,
                 cleanupService,
@@ -197,8 +240,13 @@ public class CompactionAndCleanupTest
             // Start scheduler (it runs in background)
             scheduler.Start();
 
-            logger.LogInformation("✅ Background scheduler started in {Time}ms", (DateTimeOffset.UtcNow - startTime).TotalMilliseconds);
-            logger.LogInformation("Scheduler will run: Compaction every 5s, Cleanup every 10s (test intervals)");
+            logger.LogInformation(
+                "✅ Background scheduler started in {Time}ms",
+                (DateTimeOffset.UtcNow - startTime).TotalMilliseconds
+            );
+            logger.LogInformation(
+                "Scheduler will run: Compaction every 5s, Cleanup every 10s (test intervals)"
+            );
             logger.LogInformation("Scheduler running: {IsRunning}", scheduler.IsRunning);
 
             // Wait for at least one compaction cycle
@@ -226,9 +274,11 @@ public class CompactionAndCleanupTest
                 {
                     var fileInfo = new FileInfo(file);
                     totalSize += fileInfo.Length;
-                    logger.LogInformation("  - {Name}: {Size} KB",
+                    logger.LogInformation(
+                        "  - {Name}: {Size} KB",
                         Path.GetFileName(file),
-                        fileInfo.Length / 1024);
+                        fileInfo.Length / 1024
+                    );
                 }
 
                 logger.LogInformation("Total cache size: {Size} KB", totalSize / 1024);

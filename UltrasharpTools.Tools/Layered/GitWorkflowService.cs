@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -21,10 +20,11 @@ public class GitWorkflowService
     private string? _currentClientId;
 
     public GitWorkflowService(
-    IGitService gitService,
-    ILayeredIndex? layeredSymbolIndex = null,
-    LayeredVectorStore? layeredVectorStore = null,
-    ILogger<GitWorkflowService>? logger = null)
+        IGitService gitService,
+        ILayeredIndex? layeredSymbolIndex = null,
+        LayeredVectorStore? layeredVectorStore = null,
+        ILogger<GitWorkflowService>? logger = null
+    )
     {
         _gitService = gitService ?? throw new ArgumentNullException(nameof(gitService));
         _layeredSymbolIndex = layeredSymbolIndex;
@@ -32,8 +32,10 @@ public class GitWorkflowService
         _logger = logger ?? NullLogger<GitWorkflowService>.Instance;
 
         _logger.LogInformation(
-        "GitWorkflowService initialized with symbol index: {HasSymbols}, vector store: {HasVectors}",
-        layeredSymbolIndex != null, layeredVectorStore != null);
+            "GitWorkflowService initialized with symbol index: {HasSymbols}, vector store: {HasVectors}",
+            layeredSymbolIndex != null,
+            layeredVectorStore != null
+        );
     }
 
     /// <summary>
@@ -52,17 +54,21 @@ public class GitWorkflowService
     /// Call this after a successful git commit.
     /// </summary>
     public async Task OnCommitAsync(
-    string commitSha,
-    string? clientId = null,
-    string? branch = null,
-    CancellationToken cancellationToken = default)
+        string commitSha,
+        string? clientId = null,
+        string? branch = null,
+        CancellationToken cancellationToken = default
+    )
     {
         clientId ??= _currentClientId ?? throw new InvalidOperationException("Client ID not set");
         branch ??= _currentBranch;
 
         _logger.LogInformation(
-        "Processing git commit for client {ClientId} on branch {Branch}, commit {CommitSha}",
-        clientId, branch, commitSha);
+            "Processing git commit for client {ClientId} on branch {Branch}, commit {CommitSha}",
+            clientId,
+            branch,
+            commitSha
+        );
 
         // Promote symbol index working delta to branch delta
         if (_layeredSymbolIndex != null)
@@ -70,13 +76,24 @@ public class GitWorkflowService
             try
             {
                 await _layeredSymbolIndex.PromoteWorkingToBranchAsync(
-                clientId, branch, commitSha, cancellationToken);
+                    clientId,
+                    branch,
+                    commitSha,
+                    cancellationToken
+                );
 
-                _logger.LogInformation("Promoted symbol index working delta to branch delta: {Branch}", branch);
+                _logger.LogInformation(
+                    "Promoted symbol index working delta to branch delta: {Branch}",
+                    branch
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to promote symbol index working delta for branch {Branch}", branch);
+                _logger.LogError(
+                    ex,
+                    "Failed to promote symbol index working delta for branch {Branch}",
+                    branch
+                );
                 throw;
             }
         }
@@ -87,18 +104,32 @@ public class GitWorkflowService
             try
             {
                 await _layeredVectorStore.PromoteWorkingToBranchAsync(
-                clientId, branch, commitSha, cancellationToken);
+                    clientId,
+                    branch,
+                    commitSha,
+                    cancellationToken
+                );
 
-                _logger.LogInformation("Promoted vector store working delta to branch delta: {Branch}", branch);
+                _logger.LogInformation(
+                    "Promoted vector store working delta to branch delta: {Branch}",
+                    branch
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to promote vector store working delta for branch {Branch}", branch);
+                _logger.LogError(
+                    ex,
+                    "Failed to promote vector store working delta for branch {Branch}",
+                    branch
+                );
                 throw;
             }
         }
 
-        _logger.LogInformation("Git commit workflow completed successfully for commit {CommitSha}", commitSha);
+        _logger.LogInformation(
+            "Git commit workflow completed successfully for commit {CommitSha}",
+            commitSha
+        );
     }
 
     /// <summary>
@@ -106,16 +137,19 @@ public class GitWorkflowService
     /// Call this after a successful git pull.
     /// </summary>
     public async Task OnPullAsync(
-    string? clientId = null,
-    string? branch = null,
-    CancellationToken cancellationToken = default)
+        string? clientId = null,
+        string? branch = null,
+        CancellationToken cancellationToken = default
+    )
     {
         clientId ??= _currentClientId ?? throw new InvalidOperationException("Client ID not set");
         branch ??= _currentBranch;
 
         _logger.LogInformation(
-        "Processing git pull for client {ClientId} on branch {Branch}",
-        clientId, branch);
+            "Processing git pull for client {ClientId} on branch {Branch}",
+            clientId,
+            branch
+        );
 
         // Note: Working deltas (Layer 2) are automatically preserved in memory
         // We only need to recompute branch deltas (Layer 1) from updated git history
@@ -128,11 +162,18 @@ public class GitWorkflowService
                 // Force reload branch delta (will recompute from git diff)
                 await _layeredSymbolIndex.EnsureBranchDeltaAsync(branch, cancellationToken);
 
-                _logger.LogInformation("Recomputed symbol index branch delta after pull: {Branch}", branch);
+                _logger.LogInformation(
+                    "Recomputed symbol index branch delta after pull: {Branch}",
+                    branch
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to recompute symbol index branch delta for branch {Branch}", branch);
+                _logger.LogWarning(
+                    ex,
+                    "Failed to recompute symbol index branch delta for branch {Branch}",
+                    branch
+                );
                 // Non-critical - working delta is still preserved
             }
         }
@@ -145,11 +186,18 @@ public class GitWorkflowService
                 // Force reload vector delta
                 await _layeredVectorStore.EnsureBranchDeltaAsync(branch, cancellationToken);
 
-                _logger.LogInformation("Recomputed vector store branch delta after pull: {Branch}", branch);
+                _logger.LogInformation(
+                    "Recomputed vector store branch delta after pull: {Branch}",
+                    branch
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to recompute vector store branch delta for branch {Branch}", branch);
+                _logger.LogWarning(
+                    ex,
+                    "Failed to recompute vector store branch delta for branch {Branch}",
+                    branch
+                );
                 // Non-critical - working delta is still preserved
             }
         }
@@ -162,27 +210,36 @@ public class GitWorkflowService
     /// Call this before switching branches.
     /// </summary>
     public async Task OnBranchSwitchAsync(
-    string newBranch,
-    string? clientId = null,
-    bool forceSwitch = false,
-    CancellationToken cancellationToken = default)
+        string newBranch,
+        string? clientId = null,
+        bool forceSwitch = false,
+        CancellationToken cancellationToken = default
+    )
     {
         clientId ??= _currentClientId ?? throw new InvalidOperationException("Client ID not set");
         var oldBranch = _currentBranch;
 
         _logger.LogInformation(
-        "Processing branch switch for client {ClientId}: {OldBranch} → {NewBranch}",
-        clientId, oldBranch, newBranch);
+            "Processing branch switch for client {ClientId}: {OldBranch} → {NewBranch}",
+            clientId,
+            oldBranch,
+            newBranch
+        );
 
         // Validate no uncommitted changes in working delta (unless force)
         if (!forceSwitch)
         {
-            var hasUncommittedChanges = await HasUncommittedChangesAsync(clientId, oldBranch, cancellationToken);
+            var hasUncommittedChanges = await HasUncommittedChangesAsync(
+                clientId,
+                oldBranch,
+                cancellationToken
+            );
 
             if (hasUncommittedChanges)
             {
-                var message = $"Cannot switch from {oldBranch} to {newBranch}: uncommitted changes exist. " +
-                "Commit or stash changes first, or use forceSwitch=true to discard.";
+                var message =
+                    $"Cannot switch from {oldBranch} to {newBranch}: uncommitted changes exist. "
+                    + "Commit or stash changes first, or use forceSwitch=true to discard.";
                 _logger.LogWarning(message);
                 throw new InvalidOperationException(message);
             }
@@ -190,8 +247,9 @@ public class GitWorkflowService
         else
         {
             _logger.LogWarning(
-            "Force switching branches - discarding uncommitted changes in {OldBranch}",
-            oldBranch);
+                "Force switching branches - discarding uncommitted changes in {OldBranch}",
+                oldBranch
+            );
         }
 
         // Clear working delta for old branch (if force or no changes)
@@ -202,35 +260,50 @@ public class GitWorkflowService
 
         if (_layeredVectorStore != null)
         {
-            await _layeredVectorStore.ClearWorkingDeltaAsync(clientId, oldBranch, cancellationToken);
+            await _layeredVectorStore.ClearWorkingDeltaAsync(
+                clientId,
+                oldBranch,
+                cancellationToken
+            );
         }
 
         // Load or create branch delta for new branch
         if (_layeredSymbolIndex != null)
         {
             await _layeredSymbolIndex.EnsureBranchDeltaAsync(newBranch, cancellationToken);
-            _logger.LogInformation("Loaded symbol index branch delta for new branch: {NewBranch}", newBranch);
+            _logger.LogInformation(
+                "Loaded symbol index branch delta for new branch: {NewBranch}",
+                newBranch
+            );
         }
 
         if (_layeredVectorStore != null)
         {
             await _layeredVectorStore.EnsureBranchDeltaAsync(newBranch, cancellationToken);
-            _logger.LogInformation("Loaded vector store branch delta for new branch: {NewBranch}", newBranch);
+            _logger.LogInformation(
+                "Loaded vector store branch delta for new branch: {NewBranch}",
+                newBranch
+            );
         }
 
         // Update current branch
         _currentBranch = newBranch;
 
-        _logger.LogInformation("Branch switch completed successfully: {OldBranch} → {NewBranch}", oldBranch, newBranch);
+        _logger.LogInformation(
+            "Branch switch completed successfully: {OldBranch} → {NewBranch}",
+            oldBranch,
+            newBranch
+        );
     }
 
     /// <summary>
     /// Checks if client has uncommitted changes in working delta.
     /// </summary>
     public async Task<bool> HasUncommittedChangesAsync(
-    string? clientId = null,
-    string? branch = null,
-    CancellationToken cancellationToken = default)
+        string? clientId = null,
+        string? branch = null,
+        CancellationToken cancellationToken = default
+    )
     {
         clientId ??= _currentClientId ?? throw new InvalidOperationException("Client ID not set");
         branch ??= _currentBranch;
@@ -260,8 +333,9 @@ public class GitWorkflowService
     /// Clears all working deltas for a client (useful for cleanup/reset).
     /// </summary>
     public async Task ClearAllWorkingDeltasAsync(
-    string? clientId = null,
-    CancellationToken cancellationToken = default)
+        string? clientId = null,
+        CancellationToken cancellationToken = default
+    )
     {
         clientId ??= _currentClientId ?? throw new InvalidOperationException("Client ID not set");
 
@@ -274,7 +348,11 @@ public class GitWorkflowService
 
         if (_layeredVectorStore != null)
         {
-            await _layeredVectorStore.ClearWorkingDeltaAsync(clientId, _currentBranch, cancellationToken);
+            await _layeredVectorStore.ClearWorkingDeltaAsync(
+                clientId,
+                _currentBranch,
+                cancellationToken
+            );
         }
 
         _logger.LogInformation("Cleared all working deltas for client {ClientId}", clientId);

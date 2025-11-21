@@ -1,7 +1,4 @@
-
-
 using ModelContextProtocol;
-
 using UltrasharpTools.Tools.Mcp;
 using UltrasharpTools.Tools.Semantic;
 
@@ -19,96 +16,163 @@ public static partial class PatternSearchTools
     /// <summary>
     /// Advanced pattern search with 4 modes: entity (name/type), content (method bodies), semantic (ML), hybrid (combined).
     /// </summary>
-    [McpServerTool(Name = "pattern_search", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Advanced search with 4 modes: 'entity' (by name/type using regex), 'content' (inside method bodies), " +
-                 "'semantic' (ML-powered similarity), 'hybrid' (combines all with intelligent ranking). " +
-                 "Entity mode uses Roslyn symbols, Content mode searches code text, Semantic uses embeddings, " +
-                 "Hybrid combines and ranks results by relevance.")]
+    [McpServerTool(
+        Name = "pattern_search",
+        Idempotent = true,
+        ReadOnly = true,
+        Destructive = false,
+        OpenWorld = false
+    )]
+    [Description(
+        "Advanced search with 4 modes: 'entity' (by name/type using regex), 'content' (inside method bodies), "
+            + "'semantic' (ML-powered similarity), 'hybrid' (combines all with intelligent ranking). "
+            + "Entity mode uses Roslyn symbols, Content mode searches code text, Semantic uses embeddings, "
+            + "Hybrid combines and ranks results by relevance."
+    )]
     public static async Task<object> PatternSearch(
         ISolutionManager solutionManager,
         SemanticSearchService? semanticService,
         ILogger<PatternSearchToolsLogCategory> logger,
-
-        [Description("Search pattern (regex for entity/content, natural language for semantic/hybrid)")]
-        string pattern,
-
-        [Description("Search mode: 'entity', 'content', 'semantic', or 'hybrid' (default). If semantic mode is not available, defaults to 'entity'.")]
-        string mode = "hybrid",
-
+        [Description(
+            "Search pattern (regex for entity/content, natural language for semantic/hybrid)"
+        )]
+            string pattern,
+        [Description(
+            "Search mode: 'entity', 'content', 'semantic', or 'hybrid' (default). If semantic mode is not available, defaults to 'entity'."
+        )]
+            string mode = "hybrid",
         [Description("Entity type filter (class, interface, method, property, field, enum, etc.)")]
-        string[]? entityTypes = null,
-
-        [Description("Namespace filter (e.g., 'MyApp.Services')")]
-        string? namespaceFilter = null,
-
-        [Description("Maximum results to return (1-100, default: 20)")]
-        int limit = 20,
-
+            string[]? entityTypes = null,
+        [Description("Namespace filter (e.g., 'MyApp.Services')")] string? namespaceFilter = null,
+        [Description("Maximum results to return (1-100, default: 20)")] int limit = 20,
         [Description("Minimum similarity for semantic/hybrid modes (0.0-1.0, default: 0.7)")]
-        float minSimilarity = 0.7f,
-
-        CancellationToken cancellationToken = default)
+            float minSimilarity = 0.7f,
+        CancellationToken cancellationToken = default
+    )
     {
-        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
-        {
-            logger.LogDebug("PatternSearch invoked: pattern='{Pattern}', mode='{Mode}', semanticService: {ServiceStatus}",
-                pattern, mode,
-                semanticService == null ? "NULL" : (semanticService.IsAvailable ? "AVAILABLE" : "NOT AVAILABLE"));
-
-            ErrorHandlingHelpers.ValidateStringParameter(pattern, nameof(pattern), logger);
-            await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(solutionManager, logger, nameof(PatternSearch), cancellationToken);
-
-            if (limit < 1 || limit > 100)
+        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
+            async () =>
             {
-                throw new McpException("limit must be between 1 and 100");
-            }
+                logger.LogDebug(
+                    "PatternSearch invoked: pattern='{Pattern}', mode='{Mode}', semanticService: {ServiceStatus}",
+                    pattern,
+                    mode,
+                    semanticService == null
+                        ? "NULL"
+                        : (semanticService.IsAvailable ? "AVAILABLE" : "NOT AVAILABLE")
+                );
 
-            if (minSimilarity < 0.0f || minSimilarity > 1.0f)
-            {
-                throw new McpException("minSimilarity must be between 0.0 and 1.0");
-            }
+                ErrorHandlingHelpers.ValidateStringParameter(pattern, nameof(pattern), logger);
+                await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(
+                    solutionManager,
+                    logger,
+                    nameof(PatternSearch),
+                    cancellationToken
+                );
 
-            // Fallback to entity mode if hybrid/semantic requested but semantic service unavailable
-            var effectiveMode = mode;
-            var isSemanticAvailable = semanticService != null && semanticService.IsAvailable;
+                if (limit < 1 || limit > 100)
+                {
+                    throw new McpException("limit must be between 1 and 100");
+                }
 
-            if ((mode.Equals("hybrid", StringComparison.OrdinalIgnoreCase) ||
-                 mode.Equals("semantic", StringComparison.OrdinalIgnoreCase)) &&
-                !isSemanticAvailable)
-            {
-                effectiveMode = "entity";
-                logger.LogInformation("Semantic mode not available (semantic service: {ServiceStatus}), falling back to entity mode",
-                    semanticService == null ? "NULL" : "NOT AVAILABLE");
-            }
+                if (minSimilarity < 0.0f || minSimilarity > 1.0f)
+                {
+                    throw new McpException("minSimilarity must be between 0.0 and 1.0");
+                }
 
-            logger.LogInformation("Pattern search: mode={Mode} (requested: {RequestedMode}), pattern='{Pattern}', limit={Limit}",
-                effectiveMode, mode, pattern, limit);
+                // Fallback to entity mode if hybrid/semantic requested but semantic service unavailable
+                var effectiveMode = mode;
+                var isSemanticAvailable = semanticService != null && semanticService.IsAvailable;
 
-            var solution = solutionManager.CurrentWorkspace!.CurrentSolution;
-            logger.LogDebug("Solution retrieved: {SolutionPath}, Projects count: {ProjectsCount}",
-                solution.FilePath ?? "(in-memory)", solution.Projects.Count());
+                if (
+                    (
+                        mode.Equals("hybrid", StringComparison.OrdinalIgnoreCase)
+                        || mode.Equals("semantic", StringComparison.OrdinalIgnoreCase)
+                    ) && !isSemanticAvailable
+                )
+                {
+                    effectiveMode = "entity";
+                    logger.LogInformation(
+                        "Semantic mode not available (semantic service: {ServiceStatus}), falling back to entity mode",
+                        semanticService == null ? "NULL" : "NOT AVAILABLE"
+                    );
+                }
 
-            switch (effectiveMode.ToLowerInvariant())
-            {
-                case "entity":
-                    return await SearchEntityMode(solution, pattern, entityTypes, namespaceFilter, limit, logger, cancellationToken);
+                logger.LogInformation(
+                    "Pattern search: mode={Mode} (requested: {RequestedMode}), pattern='{Pattern}', limit={Limit}",
+                    effectiveMode,
+                    mode,
+                    pattern,
+                    limit
+                );
 
-                case "content":
-                    return await SearchContentMode(solution, pattern, entityTypes, namespaceFilter, limit, logger, cancellationToken);
+                var solution = solutionManager.CurrentWorkspace!.CurrentSolution;
+                logger.LogDebug(
+                    "Solution retrieved: {SolutionPath}, Projects count: {ProjectsCount}",
+                    solution.FilePath ?? "(in-memory)",
+                    solution.Projects.Count()
+                );
 
-                case "semantic":
-                    // semantic mode - semanticService guaranteed not null due to fallback logic above
-                    return await SearchSemanticMode(semanticService!, pattern, entityTypes, limit, minSimilarity, logger, cancellationToken);
+                switch (effectiveMode.ToLowerInvariant())
+                {
+                    case "entity":
+                        return await SearchEntityMode(
+                            solution,
+                            pattern,
+                            entityTypes,
+                            namespaceFilter,
+                            limit,
+                            logger,
+                            cancellationToken
+                        );
 
-                case "hybrid":
-                    // hybrid mode - semanticService guaranteed not null due to fallback logic above
-                    return await SearchHybridMode(solution, semanticService!, pattern, entityTypes, namespaceFilter, limit, minSimilarity, logger, cancellationToken);
+                    case "content":
+                        return await SearchContentMode(
+                            solution,
+                            pattern,
+                            entityTypes,
+                            namespaceFilter,
+                            limit,
+                            logger,
+                            cancellationToken
+                        );
 
-                default:
-                    throw new McpException($"Unknown search mode: {effectiveMode}. Use 'entity', 'content', 'semantic', or 'hybrid'.");
-            }
+                    case "semantic":
+                        // semantic mode - semanticService guaranteed not null due to fallback logic above
+                        return await SearchSemanticMode(
+                            semanticService!,
+                            pattern,
+                            entityTypes,
+                            limit,
+                            minSimilarity,
+                            logger,
+                            cancellationToken
+                        );
 
-        }, logger, nameof(PatternSearch), cancellationToken);
+                    case "hybrid":
+                        // hybrid mode - semanticService guaranteed not null due to fallback logic above
+                        return await SearchHybridMode(
+                            solution,
+                            semanticService!,
+                            pattern,
+                            entityTypes,
+                            namespaceFilter,
+                            limit,
+                            minSimilarity,
+                            logger,
+                            cancellationToken
+                        );
+
+                    default:
+                        throw new McpException(
+                            $"Unknown search mode: {effectiveMode}. Use 'entity', 'content', 'semantic', or 'hybrid'."
+                        );
+                }
+            },
+            logger,
+            nameof(PatternSearch),
+            cancellationToken
+        );
     }
 
     // ==================== Entity Mode ====================
@@ -120,10 +184,15 @@ public static partial class PatternSearchTools
         string? namespaceFilter,
         int limit,
         ILogger<PatternSearchToolsLogCategory> logger,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        logger.LogDebug("Entity mode search started: pattern='{Pattern}', entityTypes={EntityTypes}, namespaceFilter={NamespaceFilter}",
-            pattern, entityTypes != null ? string.Join(",", entityTypes) : "(all)", namespaceFilter ?? "(all)");
+        logger.LogDebug(
+            "Entity mode search started: pattern='{Pattern}', entityTypes={EntityTypes}, namespaceFilter={NamespaceFilter}",
+            pattern,
+            entityTypes != null ? string.Join(",", entityTypes) : "(all)",
+            namespaceFilter ?? "(all)"
+        );
 
         var regex = new Regex(pattern, RegexOptions.IgnoreCase);
         var results = new List<EntityMatch>();
@@ -131,15 +200,18 @@ public static partial class PatternSearchTools
         foreach (var project in solution.Projects)
         {
             var compilation = await project.GetCompilationAsync(cancellationToken);
-            if (compilation == null) continue;
+            if (compilation == null)
+                continue;
 
             foreach (var document in project.Documents)
             {
-                if (!document.SupportsSyntaxTree) continue;
+                if (!document.SupportsSyntaxTree)
+                    continue;
 
                 var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
                 var root = await document.GetSyntaxRootAsync(cancellationToken);
-                if (semanticModel == null || root == null) continue;
+                if (semanticModel == null || root == null)
+                    continue;
 
                 // Find all named declarations
                 var declarations = root.DescendantNodes()
@@ -149,7 +221,8 @@ public static partial class PatternSearchTools
                 foreach (var decl in declarations)
                 {
                     var symbol = semanticModel.GetDeclaredSymbol(decl, cancellationToken);
-                    if (symbol == null) continue;
+                    if (symbol == null)
+                        continue;
 
                     // Filter by entity type
                     if (entityTypes != null && entityTypes.Length > 0)
@@ -162,32 +235,48 @@ public static partial class PatternSearchTools
                     if (!string.IsNullOrEmpty(namespaceFilter))
                     {
                         var containingNamespace = symbol.ContainingNamespace?.ToDisplayString();
-                        if (containingNamespace == null || !containingNamespace.Contains(namespaceFilter, StringComparison.OrdinalIgnoreCase))
+                        if (
+                            containingNamespace == null
+                            || !containingNamespace.Contains(
+                                namespaceFilter,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
                             continue;
                     }
 
                     // Match pattern
                     if (regex.IsMatch(symbol.Name))
                     {
-                        results.Add(new EntityMatch
-                        {
-                            Name = symbol.Name,
-                            FullyQualifiedName = symbol.ToDisplayString(),
-                            Kind = symbol.Kind.ToString(),
-                            FilePath = document.FilePath ?? "",
-                            LineNumber = symbol.Locations.FirstOrDefault()?.GetLineSpan().StartLinePosition.Line ?? 0,
-                            Namespace = symbol.ContainingNamespace?.ToDisplayString() ?? "",
-                            Relevance = CalculateEntityRelevance(symbol.Name, pattern)
-                        });
+                        results.Add(
+                            new EntityMatch
+                            {
+                                Name = symbol.Name,
+                                FullyQualifiedName = symbol.ToDisplayString(),
+                                Kind = symbol.Kind.ToString(),
+                                FilePath = document.FilePath ?? "",
+                                LineNumber =
+                                    symbol
+                                        .Locations.FirstOrDefault()
+                                        ?.GetLineSpan()
+                                        .StartLinePosition.Line
+                                    ?? 0,
+                                Namespace = symbol.ContainingNamespace?.ToDisplayString() ?? "",
+                                Relevance = CalculateEntityRelevance(symbol.Name, pattern),
+                            }
+                        );
 
-                        if (results.Count >= limit * 2) break;
+                        if (results.Count >= limit * 2)
+                            break;
                     }
                 }
 
-                if (results.Count >= limit * 2) break;
+                if (results.Count >= limit * 2)
+                    break;
             }
 
-            if (results.Count >= limit * 2) break;
+            if (results.Count >= limit * 2)
+                break;
         }
 
         var topResults = results
@@ -196,26 +285,31 @@ public static partial class PatternSearchTools
             .Take(limit)
             .ToList();
 
-        logger.LogDebug("Entity mode search completed: totalFound={TotalFound}, returning={Returned}",
-            results.Count, topResults.Count);
+        logger.LogDebug(
+            "Entity mode search completed: totalFound={TotalFound}, returning={Returned}",
+            results.Count,
+            topResults.Count
+        );
 
-        return ToolHelpers.ToJson(new
-        {
-            mode = "entity",
-            pattern,
-            totalFound = results.Count,
-            returned = topResults.Count,
-            results = topResults.Select(r => new
+        return ToolHelpers.ToJson(
+            new
             {
-                r.Name,
-                r.FullyQualifiedName,
-                r.Kind,
-                r.FilePath,
-                r.LineNumber,
-                r.Namespace,
-                relevance = $"{r.Relevance:F2}"
-            })
-        });
+                mode = "entity",
+                pattern,
+                totalFound = results.Count,
+                returned = topResults.Count,
+                results = topResults.Select(r => new
+                {
+                    r.Name,
+                    r.FullyQualifiedName,
+                    r.Kind,
+                    r.FilePath,
+                    r.LineNumber,
+                    r.Namespace,
+                    relevance = $"{r.Relevance:F2}",
+                }),
+            }
+        );
     }
 
     // ==================== Content Mode ====================
@@ -227,10 +321,14 @@ public static partial class PatternSearchTools
         string? namespaceFilter,
         int limit,
         ILogger<PatternSearchToolsLogCategory> logger,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        logger.LogDebug("Content mode search started: pattern='{Pattern}', namespaceFilter={NamespaceFilter}",
-            pattern, namespaceFilter ?? "(all)");
+        logger.LogDebug(
+            "Content mode search started: pattern='{Pattern}', namespaceFilter={NamespaceFilter}",
+            pattern,
+            namespaceFilter ?? "(all)"
+        );
 
         var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
         var results = new List<ContentMatch>();
@@ -238,15 +336,18 @@ public static partial class PatternSearchTools
         foreach (var project in solution.Projects)
         {
             var compilation = await project.GetCompilationAsync(cancellationToken);
-            if (compilation == null) continue;
+            if (compilation == null)
+                continue;
 
             foreach (var document in project.Documents)
             {
-                if (!document.SupportsSyntaxTree) continue;
+                if (!document.SupportsSyntaxTree)
+                    continue;
 
                 var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
                 var root = await document.GetSyntaxRootAsync(cancellationToken);
-                if (semanticModel == null || root == null) continue;
+                if (semanticModel == null || root == null)
+                    continue;
 
                 // Search in method bodies
                 var methods = root.DescendantNodes().OfType<MethodDeclarationSyntax>();
@@ -254,44 +355,63 @@ public static partial class PatternSearchTools
                 foreach (var method in methods)
                 {
                     var methodSymbol = semanticModel.GetDeclaredSymbol(method, cancellationToken);
-                    if (methodSymbol == null) continue;
+                    if (methodSymbol == null)
+                        continue;
 
                     // Filter by namespace
                     if (!string.IsNullOrEmpty(namespaceFilter))
                     {
-                        var containingNamespace = methodSymbol.ContainingNamespace?.ToDisplayString();
-                        if (containingNamespace == null || !containingNamespace.Contains(namespaceFilter, StringComparison.OrdinalIgnoreCase))
+                        var containingNamespace =
+                            methodSymbol.ContainingNamespace?.ToDisplayString();
+                        if (
+                            containingNamespace == null
+                            || !containingNamespace.Contains(
+                                namespaceFilter,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
                             continue;
                     }
 
                     // Search in method body
-                    var methodBody = method.Body?.ToString() ?? method.ExpressionBody?.ToString() ?? "";
+                    var methodBody =
+                        method.Body?.ToString() ?? method.ExpressionBody?.ToString() ?? "";
                     var matches = regex.Matches(methodBody);
 
                     if (matches.Count > 0)
                     {
                         var lineSpan = method.GetLocation().GetLineSpan();
-                        var matchedLine = methodBody.Split('\n').FirstOrDefault(l => regex.IsMatch(l))?.Trim() ?? "";
+                        var matchedLine =
+                            methodBody.Split('\n').FirstOrDefault(l => regex.IsMatch(l))?.Trim()
+                            ?? "";
 
-                        results.Add(new ContentMatch
-                        {
-                            MethodName = methodSymbol.Name,
-                            FullyQualifiedName = methodSymbol.ToDisplayString(),
-                            FilePath = document.FilePath ?? "",
-                            LineNumber = lineSpan.StartLinePosition.Line,
-                            MatchCount = matches.Count,
-                            MatchedSnippet = TruncateSnippet(matchedLine, 100),
-                            Relevance = CalculateContentRelevance(matches.Count, methodBody.Length)
-                        });
+                        results.Add(
+                            new ContentMatch
+                            {
+                                MethodName = methodSymbol.Name,
+                                FullyQualifiedName = methodSymbol.ToDisplayString(),
+                                FilePath = document.FilePath ?? "",
+                                LineNumber = lineSpan.StartLinePosition.Line,
+                                MatchCount = matches.Count,
+                                MatchedSnippet = TruncateSnippet(matchedLine, 100),
+                                Relevance = CalculateContentRelevance(
+                                    matches.Count,
+                                    methodBody.Length
+                                ),
+                            }
+                        );
 
-                        if (results.Count >= limit * 2) break;
+                        if (results.Count >= limit * 2)
+                            break;
                     }
                 }
 
-                if (results.Count >= limit * 2) break;
+                if (results.Count >= limit * 2)
+                    break;
             }
 
-            if (results.Count >= limit * 2) break;
+            if (results.Count >= limit * 2)
+                break;
         }
 
         var topResults = results
@@ -300,26 +420,31 @@ public static partial class PatternSearchTools
             .Take(limit)
             .ToList();
 
-        logger.LogDebug("Content mode search completed: totalFound={TotalFound}, returning={Returned}",
-            results.Count, topResults.Count);
+        logger.LogDebug(
+            "Content mode search completed: totalFound={TotalFound}, returning={Returned}",
+            results.Count,
+            topResults.Count
+        );
 
-        return ToolHelpers.ToJson(new
-        {
-            mode = "content",
-            pattern,
-            totalFound = results.Count,
-            returned = topResults.Count,
-            results = topResults.Select(r => new
+        return ToolHelpers.ToJson(
+            new
             {
-                r.MethodName,
-                r.FullyQualifiedName,
-                r.FilePath,
-                r.LineNumber,
-                r.MatchCount,
-                r.MatchedSnippet,
-                relevance = $"{r.Relevance:F2}"
-            })
-        });
+                mode = "content",
+                pattern,
+                totalFound = results.Count,
+                returned = topResults.Count,
+                results = topResults.Select(r => new
+                {
+                    r.MethodName,
+                    r.FullyQualifiedName,
+                    r.FilePath,
+                    r.LineNumber,
+                    r.MatchCount,
+                    r.MatchedSnippet,
+                    relevance = $"{r.Relevance:F2}",
+                }),
+            }
+        );
     }
 
     // ==================== Semantic Mode ====================
@@ -331,7 +456,8 @@ public static partial class PatternSearchTools
         int limit,
         float minSimilarity,
         ILogger<PatternSearchToolsLogCategory> logger,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         logger.LogDebug("Semantic mode search: pattern='{Pattern}'", pattern);
 
@@ -348,38 +474,59 @@ public static partial class PatternSearchTools
         {
             if (entityTypes.All(t => t.Equals("method", StringComparison.OrdinalIgnoreCase)))
                 scope = "methods";
-            else if (entityTypes.All(t => t.Equals("class", StringComparison.OrdinalIgnoreCase) ||
-                                          t.Equals("interface", StringComparison.OrdinalIgnoreCase)))
+            else if (
+                entityTypes.All(t =>
+                    t.Equals("class", StringComparison.OrdinalIgnoreCase)
+                    || t.Equals("interface", StringComparison.OrdinalIgnoreCase)
+                )
+            )
                 scope = "classes";
         }
 
         // Perform semantic search
         List<SemanticCodeMatch> semanticResults;
         if (scope == "methods")
-            semanticResults = await semanticService.FindSimilarMethodsAsync(pattern, limit, minSimilarity, cancellationToken);
+            semanticResults = await semanticService.FindSimilarMethodsAsync(
+                pattern,
+                limit,
+                minSimilarity,
+                cancellationToken
+            );
         else if (scope == "classes")
-            semanticResults = await semanticService.FindSimilarClassesAsync(pattern, limit, minSimilarity, cancellationToken);
+            semanticResults = await semanticService.FindSimilarClassesAsync(
+                pattern,
+                limit,
+                minSimilarity,
+                cancellationToken
+            );
         else
-            semanticResults = await semanticService.FindSimilarCodeAsync(pattern, limit, minSimilarity, cancellationToken);
+            semanticResults = await semanticService.FindSimilarCodeAsync(
+                pattern,
+                limit,
+                minSimilarity,
+                cancellationToken
+            );
 
-        return ToolHelpers.ToJson(new
-        {
-            mode = "semantic",
-            pattern,
-            scope,
-            totalFound = semanticResults.Count,
-            returned = semanticResults.Count,
-            results = semanticResults.Select(r => new
+        return ToolHelpers.ToJson(
+            new
             {
-                r.FullyQualifiedName,
-                r.FilePath,
-                r.LineNumber,
-                type = r.Type.ToString(),
-                similarity = $"{r.Similarity:F3}",
-                rank = r.Rank,
-                codePreview = TruncateSnippet(r.Code, 200)
-            })
-        });
+                mode = "semantic",
+                pattern,
+                scope,
+                totalFound = semanticResults.Count,
+                returned = semanticResults.Count,
+                results = semanticResults.Select(r => new
+                {
+                    r.FullyQualifiedName,
+                    r.FilePath,
+                    r.LineNumber,
+                    type = r.Type.ToString(),
+                    similarity = $"{r.Similarity:F3}",
+                    rank = r.Rank,
+                    codePreview = TruncateSnippet(r.Code, 200),
+                }),
+            }
+        );
     }
 
     // ==================== Hybrid Mode ====================
@@ -393,14 +540,39 @@ public static partial class PatternSearchTools
         int limit,
         float minSimilarity,
         ILogger<PatternSearchToolsLogCategory> logger,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         logger.LogDebug("Hybrid mode search: pattern='{Pattern}'", pattern);
 
         // Run all search modes in parallel
-        var entityTask = SearchEntityMode(solution, pattern, entityTypes, namespaceFilter, limit, logger, cancellationToken);
-        var contentTask = SearchContentMode(solution, pattern, entityTypes, namespaceFilter, limit, logger, cancellationToken);
-        var semanticTask = SearchSemanticMode(semanticService, pattern, entityTypes, limit, minSimilarity, logger, cancellationToken);
+        var entityTask = SearchEntityMode(
+            solution,
+            pattern,
+            entityTypes,
+            namespaceFilter,
+            limit,
+            logger,
+            cancellationToken
+        );
+        var contentTask = SearchContentMode(
+            solution,
+            pattern,
+            entityTypes,
+            namespaceFilter,
+            limit,
+            logger,
+            cancellationToken
+        );
+        var semanticTask = SearchSemanticMode(
+            semanticService,
+            pattern,
+            entityTypes,
+            limit,
+            minSimilarity,
+            logger,
+            cancellationToken
+        );
 
         await Task.WhenAll(entityTask, contentTask, semanticTask);
 
@@ -415,23 +587,26 @@ public static partial class PatternSearchTools
         // Add entity matches
         foreach (var item in entityResult.results)
         {
-            combinedResults.Add(new HybridMatch
-            {
-                Name = item.Name,
-                FullyQualifiedName = item.FullyQualifiedName,
-                FilePath = item.FilePath,
-                LineNumber = item.LineNumber,
-                Source = "entity",
-                Score = float.Parse(item.relevance) * 0.3f, // Weight: 30%
-                Details = $"Kind: {item.Kind}, Namespace: {item.Namespace}"
-            });
+            combinedResults.Add(
+                new HybridMatch
+                {
+                    Name = item.Name,
+                    FullyQualifiedName = item.FullyQualifiedName,
+                    FilePath = item.FilePath,
+                    LineNumber = item.LineNumber,
+                    Source = "entity",
+                    Score = float.Parse(item.relevance) * 0.3f, // Weight: 30%
+                    Details = $"Kind: {item.Kind}, Namespace: {item.Namespace}",
+                }
+            );
         }
 
         // Add content matches
         foreach (var item in contentResult.results)
         {
             var existing = combinedResults.FirstOrDefault(r =>
-                r.FullyQualifiedName == item.FullyQualifiedName);
+                r.FullyQualifiedName == item.FullyQualifiedName
+            );
 
             if (existing != null)
             {
@@ -441,16 +616,18 @@ public static partial class PatternSearchTools
             }
             else
             {
-                combinedResults.Add(new HybridMatch
-                {
-                    Name = item.MethodName,
-                    FullyQualifiedName = item.FullyQualifiedName,
-                    FilePath = item.FilePath,
-                    LineNumber = item.LineNumber,
-                    Source = "content",
-                    Score = float.Parse(item.relevance) * 0.3f,
-                    Details = $"Matches: {item.MatchCount}, Snippet: {item.MatchedSnippet}"
-                });
+                combinedResults.Add(
+                    new HybridMatch
+                    {
+                        Name = item.MethodName,
+                        FullyQualifiedName = item.FullyQualifiedName,
+                        FilePath = item.FilePath,
+                        LineNumber = item.LineNumber,
+                        Source = "content",
+                        Score = float.Parse(item.relevance) * 0.3f,
+                        Details = $"Matches: {item.MatchCount}, Snippet: {item.MatchedSnippet}",
+                    }
+                );
             }
         }
 
@@ -458,7 +635,8 @@ public static partial class PatternSearchTools
         foreach (var item in semanticResult.results)
         {
             var existing = combinedResults.FirstOrDefault(r =>
-                r.FullyQualifiedName == item.FullyQualifiedName);
+                r.FullyQualifiedName == item.FullyQualifiedName
+            );
 
             if (existing != null)
             {
@@ -468,16 +646,18 @@ public static partial class PatternSearchTools
             }
             else
             {
-                combinedResults.Add(new HybridMatch
-                {
-                    Name = item.FullyQualifiedName.Split('.').Last().Split('(').First(),
-                    FullyQualifiedName = item.FullyQualifiedName,
-                    FilePath = item.FilePath,
-                    LineNumber = item.LineNumber,
-                    Source = "semantic",
-                    Score = float.Parse(item.similarity) * 0.4f,
-                    Details = $"Type: {item.type}, Similarity: {item.similarity}"
-                });
+                combinedResults.Add(
+                    new HybridMatch
+                    {
+                        Name = item.FullyQualifiedName.Split('.').Last().Split('(').First(),
+                        FullyQualifiedName = item.FullyQualifiedName,
+                        FilePath = item.FilePath,
+                        LineNumber = item.LineNumber,
+                        Source = "semantic",
+                        Score = float.Parse(item.similarity) * 0.4f,
+                        Details = $"Type: {item.type}, Similarity: {item.similarity}",
+                    }
+                );
             }
         }
 
@@ -488,30 +668,35 @@ public static partial class PatternSearchTools
             .Take(limit)
             .ToList();
 
-        return ToolHelpers.ToJson(new
-        {
-            mode = "hybrid",
-            pattern,
-            totalCombined = combinedResults.Count,
-            returned = rankedResults.Count,
-            breakdown = new
+        return ToolHelpers.ToJson(
+            new
             {
-                entityMatches = entityResult.totalFound,
-                contentMatches = contentResult.totalFound,
-                semanticMatches = semanticResult.totalFound
-            },
-            results = rankedResults.Select((r, idx) => new
-            {
-                rank = idx + 1,
-                r.Name,
-                r.FullyQualifiedName,
-                r.FilePath,
-                r.LineNumber,
-                r.Source,
-                score = $"{r.Score:F3}",
-                r.Details
-            })
-        });
+                mode = "hybrid",
+                pattern,
+                totalCombined = combinedResults.Count,
+                returned = rankedResults.Count,
+                breakdown = new
+                {
+                    entityMatches = entityResult.totalFound,
+                    contentMatches = contentResult.totalFound,
+                    semanticMatches = semanticResult.totalFound,
+                },
+                results = rankedResults.Select(
+                    (r, idx) =>
+                        new
+                        {
+                            rank = idx + 1,
+                            r.Name,
+                            r.FullyQualifiedName,
+                            r.FilePath,
+                            r.LineNumber,
+                            r.Source,
+                            score = $"{r.Score:F3}",
+                            r.Details,
+                        }
+                ),
+            }
+        );
     }
 
     // ==================== Helper Methods ====================
@@ -523,13 +708,21 @@ public static partial class PatternSearchTools
         foreach (var type in entityTypes)
         {
             var typeLower = type.ToLowerInvariant();
-            if (symbolKind == typeLower) return true;
+            if (symbolKind == typeLower)
+                return true;
 
             // Special cases
-            if (typeLower == "class" && symbol is INamedTypeSymbol { TypeKind: TypeKind.Class }) return true;
-            if (typeLower == "interface" && symbol is INamedTypeSymbol { TypeKind: TypeKind.Interface }) return true;
-            if (typeLower == "enum" && symbol is INamedTypeSymbol { TypeKind: TypeKind.Enum }) return true;
-            if (typeLower == "struct" && symbol is INamedTypeSymbol { TypeKind: TypeKind.Struct }) return true;
+            if (typeLower == "class" && symbol is INamedTypeSymbol { TypeKind: TypeKind.Class })
+                return true;
+            if (
+                typeLower == "interface"
+                && symbol is INamedTypeSymbol { TypeKind: TypeKind.Interface }
+            )
+                return true;
+            if (typeLower == "enum" && symbol is INamedTypeSymbol { TypeKind: TypeKind.Enum })
+                return true;
+            if (typeLower == "struct" && symbol is INamedTypeSymbol { TypeKind: TypeKind.Struct })
+                return true;
         }
 
         return false;
@@ -562,8 +755,10 @@ public static partial class PatternSearchTools
 
     private static string TruncateSnippet(string text, int maxLength)
     {
-        if (string.IsNullOrEmpty(text)) return "";
-        if (text.Length <= maxLength) return text;
+        if (string.IsNullOrEmpty(text))
+            return "";
+        if (text.Length <= maxLength)
+            return text;
         return text.Substring(0, maxLength) + "...";
     }
 

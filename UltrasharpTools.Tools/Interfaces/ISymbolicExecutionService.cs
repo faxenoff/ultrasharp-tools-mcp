@@ -17,10 +17,10 @@ public interface ISymbolicExecutionService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Symbolic execution result with paths and issues</returns>
     Task<SymbolicExecutionResult> AnalyzePathFeasibilityAsync(
-    string entryPointFqn,
-    string? exitPointFqn = null,
-    int maxDepth = 10,
-    Dictionary<string, string>? initialConstraints = null,
-    CancellationToken cancellationToken = default
+        string entryPointFqn,
+        string? exitPointFqn = null,
+        int maxDepth = 10,
+        Dictionary<string, string>? initialConstraints = null,
+        CancellationToken cancellationToken = default
     );
 }

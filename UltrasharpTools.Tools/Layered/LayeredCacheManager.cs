@@ -1,10 +1,8 @@
 using System.Data;
-
 using Microsoft.Data.Sqlite;
-
 using Microsoft.Extensions.Logging.Abstractions;
-using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Layered;
 
@@ -23,7 +21,7 @@ public sealed class LayeredCacheManager : IDisposable
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = false,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
     };
 
     public LayeredCacheManager(string solutionPath, ILogger<LayeredCacheManager>? logger = null)
@@ -52,7 +50,8 @@ public sealed class LayeredCacheManager : IDisposable
             _connection.Open();
 
             var createTableCmd = _connection.CreateCommand();
-            createTableCmd.CommandText = @"
+            createTableCmd.CommandText =
+                @"
                 CREATE TABLE IF NOT EXISTS BranchDeltas (
                     BranchName TEXT PRIMARY KEY,
                     BaseCommitSha TEXT NOT NULL,
@@ -75,7 +74,10 @@ public sealed class LayeredCacheManager : IDisposable
     /// <summary>
     /// Save branch delta to persistent storage.
     /// </summary>
-    public async Task SaveBranchDeltaAsync(BranchDelta delta, CancellationToken cancellationToken = default)
+    public async Task SaveBranchDeltaAsync(
+        BranchDelta delta,
+        CancellationToken cancellationToken = default
+    )
     {
         if (_connection == null)
         {
@@ -92,7 +94,8 @@ public sealed class LayeredCacheManager : IDisposable
             var deletedJson = JsonSerializer.Serialize(delta.DeletedSymbolIds, JsonOptions);
 
             var cmd = _connection.CreateCommand();
-            cmd.CommandText = @"
+            cmd.CommandText =
+                @"
                 INSERT OR REPLACE INTO BranchDeltas
                 (BranchName, BaseCommitSha, LastModified, AddedSymbols, ModifiedSymbols, DeletedSymbolIds)
                 VALUES (@branchName, @baseCommit, @lastModified, @added, @modified, @deleted)";
@@ -106,8 +109,13 @@ public sealed class LayeredCacheManager : IDisposable
 
             await cmd.ExecuteNonQueryAsync(cancellationToken);
 
-            _logger.LogDebug("Saved branch delta: {Branch} ({Added} added, {Modified} modified, {Deleted} deleted)",
-                delta.BranchName, delta.AddedSymbols.Count, delta.ModifiedSymbols.Count, delta.DeletedSymbolIds.Count);
+            _logger.LogDebug(
+                "Saved branch delta: {Branch} ({Added} added, {Modified} modified, {Deleted} deleted)",
+                delta.BranchName,
+                delta.AddedSymbols.Count,
+                delta.ModifiedSymbols.Count,
+                delta.DeletedSymbolIds.Count
+            );
         }
         catch (Exception ex)
         {
@@ -122,7 +130,10 @@ public sealed class LayeredCacheManager : IDisposable
     /// <summary>
     /// Load branch delta from persistent storage.
     /// </summary>
-    public async Task<BranchDelta?> LoadBranchDeltaAsync(string branchName, CancellationToken cancellationToken = default)
+    public async Task<BranchDelta?> LoadBranchDeltaAsync(
+        string branchName,
+        CancellationToken cancellationToken = default
+    )
     {
         if (_connection == null)
         {
@@ -134,7 +145,8 @@ public sealed class LayeredCacheManager : IDisposable
         try
         {
             var cmd = _connection.CreateCommand();
-            cmd.CommandText = @"
+            cmd.CommandText =
+                @"
                 SELECT BaseCommitSha, LastModified, AddedSymbols, ModifiedSymbols, DeletedSymbolIds
                 FROM BranchDeltas
                 WHERE BranchName = @branchName";
@@ -154,18 +166,25 @@ public sealed class LayeredCacheManager : IDisposable
             var deletedJson = reader.GetString(4);
 
             // Deserialize collections from JSON
-            var addedSymbols = JsonSerializer.Deserialize<Dictionary<string, SymbolIndexEntry>>(addedJson, JsonOptions)
-                ?? new Dictionary<string, SymbolIndexEntry>();
-            var modifiedSymbols = JsonSerializer.Deserialize<Dictionary<string, SymbolIndexEntry>>(modifiedJson, JsonOptions)
-                ?? new Dictionary<string, SymbolIndexEntry>();
-            var deletedSymbolIds = JsonSerializer.Deserialize<HashSet<string>>(deletedJson, JsonOptions)
+            var addedSymbols =
+                JsonSerializer.Deserialize<Dictionary<string, SymbolIndexEntry>>(
+                    addedJson,
+                    JsonOptions
+                ) ?? new Dictionary<string, SymbolIndexEntry>();
+            var modifiedSymbols =
+                JsonSerializer.Deserialize<Dictionary<string, SymbolIndexEntry>>(
+                    modifiedJson,
+                    JsonOptions
+                ) ?? new Dictionary<string, SymbolIndexEntry>();
+            var deletedSymbolIds =
+                JsonSerializer.Deserialize<HashSet<string>>(deletedJson, JsonOptions)
                 ?? new HashSet<string>();
 
             var delta = new BranchDelta
             {
                 BranchName = branchName,
                 BaseCommitSha = baseCommitSha,
-                LastModified = new DateTime(lastModifiedTicks)
+                LastModified = new DateTime(lastModifiedTicks),
             };
 
             // Populate collections
@@ -182,8 +201,13 @@ public sealed class LayeredCacheManager : IDisposable
                 delta.DeletedSymbolIds.Add(id);
             }
 
-            _logger.LogInformation("Loaded branch delta from storage: {Branch} ({Added} added, {Modified} modified, {Deleted} deleted)",
-                branchName, delta.AddedSymbols.Count, delta.ModifiedSymbols.Count, delta.DeletedSymbolIds.Count);
+            _logger.LogInformation(
+                "Loaded branch delta from storage: {Branch} ({Added} added, {Modified} modified, {Deleted} deleted)",
+                branchName,
+                delta.AddedSymbols.Count,
+                delta.ModifiedSymbols.Count,
+                delta.DeletedSymbolIds.Count
+            );
 
             return delta;
         }
@@ -201,7 +225,10 @@ public sealed class LayeredCacheManager : IDisposable
     /// <summary>
     /// Delete branch delta from persistent storage.
     /// </summary>
-    public async Task DeleteBranchDeltaAsync(string branchName, CancellationToken cancellationToken = default)
+    public async Task DeleteBranchDeltaAsync(
+        string branchName,
+        CancellationToken cancellationToken = default
+    )
     {
         if (_connection == null)
         {
@@ -234,7 +261,9 @@ public sealed class LayeredCacheManager : IDisposable
     /// <summary>
     /// Get all branch names stored in cache.
     /// </summary>
-    public async Task<List<string>> GetAllBranchNamesAsync(CancellationToken cancellationToken = default)
+    public async Task<List<string>> GetAllBranchNamesAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         var branches = new List<string>();
 
@@ -286,7 +315,10 @@ public sealed class LayeredCacheManager : IDisposable
             cmd.CommandText = "DELETE FROM BranchDeltas";
             var rowsAffected = await cmd.ExecuteNonQueryAsync(cancellationToken);
 
-            _logger.LogInformation("Cleared all branch deltas from storage ({Count} rows deleted)", rowsAffected);
+            _logger.LogInformation(
+                "Cleared all branch deltas from storage ({Count} rows deleted)",
+                rowsAffected
+            );
         }
         catch (Exception ex)
         {

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 using UltrasharpTools.Tools.Semantic;
@@ -16,8 +15,9 @@ public sealed class MultiVersionIndexer
     private readonly ILogger<MultiVersionIndexer> _logger;
 
     public MultiVersionIndexer(
-    CodeUnitExtractor extractor,
-    ILogger<MultiVersionIndexer>? logger = null)
+        CodeUnitExtractor extractor,
+        ILogger<MultiVersionIndexer>? logger = null
+    )
     {
         _extractor = extractor;
         _logger = logger ?? NullLogger<MultiVersionIndexer>.Instance;
@@ -27,28 +27,27 @@ public sealed class MultiVersionIndexer
     /// Индексировать одну версию кода.
     /// </summary>
     public async Task<VersionedIndex> IndexVersionAsync(
-    string versionName,
-    string directoryPath,
-    string[]? filePatterns = null,
-    string? commitSha = null,
-    string? branchName = null,
-    CancellationToken ct = default)
+        string versionName,
+        string directoryPath,
+        string[]? filePatterns = null,
+        string? commitSha = null,
+        string? branchName = null,
+        CancellationToken ct = default
+    )
     {
         var sw = Stopwatch.StartNew();
 
         _logger.LogInformation(
-        "Indexing version {Version} from {Directory}",
-        versionName,
-        directoryPath);
+            "Indexing version {Version} from {Directory}",
+            versionName,
+            directoryPath
+        );
 
         // Default patterns
         filePatterns ??= new[] { "*.cs", "*.json" };
 
         // 1. Извлечь CodeUnits
-        var units = await _extractor.ExtractFromDirectoryAsync(
-        directoryPath,
-        filePatterns,
-        ct);
+        var units = await _extractor.ExtractFromDirectoryAsync(directoryPath, filePatterns, ct);
 
         // 2. Построить иерархию
         _extractor.BuildHierarchy(units);
@@ -65,10 +64,11 @@ public sealed class MultiVersionIndexer
         sw.Stop();
 
         _logger.LogInformation(
-        "Indexed version {Version}: {Count} units in {Time}ms",
-        versionName,
-        units.Count,
-        sw.ElapsedMilliseconds);
+            "Indexed version {Version}: {Count} units in {Time}ms",
+            versionName,
+            units.Count,
+            sw.ElapsedMilliseconds
+        );
 
         return new VersionedIndex
         {
@@ -78,7 +78,7 @@ public sealed class MultiVersionIndexer
             Units = unitsDict,
             VectorStore = vectorStore,
             CreatedAt = DateTimeOffset.UtcNow,
-            Statistics = statistics
+            Statistics = statistics,
         };
     }
 
@@ -86,59 +86,64 @@ public sealed class MultiVersionIndexer
     /// Индексировать все 4 версии для 3-way merge.
     /// </summary>
     public async Task<MultiVersionIndexResult> IndexAllVersionsAsync(
-    IndexingRequest request,
-    CancellationToken ct = default)
+        IndexingRequest request,
+        CancellationToken ct = default
+    )
     {
-        _logger.LogInformation(
-        "Starting multi-version indexing for 3-way merge");
+        _logger.LogInformation("Starting multi-version indexing for 3-way merge");
 
         var sw = Stopwatch.StartNew();
 
         // Индексировать base версию
         var baseIndex = await IndexVersionAsync(
-        "base",
-        request.BaseDirectory,
-        request.FilePatterns,
-        request.BaseCommitSha,
-        request.BaseBranch,
-        ct);
+            "base",
+            request.BaseDirectory,
+            request.FilePatterns,
+            request.BaseCommitSha,
+            request.BaseBranch,
+            ct
+        );
 
         // Индексировать branchA
         var branchAIndex = await IndexVersionAsync(
-        "branchA",
-        request.BranchADirectory,
-        request.FilePatterns,
-        request.BranchACommitSha,
-        request.BranchA,
-        ct);
+            "branchA",
+            request.BranchADirectory,
+            request.FilePatterns,
+            request.BranchACommitSha,
+            request.BranchA,
+            ct
+        );
 
         // Индексировать branchB
         var branchBIndex = await IndexVersionAsync(
-        "branchB",
-        request.BranchBDirectory,
-        request.FilePatterns,
-        request.BranchBCommitSha,
-        request.BranchB,
-        ct);
+            "branchB",
+            request.BranchBDirectory,
+            request.FilePatterns,
+            request.BranchBCommitSha,
+            request.BranchB,
+            ct
+        );
 
         // Merged версия будет создана позже
         VersionedIndex? mergedIndex = null;
         if (request.MergedDirectory != null)
         {
             mergedIndex = await IndexVersionAsync(
-            "merged",
-            request.MergedDirectory,
-            request.FilePatterns,
-            request.MergedCommitSha,
-            request.MergedBranch,
-            ct);
+                "merged",
+                request.MergedDirectory,
+                request.FilePatterns,
+                request.MergedCommitSha,
+                request.MergedBranch,
+                ct
+            );
         }
 
         sw.Stop();
 
         _logger.LogInformation(
-        "Multi-version indexing completed in {Time}ms",
-        sw.ElapsedMilliseconds);
+            "Multi-version indexing completed in {Time}ms",
+            sw.ElapsedMilliseconds
+        );
 
         return new MultiVersionIndexResult
         {
@@ -146,20 +151,16 @@ public sealed class MultiVersionIndexer
             BranchAIndex = branchAIndex,
             BranchBIndex = branchBIndex,
             MergedIndex = mergedIndex,
-            TotalIndexingTimeMs = sw.ElapsedMilliseconds
+            TotalIndexingTimeMs = sw.ElapsedMilliseconds,
         };
     }
 
     /// <summary>
     /// Вычислить статистику индекса.
     /// </summary>
-    private IndexStatistics ComputeStatistics(
-    List<CodeUnit> units,
-    long indexingTimeMs)
+    private IndexStatistics ComputeStatistics(List<CodeUnit> units, long indexingTimeMs)
     {
-        var unitsByType = units
-        .GroupBy(u => u.Type)
-        .ToDictionary(g => g.Key, g => g.Count());
+        var unitsByType = units.GroupBy(u => u.Type).ToDictionary(g => g.Key, g => g.Count());
 
         var fileCount = units.Count(u => u.Type == CodeUnitType.File);
         var unitsWithEmbeddings = units.Count(u => u.Embedding != null);
@@ -170,7 +171,7 @@ public sealed class MultiVersionIndexer
             UnitsByType = unitsByType,
             FileCount = fileCount,
             UnitsWithEmbeddings = unitsWithEmbeddings,
-            IndexingTimeMs = indexingTimeMs
+            IndexingTimeMs = indexingTimeMs,
         };
     }
 }
@@ -211,8 +212,8 @@ public sealed record MultiVersionIndexResult
     public required long TotalIndexingTimeMs { get; init; }
 
     public int TotalUnits =>
-    BaseIndex.Statistics.TotalUnits +
-    BranchAIndex.Statistics.TotalUnits +
-    BranchBIndex.Statistics.TotalUnits +
-    (MergedIndex?.Statistics.TotalUnits ?? 0);
+        BaseIndex.Statistics.TotalUnits
+        + BranchAIndex.Statistics.TotalUnits
+        + BranchBIndex.Statistics.TotalUnits
+        + (MergedIndex?.Statistics.TotalUnits ?? 0);
 }

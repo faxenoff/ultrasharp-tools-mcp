@@ -29,78 +29,92 @@ public static class SymbolExtractor
             // Extract namespaces
             foreach (var ns in root.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>())
             {
-                symbols.Add(new Models.Hybrid.SymbolInfo
-                {
-                    Name = ns.Name.ToString(),
-                    Kind = "namespace",
-                    Line = tree.GetLineSpan(ns.Span).StartLinePosition.Line + 1
-                });
+                symbols.Add(
+                    new Models.Hybrid.SymbolInfo
+                    {
+                        Name = ns.Name.ToString(),
+                        Kind = "namespace",
+                        Line = tree.GetLineSpan(ns.Span).StartLinePosition.Line + 1,
+                    }
+                );
             }
 
             // Extract classes
             foreach (var cls in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
             {
-                symbols.Add(new Models.Hybrid.SymbolInfo
-                {
-                    Name = GetFullTypeName(cls),
-                    Kind = "class",
-                    Line = tree.GetLineSpan(cls.Span).StartLinePosition.Line + 1
-                });
+                symbols.Add(
+                    new Models.Hybrid.SymbolInfo
+                    {
+                        Name = GetFullTypeName(cls),
+                        Kind = "class",
+                        Line = tree.GetLineSpan(cls.Span).StartLinePosition.Line + 1,
+                    }
+                );
             }
 
             // Extract interfaces
             foreach (var iface in root.DescendantNodes().OfType<InterfaceDeclarationSyntax>())
             {
-                symbols.Add(new Models.Hybrid.SymbolInfo
-                {
-                    Name = GetFullTypeName(iface),
-                    Kind = "interface",
-                    Line = tree.GetLineSpan(iface.Span).StartLinePosition.Line + 1
-                });
+                symbols.Add(
+                    new Models.Hybrid.SymbolInfo
+                    {
+                        Name = GetFullTypeName(iface),
+                        Kind = "interface",
+                        Line = tree.GetLineSpan(iface.Span).StartLinePosition.Line + 1,
+                    }
+                );
             }
 
             // Extract structs
             foreach (var str in root.DescendantNodes().OfType<StructDeclarationSyntax>())
             {
-                symbols.Add(new Models.Hybrid.SymbolInfo
-                {
-                    Name = GetFullTypeName(str),
-                    Kind = "struct",
-                    Line = tree.GetLineSpan(str.Span).StartLinePosition.Line + 1
-                });
+                symbols.Add(
+                    new Models.Hybrid.SymbolInfo
+                    {
+                        Name = GetFullTypeName(str),
+                        Kind = "struct",
+                        Line = tree.GetLineSpan(str.Span).StartLinePosition.Line + 1,
+                    }
+                );
             }
 
             // Extract enums
             foreach (var enm in root.DescendantNodes().OfType<EnumDeclarationSyntax>())
             {
-                symbols.Add(new Models.Hybrid.SymbolInfo
-                {
-                    Name = GetFullTypeName(enm),
-                    Kind = "enum",
-                    Line = tree.GetLineSpan(enm.Span).StartLinePosition.Line + 1
-                });
+                symbols.Add(
+                    new Models.Hybrid.SymbolInfo
+                    {
+                        Name = GetFullTypeName(enm),
+                        Kind = "enum",
+                        Line = tree.GetLineSpan(enm.Span).StartLinePosition.Line + 1,
+                    }
+                );
             }
 
             // Extract methods
             foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
             {
-                symbols.Add(new Models.Hybrid.SymbolInfo
-                {
-                    Name = GetFullMemberName(method),
-                    Kind = "method",
-                    Line = tree.GetLineSpan(method.Span).StartLinePosition.Line + 1
-                });
+                symbols.Add(
+                    new Models.Hybrid.SymbolInfo
+                    {
+                        Name = GetFullMemberName(method),
+                        Kind = "method",
+                        Line = tree.GetLineSpan(method.Span).StartLinePosition.Line + 1,
+                    }
+                );
             }
 
             // Extract properties
             foreach (var prop in root.DescendantNodes().OfType<PropertyDeclarationSyntax>())
             {
-                symbols.Add(new Models.Hybrid.SymbolInfo
-                {
-                    Name = GetFullMemberName(prop),
-                    Kind = "property",
-                    Line = tree.GetLineSpan(prop.Span).StartLinePosition.Line + 1
-                });
+                symbols.Add(
+                    new Models.Hybrid.SymbolInfo
+                    {
+                        Name = GetFullMemberName(prop),
+                        Kind = "property",
+                        Line = tree.GetLineSpan(prop.Span).StartLinePosition.Line + 1,
+                    }
+                );
             }
 
             // Extract fields
@@ -108,12 +122,14 @@ public static class SymbolExtractor
             {
                 foreach (var variable in field.Declaration.Variables)
                 {
-                    symbols.Add(new Models.Hybrid.SymbolInfo
-                    {
-                        Name = GetFullMemberName(field, variable.Identifier.Text),
-                        Kind = "field",
-                        Line = tree.GetLineSpan(variable.Span).StartLinePosition.Line + 1
-                    });
+                    symbols.Add(
+                        new Models.Hybrid.SymbolInfo
+                        {
+                            Name = GetFullMemberName(field, variable.Identifier.Text),
+                            Kind = "field",
+                            Line = tree.GetLineSpan(variable.Span).StartLinePosition.Line + 1,
+                        }
+                    );
                 }
             }
 
@@ -154,7 +170,7 @@ public static class SymbolExtractor
         {
             MethodDeclarationSyntax method => method.Identifier.Text,
             PropertyDeclarationSyntax prop => prop.Identifier.Text,
-            _ => "Unknown"
+            _ => "Unknown",
         };
 
         return GetFullMemberName(memberDecl, memberName);

@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Infrastructure;
 
@@ -16,9 +14,10 @@ public sealed class PreviewManager
     private readonly ILogger<PreviewManager> _logger;
 
     public PreviewManager(
-    ISolutionManager solutionManager,
-    ICodeAnalysisService codeAnalysisService,
-    ILogger<PreviewManager>? logger = null)
+        ISolutionManager solutionManager,
+        ICodeAnalysisService codeAnalysisService,
+        ILogger<PreviewManager>? logger = null
+    )
     {
         _solutionManager = solutionManager;
         _codeAnalysisService = codeAnalysisService;
@@ -29,14 +28,21 @@ public sealed class PreviewManager
     /// Preview code modification for a member (method/class/property).
     /// </summary>
     public async Task<DiffPreview> PreviewCodeModificationAsync(
-    string fullyQualifiedName,
-    string newCode,
-    CancellationToken cancellationToken = default)
+        string fullyQualifiedName,
+        string newCode,
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogInformation("Generating preview for code modification: {FQN}", fullyQualifiedName);
+        _logger.LogInformation(
+            "Generating preview for code modification: {FQN}",
+            fullyQualifiedName
+        );
 
         // 1. Resolve symbol
-        var symbol = await _solutionManager.FindRoslynSymbolAsync(fullyQualifiedName, cancellationToken);
+        var symbol = await _solutionManager.FindRoslynSymbolAsync(
+            fullyQualifiedName,
+            cancellationToken
+        );
         if (symbol == null)
         {
             throw new InvalidOperationException($"Symbol not found: {fullyQualifiedName}");
@@ -46,7 +52,9 @@ public sealed class PreviewManager
         var syntaxRef = symbol.DeclaringSyntaxReferences.FirstOrDefault();
         if (syntaxRef == null)
         {
-            throw new InvalidOperationException($"Symbol has no syntax reference: {fullyQualifiedName}");
+            throw new InvalidOperationException(
+                $"Symbol has no syntax reference: {fullyQualifiedName}"
+            );
         }
 
         var syntaxNode = await syntaxRef.GetSyntaxAsync(cancellationToken);
@@ -69,7 +77,7 @@ public sealed class PreviewManager
             Diff = diff,
             OldCode = oldCode,
             NewCode = newCode,
-            EstimatedImpact = impact
+            EstimatedImpact = impact,
         };
     }
 
@@ -77,9 +85,10 @@ public sealed class PreviewManager
     /// Preview adding a new member to a type.
     /// </summary>
     public async Task<DiffPreview> PreviewAddMemberAsync(
-    string parentTypeFqn,
-    string newMemberCode,
-    CancellationToken cancellationToken = default)
+        string parentTypeFqn,
+        string newMemberCode,
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation("Generating preview for add member to: {ParentType}", parentTypeFqn);
 
@@ -114,8 +123,8 @@ public sealed class PreviewManager
             {
                 EntitiesAffected = 1, // Parent type
                 ReferencesAffected = 0, // New member has no references yet
-                BreakingChange = false
-            }
+                BreakingChange = false,
+            },
         };
     }
 
@@ -123,14 +132,22 @@ public sealed class PreviewManager
     /// Preview renaming a symbol.
     /// </summary>
     public async Task<DiffPreview> PreviewRenameSymbolAsync(
-    string fullyQualifiedName,
-    string newName,
-    CancellationToken cancellationToken = default)
+        string fullyQualifiedName,
+        string newName,
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogInformation("Generating preview for rename: {FQN} -> {NewName}", fullyQualifiedName, newName);
+        _logger.LogInformation(
+            "Generating preview for rename: {FQN} -> {NewName}",
+            fullyQualifiedName,
+            newName
+        );
 
         // 1. Resolve symbol
-        var symbol = await _solutionManager.FindRoslynSymbolAsync(fullyQualifiedName, cancellationToken);
+        var symbol = await _solutionManager.FindRoslynSymbolAsync(
+            fullyQualifiedName,
+            cancellationToken
+        );
         if (symbol == null)
         {
             throw new InvalidOperationException($"Symbol not found: {fullyQualifiedName}");
@@ -144,22 +161,28 @@ public sealed class PreviewManager
         }
 
         var references = await Microsoft.CodeAnalysis.FindSymbols.SymbolFinder.FindReferencesAsync(
-        symbol,
-        solution,
-        cancellationToken);
+            symbol,
+            solution,
+            cancellationToken
+        );
 
         var referencesCount = references.Sum(r => r.Locations.Count());
 
         // 3. Get affected files
         var affectedFiles = references
-        .SelectMany(r => r.Locations)
-        .Select(l => l.Document.FilePath ?? "")
-        .Distinct()
-        .Where(p => !string.IsNullOrEmpty(p))
-        .ToArray();
+            .SelectMany(r => r.Locations)
+            .Select(l => l.Document.FilePath ?? "")
+            .Distinct()
+            .Where(p => !string.IsNullOrEmpty(p))
+            .ToArray();
 
         // 4. Generate summary diff
-        var diff = GenerateRenameDiffSummary(symbol.Name, newName, affectedFiles.Length, referencesCount);
+        var diff = GenerateRenameDiffSummary(
+            symbol.Name,
+            newName,
+            affectedFiles.Length,
+            referencesCount
+        );
 
         return new DiffPreview
         {
@@ -173,14 +196,19 @@ public sealed class PreviewManager
             {
                 EntitiesAffected = 1,
                 ReferencesAffected = referencesCount,
-                BreakingChange = IsPublicSymbol(symbol) // Public renames are breaking changes
-            }
+                BreakingChange = IsPublicSymbol(symbol), // Public renames are breaking changes
+            },
         };
     }
 
     // ==================== Private Helper Methods ====================
 
-    private string GenerateUnifiedDiff(string oldCode, string newCode, string filePath, string symbolName)
+    private string GenerateUnifiedDiff(
+        string oldCode,
+        string newCode,
+        string filePath,
+        string symbolName
+    )
     {
         var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 
@@ -231,7 +259,11 @@ public sealed class PreviewManager
         }
     }
 
-    private string GenerateAddMemberDiff(string newMemberCode, string filePath, string parentTypeName)
+    private string GenerateAddMemberDiff(
+        string newMemberCode,
+        string filePath,
+        string parentTypeName
+    )
     {
         var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 
@@ -254,7 +286,12 @@ public sealed class PreviewManager
         }
     }
 
-    private string GenerateRenameDiffSummary(string oldName, string newName, int filesAffected, int referencesAffected)
+    private string GenerateRenameDiffSummary(
+        string oldName,
+        string newName,
+        int filesAffected,
+        int referencesAffected
+    )
     {
         var sb = ObjectPoolProvider.Instance.GetStringBuilder();
 
@@ -275,21 +312,31 @@ public sealed class PreviewManager
         }
     }
 
-    private async Task<ImpactEstimation> EstimateImpactAsync(ISymbol symbol, CancellationToken cancellationToken)
+    private async Task<ImpactEstimation> EstimateImpactAsync(
+        ISymbol symbol,
+        CancellationToken cancellationToken
+    )
     {
         var solution = _solutionManager.CurrentWorkspace?.CurrentSolution;
         if (solution == null)
         {
-            return new ImpactEstimation { EntitiesAffected = 1, ReferencesAffected = 0, BreakingChange = false };
+            return new ImpactEstimation
+            {
+                EntitiesAffected = 1,
+                ReferencesAffected = 0,
+                BreakingChange = false,
+            };
         }
 
         try
         {
             // Find all references to this symbol
-            var references = await Microsoft.CodeAnalysis.FindSymbols.SymbolFinder.FindReferencesAsync(
-            symbol,
-            solution,
-            cancellationToken);
+            var references =
+                await Microsoft.CodeAnalysis.FindSymbols.SymbolFinder.FindReferencesAsync(
+                    symbol,
+                    solution,
+                    cancellationToken
+                );
 
             var referencesCount = references.Sum(r => r.Locations.Count());
 
@@ -300,27 +347,31 @@ public sealed class PreviewManager
             {
                 EntitiesAffected = 1,
                 ReferencesAffected = referencesCount,
-                BreakingChange = isBreaking
+                BreakingChange = isBreaking,
             };
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to estimate impact for {Symbol}", symbol.ToDisplayString());
+            _logger.LogWarning(
+                ex,
+                "Failed to estimate impact for {Symbol}",
+                symbol.ToDisplayString()
+            );
 
             return new ImpactEstimation
             {
                 EntitiesAffected = 1,
                 ReferencesAffected = 0,
-                BreakingChange = false
+                BreakingChange = false,
             };
         }
     }
 
     private bool IsPublicSymbol(ISymbol symbol)
     {
-        return symbol.DeclaredAccessibility == Accessibility.Public ||
-        symbol.DeclaredAccessibility == Accessibility.Protected ||
-        symbol.DeclaredAccessibility == Accessibility.ProtectedOrInternal;
+        return symbol.DeclaredAccessibility == Accessibility.Public
+            || symbol.DeclaredAccessibility == Accessibility.Protected
+            || symbol.DeclaredAccessibility == Accessibility.ProtectedOrInternal;
     }
 }
 

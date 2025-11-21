@@ -34,17 +34,19 @@ public class EnrichmentIntegrationTests
         // Возвращаем mock векторы для любого текста
         _embeddingMock
             .Setup(x => x.GetEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string text, CancellationToken ct) =>
-            {
-                // Генерируем mock вектор размерности 768 (как у nomic-embed-text)
-                var random = new Random(text.GetHashCode());
-                var vector = new float[768];
-                for (int i = 0; i < 768; i++)
+            .ReturnsAsync(
+                (string text, CancellationToken ct) =>
                 {
-                    vector[i] = (float)(random.NextDouble() * 2 - 1); // [-1, 1]
+                    // Генерируем mock вектор размерности 768 (как у nomic-embed-text)
+                    var random = new Random(text.GetHashCode());
+                    var vector = new float[768];
+                    for (int i = 0; i < 768; i++)
+                    {
+                        vector[i] = (float)(random.NextDouble() * 2 - 1); // [-1, 1]
+                    }
+                    return vector;
                 }
-                return vector;
-            });
+            );
     }
 
     private (ISemanticModeProvider provider, IToolEnricher enricher) CreateServices()
@@ -54,12 +56,10 @@ public class EnrichmentIntegrationTests
             _embeddingMock.Object,
             null, // No Overlord
             null,
-            _config);
+            _config
+        );
 
-        var enricher = new ToolEnricher(
-            _enricherLoggerMock.Object,
-            provider,
-            _config);
+        var enricher = new ToolEnricher(_enricherLoggerMock.Object, provider, _config);
 
         return (provider, enricher);
     }
@@ -74,11 +74,11 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             code = "public class CustomerService { public void ProcessOrder() { } }",
-            filePath = "Services/CustomerService.cs"
+            filePath = "Services/CustomerService.cs",
         };
         var arguments = new Dictionary<string, object>
         {
-            ["fqn"] = "MyApp.Services.CustomerService"
+            ["fqn"] = "MyApp.Services.CustomerService",
         };
 
         // Act
@@ -100,14 +100,10 @@ public class EnrichmentIntegrationTests
     {
         // Arrange
         var (provider, enricher) = CreateServices();
-        var originalResult = new
-        {
-            references = new[] { "File1.cs:10", "File2.cs:25" },
-            count = 2
-        };
+        var originalResult = new { references = new[] { "File1.cs:10", "File2.cs:25" }, count = 2 };
         var arguments = new Dictionary<string, object>
         {
-            ["fqn"] = "MyApp.Services.CustomerService.ProcessOrder"
+            ["fqn"] = "MyApp.Services.CustomerService.ProcessOrder",
         };
 
         // Act
@@ -125,15 +121,11 @@ public class EnrichmentIntegrationTests
     {
         // Arrange
         var (provider, enricher) = CreateServices();
-        var originalResult = new
-        {
-            success = true,
-            modifiedFile = "Services/CustomerService.cs"
-        };
+        var originalResult = new { success = true, modifiedFile = "Services/CustomerService.cs" };
         var arguments = new Dictionary<string, object>
         {
             ["fqn"] = "MyApp.Services.CustomerService.ProcessOrder",
-            ["newCode"] = "public void ProcessOrder() { /* new implementation */ }"
+            ["newCode"] = "public void ProcessOrder() { /* new implementation */ }",
         };
 
         // Act
@@ -154,7 +146,7 @@ public class EnrichmentIntegrationTests
         var arguments = new Dictionary<string, object>
         {
             ["typeFqn"] = "MyApp.Services.CustomerService",
-            ["newCode"] = "public void NewMethod() { }"
+            ["newCode"] = "public void NewMethod() { }",
         };
 
         // Act
@@ -174,7 +166,7 @@ public class EnrichmentIntegrationTests
         var arguments = new Dictionary<string, object>
         {
             ["fqn"] = "MyApp.Services.CustomerService.ProcessOrder",
-            ["newName"] = "HandleOrder"
+            ["newName"] = "HandleOrder",
         };
 
         // Act
@@ -193,11 +185,11 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             members = new[] { "ProcessOrder", "CancelOrder", "UpdateOrder" },
-            count = 3
+            count = 3,
         };
         var arguments = new Dictionary<string, object>
         {
-            ["typeFqn"] = "MyApp.Services.CustomerService"
+            ["typeFqn"] = "MyApp.Services.CustomerService",
         };
 
         // Act
@@ -217,11 +209,11 @@ public class EnrichmentIntegrationTests
         {
             cyclomaticComplexity = 15,
             cognitiveComplexity = 22,
-            maintainabilityIndex = 65
+            maintainabilityIndex = 65,
         };
         var arguments = new Dictionary<string, object>
         {
-            ["fqn"] = "MyApp.Services.CustomerService.ProcessOrder"
+            ["fqn"] = "MyApp.Services.CustomerService.ProcessOrder",
         };
 
         // Act
@@ -244,11 +236,11 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             references = new[] { "Project1:File1.cs:10", "Project2:File2.cs:25" },
-            totalCount = 15
+            totalCount = 15,
         };
         var arguments = new Dictionary<string, object>
         {
-            ["fqn"] = "MyApp.Services.CustomerService"
+            ["fqn"] = "MyApp.Services.CustomerService",
         };
 
         // Act
@@ -267,12 +259,9 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             types = new[] { "CustomerService", "OrderService", "PaymentService" },
-            count = 3
+            count = 3,
         };
-        var arguments = new Dictionary<string, object>
-        {
-            ["namespace"] = "MyApp.Services"
-        };
+        var arguments = new Dictionary<string, object> { ["namespace"] = "MyApp.Services" };
 
         // Act
         var result = await enricher.EnrichAsync("list_types", originalResult, arguments);
@@ -290,12 +279,9 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             symbols = new[] { "ProcessOrder", "HandleOrder", "ExecuteOrder" },
-            count = 3
+            count = 3,
         };
-        var arguments = new Dictionary<string, object>
-        {
-            ["query"] = "order"
-        };
+        var arguments = new Dictionary<string, object> { ["query"] = "order" };
 
         // Act
         var result = await enricher.EnrichAsync("search_symbols", originalResult, arguments);
@@ -313,11 +299,11 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             callChain = new[] { "Main", "ProcessOrder", "ValidateOrder", "SaveOrder" },
-            depth = 4
+            depth = 4,
         };
         var arguments = new Dictionary<string, object>
         {
-            ["fqn"] = "MyApp.Services.CustomerService.ProcessOrder"
+            ["fqn"] = "MyApp.Services.CustomerService.ProcessOrder",
         };
 
         // Act
@@ -336,11 +322,11 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             issues = new[] { "Naming convention violation", "Missing XML documentation" },
-            score = 75
+            score = 75,
         };
         var arguments = new Dictionary<string, object>
         {
-            ["fqn"] = "MyApp.Services.CustomerService"
+            ["fqn"] = "MyApp.Services.CustomerService",
         };
 
         // Act
@@ -359,11 +345,11 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             baseTypes = new[] { "ServiceBase", "Object" },
-            interfaces = new[] { "ICustomerService", "IService" }
+            interfaces = new[] { "ICustomerService", "IService" },
         };
         var arguments = new Dictionary<string, object>
         {
-            ["typeFqn"] = "MyApp.Services.CustomerService"
+            ["typeFqn"] = "MyApp.Services.CustomerService",
         };
 
         // Act
@@ -382,12 +368,9 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             namespaces = new[] { "MyApp.Services", "MyApp.Models", "MyApp.Controllers" },
-            count = 3
+            count = 3,
         };
-        var arguments = new Dictionary<string, object>
-        {
-            ["projectName"] = "MyApp"
-        };
+        var arguments = new Dictionary<string, object> { ["projectName"] = "MyApp" };
 
         // Act
         var result = await enricher.EnrichAsync("get_project_structure", originalResult, arguments);
@@ -405,12 +388,9 @@ public class EnrichmentIntegrationTests
         var originalResult = new
         {
             usages = new[] { "Controller.cs:45", "Service.cs:102" },
-            count = 2
+            count = 2,
         };
-        var arguments = new Dictionary<string, object>
-        {
-            ["fqn"] = "MyApp.Models.Customer"
-        };
+        var arguments = new Dictionary<string, object> { ["fqn"] = "MyApp.Models.Customer" };
 
         // Act
         var result = await enricher.EnrichAsync("find_usages", originalResult, arguments);
@@ -429,11 +409,11 @@ public class EnrichmentIntegrationTests
         {
             errors = 2,
             warnings = 5,
-            info = 10
+            info = 10,
         };
         var arguments = new Dictionary<string, object>
         {
-            ["filePath"] = "Services/CustomerService.cs"
+            ["filePath"] = "Services/CustomerService.cs",
         };
 
         // Act
@@ -449,15 +429,11 @@ public class EnrichmentIntegrationTests
     {
         // Arrange
         var (provider, enricher) = CreateServices();
-        var originalResult = new
-        {
-            fixesApplied = 3,
-            filesModified = 1
-        };
+        var originalResult = new { fixesApplied = 3, filesModified = 1 };
         var arguments = new Dictionary<string, object>
         {
             ["filePath"] = "Services/CustomerService.cs",
-            ["diagnosticIds"] = new[] { "CS0168", "CS8019" }
+            ["diagnosticIds"] = new[] { "CS0168", "CS8019" },
         };
 
         // Act
@@ -481,7 +457,10 @@ public class EnrichmentIntegrationTests
         {
             ("view_definition", new Dictionary<string, object> { ["fqn"] = "Test.Class" }),
             ("find_references", new Dictionary<string, object> { ["fqn"] = "Test.Method" }),
-            ("overwrite_member", new Dictionary<string, object> { ["fqn"] = "Test.Method", ["newCode"] = "code" }),
+            (
+                "overwrite_member",
+                new Dictionary<string, object> { ["fqn"] = "Test.Method", ["newCode"] = "code" }
+            ),
             ("get_members", new Dictionary<string, object> { ["typeFqn"] = "Test.Class" }),
             ("analyze_complexity", new Dictionary<string, object> { ["fqn"] = "Test.Method" }),
             ("find_all_references", new Dictionary<string, object> { ["fqn"] = "Test.Class" }),
@@ -493,7 +472,14 @@ public class EnrichmentIntegrationTests
             ("get_project_structure", new Dictionary<string, object> { ["projectName"] = "Test" }),
             ("find_usages", new Dictionary<string, object> { ["fqn"] = "Test.Class" }),
             ("get_diagnostics", new Dictionary<string, object> { ["filePath"] = "Test.cs" }),
-            ("apply_code_fixes", new Dictionary<string, object> { ["filePath"] = "Test.cs", ["diagnosticIds"] = Array.Empty<string>() })
+            (
+                "apply_code_fixes",
+                new Dictionary<string, object>
+                {
+                    ["filePath"] = "Test.cs",
+                    ["diagnosticIds"] = Array.Empty<string>(),
+                }
+            ),
         };
 
         // Act & Assert
@@ -503,9 +489,15 @@ public class EnrichmentIntegrationTests
 
             result.Should().NotBeNull($"because {toolName} should return a result");
             result.Metadata.Should().NotBeNull($"because {toolName} should have metadata");
-            result.Metadata.Source.Should().Be(SemanticModeSource.Local, $"because {toolName} uses local embedding");
-            result.Metadata.EnrichmentTimeMs.Should().BeGreaterThanOrEqualTo(0, $"because {toolName} should track time");
-            result.Metadata.TimedOut.Should().BeFalse($"because {toolName} should not timeout with mock service");
+            result
+                .Metadata.Source.Should()
+                .Be(SemanticModeSource.Local, $"because {toolName} uses local embedding");
+            result
+                .Metadata.EnrichmentTimeMs.Should()
+                .BeGreaterThanOrEqualTo(0, $"because {toolName} should track time");
+            result
+                .Metadata.TimedOut.Should()
+                .BeFalse($"because {toolName} should not timeout with mock service");
         }
     }
 
@@ -521,16 +513,17 @@ public class EnrichmentIntegrationTests
             _embeddingMock.Object,
             null,
             null,
-            disabledConfig);
+            disabledConfig
+        );
 
-        var enricher = new ToolEnricher(
-            _enricherLoggerMock.Object,
-            provider,
-            disabledConfig);
+        var enricher = new ToolEnricher(_enricherLoggerMock.Object, provider, disabledConfig);
 
         // Act
-        var result = await enricher.EnrichAsync("view_definition", new { test = "data" },
-            new Dictionary<string, object> { ["fqn"] = "Test.Class" });
+        var result = await enricher.EnrichAsync(
+            "view_definition",
+            new { test = "data" },
+            new Dictionary<string, object> { ["fqn"] = "Test.Class" }
+        );
 
         // Assert
         result.Should().NotBeNull();

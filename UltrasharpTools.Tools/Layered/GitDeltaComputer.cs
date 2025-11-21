@@ -1,7 +1,4 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -19,7 +16,8 @@ public sealed class GitDeltaComputer
     public GitDeltaComputer(
         IGitService gitService,
         FastSymbolIndex baseIndex,
-        ILogger<GitDeltaComputer>? logger = null)
+        ILogger<GitDeltaComputer>? logger = null
+    )
     {
         _gitService = gitService ?? throw new ArgumentNullException(nameof(gitService));
         _baseIndex = baseIndex ?? throw new ArgumentNullException(nameof(baseIndex));
@@ -39,12 +37,16 @@ public sealed class GitDeltaComputer
         Solution solution,
         string solutionPath,
         string baseBranch = "main",
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             // 1. Get current branch
-            var currentBranch = await _gitService.GetCurrentBranchAsync(solutionPath, cancellationToken);
+            var currentBranch = await _gitService.GetCurrentBranchAsync(
+                solutionPath,
+                cancellationToken
+            );
             if (string.IsNullOrEmpty(currentBranch))
             {
                 _logger.LogWarning("Could not determine current branch");
@@ -59,15 +61,27 @@ public sealed class GitDeltaComputer
             }
 
             // 3. Find merge-base (common ancestor)
-            var mergeBaseSha = await _gitService.GetMergeBaseCommitAsync(solutionPath, currentBranch, baseBranch, cancellationToken);
+            var mergeBaseSha = await _gitService.GetMergeBaseCommitAsync(
+                solutionPath,
+                currentBranch,
+                baseBranch,
+                cancellationToken
+            );
             if (string.IsNullOrEmpty(mergeBaseSha))
             {
-                _logger.LogWarning("Could not find merge-base between {CurrentBranch} and {BaseBranch}", currentBranch, baseBranch);
+                _logger.LogWarning(
+                    "Could not find merge-base between {CurrentBranch} and {BaseBranch}",
+                    currentBranch,
+                    baseBranch
+                );
                 return null;
             }
 
             // 4. Get current commit SHA
-            var currentCommitSha = await _gitService.GetCurrentCommitShaAsync(solutionPath, cancellationToken);
+            var currentCommitSha = await _gitService.GetCurrentCommitShaAsync(
+                solutionPath,
+                cancellationToken
+            );
             if (string.IsNullOrEmpty(currentCommitSha))
             {
                 _logger.LogWarning("Could not determine current commit SHA");
@@ -75,18 +89,26 @@ public sealed class GitDeltaComputer
             }
 
             // 5. Get changed files between merge-base and current HEAD
-            var changedFiles = await _gitService.GetChangedFilesAsync(solutionPath, mergeBaseSha, currentCommitSha, cancellationToken);
+            var changedFiles = await _gitService.GetChangedFilesAsync(
+                solutionPath,
+                mergeBaseSha,
+                currentCommitSha,
+                cancellationToken
+            );
 
             _logger.LogInformation(
                 "Computing delta for branch {Branch}: {FileCount} files changed since merge-base {MergeBase}",
-                currentBranch, changedFiles.Count, mergeBaseSha[..8]);
+                currentBranch,
+                changedFiles.Count,
+                mergeBaseSha[..8]
+            );
 
             // 6. Create BranchDelta
             var delta = new BranchDelta
             {
                 BranchName = currentBranch,
                 BaseCommitSha = mergeBaseSha,
-                LastModified = DateTime.UtcNow
+                LastModified = DateTime.UtcNow,
             };
 
             // 7. Process each changed file
@@ -98,12 +120,21 @@ public sealed class GitDeltaComputer
                     continue;
                 }
 
-                await ProcessChangedFileAsync(solution, filePath, changeType, delta, cancellationToken);
+                await ProcessChangedFileAsync(
+                    solution,
+                    filePath,
+                    changeType,
+                    delta,
+                    cancellationToken
+                );
             }
 
             _logger.LogInformation(
                 "Delta computed: {Added} added, {Modified} modified, {Deleted} deleted symbols",
-                delta.AddedSymbols.Count, delta.ModifiedSymbols.Count, delta.DeletedSymbolIds.Count);
+                delta.AddedSymbols.Count,
+                delta.ModifiedSymbols.Count,
+                delta.DeletedSymbolIds.Count
+            );
 
             return delta;
         }
@@ -122,7 +153,8 @@ public sealed class GitDeltaComputer
         string filePath,
         string changeType,
         BranchDelta delta,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -137,12 +169,21 @@ public sealed class GitDeltaComputer
             else if (changeType is "Added" or "Modified" && document != null)
             {
                 // For added/modified files, extract symbols
-                await ProcessAddedOrModifiedFileAsync(document, changeType, delta, cancellationToken);
+                await ProcessAddedOrModifiedFileAsync(
+                    document,
+                    changeType,
+                    delta,
+                    cancellationToken
+                );
             }
             else
             {
-                _logger.LogDebug("Skipping file {FilePath}: changeType={ChangeType}, document={DocumentFound}",
-                    filePath, changeType, document != null);
+                _logger.LogDebug(
+                    "Skipping file {FilePath}: changeType={ChangeType}, document={DocumentFound}",
+                    filePath,
+                    changeType,
+                    document != null
+                );
             }
         }
         catch (Exception ex)
@@ -154,15 +195,23 @@ public sealed class GitDeltaComputer
     /// <summary>
     /// Process deleted file - mark all symbols as deleted.
     /// </summary>
-    private async Task ProcessDeletedFileAsync(string filePath, BranchDelta delta, CancellationToken cancellationToken)
+    private async Task ProcessDeletedFileAsync(
+        string filePath,
+        BranchDelta delta,
+        CancellationToken cancellationToken
+    )
     {
         await Task.CompletedTask; // For async signature
 
         // Find all symbols in base index that belong to this file
         // Note: This requires FilePath tracking in SymbolIndexEntry (added in Phase 0.1)
-        var symbolsInFile = _baseIndex.Find("*")
-            .Where(s => s.FilePath != null &&
-                       Path.GetFullPath(s.FilePath).Equals(Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase))
+        var symbolsInFile = _baseIndex
+            .Find("*")
+            .Where(s =>
+                s.FilePath != null
+                && Path.GetFullPath(s.FilePath)
+                    .Equals(Path.GetFullPath(filePath), StringComparison.OrdinalIgnoreCase)
+            )
             .ToList();
 
         foreach (var symbol in symbolsInFile)
@@ -170,7 +219,11 @@ public sealed class GitDeltaComputer
             delta.DeletedSymbolIds.Add(symbol.SymbolId);
         }
 
-        _logger.LogDebug("Marked {Count} symbols as deleted from file {FilePath}", symbolsInFile.Count, filePath);
+        _logger.LogDebug(
+            "Marked {Count} symbols as deleted from file {FilePath}",
+            symbolsInFile.Count,
+            filePath
+        );
     }
 
     /// <summary>
@@ -180,10 +233,14 @@ public sealed class GitDeltaComputer
         Document document,
         string changeType,
         BranchDelta delta,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // Extract symbols from document using same logic as FastSymbolIndex
-        var symbols = await FastSymbolIndex.ExtractSymbolsFromDocumentAsync(document, cancellationToken);
+        var symbols = await FastSymbolIndex.ExtractSymbolsFromDocumentAsync(
+            document,
+            cancellationToken
+        );
 
         foreach (var symbol in symbols)
         {
@@ -195,7 +252,9 @@ public sealed class GitDeltaComputer
             else // Modified
             {
                 // Check if symbol exists in base index
-                var existsInBase = _baseIndex.Find(symbol.SimpleName).Any(s => s.SymbolId == symbol.SymbolId);
+                var existsInBase = _baseIndex
+                    .Find(symbol.SimpleName)
+                    .Any(s => s.SymbolId == symbol.SymbolId);
 
                 if (existsInBase)
                 {
@@ -210,8 +269,12 @@ public sealed class GitDeltaComputer
             }
         }
 
-        _logger.LogDebug("Processed {ChangeType} file {FilePath}: extracted {Count} symbols",
-            changeType, document.FilePath, symbols.Count);
+        _logger.LogDebug(
+            "Processed {ChangeType} file {FilePath}: extracted {Count} symbols",
+            changeType,
+            document.FilePath,
+            symbols.Count
+        );
     }
 
     /// <summary>
@@ -225,8 +288,11 @@ public sealed class GitDeltaComputer
         {
             foreach (var document in project.Documents)
             {
-                if (document.FilePath != null &&
-                    Path.GetFullPath(document.FilePath).Equals(fullPath, StringComparison.OrdinalIgnoreCase))
+                if (
+                    document.FilePath != null
+                    && Path.GetFullPath(document.FilePath)
+                        .Equals(fullPath, StringComparison.OrdinalIgnoreCase)
+                )
                 {
                     return document;
                 }
@@ -241,8 +307,8 @@ public sealed class GitDeltaComputer
     /// </summary>
     private static bool IsBaseBranch(string currentBranch, string baseBranch)
     {
-        return currentBranch.Equals(baseBranch, StringComparison.OrdinalIgnoreCase) ||
-               currentBranch.Equals("main", StringComparison.OrdinalIgnoreCase) ||
-               currentBranch.Equals("master", StringComparison.OrdinalIgnoreCase);
+        return currentBranch.Equals(baseBranch, StringComparison.OrdinalIgnoreCase)
+            || currentBranch.Equals("main", StringComparison.OrdinalIgnoreCase)
+            || currentBranch.Equals("master", StringComparison.OrdinalIgnoreCase);
     }
 }

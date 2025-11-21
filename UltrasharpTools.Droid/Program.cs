@@ -1,23 +1,23 @@
-using UltrasharpTools.Tools.Services;
-using UltrasharpTools.Tools.Interfaces;
-using UltrasharpTools.Tools.Mcp.Tools;
-using UltrasharpTools.Tools.Extensions;
-using UltrasharpTools.Tools.Infrastructure;
-using UltrasharpTools.Tools.Logging;
-using UltrasharpTools.Tools.Config;
+using System;
 using System.CommandLine;
 using System.CommandLine.Parsing;
+using System.IO;
 using System.Reflection;
-using ModelContextProtocol.Protocol;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.IO;
-using System;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Text.Json;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
+using UltrasharpTools.Tools.Config;
+using UltrasharpTools.Tools.Extensions;
+using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Interfaces;
+using UltrasharpTools.Tools.Logging;
+using UltrasharpTools.Tools.Mcp.Tools;
+using UltrasharpTools.Tools.Services;
 
 namespace UltrasharpTools.Droid;
 
@@ -25,6 +25,7 @@ public static class Program
 {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
     public const string ApplicationVersion = "3.0.6";
+
     public static async Task<int> Main(string[] args)
     {
         _ = typeof(SolutionTools);
@@ -34,122 +35,127 @@ public static class Program
 
         var logDirOption = new Option<string?>("--log-directory")
         {
-            Description = "Optional path to a log directory. If not specified, uses .ultrasharp/logs in project root."
+            Description =
+                "Optional path to a log directory. If not specified, uses .ultrasharp/logs in project root.",
         };
 
         var logLevelOption = new Option<LogLevel>("--log-level")
         {
             Description = "Minimum log level for console and file.",
-            DefaultValueFactory = _ => LogLevel.Information
+            DefaultValueFactory = _ => LogLevel.Information,
         };
 
         var loadSolutionOption = new Option<string?>("--load-solution")
         {
-            Description = "Path to a solution file (.sln) to load immediately on startup."
+            Description = "Path to a solution file (.sln) to load immediately on startup.",
         };
 
         var buildConfigurationOption = new Option<string?>("--build-configuration")
         {
-            Description = "Build configuration to use when loading the solution (Debug, Release, etc.)."
+            Description =
+                "Build configuration to use when loading the solution (Debug, Release, etc.).",
         };
 
         var disableGitOption = new Option<bool>("--disable-git")
         {
             Description = "Disable Git integration.",
-            DefaultValueFactory = _ => false
+            DefaultValueFactory = _ => false,
         };
 
         var modeOption = new Option<string>("--mode")
         {
             Description = "Operation mode: local (default) or hybrid (connect to Overlord server)",
-            DefaultValueFactory = _ => "local"
+            DefaultValueFactory = _ => "local",
         };
 
         var serverUrlOption = new Option<string?>("--server-url")
         {
             Description = "Overlord server URL (required for hybrid mode)",
-            DefaultValueFactory = _ => null
+            DefaultValueFactory = _ => null,
         };
 
         var embeddingUrlOption = new Option<string?>("--embedding-url")
         {
             Description = "Embedding service URL for hybrid mode (Ollama/TEI)",
-            DefaultValueFactory = _ => "http://localhost:11434"
+            DefaultValueFactory = _ => "http://localhost:11434",
         };
 
         var embeddingModelOption = new Option<string?>("--embedding-model")
         {
             Description = "Embedding model name for hybrid mode",
-            DefaultValueFactory = _ => "nomic-embed-text"
+            DefaultValueFactory = _ => "nomic-embed-text",
         };
 
         var gitBranchRetentionCountOption = new Option<int?>("--git-branch-retention-count")
         {
             Description = "Keep only the N most recent sharptools/* branches. (null = no limit)",
-            DefaultValueFactory = _ => 10
+            DefaultValueFactory = _ => 10,
         };
 
         var gitBranchRetentionDaysOption = new Option<int?>("--git-branch-retention-days")
         {
-            Description = "Keep sharptools/* branches created within the last N days. (null = no limit)",
-            DefaultValueFactory = _ => null
+            Description =
+                "Keep sharptools/* branches created within the last N days. (null = no limit)",
+            DefaultValueFactory = _ => null,
         };
 
         var gitAutoCleanupOption = new Option<bool>("--git-auto-cleanup")
         {
             Description = "Automatically cleanup old branches after each modification.",
-            DefaultValueFactory = _ => true
+            DefaultValueFactory = _ => true,
         };
 
         var autoReloadOption = new Option<bool>("--auto-reload")
         {
             Description = "Enable automatic solution reload when .csproj or .sln files change.",
-            DefaultValueFactory = _ => false
+            DefaultValueFactory = _ => false,
         };
 
         var reloadDebounceOption = new Option<int>("--reload-debounce-ms")
         {
             Description = "Debounce delay in milliseconds before triggering auto-reload.",
-            DefaultValueFactory = _ => 2000
+            DefaultValueFactory = _ => 2000,
         };
 
         var symbolCacheEnabledOption = new Option<bool>("--symbol-cache")
         {
-            Description = "Enable persistent symbol cache for 10x faster solution initialization (33s → 3-5s).",
-            DefaultValueFactory = _ => true
+            Description =
+                "Enable persistent symbol cache for 10x faster solution initialization (33s → 3-5s).",
+            DefaultValueFactory = _ => true,
         };
 
         var symbolCacheClearOption = new Option<bool>("--symbol-cache-clear")
         {
             Description = "Clear all symbol cache data on startup.",
-            DefaultValueFactory = _ => false
+            DefaultValueFactory = _ => false,
         };
 
         var symbolCacheDirectoryOption = new Option<string?>("--symbol-cache-directory")
         {
-            Description = "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache)."
+            Description =
+                "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache).",
         };
 
         var rootCommand = new RootCommand("UltrasharpTools MCP Droid")
         {
-        logDirOption,
-        logLevelOption,
-        loadSolutionOption,
-        buildConfigurationOption,
-        disableGitOption,
-        modeOption,
-        serverUrlOption,
-        embeddingUrlOption,
-        embeddingModelOption,
-        gitBranchRetentionCountOption,
-        gitBranchRetentionDaysOption,
-        gitAutoCleanupOption,
-        autoReloadOption,
-        reloadDebounceOption,
-        symbolCacheEnabledOption,
-        symbolCacheClearOption,
-        symbolCacheDirectoryOption
-    };
+            logDirOption,
+            logLevelOption,
+            loadSolutionOption,
+            buildConfigurationOption,
+            disableGitOption,
+            modeOption,
+            serverUrlOption,
+            embeddingUrlOption,
+            embeddingModelOption,
+            gitBranchRetentionCountOption,
+            gitBranchRetentionDaysOption,
+            gitAutoCleanupOption,
+            autoReloadOption,
+            reloadDebounceOption,
+            symbolCacheEnabledOption,
+            symbolCacheClearOption,
+            symbolCacheDirectoryOption,
+        };
 
         // Parse arguments first to get values
         var parseResult = rootCommand.Parse(args);
@@ -170,7 +176,9 @@ public static class Program
             }
             else if (solutionFiles.Length > 1)
             {
-                Console.WriteLine($"Multiple solution files found in {currentDir}. Use --load-solution to specify which one to load.");
+                Console.WriteLine(
+                    $"Multiple solution files found in {currentDir}. Use --load-solution to specify which one to load."
+                );
             }
         }
 
@@ -210,7 +218,9 @@ public static class Program
         }
 
         string logFilePath = Path.Combine(logDirPath, $"{ApplicationName}-{{Date:yyyyMMdd}}.log");
-        Console.Error.WriteLine($"Logging to directory: {Path.GetFullPath(logDirPath)} with minimum level {minimumLogLevel}");
+        Console.Error.WriteLine(
+            $"Logging to directory: {Path.GetFullPath(logDirPath)} with minimum level {minimumLogLevel}"
+        );
 
         // Early startup information (before DI/logging is configured)
 
@@ -293,14 +303,14 @@ public static class Program
         {
             RetentionCount = gitBranchRetentionCount,
             RetentionDays = gitBranchRetentionDays,
-            AutoCleanup = gitAutoCleanup && !disableGit  // Only enable if Git is enabled
+            AutoCleanup = gitAutoCleanup && !disableGit, // Only enable if Git is enabled
         };
 
         // Create SolutionReloadOptions from command line arguments
         var reloadOptions = new UltrasharpTools.Tools.Models.SolutionReloadOptions
         {
             AutoReloadEnabled = autoReload,
-            DebounceDelayMs = reloadDebounceMs
+            DebounceDelayMs = reloadDebounceMs,
         };
 
         // Create SymbolCacheOptions from command line arguments
@@ -308,70 +318,99 @@ public static class Program
         {
             Enabled = symbolCacheEnabled,
             ClearOnStartup = symbolCacheClear,
-            CacheDirectory = symbolCacheDirectory
+            CacheDirectory = symbolCacheDirectory,
         };
 
-        builder.Services.WithUltrasharpToolsServices(!disableGit, buildConfiguration, gitOptions, reloadOptions, symbolCacheOptions);
+        builder.Services.WithUltrasharpToolsServices(
+            !disableGit,
+            buildConfiguration,
+            gitOptions,
+            reloadOptions,
+            symbolCacheOptions
+        );
 
         // Auto-enable semantic RAG if semantic-config.json exists
         // Check Config\semantic-config.json (recommended) or semantic-config.json (legacy)
         // Use exe directory instead of current working directory
-        var exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? Directory.GetCurrentDirectory();
+        var exeDir =
+            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+            ?? Directory.GetCurrentDirectory();
         var configDirPath = Path.Combine(exeDir, "Config", "semantic-config.json");
         var legacyPath = Path.Combine(exeDir, "semantic-config.json");
         var hasSemanticConfig = File.Exists(configDirPath) || File.Exists(legacyPath);
         var semanticConfigPath = File.Exists(configDirPath) ? configDirPath : legacyPath;
 
         // Debug logging (before logger is available)
-        File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - exeDir: {exeDir}\n" +
-            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - configDirPath: {configDirPath}\n" +
-            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - configDirPath exists: {File.Exists(configDirPath)}\n" +
-            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - hasSemanticConfig: {hasSemanticConfig}\n");
+        File.AppendAllText(
+            Path.Combine(logDirPath, "semantic-debug.log"),
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - exeDir: {exeDir}\n"
+                + $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - configDirPath: {configDirPath}\n"
+                + $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - configDirPath exists: {File.Exists(configDirPath)}\n"
+                + $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - hasSemanticConfig: {hasSemanticConfig}\n"
+        );
 
         bool semanticEnabled = false;
 
         if (hasSemanticConfig)
         {
             Console.WriteLine($"[Semantic] Found {Path.GetFileName(semanticConfigPath)}");
-            File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Found semantic-config.json at: {semanticConfigPath}\n");
+            File.AppendAllText(
+                Path.Combine(logDirPath, "semantic-debug.log"),
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Found semantic-config.json at: {semanticConfigPath}\n"
+            );
 
             try
             {
                 // Load config
                 var configJson = await File.ReadAllTextAsync(semanticConfigPath);
-                File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Config JSON length: {configJson.Length}\n");
+                File.AppendAllText(
+                    Path.Combine(logDirPath, "semantic-debug.log"),
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Config JSON length: {configJson.Length}\n"
+                );
 
                 var jsonOptions = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
-                    PropertyNamingPolicy = null  // Allow both snake_case and PascalCase
+                    PropertyNamingPolicy = null, // Allow both snake_case and PascalCase
                 };
-                var config = JsonSerializer.Deserialize<SemanticEmbeddingConfig>(configJson, jsonOptions);
+                var config = JsonSerializer.Deserialize<SemanticEmbeddingConfig>(
+                    configJson,
+                    jsonOptions
+                );
 
-                File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Config deserialized: {config != null}, Platform: {config?.Embedding?.Platform}\n");
+                File.AppendAllText(
+                    Path.Combine(logDirPath, "semantic-debug.log"),
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Config deserialized: {config != null}, Platform: {config?.Embedding?.Platform}\n"
+                );
 
                 if (config != null)
                 {
-                    File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Starting health check for {config.Embedding.Platform}\n");
+                    File.AppendAllText(
+                        Path.Combine(logDirPath, "semantic-debug.log"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Starting health check for {config.Embedding.Platform}\n"
+                    );
 
                     // Log endpoint before health check
-                    var endpoint = config.Embedding.Platform.ToLowerInvariant() == "tei"
-                        ? config.Embedding.Tei?.Endpoint
-                        : config.Embedding.Ollama?.Endpoint;
-                    File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Endpoint: {endpoint ?? "NULL"}\n");
+                    var endpoint =
+                        config.Embedding.Platform.ToLowerInvariant() == "tei"
+                            ? config.Embedding.Tei?.Endpoint
+                            : config.Embedding.Ollama?.Endpoint;
+                    File.AppendAllText(
+                        Path.Combine(logDirPath, "semantic-debug.log"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Endpoint: {endpoint ?? "NULL"}\n"
+                    );
 
                     // Quick check if service is available (10s timeout - generous for debugging)
-                    var healthCheck = new SemanticServiceHealthCheck(httpClientFactory: null, logger: null);
+                    var healthCheck = new SemanticServiceHealthCheck(
+                        httpClientFactory: null,
+                        logger: null
+                    );
                     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
-                    File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Calling QuickCheckAsync with 10s timeout\n");
+                    File.AppendAllText(
+                        Path.Combine(logDirPath, "semantic-debug.log"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Calling QuickCheckAsync with 10s timeout\n"
+                    );
 
                     bool isAvailable = false;
                     try
@@ -380,16 +419,22 @@ public static class Program
                     }
                     catch (Exception ex)
                     {
-                        File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync exception: {ex.GetType().Name}: {ex.Message}\n");
+                        File.AppendAllText(
+                            Path.Combine(logDirPath, "semantic-debug.log"),
+                            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync exception: {ex.GetType().Name}: {ex.Message}\n"
+                        );
                     }
 
-                    File.AppendAllText(Path.Combine(logDirPath, "semantic-debug.log"),
-                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Health check result: {isAvailable}\n");
+                    File.AppendAllText(
+                        Path.Combine(logDirPath, "semantic-debug.log"),
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Health check result: {isAvailable}\n"
+                    );
 
                     if (isAvailable)
                     {
-                        Console.WriteLine($"[Semantic] ✓ {config.Embedding.Platform.ToUpperInvariant()} service is available");
+                        Console.WriteLine(
+                            $"[Semantic] ✓ {config.Embedding.Platform.ToUpperInvariant()} service is available"
+                        );
 
                         // Determine database path based on solution
                         string? databasePath = null;
@@ -398,7 +443,11 @@ public static class Program
                             var solutionDir = Path.GetDirectoryName(solutionPath);
                             if (!string.IsNullOrEmpty(solutionDir))
                             {
-                                databasePath = Path.Combine(solutionDir, ".ultrasharp", "semantic.db");
+                                databasePath = Path.Combine(
+                                    solutionDir,
+                                    ".ultrasharp",
+                                    "semantic.db"
+                                );
                             }
                         }
 
@@ -413,24 +462,35 @@ public static class Program
 
                                 if (config.Embedding.Platform.ToLowerInvariant() == "ollama")
                                 {
-                                    options.Ollama.BaseUrl = config.Embedding.Ollama?.Endpoint ?? "http://127.0.0.1:11434";
-                                    options.Ollama.Model = config.Embedding.Ollama?.SelectedModel ?? "nomic-embed-text";
+                                    options.Ollama.BaseUrl =
+                                        config.Embedding.Ollama?.Endpoint
+                                        ?? "http://127.0.0.1:11434";
+                                    options.Ollama.Model =
+                                        config.Embedding.Ollama?.SelectedModel
+                                        ?? "nomic-embed-text";
                                 }
                                 else if (config.Embedding.Platform.ToLowerInvariant() == "tei")
                                 {
-                                    options.TEI.BaseUrl = config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080";
-                                    options.TEI.Model = config.Embedding.Tei?.SelectedModel ?? "BAAI/bge-small-en-v1.5";
+                                    options.TEI.BaseUrl =
+                                        config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080";
+                                    options.TEI.Model =
+                                        config.Embedding.Tei?.SelectedModel
+                                        ?? "BAAI/bge-small-en-v1.5";
                                 }
                             },
                             indexerConfig: null
                         );
 
-                        Console.WriteLine($"[Semantic] Semantic RAG enabled (database: {databasePath ?? "in-memory"})");
+                        Console.WriteLine(
+                            $"[Semantic] Semantic RAG enabled (database: {databasePath ?? "in-memory"})"
+                        );
                         semanticEnabled = true;
                     }
                     else
                     {
-                        Console.WriteLine($"[Semantic] {config.Embedding.Platform.ToUpperInvariant()} service not responding");
+                        Console.WriteLine(
+                            $"[Semantic] {config.Embedding.Platform.ToUpperInvariant()} service not responding"
+                        );
                         Console.WriteLine($"[Semantic] Starting auto-recovery in background...");
 
                         // Start background auto-recovery (non-blocking)
@@ -438,12 +498,17 @@ public static class Program
                         {
                             try
                             {
-                                var result = await healthCheck.CheckAndStartAsync(config, CancellationToken.None);
+                                var result = await healthCheck.CheckAndStartAsync(
+                                    config,
+                                    CancellationToken.None
+                                );
 
                                 if (result.IsAvailable)
                                 {
                                     Console.WriteLine($"[Semantic] ✓ {result.Message}");
-                                    Console.WriteLine($"[Semantic] Restart MCP server to enable semantic mode");
+                                    Console.WriteLine(
+                                        $"[Semantic] Restart MCP server to enable semantic mode"
+                                    );
                                 }
                                 else
                                 {
@@ -466,7 +531,9 @@ public static class Program
         else
         {
             Console.WriteLine("[Semantic] No semantic-config.json found, semantic mode disabled");
-            Console.WriteLine("[Semantic] Run Config\\setup-semantic-embedding.cmd to configure semantic search");
+            Console.WriteLine(
+                "[Semantic] Run Config\\setup-semantic-embedding.cmd to configure semantic search"
+            );
         }
 
         if (!semanticEnabled)
@@ -474,15 +541,18 @@ public static class Program
             // CRITICAL: Register dummy SemanticSearchService to prevent "No service of the requested type was found"
             // MCP framework requires all parameters to be resolvable, even if nullable
             // This allows pattern_search to work in entity/content modes without semantic mode configured
-            builder.Services.AddSingleton<UltrasharpTools.Tools.Semantic.SemanticSearchService>(sp =>
-            {
-                // Return a real instance with null dependencies - pattern_search checks for null and falls back
-                return new UltrasharpTools.Tools.Semantic.SemanticSearchService(
-                    indexer: null!,
-                    solutionManager: null!,
-                    config: null,
-                    logger: null);
-            });
+            builder.Services.AddSingleton<UltrasharpTools.Tools.Semantic.SemanticSearchService>(
+                sp =>
+                {
+                    // Return a real instance with null dependencies - pattern_search checks for null and falls back
+                    return new UltrasharpTools.Tools.Semantic.SemanticSearchService(
+                        indexer: null!,
+                        solutionManager: null!,
+                        config: null,
+                        logger: null
+                    );
+                }
+            );
         }
 
         // Register hybrid mode services if enabled
@@ -503,45 +573,63 @@ public static class Program
                 RepositoryPath = repositoryPath,
                 ServerUrl = serverUrl!,
                 EmbeddingUrl = embeddingUrl ?? "http://localhost:11434",
-                EmbeddingModel = embeddingModel ?? "nomic-embed-text"
+                EmbeddingModel = embeddingModel ?? "nomic-embed-text",
             };
 
             builder.Services.AddSingleton(agentConfig);
 
             // Configure HttpClient with optimized connection pooling
-            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService, UltrasharpTools.Droid.Services.Hybrid.ServerBridgeService>()
-                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-                {
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
-                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-                    MaxConnectionsPerServer = 10,
-                    EnableMultipleHttp2Connections = true,
-                    ConnectTimeout = TimeSpan.FromSeconds(10)
-                })
+            builder
+                .Services.AddHttpClient<
+                    UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService,
+                    UltrasharpTools.Droid.Services.Hybrid.ServerBridgeService
+                >()
+                .ConfigurePrimaryHttpMessageHandler(() =>
+                    new SocketsHttpHandler
+                    {
+                        PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                        MaxConnectionsPerServer = 10,
+                        EnableMultipleHttp2Connections = true,
+                        ConnectTimeout = TimeSpan.FromSeconds(10),
+                    }
+                )
                 .SetHandlerLifetime(Timeout.InfiniteTimeSpan); // Prevent handler rotation
 
             // Embedding service (optional)
-            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService, UltrasharpTools.Droid.Services.Hybrid.EmbeddingService>()
-                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-                {
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
-                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-                    MaxConnectionsPerServer = 10,
-                    EnableMultipleHttp2Connections = true,
-                    ConnectTimeout = TimeSpan.FromSeconds(10)
-                })
+            builder
+                .Services.AddHttpClient<
+                    UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService,
+                    UltrasharpTools.Droid.Services.Hybrid.EmbeddingService
+                >()
+                .ConfigurePrimaryHttpMessageHandler(() =>
+                    new SocketsHttpHandler
+                    {
+                        PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                        MaxConnectionsPerServer = 10,
+                        EnableMultipleHttp2Connections = true,
+                        ConnectTimeout = TimeSpan.FromSeconds(10),
+                    }
+                )
                 .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
             // Notification client service
-            builder.Services.AddHttpClient<UltrasharpTools.Droid.Services.Hybrid.INotificationClientService, UltrasharpTools.Droid.Services.Hybrid.NotificationClientService>()
-                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-                {
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(15),
-                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-                    MaxConnectionsPerServer = 5,
-                    EnableMultipleHttp2Connections = true,
-                    ConnectTimeout = TimeSpan.FromSeconds(10)
-                })
+            builder
+                .Services.AddHttpClient<
+                    UltrasharpTools.Droid.Services.Hybrid.INotificationClientService,
+                    UltrasharpTools.Droid.Services.Hybrid.NotificationClientService
+                >()
+                .ConfigurePrimaryHttpMessageHandler(() =>
+                    new SocketsHttpHandler
+                    {
+                        PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                        MaxConnectionsPerServer = 5,
+                        EnableMultipleHttp2Connections = true,
+                        ConnectTimeout = TimeSpan.FromSeconds(10),
+                    }
+                )
                 .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
 
             // Background services для автоматической векторизации
@@ -549,23 +637,36 @@ public static class Program
             builder.Services.AddHostedService<UltrasharpTools.Droid.Services.Hybrid.GitWatcherService>();
 
             // Request batching service для оптимизации semantic queries
-            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService>(sp =>
-            {
-                var serverBridge = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService>>();
-                return new UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService(
-                    serverBridge,
-                    logger,
-                    batchWindow: TimeSpan.FromMilliseconds(50),
-                    maxBatchSize: 10);
-            });
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService>(
+                sp =>
+                {
+                    var serverBridge =
+                        sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
+                    var logger = sp.GetRequiredService<
+                        ILogger<UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService>
+                    >();
+                    return new UltrasharpTools.Droid.Services.Hybrid.RequestBatchingService(
+                        serverBridge,
+                        logger,
+                        batchWindow: TimeSpan.FromMilliseconds(50),
+                        maxBatchSize: 10
+                    );
+                }
+            );
 
             // ToolRouter для маршрутизации LOCAL/OVERLORD
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolRouter>>();
-                var serverBridge = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
-                return new UltrasharpTools.Droid.Services.Hybrid.ToolRouter(logger, serverBridge, isHybridMode: true);
+                var logger = sp.GetRequiredService<
+                    ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolRouter>
+                >();
+                var serverBridge =
+                    sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolRouter(
+                    logger,
+                    serverBridge,
+                    isHybridMode: true
+                );
             });
 
             // ConfigurationService для загрузки routing config
@@ -574,62 +675,120 @@ public static class Program
             // Health check background service
             builder.Services.AddHostedService(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.HealthCheckHostedService>>();
-                var router = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
-                var configService = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ConfigurationService>();
-                return new UltrasharpTools.Droid.Services.Hybrid.HealthCheckHostedService(logger, router, configService, solutionPath);
+                var logger = sp.GetRequiredService<
+                    ILogger<UltrasharpTools.Droid.Services.Hybrid.HealthCheckHostedService>
+                >();
+                var router =
+                    sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
+                var configService =
+                    sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.ConfigurationService>();
+                return new UltrasharpTools.Droid.Services.Hybrid.HealthCheckHostedService(
+                    logger,
+                    router,
+                    configService,
+                    solutionPath
+                );
             });
 
             // Universal Semantic Mode - Phase 12
             // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
-            var semanticConfigLoader = new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
-                LoggerFactory.Create(b => b.AddConsole()).CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>());
+            var semanticConfigLoader =
+                new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
+                    LoggerFactory
+                        .Create(b => b.AddConsole())
+                        .CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>()
+                );
             var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
 
             // SemanticModeProvider для auto-detection Local/Overlord embedding
             builder.Services.AddSingleton<ISemanticModeProvider>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
-                var localEmbedding = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>();
-                var serverBridge = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
-                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, localEmbedding, serverBridge, serverUrl, semanticConfig);
+                var logger = sp.GetRequiredService<
+                    ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>
+                >();
+                var localEmbedding =
+                    sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>();
+                var serverBridge =
+                    sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
+                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(
+                    logger,
+                    localEmbedding,
+                    serverBridge,
+                    serverUrl,
+                    semanticConfig
+                );
             });
 
             // ToolEnricher для semantic enrichment всех инструментов
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>>();
+                var logger = sp.GetRequiredService<
+                    ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>
+                >();
                 var semanticProvider = sp.GetRequiredService<ISemanticModeProvider>();
-                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider, semanticConfig);
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(
+                    logger,
+                    semanticProvider,
+                    semanticConfig
+                );
             });
 
             // McpToolInterceptor для global routing + enrichment
-            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IMcpToolExecutor>(sp =>
-            {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor>>();
-                var router = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
-                var enricher = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>();
-                var serverBridge = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
-                return new UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor(logger, router, enricher, serverBridge);
-            });
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IMcpToolExecutor>(
+                sp =>
+                {
+                    var logger = sp.GetRequiredService<
+                        ILogger<UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor>
+                    >();
+                    var router =
+                        sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
+                    var enricher =
+                        sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>();
+                    var serverBridge =
+                        sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
+                    return new UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor(
+                        logger,
+                        router,
+                        enricher,
+                        serverBridge
+                    );
+                }
+            );
 
             Console.WriteLine($"Hybrid mode services registered for project: {projectName}");
             Console.WriteLine("Background services enabled:");
-            Console.WriteLine("  - FileWatcher: monitoring {0}", string.Join(", ", agentConfig.WatchPatterns));
-            Console.WriteLine("  - GitWatcher: checking every {0}ms", agentConfig.GitCheckIntervalMs);
-            Console.WriteLine("  - EmbeddingService: {0}", agentConfig.AutoVectorizeEnabled ? "enabled" : "disabled");
+            Console.WriteLine(
+                "  - FileWatcher: monitoring {0}",
+                string.Join(", ", agentConfig.WatchPatterns)
+            );
+            Console.WriteLine(
+                "  - GitWatcher: checking every {0}ms",
+                agentConfig.GitCheckIntervalMs
+            );
+            Console.WriteLine(
+                "  - EmbeddingService: {0}",
+                agentConfig.AutoVectorizeEnabled ? "enabled" : "disabled"
+            );
             Console.WriteLine("  - NotificationClient: SSE real-time notifications");
             Console.WriteLine("  - ToolRouter: automatic routing LOCAL/OVERLORD");
             Console.WriteLine("  - SemanticMode: Universal semantic enrichment for ALL tools");
-            Console.WriteLine("  - McpToolInterceptor: Global tool execution with routing + enrichment");
+            Console.WriteLine(
+                "  - McpToolInterceptor: Global tool execution with routing + enrichment"
+            );
         }
         else
         {
             // Local mode - ToolRouter с fallback на LOCAL
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolRouter>>();
-                return new UltrasharpTools.Droid.Services.Hybrid.ToolRouter(logger, null, isHybridMode: false);
+                var logger = sp.GetRequiredService<
+                    ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolRouter>
+                >();
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolRouter(
+                    logger,
+                    null,
+                    isHybridMode: false
+                );
             });
 
             // ConfigurationService всегда доступен
@@ -637,52 +796,91 @@ public static class Program
 
             // Universal Semantic Mode - Phase 12 (local mode)
             // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
-            var semanticConfigLoader = new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
-                LoggerFactory.Create(b => b.AddConsole()).CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>());
+            var semanticConfigLoader =
+                new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
+                    LoggerFactory
+                        .Create(b => b.AddConsole())
+                        .CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>()
+                );
             var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
 
             // SemanticModeProvider (только локальный embedding если доступен)
             builder.Services.AddSingleton<ISemanticModeProvider>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>>();
+                var logger = sp.GetRequiredService<
+                    ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>
+                >();
 
                 // Пытаемся получить IEmbeddingProvider (если semantic RAG был зарегистрирован)
                 UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService? localEmbedding = null;
-                var embeddingProvider = sp.GetService<UltrasharpTools.Tools.Semantic.Embedding.IEmbeddingProvider>();
+                var embeddingProvider =
+                    sp.GetService<UltrasharpTools.Tools.Semantic.Embedding.IEmbeddingProvider>();
                 if (embeddingProvider != null)
                 {
                     // Создаём адаптер IEmbeddingProvider -> IEmbeddingService
-                    localEmbedding = new UltrasharpTools.Droid.Services.Hybrid.EmbeddingProviderAdapter(embeddingProvider);
+                    localEmbedding =
+                        new UltrasharpTools.Droid.Services.Hybrid.EmbeddingProviderAdapter(
+                            embeddingProvider
+                        );
                 }
 
                 // В local mode нет serverBridge и Overlord
-                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(logger, localEmbedding, null, null, semanticConfig);
+                return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(
+                    logger,
+                    localEmbedding,
+                    null,
+                    null,
+                    semanticConfig
+                );
             });
 
             // ToolEnricher для semantic enrichment
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>>();
+                var logger = sp.GetRequiredService<
+                    ILogger<UltrasharpTools.Droid.Services.Hybrid.ToolEnricher>
+                >();
                 var semanticProvider = sp.GetRequiredService<ISemanticModeProvider>();
-                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(logger, semanticProvider, semanticConfig);
+                return new UltrasharpTools.Droid.Services.Hybrid.ToolEnricher(
+                    logger,
+                    semanticProvider,
+                    semanticConfig
+                );
             });
 
             // McpToolInterceptor (только локальное выполнение)
-            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IMcpToolExecutor>(sp =>
-            {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor>>();
-                var router = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
-                var enricher = sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>();
-                return new UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor(logger, router, enricher, null);
-            });
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IMcpToolExecutor>(
+                sp =>
+                {
+                    var logger = sp.GetRequiredService<
+                        ILogger<UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor>
+                    >();
+                    var router =
+                        sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolRouter>();
+                    var enricher =
+                        sp.GetRequiredService<UltrasharpTools.Droid.Services.Hybrid.IToolEnricher>();
+                    return new UltrasharpTools.Droid.Services.Hybrid.McpToolInterceptor(
+                        logger,
+                        router,
+                        enricher,
+                        null
+                    );
+                }
+            );
 
-            Console.WriteLine("Local mode - Universal Semantic Mode available if local embedding configured");
+            Console.WriteLine(
+                "Local mode - Universal Semantic Mode available if local embedding configured"
+            );
         }
 
         // Check semantic mode availability for MCP Initialize capabilities
         Console.WriteLine("Checking semantic mode availability...");
-        var semanticAvailability = await UltrasharpTools.Droid.Services.Hybrid.SemanticModeBootstrapCheck
-            .CheckAvailabilityAsync(embeddingUrl, serverUrl, timeoutMs: 3000);
+        var semanticAvailability =
+            await UltrasharpTools.Droid.Services.Hybrid.SemanticModeBootstrapCheck.CheckAvailabilityAsync(
+                embeddingUrl,
+                serverUrl,
+                timeoutMs: 3000
+            );
 
         if (semanticAvailability.IsAvailable)
         {
@@ -693,8 +891,8 @@ public static class Program
             Console.WriteLine("Semantic mode: NOT AVAILABLE");
         }
 
-        builder.Services
-            .AddMcpServer(options =>
+        builder
+            .Services.AddMcpServer(options =>
             {
                 options.ServerInfo = new Implementation
                 {
@@ -724,28 +922,50 @@ public static class Program
                     try
                     {
                         var solutionManager = host.Services.GetRequiredService<ISolutionManager>();
-                        var editorConfigProvider = host.Services.GetRequiredService<IEditorConfigProvider>();
+                        var editorConfigProvider =
+                            host.Services.GetRequiredService<IEditorConfigProvider>();
 
-                        logger.LogInformation("Background loading solution: {SolutionPath}", solutionPathCopy);
-                        await solutionManager.LoadSolutionAsync(solutionPathCopy, CancellationToken.None);
+                        logger.LogInformation(
+                            "Background loading solution: {SolutionPath}",
+                            solutionPathCopy
+                        );
+                        await solutionManager.LoadSolutionAsync(
+                            solutionPathCopy,
+                            CancellationToken.None
+                        );
 
                         var solutionDir = Path.GetDirectoryName(solutionPathCopy);
                         if (!string.IsNullOrEmpty(solutionDir))
                         {
-                            await editorConfigProvider.InitializeAsync(solutionDir, CancellationToken.None);
-                            logger.LogInformation("Solution loaded successfully in background: {SolutionPath}", solutionPathCopy);
+                            await editorConfigProvider.InitializeAsync(
+                                solutionDir,
+                                CancellationToken.None
+                            );
+                            logger.LogInformation(
+                                "Solution loaded successfully in background: {SolutionPath}",
+                                solutionPathCopy
+                            );
                         }
                         else
                         {
-                            logger.LogWarning("Could not determine directory for solution path: {SolutionPath}", solutionPathCopy);
+                            logger.LogWarning(
+                                "Could not determine directory for solution path: {SolutionPath}",
+                                solutionPathCopy
+                            );
                         }
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Error loading solution in background: {SolutionPath}", solutionPathCopy);
+                        logger.LogError(
+                            ex,
+                            "Error loading solution in background: {SolutionPath}",
+                            solutionPathCopy
+                        );
                     }
                 });
-                logger.LogInformation("Solution loading started in background, MCP server ready to accept requests");
+                logger.LogInformation(
+                    "Solution loading started in background, MCP server ready to accept requests"
+                );
             }
 
             await host.RunAsync();
@@ -762,4 +982,3 @@ public static class Program
         }
     }
 }
-

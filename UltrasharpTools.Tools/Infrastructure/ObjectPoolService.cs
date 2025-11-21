@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.ObjectPool;
 
 namespace UltrasharpTools.Tools.Infrastructure;
@@ -29,17 +27,17 @@ public sealed class ObjectPoolService
 
         var provider = new DefaultObjectPoolProvider();
 
-        _stringBuilderPool = provider.Create(new PooledStringBuilderPolicy(
-            initialCapacity: 1024,
-            maxCapacity: 16 * 1024));
+        _stringBuilderPool = provider.Create(
+            new PooledStringBuilderPolicy(initialCapacity: 1024, maxCapacity: 16 * 1024)
+        );
 
-        _symbolListPool = provider.Create(new PooledSymbolListPolicy(
-            initialCapacity: 128,
-            maxCapacity: 2048));
+        _symbolListPool = provider.Create(
+            new PooledSymbolListPolicy(initialCapacity: 128, maxCapacity: 2048)
+        );
 
-        _stringListPool = provider.Create(new PooledStringListPolicy(
-            initialCapacity: 64,
-            maxCapacity: 1024));
+        _stringListPool = provider.Create(
+            new PooledStringListPolicy(initialCapacity: 64, maxCapacity: 1024)
+        );
 
         _logger.LogInformation("ObjectPoolService initialized with 3 pools");
     }
@@ -110,7 +108,7 @@ public sealed class ObjectPoolService
             SymbolListGets = Interlocked.Read(ref _symbolListGets),
             SymbolListReturns = Interlocked.Read(ref _symbolListReturns),
             StringListGets = Interlocked.Read(ref _stringListGets),
-            StringListReturns = Interlocked.Read(ref _stringListReturns)
+            StringListReturns = Interlocked.Read(ref _stringListReturns),
         };
     }
 
@@ -127,7 +125,8 @@ public sealed class ObjectPoolService
             stats.SymbolListGets,
             stats.SymbolListReturns,
             stats.StringListGets,
-            stats.StringListReturns);
+            stats.StringListReturns
+        );
     }
 }
 
@@ -143,15 +142,12 @@ public sealed class ObjectPoolStats
     public long StringListGets { get; init; }
     public long StringListReturns { get; init; }
 
-    public double StringBuilderReturnRate => StringBuilderGets > 0
-        ? (double)StringBuilderReturns / StringBuilderGets * 100.0
-        : 0.0;
+    public double StringBuilderReturnRate =>
+        StringBuilderGets > 0 ? (double)StringBuilderReturns / StringBuilderGets * 100.0 : 0.0;
 
-    public double SymbolListReturnRate => SymbolListGets > 0
-        ? (double)SymbolListReturns / SymbolListGets * 100.0
-        : 0.0;
+    public double SymbolListReturnRate =>
+        SymbolListGets > 0 ? (double)SymbolListReturns / SymbolListGets * 100.0 : 0.0;
 
-    public double StringListReturnRate => StringListGets > 0
-        ? (double)StringListReturns / StringListGets * 100.0
-        : 0.0;
+    public double StringListReturnRate =>
+        StringListGets > 0 ? (double)StringListReturns / StringListGets * 100.0 : 0.0;
 }

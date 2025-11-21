@@ -1,5 +1,4 @@
 using System.Numerics;
-
 using Microsoft.Data.Sqlite;
 using UltrasharpTools.Tools.Semantic.Models;
 
@@ -19,16 +18,18 @@ public sealed class SqliteVecBackend : IVectorStoreBackend
     public VectorStoreBackendType BackendType => VectorStoreBackendType.SqliteVec;
 
     public async Task InitializeAsync(
-    string connectionString,
-    int dimension,
-    CancellationToken cancellationToken = default)
+        string connectionString,
+        int dimension,
+        CancellationToken cancellationToken = default
+    )
     {
         _dimension = dimension;
         _connection = new SqliteConnection(connectionString);
         await _connection.OpenAsync(cancellationToken);
 
         // Создать таблицу для embeddings
-        var createTableSql = @"
+        var createTableSql =
+            @"
 CREATE TABLE IF NOT EXISTS doc_embeddings (
 id TEXT PRIMARY KEY,
 content TEXT NOT NULL,
@@ -50,12 +51,16 @@ CREATE INDEX IF NOT EXISTS idx_embeddings_provider ON doc_embeddings(provider);
         _initialized = true;
     }
 
-    public async Task InsertAsync(VectorEmbedding embedding, CancellationToken cancellationToken = default)
+    public async Task InsertAsync(
+        VectorEmbedding embedding,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
         using var command = _connection!.CreateCommand();
-        command.CommandText = @"
+        command.CommandText =
+            @"
 INSERT OR REPLACE INTO doc_embeddings (id, content, vector, metadata, created_at, dimension, provider)
 VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
 ";
@@ -72,8 +77,9 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
     }
 
     public async Task InsertBatchAsync(
-    IEnumerable<VectorEmbedding> embeddings,
-    CancellationToken cancellationToken = default)
+        IEnumerable<VectorEmbedding> embeddings,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
@@ -85,7 +91,8 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
             {
                 using var command = _connection.CreateCommand();
                 command.Transaction = transaction;
-                command.CommandText = @"
+                command.CommandText =
+                    @"
 INSERT OR REPLACE INTO doc_embeddings (id, content, vector, metadata, created_at, dimension, provider)
 VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
 ";
@@ -93,10 +100,16 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
                 command.Parameters.AddWithValue("@id", embedding.Id);
                 command.Parameters.AddWithValue("@content", embedding.Content);
                 command.Parameters.AddWithValue("@vector", SerializeVector(embedding.Vector));
-                command.Parameters.AddWithValue("@metadata", embedding.Metadata ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue(
+                    "@metadata",
+                    embedding.Metadata ?? (object)DBNull.Value
+                );
                 command.Parameters.AddWithValue("@created_at", embedding.CreatedAt);
                 command.Parameters.AddWithValue("@dimension", embedding.Dimension);
-                command.Parameters.AddWithValue("@provider", embedding.Provider ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue(
+                    "@provider",
+                    embedding.Provider ?? (object)DBNull.Value
+                );
 
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
@@ -111,10 +124,11 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
     }
 
     public async Task<List<SimilarityResult>> SearchAsync(
-    float[] queryVector,
-    int limit,
-    float minSimilarity = 0.0f,
-    CancellationToken cancellationToken = default)
+        float[] queryVector,
+        int limit,
+        float minSimilarity = 0.0f,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
@@ -122,7 +136,8 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
         var results = new List<SimilarityResult>();
 
         using var command = _connection!.CreateCommand();
-        command.CommandText = "SELECT id, content, vector, metadata FROM doc_embeddings WHERE dimension = @dimension";
+        command.CommandText =
+            "SELECT id, content, vector, metadata FROM doc_embeddings WHERE dimension = @dimension";
         command.Parameters.AddWithValue("@dimension", _dimension);
 
         using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -139,23 +154,25 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
 
             if (similarity >= minSimilarity)
             {
-                results.Add(new SimilarityResult
-                {
-                    Id = id,
-                    Content = content,
-                    Similarity = similarity,
-                    Metadata = metadata,
-                    Rank = 0 // Will be set after sorting
-                });
+                results.Add(
+                    new SimilarityResult
+                    {
+                        Id = id,
+                        Content = content,
+                        Similarity = similarity,
+                        Metadata = metadata,
+                        Rank = 0, // Will be set after sorting
+                    }
+                );
             }
         }
 
         // Сортировка по similarity (desc) и установка ranks
         results = results
-        .OrderByDescending(r => r.Similarity)
-        .Take(limit)
-        .Select((r, index) => r with { Rank = index + 1 })
-        .ToList();
+            .OrderByDescending(r => r.Similarity)
+            .Take(limit)
+            .Select((r, index) => r with { Rank = index + 1 })
+            .ToList();
 
         return results;
     }
@@ -211,7 +228,9 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
     {
         if (!_initialized || _connection == null)
         {
-            throw new InvalidOperationException("Backend not initialized. Call InitializeAsync first.");
+            throw new InvalidOperationException(
+                "Backend not initialized. Call InitializeAsync first."
+            );
         }
     }
 
@@ -234,7 +253,10 @@ VALUES (@id, @content, @vector, @metadata, @created_at, @dimension, @provider)
     /// SIMD-оптимизированный cosine similarity (из Performance Phase 5).
     /// Использует System.Numerics.Vector для AVX2 инструкций (8 float за раз).
     /// </summary>
-    private static float CalculateCosineSimilarity(ReadOnlySpan<float> vec1, ReadOnlySpan<float> vec2)
+    private static float CalculateCosineSimilarity(
+        ReadOnlySpan<float> vec1,
+        ReadOnlySpan<float> vec2
+    )
     {
         if (vec1.Length != vec2.Length)
         {

@@ -1,10 +1,6 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
-
-using UltrasharpTools.Tools.Models;
-
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Layered;
 
@@ -49,7 +45,8 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
         FastSymbolIndex baseIndex,
         LayeredIndexingOptions? options = null,
         IGitService? gitService = null,
-        ILogger<LayeredSymbolIndex>? logger = null)
+        ILogger<LayeredSymbolIndex>? logger = null
+    )
     {
         _baseIndex = baseIndex ?? throw new ArgumentNullException(nameof(baseIndex));
         _options = options ?? LayeredIndexingOptions.Default;
@@ -64,7 +61,8 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
             "LayeredSymbolIndex initialized with max {MaxBranches} branch deltas, persistence: {Persistence}, git integration: {GitEnabled}",
             _options.MaxBranchDeltas,
             _options.EnablePersistence,
-            _gitService != null);
+            _gitService != null
+        );
     }
 
     /// <summary>
@@ -84,11 +82,17 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     /// Build base index from solution (Layer 0).
     /// This is the foundation for all layered operations.
     /// </summary>
-    public async Task BuildFromSolutionAsync(Solution solution, CancellationToken cancellationToken = default)
+    public async Task BuildFromSolutionAsync(
+        Solution solution,
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation("Building base index (Layer 0) from solution...");
         await _baseIndex.BuildFromSolutionAsync(solution, cancellationToken);
-        _logger.LogInformation("Base index built with {SymbolCount} symbols", _baseIndex.TotalSymbols);
+        _logger.LogInformation(
+            "Base index built with {SymbolCount} symbols",
+            _baseIndex.TotalSymbols
+        );
 
         // Store solution for delta computation
         _currentSolution = solution;
@@ -111,7 +115,10 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to initialize LayeredCacheManager, persistence disabled");
+                _logger.LogWarning(
+                    ex,
+                    "Failed to initialize LayeredCacheManager, persistence disabled"
+                );
             }
         }
     }
@@ -128,7 +135,8 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
         string? clientId,
         string? branch,
         string searchTerm,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         // Layer 0: Query base index
         var layer0Results = _baseIndex.Find(searchTerm);
@@ -164,7 +172,10 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     /// <summary>
     /// Ensure branch delta exists (load from cache or create empty).
     /// </summary>
-    public async Task EnsureBranchDeltaAsync(string branch, CancellationToken cancellationToken = default)
+    public async Task EnsureBranchDeltaAsync(
+        string branch,
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrEmpty(branch) || IsMainBranch(branch))
         {
@@ -178,7 +189,10 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     /// Get or load branch delta from cache/storage.
     /// If not found and GitService available, computes from git diff.
     /// </summary>
-    private async Task<BranchDelta?> GetOrLoadBranchDeltaAsync(string branch, CancellationToken cancellationToken)
+    private async Task<BranchDelta?> GetOrLoadBranchDeltaAsync(
+        string branch,
+        CancellationToken cancellationToken
+    )
     {
         // Check in-memory cache
         if (_branchDeltaCache.TryGet(branch, out var cached))
@@ -201,15 +215,28 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
             delta = await _cacheManager.LoadBranchDeltaAsync(branch, cancellationToken);
             if (delta != null)
             {
-                _logger.LogInformation("Loaded branch delta from persistent storage: {Branch}", branch);
+                _logger.LogInformation(
+                    "Loaded branch delta from persistent storage: {Branch}",
+                    branch
+                );
             }
         }
 
         // If not in storage, try to compute from git diff
-        if (delta == null && _deltaComputer != null && _currentSolution != null && !string.IsNullOrEmpty(_currentSolutionPath))
+        if (
+            delta == null
+            && _deltaComputer != null
+            && _currentSolution != null
+            && !string.IsNullOrEmpty(_currentSolutionPath)
+        )
         {
             _logger.LogInformation("Computing branch delta from git diff: {Branch}", branch);
-            delta = await _deltaComputer.ComputeDeltaAsync(_currentSolution, _currentSolutionPath, "main", cancellationToken);
+            delta = await _deltaComputer.ComputeDeltaAsync(
+                _currentSolution,
+                _currentSolutionPath,
+                "main",
+                cancellationToken
+            );
 
             // Save newly computed delta to storage
             if (delta != null && _cacheManager != null)
@@ -230,7 +257,11 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
 
         _logger.LogInformation(
             "Branch delta loaded: {Branch} ({Added} added, {Modified} modified, {Deleted} deleted)",
-            branch, delta.AddedSymbols.Count, delta.ModifiedSymbols.Count, delta.DeletedSymbolIds.Count);
+            branch,
+            delta.AddedSymbols.Count,
+            delta.ModifiedSymbols.Count,
+            delta.DeletedSymbolIds.Count
+        );
 
         return delta;
     }
@@ -244,7 +275,8 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
         _logger.LogInformation(
             "Branch delta evicted from cache: {Branch} ({Changes} changes)",
             branch,
-            delta.TotalChanges);
+            delta.TotalChanges
+        );
 
         // Save to persistent storage before eviction (Phase 1.3)
         if (_cacheManager != null)
@@ -279,7 +311,8 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
         string clientId,
         string branch,
         SymbolIndexEntry symbol,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var key = GetWorkingDeltaKey(clientId, branch);
         var workingDelta = GetOrCreateWorkingDelta(clientId, branch);
@@ -291,7 +324,10 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
 
         _logger.LogDebug(
             "Updated working delta: client={ClientId}, branch={Branch}, symbol={SymbolId}",
-            clientId, branch, symbol.SymbolId);
+            clientId,
+            branch,
+            symbol.SymbolId
+        );
 
         await Task.CompletedTask; // For async signature compatibility
     }
@@ -307,7 +343,9 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
             delta.Clear();
             _logger.LogInformation(
                 "Cleared working delta: client={ClientId}, branch={Branch}",
-                clientId, branch);
+                clientId,
+                branch
+            );
         }
 
         return Task.CompletedTask;
@@ -320,13 +358,17 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
         string clientId,
         string branch,
         string commitSha,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var key = GetWorkingDeltaKey(clientId, branch);
         if (!_workingDeltas.TryGetValue(key, out var workingDelta))
         {
-            _logger.LogWarning("No working delta to promote: client={ClientId}, branch={Branch}",
-                clientId, branch);
+            _logger.LogWarning(
+                "No working delta to promote: client={ClientId}, branch={Branch}",
+                clientId,
+                branch
+            );
             return;
         }
 
@@ -353,7 +395,11 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
 
         _logger.LogInformation(
             "Promoted working delta to branch: client={ClientId}, branch={Branch}, commit={CommitSha}, changes={Changes}",
-            clientId, branch, commitSha, promotedDelta.TotalChanges);
+            clientId,
+            branch,
+            commitSha,
+            promotedDelta.TotalChanges
+        );
 
         // TODO Phase 1.3: Persist branch delta to storage
     }
@@ -373,17 +419,17 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     private WorkingDelta GetOrCreateWorkingDelta(string clientId, string branch)
     {
         var key = GetWorkingDeltaKey(clientId, branch);
-        return _workingDeltas.GetOrAdd(key, _ => new WorkingDelta
-        {
-            ClientId = clientId,
-            BranchName = branch
-        });
+        return _workingDeltas.GetOrAdd(
+            key,
+            _ => new WorkingDelta { ClientId = clientId, BranchName = branch }
+        );
     }
 
     /// <summary>
     /// Generate unique key for working delta storage.
     /// </summary>
-    private static string GetWorkingDeltaKey(string clientId, string branch) => $"{clientId}:{branch}";
+    private static string GetWorkingDeltaKey(string clientId, string branch) =>
+        $"{clientId}:{branch}";
 
     #endregion
 
@@ -395,7 +441,8 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     public async Task UpdateDocumentAsync(
         Solution solution,
         DocumentId documentId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
@@ -414,7 +461,8 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     public async Task AddDocumentAsync(
         Solution solution,
         DocumentId documentId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
@@ -432,7 +480,8 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     /// </summary>
     public async Task RemoveDocumentAsync(
         DocumentId documentId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
@@ -454,9 +503,9 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     /// </summary>
     private static bool IsMainBranch(string branch)
     {
-        return string.IsNullOrEmpty(branch) ||
-               branch.Equals("main", StringComparison.OrdinalIgnoreCase) ||
-               branch.Equals("master", StringComparison.OrdinalIgnoreCase);
+        return string.IsNullOrEmpty(branch)
+            || branch.Equals("main", StringComparison.OrdinalIgnoreCase)
+            || branch.Equals("master", StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

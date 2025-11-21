@@ -80,7 +80,7 @@ public sealed class GPUInfo
         {
             "tei" => 8192,
             "ollama" => 512,
-            _ => 0
+            _ => 0,
         };
     }
 

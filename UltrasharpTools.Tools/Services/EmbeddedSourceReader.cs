@@ -1,10 +1,6 @@
-
-
+using System.IO.Compression;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
-
-using System.IO.Compression;
-
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Services
@@ -12,7 +8,9 @@ namespace UltrasharpTools.Tools.Services
     public class EmbeddedSourceReader
     {
         // GUID for embedded source custom debug information
-        private static readonly Guid EmbeddedSourceGuid = new Guid("0E8A571B-6926-466E-B4AD-8AB04611F5FE");
+        private static readonly Guid EmbeddedSourceGuid = new Guid(
+            "0E8A571B-6926-466E-B4AD-8AB04611F5FE"
+        );
 
         public class SourceResult
         {
@@ -29,7 +27,12 @@ namespace UltrasharpTools.Tools.Services
         {
             var results = new Dictionary<string, SourceResult>();
 
-            using var fs = new FileStream(pdbPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var fs = new FileStream(
+                pdbPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite
+            );
             using var provider = MetadataReaderProvider.FromPortablePdbStream(fs);
             var reader = provider.GetMetadataReader();
 
@@ -39,22 +42,32 @@ namespace UltrasharpTools.Tools.Services
         /// <summary>
         /// Reads embedded source from an assembly with embedded PDB
         /// </summary>
-        public static Dictionary<string, SourceResult> ReadEmbeddedSourcesFromAssembly(string assemblyPath)
+        public static Dictionary<string, SourceResult> ReadEmbeddedSourcesFromAssembly(
+            string assemblyPath
+        )
         {
-            using var fs = new FileStream(assemblyPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var fs = new FileStream(
+                assemblyPath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite
+            );
             using var peReader = new PEReader(fs);
 
             // Check for embedded portable PDB
             var debugDirectories = peReader.ReadDebugDirectory();
-            var embeddedPdbEntry = debugDirectories
-                .FirstOrDefault(entry => entry.Type == DebugDirectoryEntryType.EmbeddedPortablePdb);
+            var embeddedPdbEntry = debugDirectories.FirstOrDefault(entry =>
+                entry.Type == DebugDirectoryEntryType.EmbeddedPortablePdb
+            );
 
             if (embeddedPdbEntry.DataSize == 0)
             {
                 return new Dictionary<string, SourceResult>();
             }
 
-            using var embeddedProvider = peReader.ReadEmbeddedPortablePdbDebugDirectoryData(embeddedPdbEntry);
+            using var embeddedProvider = peReader.ReadEmbeddedPortablePdbDebugDirectoryData(
+                embeddedPdbEntry
+            );
             var pdbReader = embeddedProvider.GetMetadataReader();
 
             return ReadEmbeddedSources(pdbReader);
@@ -111,7 +124,10 @@ namespace UltrasharpTools.Tools.Services
         /// <summary>
         /// Reads the actual embedded source content from the blob
         /// </summary>
-        private static SourceResult? ReadEmbeddedSourceContent(MetadataReader reader, BlobHandle blobHandle)
+        private static SourceResult? ReadEmbeddedSourceContent(
+            MetadataReader reader,
+            BlobHandle blobHandle
+        )
         {
             var blobReader = reader.GetBlobReader(blobHandle);
 
@@ -151,7 +167,7 @@ namespace UltrasharpTools.Tools.Services
             {
                 SourceCode = sourceText,
                 IsEmbedded = true,
-                IsCompressed = isCompressed
+                IsCompressed = isCompressed,
             };
         }
 
@@ -189,10 +205,13 @@ namespace UltrasharpTools.Tools.Services
                 ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
             }
         }
+
         /// <summary>
         /// Helper method to get source for a specific symbol from Roslyn
         /// </summary>
-        public static SourceResult? GetEmbeddedSourceForSymbol(Microsoft.CodeAnalysis.ISymbol symbol)
+        public static SourceResult? GetEmbeddedSourceForSymbol(
+            Microsoft.CodeAnalysis.ISymbol symbol
+        )
         {
             // Get the assembly containing the symbol
             var assembly = symbol.ContainingAssembly;
@@ -226,7 +245,7 @@ namespace UltrasharpTools.Tools.Services
                     {
                         FilePath = symbolFileName,
                         IsEmbedded = true,
-                        IsCompressed = false
+                        IsCompressed = false,
                     };
                 }
             }

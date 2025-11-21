@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Config;
 
 namespace UltrasharpTools.Tools.Services;
@@ -14,7 +12,8 @@ public class EmbeddingConfigValidator
 
     public EmbeddingConfigValidator(
         ILogger<EmbeddingConfigValidator> logger,
-        EmbeddingServiceHealthChecker healthChecker)
+        EmbeddingServiceHealthChecker healthChecker
+    )
     {
         _logger = logger;
         _healthChecker = healthChecker;
@@ -28,7 +27,8 @@ public class EmbeddingConfigValidator
         public List<string> Recommendations { get; set; } = new();
 
         public bool HasCriticalIssues => Issues.Any(i => i.Severity == IssueSeverity.Critical);
-        public bool HasWarnings => Issues.Any(i => i.Severity == IssueSeverity.Warning) || Warnings.Any();
+        public bool HasWarnings =>
+            Issues.Any(i => i.Severity == IssueSeverity.Warning) || Warnings.Any();
     }
 
     public class ValidationIssue
@@ -42,9 +42,9 @@ public class EmbeddingConfigValidator
 
     public enum IssueSeverity
     {
-        Critical,   // Cannot work
-        Warning,    // Can work but not optimal
-        Info        // Just information
+        Critical, // Cannot work
+        Warning, // Can work but not optimal
+        Info, // Just information
     }
 
     /// <summary>
@@ -52,7 +52,8 @@ public class EmbeddingConfigValidator
     /// </summary>
     public async Task<ValidationResult> ValidateGlobalConfigAsync(
         SemanticEmbeddingConfig config,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var result = new ValidationResult { IsValid = true };
 
@@ -81,14 +82,17 @@ public class EmbeddingConfigValidator
 
             default:
                 result.IsValid = false;
-                result.Issues.Add(new ValidationIssue
-                {
-                    Severity = IssueSeverity.Critical,
-                    Category = "Platform",
-                    Message = $"Unknown platform: '{config.Embedding.Platform}'",
-                    Details = "Valid platforms: tei, ollama, memory",
-                    Solution = @"Update semantic-config.json with valid platform or run: .\setup-semantic-embedding.ps1"
-                });
+                result.Issues.Add(
+                    new ValidationIssue
+                    {
+                        Severity = IssueSeverity.Critical,
+                        Category = "Platform",
+                        Message = $"Unknown platform: '{config.Embedding.Platform}'",
+                        Details = "Valid platforms: tei, ollama, memory",
+                        Solution =
+                            @"Update semantic-config.json with valid platform or run: .\setup-semantic-embedding.ps1",
+                    }
+                );
                 break;
         }
 
@@ -96,13 +100,17 @@ public class EmbeddingConfigValidator
         if (result.HasCriticalIssues)
         {
             result.IsValid = false;
-            _logger.LogError("✗ Configuration validation FAILED with {Count} critical issue(s)",
-                result.Issues.Count(i => i.Severity == IssueSeverity.Critical));
+            _logger.LogError(
+                "✗ Configuration validation FAILED with {Count} critical issue(s)",
+                result.Issues.Count(i => i.Severity == IssueSeverity.Critical)
+            );
         }
         else if (result.HasWarnings)
         {
-            _logger.LogWarning("⚠ Configuration is valid but has {Count} warning(s)",
-                result.Issues.Count(i => i.Severity == IssueSeverity.Warning));
+            _logger.LogWarning(
+                "⚠ Configuration is valid but has {Count} warning(s)",
+                result.Issues.Count(i => i.Severity == IssueSeverity.Warning)
+            );
         }
         else
         {
@@ -117,43 +125,63 @@ public class EmbeddingConfigValidator
         if (string.IsNullOrWhiteSpace(config.Embedding.Platform))
         {
             result.IsValid = false;
-            result.Issues.Add(new ValidationIssue
-            {
-                Severity = IssueSeverity.Critical,
-                Category = "Platform",
-                Message = "Platform is not configured",
-                Solution = @"Run: .\setup-semantic-embedding.ps1"
-            });
+            result.Issues.Add(
+                new ValidationIssue
+                {
+                    Severity = IssueSeverity.Critical,
+                    Category = "Platform",
+                    Message = "Platform is not configured",
+                    Solution = @"Run: .\setup-semantic-embedding.ps1",
+                }
+            );
         }
     }
 
     private void ValidateArchitecture(SemanticEmbeddingConfig config, ValidationResult result)
     {
-        var validArchitectures = new[] { "auto", "cpu", "turing", "ampere-80", "ampere-86", "ada", "hopper", "blackwell" };
+        var validArchitectures = new[]
+        {
+            "auto",
+            "cpu",
+            "turing",
+            "ampere-80",
+            "ampere-86",
+            "ada",
+            "hopper",
+            "blackwell",
+        };
 
         if (!validArchitectures.Contains(config.Embedding.Architecture.ToLowerInvariant()))
         {
-            result.Issues.Add(new ValidationIssue
-            {
-                Severity = IssueSeverity.Warning,
-                Category = "Architecture",
-                Message = $"Unknown architecture: '{config.Embedding.Architecture}'",
-                Details = $"Valid options: {string.Join(", ", validArchitectures)}",
-                Solution = @"Run: .\detect-gpu-architecture.ps1 to auto-detect, or set to 'cpu'"
-            });
+            result.Issues.Add(
+                new ValidationIssue
+                {
+                    Severity = IssueSeverity.Warning,
+                    Category = "Architecture",
+                    Message = $"Unknown architecture: '{config.Embedding.Architecture}'",
+                    Details = $"Valid options: {string.Join(", ", validArchitectures)}",
+                    Solution =
+                        @"Run: .\detect-gpu-architecture.ps1 to auto-detect, or set to 'cpu'",
+                }
+            );
         }
 
         if (config.Embedding.Architecture.ToLowerInvariant() == "blackwell")
         {
-            result.Warnings.Add("Blackwell GPU support is experimental - TEI may not work properly");
-            result.Recommendations.Add("Consider using 'cpu' or 'ada' architecture, or use Ollama platform");
+            result.Warnings.Add(
+                "Blackwell GPU support is experimental - TEI may not work properly"
+            );
+            result.Recommendations.Add(
+                "Consider using 'cpu' or 'ada' architecture, or use Ollama platform"
+            );
         }
     }
 
     private async Task ValidateTeiConfigAsync(
         SemanticEmbeddingConfig config,
         ValidationResult result,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var teiConfig = config.Embedding.Tei;
 
@@ -161,30 +189,39 @@ public class EmbeddingConfigValidator
         if (string.IsNullOrWhiteSpace(teiConfig.Endpoint))
         {
             result.IsValid = false;
-            result.Issues.Add(new ValidationIssue
-            {
-                Severity = IssueSeverity.Critical,
-                Category = "TEI",
-                Message = "TEI endpoint is not configured",
-                Solution = "Set endpoint in semantic-config.json or ENV: TEI_ENDPOINT=http://localhost:8080"
-            });
+            result.Issues.Add(
+                new ValidationIssue
+                {
+                    Severity = IssueSeverity.Critical,
+                    Category = "TEI",
+                    Message = "TEI endpoint is not configured",
+                    Solution =
+                        "Set endpoint in semantic-config.json or ENV: TEI_ENDPOINT=http://localhost:8080",
+                }
+            );
             return;
         }
 
         // Health check
-        var health = await _healthChecker.CheckTeiHealthAsync(teiConfig.Endpoint, cancellationToken);
+        var health = await _healthChecker.CheckTeiHealthAsync(
+            teiConfig.Endpoint,
+            cancellationToken
+        );
 
         if (!health.IsHealthy)
         {
             result.IsValid = false;
-            result.Issues.Add(new ValidationIssue
-            {
-                Severity = IssueSeverity.Critical,
-                Category = "TEI",
-                Message = health.ErrorMessage ?? "TEI server is not available",
-                Details = health.Details,
-                Solution = $"Start TEI server:\n  .\\Dev.Scripts\\setup-tei.ps1\n\nOr switch to Ollama:\n  Update platform to 'ollama' in semantic-config.json"
-            });
+            result.Issues.Add(
+                new ValidationIssue
+                {
+                    Severity = IssueSeverity.Critical,
+                    Category = "TEI",
+                    Message = health.ErrorMessage ?? "TEI server is not available",
+                    Details = health.Details,
+                    Solution =
+                        $"Start TEI server:\n  .\\Dev.Scripts\\setup-tei.ps1\n\nOr switch to Ollama:\n  Update platform to 'ollama' in semantic-config.json",
+                }
+            );
         }
         else
         {
@@ -194,31 +231,36 @@ public class EmbeddingConfigValidator
         // Check models
         if (!teiConfig.Models.Any())
         {
-            result.Issues.Add(new ValidationIssue
-            {
-                Severity = IssueSeverity.Warning,
-                Category = "TEI",
-                Message = "No models configured for TEI",
-                Solution = "Add models to semantic-config.json"
-            });
+            result.Issues.Add(
+                new ValidationIssue
+                {
+                    Severity = IssueSeverity.Warning,
+                    Category = "TEI",
+                    Message = "No models configured for TEI",
+                    Solution = "Add models to semantic-config.json",
+                }
+            );
         }
 
         if (string.IsNullOrWhiteSpace(teiConfig.SelectedModel))
         {
-            result.Issues.Add(new ValidationIssue
-            {
-                Severity = IssueSeverity.Warning,
-                Category = "TEI",
-                Message = "No model selected for TEI",
-                Solution = "Set selected_model in semantic-config.json"
-            });
+            result.Issues.Add(
+                new ValidationIssue
+                {
+                    Severity = IssueSeverity.Warning,
+                    Category = "TEI",
+                    Message = "No model selected for TEI",
+                    Solution = "Set selected_model in semantic-config.json",
+                }
+            );
         }
     }
 
     private async Task ValidateOllamaConfigAsync(
         SemanticEmbeddingConfig config,
         ValidationResult result,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var ollamaConfig = config.Embedding.Ollama;
 
@@ -226,30 +268,39 @@ public class EmbeddingConfigValidator
         if (string.IsNullOrWhiteSpace(ollamaConfig.Endpoint))
         {
             result.IsValid = false;
-            result.Issues.Add(new ValidationIssue
-            {
-                Severity = IssueSeverity.Critical,
-                Category = "Ollama",
-                Message = "Ollama endpoint is not configured",
-                Solution = "Set endpoint in semantic-config.json or ENV: OLLAMA_ENDPOINT=http://localhost:11434"
-            });
+            result.Issues.Add(
+                new ValidationIssue
+                {
+                    Severity = IssueSeverity.Critical,
+                    Category = "Ollama",
+                    Message = "Ollama endpoint is not configured",
+                    Solution =
+                        "Set endpoint in semantic-config.json or ENV: OLLAMA_ENDPOINT=http://localhost:11434",
+                }
+            );
             return;
         }
 
         // Health check
-        var health = await _healthChecker.CheckOllamaHealthAsync(ollamaConfig.Endpoint, cancellationToken);
+        var health = await _healthChecker.CheckOllamaHealthAsync(
+            ollamaConfig.Endpoint,
+            cancellationToken
+        );
 
         if (!health.IsHealthy)
         {
             result.IsValid = false;
-            result.Issues.Add(new ValidationIssue
-            {
-                Severity = IssueSeverity.Critical,
-                Category = "Ollama",
-                Message = health.ErrorMessage ?? "Ollama server is not available",
-                Details = health.Details,
-                Solution = "Install and start Ollama:\n  1. Download from https://ollama.ai\n  2. Install\n  3. Pull model: ollama pull granite-embedding\n\nOr switch to TEI:\n  Update platform to 'tei' in semantic-config.json"
-            });
+            result.Issues.Add(
+                new ValidationIssue
+                {
+                    Severity = IssueSeverity.Critical,
+                    Category = "Ollama",
+                    Message = health.ErrorMessage ?? "Ollama server is not available",
+                    Details = health.Details,
+                    Solution =
+                        "Install and start Ollama:\n  1. Download from https://ollama.ai\n  2. Install\n  3. Pull model: ollama pull granite-embedding\n\nOr switch to TEI:\n  Update platform to 'tei' in semantic-config.json",
+                }
+            );
         }
         else
         {
@@ -261,17 +312,21 @@ public class EmbeddingConfigValidator
                 var hasModel = await _healthChecker.CheckOllamaModelAsync(
                     ollamaConfig.Endpoint,
                     ollamaConfig.SelectedModel,
-                    cancellationToken);
+                    cancellationToken
+                );
 
                 if (!hasModel)
                 {
-                    result.Issues.Add(new ValidationIssue
-                    {
-                        Severity = IssueSeverity.Warning,
-                        Category = "Ollama",
-                        Message = $"Selected model '{ollamaConfig.SelectedModel}' is not available",
-                        Solution = $"Pull the model: ollama pull {ollamaConfig.SelectedModel}"
-                    });
+                    result.Issues.Add(
+                        new ValidationIssue
+                        {
+                            Severity = IssueSeverity.Warning,
+                            Category = "Ollama",
+                            Message =
+                                $"Selected model '{ollamaConfig.SelectedModel}' is not available",
+                            Solution = $"Pull the model: ollama pull {ollamaConfig.SelectedModel}",
+                        }
+                    );
                 }
             }
         }
@@ -304,7 +359,9 @@ public class EmbeddingConfigValidator
         }
 
         // Critical issues
-        var criticalIssues = result.Issues.Where(i => i.Severity == IssueSeverity.Critical).ToList();
+        var criticalIssues = result
+            .Issues.Where(i => i.Severity == IssueSeverity.Critical)
+            .ToList();
         if (criticalIssues.Any())
         {
             Console.ForegroundColor = ConsoleColor.Red;
@@ -351,7 +408,8 @@ public class EmbeddingConfigValidator
 
     private void PrintIssue(ValidationIssue issue)
     {
-        Console.ForegroundColor = issue.Severity == IssueSeverity.Critical ? ConsoleColor.Red : ConsoleColor.Yellow;
+        Console.ForegroundColor =
+            issue.Severity == IssueSeverity.Critical ? ConsoleColor.Red : ConsoleColor.Yellow;
         Console.WriteLine($"[{issue.Category}] {issue.Message}");
         Console.ResetColor();
 

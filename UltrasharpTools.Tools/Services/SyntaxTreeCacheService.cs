@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Services;
@@ -22,7 +20,8 @@ public sealed class SyntaxTreeCacheService
     public SyntaxTreeCacheService(
         ILogger<SyntaxTreeCacheService> logger,
         int capacity = 500,
-        TimeSpan? ttl = null)
+        TimeSpan? ttl = null
+    )
     {
         _logger = logger;
         _cache = new LruCache<string, CachedSyntaxTree>(capacity);
@@ -31,7 +30,8 @@ public sealed class SyntaxTreeCacheService
         _logger.LogInformation(
             "SyntaxTreeCache initialized: capacity={Capacity}, TTL={TtlMinutes}m",
             capacity,
-            _ttl.TotalMinutes);
+            _ttl.TotalMinutes
+        );
     }
 
     /// <summary>
@@ -39,10 +39,13 @@ public sealed class SyntaxTreeCacheService
     /// </summary>
     public async Task<SyntaxTree?> GetOrParseAsync(
         Document document,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var filePath = document.FilePath ?? document.Name;
-        var documentVersion = await document.GetTextVersionAsync(cancellationToken).ConfigureAwait(false);
+        var documentVersion = await document
+            .GetTextVersionAsync(cancellationToken)
+            .ConfigureAwait(false);
         var cacheKey = $"{filePath}|{documentVersion}";
 
         // Check cache
@@ -73,17 +76,21 @@ public sealed class SyntaxTreeCacheService
         if (syntaxTree != null)
         {
             // Add to cache
-            _cache.Add(cacheKey, new CachedSyntaxTree
-            {
-                SyntaxTree = syntaxTree,
-                CreatedAt = DateTimeOffset.UtcNow,
-                FilePath = filePath
-            });
+            _cache.Add(
+                cacheKey,
+                new CachedSyntaxTree
+                {
+                    SyntaxTree = syntaxTree,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    FilePath = filePath,
+                }
+            );
 
             _logger.LogDebug(
                 "SyntaxTree parsed and cached: {FilePath} ({ElapsedMs}ms)",
                 filePath,
-                sw.ElapsedMilliseconds);
+                sw.ElapsedMilliseconds
+            );
         }
 
         return syntaxTree;
@@ -95,8 +102,8 @@ public sealed class SyntaxTreeCacheService
     public void InvalidateFile(string filePath)
     {
         // Remove all entries for this file (different versions)
-        var keysToRemove = _cache.Keys
-            .Where(k => k.StartsWith(filePath + "|", StringComparison.Ordinal))
+        var keysToRemove = _cache
+            .Keys.Where(k => k.StartsWith(filePath + "|", StringComparison.Ordinal))
             .ToList();
 
         foreach (var key in keysToRemove)
@@ -132,7 +139,7 @@ public sealed class SyntaxTreeCacheService
             TotalRequests = totalRequests,
             HitRate = totalRequests > 0 ? (double)hitCount / totalRequests * 100.0 : 0.0,
             CachedEntries = _cache.Count,
-            TotalParseTimeMs = Interlocked.Read(ref _parseTimeMs)
+            TotalParseTimeMs = Interlocked.Read(ref _parseTimeMs),
         };
     }
 
@@ -148,7 +155,8 @@ public sealed class SyntaxTreeCacheService
             stats.MissCount,
             stats.HitRate,
             stats.CachedEntries,
-            stats.TotalParseTimeMs);
+            stats.TotalParseTimeMs
+        );
     }
 }
 

@@ -4,7 +4,8 @@ namespace UltrasharpTools.Tools.Models;
 /// Cache entry with file-based invalidation metadata
 /// </summary>
 /// <typeparam name="T">Cached value type</typeparam>
-public sealed class CacheEntry<T> where T : class
+public sealed class CacheEntry<T>
+    where T : class
 {
     public required T Value { get; init; }
     public DateTime LastWriteTimeUtc { get; init; }
@@ -46,12 +47,14 @@ public sealed class CacheStatistics
     public long CompilationCacheMisses { get; init; }
     public long SemanticModelCacheHits { get; init; }
     public long SemanticModelCacheMisses { get; init; }
-    public double CompilationHitRate => CompilationCacheHits + CompilationCacheMisses > 0
-    ? CompilationCacheHits / (double)(CompilationCacheHits + CompilationCacheMisses)
-    : 0.0;
-    public double SemanticModelHitRate => SemanticModelCacheHits + SemanticModelCacheMisses > 0
-    ? SemanticModelCacheHits / (double)(SemanticModelCacheHits + SemanticModelCacheMisses)
-    : 0.0;
+    public double CompilationHitRate =>
+        CompilationCacheHits + CompilationCacheMisses > 0
+            ? CompilationCacheHits / (double)(CompilationCacheHits + CompilationCacheMisses)
+            : 0.0;
+    public double SemanticModelHitRate =>
+        SemanticModelCacheHits + SemanticModelCacheMisses > 0
+            ? SemanticModelCacheHits / (double)(SemanticModelCacheHits + SemanticModelCacheMisses)
+            : 0.0;
     public long TotalMemoryBytes { get; init; }
 }
 

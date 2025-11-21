@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 using UltrasharpTools.Tools.Merge.Parsing;
@@ -20,13 +19,14 @@ public sealed class CodeUnitExtractor
     private readonly ILogger<CodeUnitExtractor> _logger;
 
     public CodeUnitExtractor(
-    CSharpParser csharpParser,
-    JsonParser jsonParser,
-    XmlParser xmlParser,
-    YamlParser yamlParser,
-    PowerShellParser powershellParser,
-    ShellParser shellParser,
-    ILogger<CodeUnitExtractor>? logger = null)
+        CSharpParser csharpParser,
+        JsonParser jsonParser,
+        XmlParser xmlParser,
+        YamlParser yamlParser,
+        PowerShellParser powershellParser,
+        ShellParser shellParser,
+        ILogger<CodeUnitExtractor>? logger = null
+    )
     {
         _csharpParser = csharpParser;
         _jsonParser = jsonParser;
@@ -41,13 +41,17 @@ public sealed class CodeUnitExtractor
     /// Извлечь CodeUnits из файла (автоматически выбирает парсер).
     /// </summary>
     public async Task<List<CodeUnit>> ExtractFromFileAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
-        _logger.LogDebug("Extracting CodeUnits from {FilePath} (extension: {Extension})",
-        filePath, extension);
+        _logger.LogDebug(
+            "Extracting CodeUnits from {FilePath} (extension: {Extension})",
+            filePath,
+            extension
+        );
 
         try
         {
@@ -55,18 +59,22 @@ public sealed class CodeUnitExtractor
             {
                 ".cs" => await _csharpParser.ParseFileAsync(filePath, ct),
                 ".json" => await _jsonParser.ParseFileAsync(filePath, ct),
-                ".xml" or ".csproj" or ".targets" or ".props" => await _xmlParser.ParseFileAsync(filePath, ct),
+                ".xml" or ".csproj" or ".targets" or ".props" => await _xmlParser.ParseFileAsync(
+                    filePath,
+                    ct
+                ),
                 ".yaml" or ".yml" => await _yamlParser.ParseFileAsync(filePath, ct),
                 ".ps1" => await _powershellParser.ParseFileAsync(filePath, ct),
-                ".sh" or ".bash" or ".cmd" or ".bat" => await _shellParser.ParseFileAsync(filePath, ct),
-                _ => await ExtractGenericFileAsync(filePath, ct)
+                ".sh" or ".bash" or ".cmd" or ".bat" => await _shellParser.ParseFileAsync(
+                    filePath,
+                    ct
+                ),
+                _ => await ExtractGenericFileAsync(filePath, ct),
             };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-            "Failed to extract CodeUnits from {FilePath}",
-            filePath);
+            _logger.LogError(ex, "Failed to extract CodeUnits from {FilePath}", filePath);
 
             // Fallback: создать только file-level unit
             return new List<CodeUnit> { await CreateFallbackFileUnit(filePath, ct) };
@@ -77,8 +85,9 @@ public sealed class CodeUnitExtractor
     /// Извлечь CodeUnits из нескольких файлов.
     /// </summary>
     public async Task<List<CodeUnit>> ExtractFromFilesAsync(
-    IEnumerable<string> filePaths,
-    CancellationToken ct = default)
+        IEnumerable<string> filePaths,
+        CancellationToken ct = default
+    )
     {
         var allUnits = new List<CodeUnit>();
 
@@ -89,9 +98,10 @@ public sealed class CodeUnitExtractor
         }
 
         _logger.LogInformation(
-        "Extracted {Count} CodeUnits from {FileCount} files",
-        allUnits.Count,
-        filePaths.Count());
+            "Extracted {Count} CodeUnits from {FileCount} files",
+            allUnits.Count,
+            filePaths.Count()
+        );
 
         return allUnits;
     }
@@ -100,26 +110,29 @@ public sealed class CodeUnitExtractor
     /// Извлечь CodeUnits из директории (рекурсивно).
     /// </summary>
     public async Task<List<CodeUnit>> ExtractFromDirectoryAsync(
-    string directoryPath,
-    string[] filePatterns,
-    CancellationToken ct = default)
+        string directoryPath,
+        string[] filePatterns,
+        CancellationToken ct = default
+    )
     {
         var files = new List<string>();
 
         foreach (var pattern in filePatterns)
         {
             var matchedFiles = Directory.GetFiles(
-            directoryPath,
-            pattern,
-            SearchOption.AllDirectories);
+                directoryPath,
+                pattern,
+                SearchOption.AllDirectories
+            );
 
             files.AddRange(matchedFiles);
         }
 
         _logger.LogInformation(
-        "Found {Count} files matching patterns in {Directory}",
-        files.Count,
-        directoryPath);
+            "Found {Count} files matching patterns in {Directory}",
+            files.Count,
+            directoryPath
+        );
 
         return await ExtractFromFilesAsync(files, ct);
     }
@@ -128,12 +141,11 @@ public sealed class CodeUnitExtractor
     /// Создать file-level unit для неподдерживаемых типов файлов.
     /// </summary>
     private async Task<List<CodeUnit>> ExtractGenericFileAsync(
-    string filePath,
-    CancellationToken ct)
+        string filePath,
+        CancellationToken ct
+    )
     {
-        _logger.LogDebug(
-        "Using generic extraction for {FilePath}",
-        filePath);
+        _logger.LogDebug("Using generic extraction for {FilePath}", filePath);
 
         var unit = await CreateFallbackFileUnit(filePath, ct);
         return new List<CodeUnit> { unit };
@@ -142,9 +154,7 @@ public sealed class CodeUnitExtractor
     /// <summary>
     /// Создать fallback file unit (если парсинг не удался).
     /// </summary>
-    private async Task<CodeUnit> CreateFallbackFileUnit(
-    string filePath,
-    CancellationToken ct)
+    private async Task<CodeUnit> CreateFallbackFileUnit(string filePath, CancellationToken ct)
     {
         var content = await File.ReadAllTextAsync(filePath, ct);
         var contentHash = ContentNormalizer.ComputeContentHash(content);
@@ -174,8 +184,8 @@ public sealed class CodeUnitExtractor
             {
                 ["FileSize"] = content.Length,
                 ["Extension"] = Path.GetExtension(filePath),
-                ["ParsingFailed"] = true
-            }
+                ["ParsingFailed"] = true,
+            },
         };
     }
 
@@ -195,7 +205,7 @@ public sealed class CodeUnitExtractor
                 // Обновить ChildIds родителя
                 var updatedParent = parent with
                 {
-                    ChildIds = parent.ChildIds.Append(unit.Id).ToHashSet()
+                    ChildIds = parent.ChildIds.Append(unit.Id).ToHashSet(),
                 };
 
                 // Заменить в словаре

@@ -23,7 +23,8 @@ public sealed class RequestBatchingService : IAsyncDisposable
         IServerBridgeService serverBridge,
         ILogger<RequestBatchingService> logger,
         TimeSpan? batchWindow = null,
-        int maxBatchSize = 10)
+        int maxBatchSize = 10
+    )
     {
         _serverBridge = serverBridge;
         _logger = logger;
@@ -35,7 +36,8 @@ public sealed class RequestBatchingService : IAsyncDisposable
             _ => ProcessBatchAsync().GetAwaiter().GetResult(),
             null,
             _batchWindow,
-            _batchWindow);
+            _batchWindow
+        );
     }
 
     /// <summary>
@@ -45,13 +47,19 @@ public sealed class RequestBatchingService : IAsyncDisposable
         string toolName,
         string argumentsJson,
         string? projectContext = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         // Только для semantic tools применяем batching
         if (!IsSemanticTool(toolName))
         {
             // Для non-semantic tools - прямой вызов
-            return await _serverBridge.CallMcpProxyAsync(toolName, argumentsJson, projectContext, cancellationToken);
+            return await _serverBridge.CallMcpProxyAsync(
+                toolName,
+                argumentsJson,
+                projectContext,
+                cancellationToken
+            );
         }
 
         var request = new BatchedRequest
@@ -60,7 +68,7 @@ public sealed class RequestBatchingService : IAsyncDisposable
             ArgumentsJson = argumentsJson,
             ProjectContext = projectContext,
             CancellationToken = cancellationToken,
-            CompletionSource = new TaskCompletionSource<string>()
+            CompletionSource = new TaskCompletionSource<string>(),
         };
 
         _pendingRequests.Enqueue(request);
@@ -68,7 +76,8 @@ public sealed class RequestBatchingService : IAsyncDisposable
         _logger.LogDebug(
             "Request queued for batching: {ToolName}, queue size: {QueueSize}",
             toolName,
-            _pendingRequests.Count);
+            _pendingRequests.Count
+        );
 
         // Если достигли max batch size, обработать немедленно
         if (_pendingRequests.Count >= _maxBatchSize)
@@ -106,32 +115,36 @@ public sealed class RequestBatchingService : IAsyncDisposable
                 return;
             }
 
-            _logger.LogInformation(
-                "Processing batch of {BatchSize} requests",
-                batch.Count);
+            _logger.LogInformation("Processing batch of {BatchSize} requests", batch.Count);
 
             var sw = Stopwatch.StartNew();
 
             // Выполнить все запросы параллельно
-            var tasks = batch.Select(req =>
-                Task.Run(async () =>
-                {
-                    try
-                    {
-                        var result = await _serverBridge.CallMcpProxyAsync(
-                            req.ToolName,
-                            req.ArgumentsJson,
-                            req.ProjectContext,
-                            req.CancellationToken);
+            var tasks = batch
+                .Select(req =>
+                    Task.Run(
+                        async () =>
+                        {
+                            try
+                            {
+                                var result = await _serverBridge.CallMcpProxyAsync(
+                                    req.ToolName,
+                                    req.ArgumentsJson,
+                                    req.ProjectContext,
+                                    req.CancellationToken
+                                );
 
-                        req.CompletionSource.SetResult(result);
-                    }
-                    catch (Exception ex)
-                    {
-                        req.CompletionSource.SetException(ex);
-                    }
-                }, req.CancellationToken)
-            ).ToArray();
+                                req.CompletionSource.SetResult(result);
+                            }
+                            catch (Exception ex)
+                            {
+                                req.CompletionSource.SetException(ex);
+                            }
+                        },
+                        req.CancellationToken
+                    )
+                )
+                .ToArray();
 
             await Task.WhenAll(tasks);
 
@@ -141,7 +154,8 @@ public sealed class RequestBatchingService : IAsyncDisposable
                 "Batch of {BatchSize} requests completed in {ElapsedMs}ms ({AvgMs}ms per request)",
                 batch.Count,
                 sw.ElapsedMilliseconds,
-                sw.ElapsedMilliseconds / batch.Count);
+                sw.ElapsedMilliseconds / batch.Count
+            );
         }
         finally
         {
@@ -161,7 +175,7 @@ public sealed class RequestBatchingService : IAsyncDisposable
             "find_duplicates" => true,
             "pattern_search" => true,
             "reindex_changed_files" => true,
-            _ => false
+            _ => false,
         };
     }
 

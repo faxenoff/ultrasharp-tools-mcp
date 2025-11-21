@@ -14,10 +14,10 @@ public interface ICodeFixService
     /// <param name="cancellationToken">Токен отмены</param>
     /// <returns>Результат с информацией о примененных исправлениях</returns>
     Task<CodeFixResult> ApplyFixesAsync(
-    string solutionPath,
-    string diagnosticId,
-    bool preview,
-    CancellationToken cancellationToken = default
+        string solutionPath,
+        string diagnosticId,
+        bool preview,
+        CancellationToken cancellationToken = default
     );
 }
 

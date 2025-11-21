@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <ItemGroup>
     <ProjectReference Include="..\UltrasharpTools.Tools\UltrasharpTools.Tools.csproj" />
   </ItemGroup>
@@ -19,5 +18,4 @@
     <!-- Отключение сателитных сборок локализации (для NuGet пакетов типа Roslyn) -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
-
 </Project>

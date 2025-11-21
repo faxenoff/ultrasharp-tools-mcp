@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 
@@ -31,7 +30,7 @@ public sealed class FastPathMatcher
                 UnitA = unitA,
                 UnitB = unitB,
                 MatchType = FastPathMatchType.ExactContent,
-                Confidence = 1.0f
+                Confidence = 1.0f,
             };
         }
 
@@ -44,14 +43,16 @@ public sealed class FastPathMatcher
                 UnitA = unitA,
                 UnitB = unitB,
                 MatchType = FastPathMatchType.StructuralSame,
-                Confidence = 0.95f
+                Confidence = 0.95f,
             };
         }
 
         // Level 3: Signature match (для методов - FQN + parameters)
-        if (unitA.Signature != null &&
-        unitB.Signature != null &&
-        unitA.Signature == unitB.Signature)
+        if (
+            unitA.Signature != null
+            && unitB.Signature != null
+            && unitA.Signature == unitB.Signature
+        )
         {
             // Та же сигнатура, но разное тело метода
             _logger.LogDebug("Signature match: {Signature}", unitA.Signature);
@@ -60,7 +61,7 @@ public sealed class FastPathMatcher
                 UnitA = unitA,
                 UnitB = unitB,
                 MatchType = FastPathMatchType.SignatureMatch,
-                Confidence = 0.85f
+                Confidence = 0.85f,
             };
         }
 
@@ -73,7 +74,7 @@ public sealed class FastPathMatcher
                 UnitA = unitA,
                 UnitB = unitB,
                 MatchType = FastPathMatchType.IdMatch,
-                Confidence = 0.7f
+                Confidence = 0.7f,
             };
         }
 
@@ -85,24 +86,25 @@ public sealed class FastPathMatcher
     /// Bulk matching для всех units в версии.
     /// </summary>
     public Dictionary<string, FastPathMatchResult> BulkMatch(
-    VersionedIndex baseVersion,
-    VersionedIndex targetVersion)
+        VersionedIndex baseVersion,
+        VersionedIndex targetVersion
+    )
     {
         var matches = new Dictionary<string, FastPathMatchResult>();
 
         // Создать lookup таблицы для O(1) доступа
-        var hashToUnits = targetVersion.Units.Values
-        .GroupBy(u => u.ContentHash)
-        .ToDictionary(g => g.Key, g => g.ToList());
+        var hashToUnits = targetVersion
+            .Units.Values.GroupBy(u => u.ContentHash)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
-        var structHashToUnits = targetVersion.Units.Values
-        .GroupBy(u => u.StructuralHash)
-        .ToDictionary(g => g.Key, g => g.ToList());
+        var structHashToUnits = targetVersion
+            .Units.Values.GroupBy(u => u.StructuralHash)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
-        var signatureToUnits = targetVersion.Units.Values
-        .Where(u => u.Signature != null)
-        .GroupBy(u => u.Signature!)
-        .ToDictionary(g => g.Key, g => g.ToList());
+        var signatureToUnits = targetVersion
+            .Units.Values.Where(u => u.Signature != null)
+            .GroupBy(u => u.Signature!)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var baseUnit in baseVersion.Units.Values)
         {
@@ -116,7 +118,7 @@ public sealed class FastPathMatcher
                     UnitA = baseUnit,
                     UnitB = match,
                     MatchType = FastPathMatchType.ExactContent,
-                    Confidence = 1.0f
+                    Confidence = 1.0f,
                 };
                 continue;
             }
@@ -130,14 +132,16 @@ public sealed class FastPathMatcher
                     UnitA = baseUnit,
                     UnitB = match,
                     MatchType = FastPathMatchType.StructuralSame,
-                    Confidence = 0.95f
+                    Confidence = 0.95f,
                 };
                 continue;
             }
 
             // Попробовать signature match
-            if (baseUnit.Signature != null &&
-            signatureToUnits.TryGetValue(baseUnit.Signature, out var sigMatches))
+            if (
+                baseUnit.Signature != null
+                && signatureToUnits.TryGetValue(baseUnit.Signature, out var sigMatches)
+            )
             {
                 var match = sigMatches.First();
                 matches[baseUnit.Id] = new FastPathMatchResult
@@ -145,7 +149,7 @@ public sealed class FastPathMatcher
                     UnitA = baseUnit,
                     UnitB = match,
                     MatchType = FastPathMatchType.SignatureMatch,
-                    Confidence = 0.85f
+                    Confidence = 0.85f,
                 };
                 continue;
             }
@@ -158,7 +162,7 @@ public sealed class FastPathMatcher
                     UnitA = baseUnit,
                     UnitB = idMatch,
                     MatchType = FastPathMatchType.IdMatch,
-                    Confidence = 0.7f
+                    Confidence = 0.7f,
                 };
             }
 
@@ -166,10 +170,10 @@ public sealed class FastPathMatcher
         }
 
         _logger.LogInformation(
-        "Fast Path matched {Matched}/{Total} units ({Percent:F1}%)",
-        matches.Count,
-        baseVersion.Units.Count,
-        matches.Count * 100.0 / baseVersion.Units.Count
+            "Fast Path matched {Matched}/{Total} units ({Percent:F1}%)",
+            matches.Count,
+            baseVersion.Units.Count,
+            matches.Count * 100.0 / baseVersion.Units.Count
         );
 
         return matches;
@@ -180,34 +184,29 @@ public sealed class FastPathMatcher
     /// Это candidates для Slow Path matching.
     /// </summary>
     public List<CodeUnit> FindUnmatchedUnits(
-    VersionedIndex targetVersion,
-    Dictionary<string, FastPathMatchResult> matches)
+        VersionedIndex targetVersion,
+        Dictionary<string, FastPathMatchResult> matches
+    )
     {
-        var matchedTargetIds = matches.Values
-        .Select(m => m.UnitB.Id)
-        .ToHashSet();
+        var matchedTargetIds = matches.Values.Select(m => m.UnitB.Id).ToHashSet();
 
-        return targetVersion.Units.Values
-        .Where(u => !matchedTargetIds.Contains(u.Id))
-        .ToList();
+        return targetVersion.Units.Values.Where(u => !matchedTargetIds.Contains(u.Id)).ToList();
     }
 
     /// <summary>
     /// Статистика Fast Path matching.
     /// </summary>
     public FastPathStatistics ComputeStatistics(
-    VersionedIndex baseVersion,
-    Dictionary<string, FastPathMatchResult> matches)
+        VersionedIndex baseVersion,
+        Dictionary<string, FastPathMatchResult> matches
+    )
     {
         var totalUnits = baseVersion.Units.Count;
         var matchedCount = matches.Count;
 
-        var byType = matches.Values
-        .GroupBy(m => m.MatchType)
-        .ToDictionary(
-        g => g.Key,
-        g => g.Count()
-        );
+        var byType = matches
+            .Values.GroupBy(m => m.MatchType)
+            .ToDictionary(g => g.Key, g => g.Count());
 
         return new FastPathStatistics
         {
@@ -215,7 +214,7 @@ public sealed class FastPathMatcher
             MatchedUnits = matchedCount,
             UnmatchedUnits = totalUnits - matchedCount,
             MatchRate = totalUnits > 0 ? (float)matchedCount / totalUnits : 0f,
-            MatchesByType = byType
+            MatchesByType = byType,
         };
     }
 }
@@ -236,10 +235,10 @@ public sealed record FastPathMatchResult
 /// </summary>
 public enum FastPathMatchType
 {
-    ExactContent,       // 100% совпадение контента
-    StructuralSame,     // Одинаковая AST структура
-    SignatureMatch,     // Совпадает сигнатура (FQN + params)
-    IdMatch             // Совпадает ID (возможно переименование)
+    ExactContent, // 100% совпадение контента
+    StructuralSame, // Одинаковая AST структура
+    SignatureMatch, // Совпадает сигнатура (FQN + params)
+    IdMatch, // Совпадает ID (возможно переименование)
 }
 
 /// <summary>
@@ -255,8 +254,10 @@ public sealed record FastPathStatistics
 
     public override string ToString()
     {
-        var typeBreakdown = string.Join(", ",
-        MatchesByType.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
+        var typeBreakdown = string.Join(
+            ", ",
+            MatchesByType.Select(kvp => $"{kvp.Key}: {kvp.Value}")
+        );
 
         return $"Fast Path: {MatchedUnits}/{TotalUnits} matched ({MatchRate:P1}) - {typeBreakdown}";
     }

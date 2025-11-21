@@ -10,7 +10,9 @@ namespace UltrasharpTools.Overlord.Services;
 /// Реализация MultiProjectVectorStoreService для hybrid архитектуры
 /// Управляет векторными хранилищами для ВСЕХ проектов команды
 /// </summary>
-public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreService, IAsyncDisposable
+public sealed class MultiProjectVectorStoreService
+    : IMultiProjectVectorStoreService,
+        IAsyncDisposable
 {
     private readonly ILogger<MultiProjectVectorStoreService> _logger;
     private readonly string _basePath;
@@ -23,7 +25,8 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
     public MultiProjectVectorStoreService(
         ILogger<MultiProjectVectorStoreService> logger,
         string? basePath = null,
-        int dimension = 768)
+        int dimension = 768
+    )
     {
         _logger = logger;
         _basePath = basePath ?? Path.Combine(AppContext.BaseDirectory, "data", "vectors");
@@ -34,7 +37,9 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
 
         _logger.LogInformation(
             "MultiProjectVectorStore initialized: BasePath={BasePath}, Dimension={Dimension}",
-            _basePath, _dimension);
+            _basePath,
+            _dimension
+        );
     }
 
     public async Task StoreVectorsAsync(
@@ -44,7 +49,8 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
         float[] vectors,
         string? content = null,
         SymbolInfoDto[]? symbols = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var store = await GetOrCreateStoreAsync(project, branch, cancellationToken);
 
@@ -54,27 +60,28 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
             Content = content ?? string.Empty,
             Vector = vectors,
             Dimension = vectors.Length,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                project,
-                branch,
-                filePath,
-                timestamp = DateTime.UtcNow
-            })
+            Metadata = System.Text.Json.JsonSerializer.Serialize(
+                new
+                {
+                    project,
+                    branch,
+                    filePath,
+                    timestamp = DateTime.UtcNow,
+                }
+            ),
         };
 
         await store.InsertAsync(embedding, cancellationToken);
 
-        _logger.LogDebug(
-            "Stored vectors: {Project}/{Branch}/{File}",
-            project, branch, filePath);
+        _logger.LogDebug("Stored vectors: {Project}/{Branch}/{File}", project, branch, filePath);
     }
 
     public async Task DeleteVectorsAsync(
         string project,
         string branch,
         string filePath,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var key = $"{project}/{branch}";
         if (_stores.TryGetValue(key, out var store))
@@ -83,7 +90,10 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
             // Сейчас VectorStore не имеет метода Delete
             _logger.LogWarning(
                 "Delete not implemented yet: {Project}/{Branch}/{File}",
-                project, branch, filePath);
+                project,
+                branch,
+                filePath
+            );
         }
     }
 
@@ -92,28 +102,33 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
         double threshold = 0.7,
         int limit = 10,
         string[]? projects = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var allMatches = new List<VectorMatch>();
 
         // Определяем какие stores искать
-        var storesToSearch = projects == null
-            ? _stores.Values
-            : _stores.Where(kv => projects.Any(p => kv.Key.StartsWith(p + "/"))).Select(kv => kv.Value);
+        var storesToSearch =
+            projects == null
+                ? _stores.Values
+                : _stores
+                    .Where(kv => projects.Any(p => kv.Key.StartsWith(p + "/")))
+                    .Select(kv => kv.Value);
 
         // Параллельный поиск по всем stores
-        var searchTasks = storesToSearch
-            .Select(async store =>
+        var searchTasks = storesToSearch.Select(async store =>
+        {
+            try
             {
-                try
-                {
-                    var results = await store.SearchAsync(
-                        queryVector,
-                        limit,
-                        (float)threshold,
-                        cancellationToken);
+                var results = await store.SearchAsync(
+                    queryVector,
+                    limit,
+                    (float)threshold,
+                    cancellationToken
+                );
 
-                    return results.Select(r =>
+                return results
+                    .Select(r =>
                     {
                         var metadata = ParseMetadata(r.Metadata);
                         return new VectorMatch
@@ -123,16 +138,17 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
                             FilePath = metadata.GetValueOrDefault("filePath") ?? "unknown",
                             Line = 0, // TODO: извлечь из metadata
                             Similarity = r.Similarity,
-                            Code = r.Content
+                            Code = r.Content,
                         };
-                    }).ToList();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to search in vector store");
-                    return new List<VectorMatch>();
-                }
-            });
+                    })
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to search in vector store");
+                return new List<VectorMatch>();
+            }
+        });
 
         var results = await Task.WhenAll(searchTasks);
 
@@ -142,10 +158,7 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
             allMatches.AddRange(result);
         }
 
-        return allMatches
-            .OrderByDescending(m => m.Similarity)
-            .Take(limit)
-            .ToList();
+        return allMatches.OrderByDescending(m => m.Similarity).Take(limit).ToList();
     }
 
     public async Task<List<VectorMatch>> SearchInProjectAsync(
@@ -154,7 +167,8 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
         float[] queryVector,
         double threshold = 0.7,
         int limit = 10,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var store = await GetOrCreateStoreAsync(project, branch, cancellationToken);
 
@@ -162,37 +176,40 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
             queryVector,
             limit,
             (float)threshold,
-            cancellationToken);
+            cancellationToken
+        );
 
-        return results.Select(r =>
-        {
-            var metadata = ParseMetadata(r.Metadata);
-            return new VectorMatch
+        return results
+            .Select(r =>
             {
-                Project = project,
-                Branch = branch,
-                FilePath = metadata.GetValueOrDefault("filePath") ?? "unknown",
-                Line = 0,
-                Similarity = r.Similarity,
-                Code = r.Content
-            };
-        }).ToList();
+                var metadata = ParseMetadata(r.Metadata);
+                return new VectorMatch
+                {
+                    Project = project,
+                    Branch = branch,
+                    FilePath = metadata.GetValueOrDefault("filePath") ?? "unknown",
+                    Line = 0,
+                    Similarity = r.Similarity,
+                    Code = r.Content,
+                };
+            })
+            .ToList();
     }
 
     public Task<List<string>> GetProjectsAsync(CancellationToken cancellationToken = default)
     {
-        var projects = _stores.Keys
-            .Select(key => key.Split('/')[0])
-            .Distinct()
-            .ToList();
+        var projects = _stores.Keys.Select(key => key.Split('/')[0]).Distinct().ToList();
 
         return Task.FromResult(projects);
     }
 
-    public Task<List<string>> GetBranchesAsync(string project, CancellationToken cancellationToken = default)
+    public Task<List<string>> GetBranchesAsync(
+        string project,
+        CancellationToken cancellationToken = default
+    )
     {
-        var branches = _stores.Keys
-            .Where(key => key.StartsWith(project + "/"))
+        var branches = _stores
+            .Keys.Where(key => key.StartsWith(project + "/"))
             .Select(key => key.Split('/')[1])
             .Distinct()
             .ToList();
@@ -200,7 +217,9 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
         return Task.FromResult(branches);
     }
 
-    public async Task<MultiProjectStats> GetStatsAsync(CancellationToken cancellationToken = default)
+    public async Task<MultiProjectStats> GetStatsAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         var projectStats = new Dictionary<string, ProjectStats>();
         var projects = await GetProjectsAsync(cancellationToken);
@@ -216,7 +235,7 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
                 BranchCount = branches.Count,
                 VectorCount = 0, // TODO
                 SizeMB = 0, // TODO
-                LastUpdate = DateTime.UtcNow
+                LastUpdate = DateTime.UtcNow,
             };
         }
 
@@ -226,14 +245,15 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
             TotalBranches = _stores.Count,
             TotalVectors = 0, // TODO
             TotalSizeMB = 0, // TODO
-            Projects = projectStats
+            Projects = projectStats,
         };
     }
 
     private async Task<VectorStore> GetOrCreateStoreAsync(
         string project,
         string branch,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var key = $"{project}/{branch}";
 
@@ -255,9 +275,7 @@ public sealed class MultiProjectVectorStoreService : IMultiProjectVectorStoreSer
 
         _stores[key] = store;
 
-        _logger.LogInformation(
-            "Created new VectorStore: {Project}/{Branch}",
-            project, branch);
+        _logger.LogInformation("Created new VectorStore: {Project}/{Branch}", project, branch);
 
         return store;
     }

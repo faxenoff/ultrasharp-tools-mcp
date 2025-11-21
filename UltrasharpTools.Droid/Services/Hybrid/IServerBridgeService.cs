@@ -10,17 +10,26 @@ public interface IServerBridgeService
     /// <summary>
     /// Отправить событие изменения файла
     /// </summary>
-    ValueTask SendFileChangedEventAsync(FileChangedEvent evt, CancellationToken cancellationToken = default);
+    ValueTask SendFileChangedEventAsync(
+        FileChangedEvent evt,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Отправить событие переключения ветки
     /// </summary>
-    ValueTask SendBranchSwitchEventAsync(BranchSwitchEvent evt, CancellationToken cancellationToken = default);
+    ValueTask SendBranchSwitchEventAsync(
+        BranchSwitchEvent evt,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Отправить событие Git коммита
     /// </summary>
-    ValueTask SendGitCommitEventAsync(GitCommitEvent evt, CancellationToken cancellationToken = default);
+    ValueTask SendGitCommitEventAsync(
+        GitCommitEvent evt,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Проверить доступность сервера
@@ -39,7 +48,8 @@ public interface IServerBridgeService
         string toolName,
         string argumentsJson,
         string? projectContext = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Выполнить MCP tool через Overlord proxy (перегрузка с Dictionary)
@@ -53,5 +63,6 @@ public interface IServerBridgeService
         string toolName,
         Dictionary<string, object> arguments,
         string? projectContext = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 }

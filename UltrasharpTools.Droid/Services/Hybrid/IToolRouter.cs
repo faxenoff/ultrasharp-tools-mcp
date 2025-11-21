@@ -11,7 +11,10 @@ public interface IToolRouter
     /// <param name="toolName">Название инструмента</param>
     /// <param name="arguments">Аргументы инструмента (опционально)</param>
     /// <returns>Решение маршрутизации</returns>
-    ToolRoutingDecision DetermineRouting(string toolName, Dictionary<string, object>? arguments = null);
+    ToolRoutingDecision DetermineRouting(
+        string toolName,
+        Dictionary<string, object>? arguments = null
+    );
 
     /// <summary>
     /// Проверяет доступность Overlord сервера
@@ -37,5 +40,5 @@ public enum ToolRoutingDecision
     /// <summary>
     /// Попытаться Overlord, при ошибке - fallback на Local
     /// </summary>
-    OverlordWithFallback
+    OverlordWithFallback,
 }

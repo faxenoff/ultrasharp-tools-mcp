@@ -23,7 +23,8 @@ public class AgentController : ControllerBase
         IMultiProjectVectorStoreService vectorStore,
         IMcpProxyService mcpProxy,
         INotificationService notificationService,
-        IConflictDetectionService conflictDetection)
+        IConflictDetectionService conflictDetection
+    )
     {
         _logger = logger;
         _vectorStore = vectorStore;
@@ -42,7 +43,11 @@ public class AgentController : ControllerBase
         {
             _logger.LogInformation(
                 "File changed: {Project}/{Branch}/{File} ({Action})",
-                evt.Project, evt.Branch, evt.File, evt.Action);
+                evt.Project,
+                evt.Branch,
+                evt.File,
+                evt.Action
+            );
 
             // Сохраняем векторы в multi-project хранилище
             if (evt.Vectors != null && evt.Action != "deleted")
@@ -53,7 +58,8 @@ public class AgentController : ControllerBase
                     filePath: evt.File,
                     vectors: evt.Vectors,
                     content: evt.Content,
-                    symbols: evt.Symbols);
+                    symbols: evt.Symbols
+                );
 
                 // Автоматическая проверка на дубликаты
                 var duplicates = await _conflictDetection.DetectDuplicatesAsync(
@@ -62,26 +68,32 @@ public class AgentController : ControllerBase
                     file: evt.File,
                     vectors: evt.Vectors,
                     content: evt.Content,
-                    cancellationToken: HttpContext.RequestAborted);
+                    cancellationToken: HttpContext.RequestAborted
+                );
 
-                return Ok(new
-                {
-                    status = "success",
-                    duplicatesFound = duplicates.Count,
-                    duplicates = duplicates.Take(3).Select(d => new
+                return Ok(
+                    new
                     {
-                        project = d.Project,
-                        file = d.File,
-                        similarity = d.Similarity
-                    })
-                });
+                        status = "success",
+                        duplicatesFound = duplicates.Count,
+                        duplicates = duplicates
+                            .Take(3)
+                            .Select(d => new
+                            {
+                                project = d.Project,
+                                file = d.File,
+                                similarity = d.Similarity,
+                            }),
+                    }
+                );
             }
             else if (evt.Action == "deleted")
             {
                 await _vectorStore.DeleteVectorsAsync(
                     project: evt.Project,
                     branch: evt.Branch,
-                    filePath: evt.File);
+                    filePath: evt.File
+                );
 
                 return Ok(new { status = "success", action = "deleted" });
             }
@@ -105,7 +117,10 @@ public class AgentController : ControllerBase
         {
             _logger.LogInformation(
                 "Branch switched: {Project} {From} → {To}",
-                evt.Project, evt.FromBranch, evt.ToBranch);
+                evt.Project,
+                evt.FromBranch,
+                evt.ToBranch
+            );
 
             // TODO: Обновить контекст для этого Agent'а
             // Например, переключить активную branch для поиска
@@ -129,7 +144,11 @@ public class AgentController : ControllerBase
         {
             _logger.LogInformation(
                 "Git commit: {Project}/{Branch} {Sha} ({Files} files)",
-                evt.Project, evt.Branch, evt.CommitSha, evt.FilesChanged.Length);
+                evt.Project,
+                evt.Branch,
+                evt.CommitSha,
+                evt.FilesChanged.Length
+            );
 
             // TODO: Обновить метаданные проекта
             // Можно сохранять историю коммитов для аналитики
@@ -157,7 +176,8 @@ public class AgentController : ControllerBase
                 request.Tool,
                 request.Arguments,
                 request.ProjectContext,
-                HttpContext.RequestAborted);
+                HttpContext.RequestAborted
+            );
 
             return Ok(new { result });
         }
@@ -202,13 +222,15 @@ public class AgentController : ControllerBase
     [HttpGet("health")]
     public IActionResult Health()
     {
-        return Ok(new
-        {
-            status = "healthy",
-            timestamp = DateTime.UtcNow,
-            version = "3.0.6",
-            activeClients = _notificationService.GetActiveClientsCount()
-        });
+        return Ok(
+            new
+            {
+                status = "healthy",
+                timestamp = DateTime.UtcNow,
+                version = "3.0.6",
+                activeClients = _notificationService.GetActiveClientsCount(),
+            }
+        );
     }
 
     /// <summary>
@@ -217,7 +239,8 @@ public class AgentController : ControllerBase
     [HttpGet("notifications")]
     public async Task Notifications(
         [FromQuery] string? clientId = null,
-        [FromQuery] string? project = null)
+        [FromQuery] string? project = null
+    )
     {
         // Устанавливаем headers для SSE
         Response.Headers.Append("Content-Type", "text/event-stream");
@@ -229,20 +252,19 @@ public class AgentController : ControllerBase
         _logger.LogInformation(
             "SSE connection established: {ClientId}, project: {Project}",
             id,
-            project ?? "all");
+            project ?? "all"
+        );
 
         try
         {
-            var writer = new StreamWriter(Response.Body)
-            {
-                AutoFlush = true
-            };
+            var writer = new StreamWriter(Response.Body) { AutoFlush = true };
 
             await _notificationService.RegisterClientAsync(
                 id,
                 project,
                 writer,
-                HttpContext.RequestAborted);
+                HttpContext.RequestAborted
+            );
         }
         catch (OperationCanceledException)
         {

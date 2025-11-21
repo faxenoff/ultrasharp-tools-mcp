@@ -4,20 +4,21 @@
 // Significant enhancements: Levenshtein distance, scoring system, constructor shorthand, FastSymbolIndex integration
 
 using System.Buffers;
-
 using UltrasharpTools.Tools.Mcp;
 
 namespace UltrasharpTools.Tools.Services
 {
-    public class FuzzyFqnLookupService(ILogger<FuzzyFqnLookupService> logger) : IFuzzyFqnLookupService
+    public class FuzzyFqnLookupService(ILogger<FuzzyFqnLookupService> logger)
+        : IFuzzyFqnLookupService
     {
-        private readonly ILogger<FuzzyFqnLookupService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        private readonly ILogger<FuzzyFqnLookupService> _logger =
+            logger ?? throw new ArgumentNullException(nameof(logger));
         private ISolutionManager? _solutionManager;
 
         // Match scoring constants - higher score is better
         private const double PerfectMatchScore = 1.0;
         private const double ConstructorShorthandTypeNameMatchScore = 0.98; // User typed "Namespace.Type" for constructor
-        private const double ConstructorShorthandFullMatchScore = 0.97;   // User typed "Namespace.Type.Type" for constructor
+        private const double ConstructorShorthandFullMatchScore = 0.97; // User typed "Namespace.Type.Type" for constructor
         private const double ParamsOmittedScore = 0.9;
         private const double ArityOmittedScore = 0.85;
         private const double GenericArgsOmittedScore = 0.80;
@@ -27,7 +28,10 @@ namespace UltrasharpTools.Tools.Services
         private const double MinScoreThreshold = 0.7; // Minimum score to be considered a match
 
         // Regex patterns for normalization
-        private static readonly Regex ParamsRegex = new(@"\s*\([\s\S]*\)\s*$", RegexOptions.Compiled);
+        private static readonly Regex ParamsRegex = new(
+            @"\s*\([\s\S]*\)\s*$",
+            RegexOptions.Compiled
+        );
         private static readonly Regex ArityRegex = new(@"`\d+", RegexOptions.Compiled);
         private static readonly Regex GenericArgsRegex = new(@"<[^<>]+>", RegexOptions.Compiled); // Simplistic: removes <...>
 
@@ -41,14 +45,22 @@ namespace UltrasharpTools.Tools.Services
                 return false; // Not a type symbol
             }
 
-            return typeSymbol.DeclaringSyntaxReferences.Length > 1 ||
-                typeSymbol.DeclaringSyntaxReferences.Any(syntax =>
-                    syntax.GetSyntax() is Microsoft.CodeAnalysis.CSharp.Syntax.BaseTypeDeclarationSyntax declaration &&
-                    declaration.Modifiers.Any(modifier =>
-                        modifier.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword)));
+            return typeSymbol.DeclaringSyntaxReferences.Length > 1
+                || typeSymbol.DeclaringSyntaxReferences.Any(syntax =>
+                    syntax.GetSyntax()
+                        is Microsoft.CodeAnalysis.CSharp.Syntax.BaseTypeDeclarationSyntax declaration
+                    && declaration.Modifiers.Any(modifier =>
+                        modifier.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword)
+                    )
+                );
         }
+
         /// <inheritdoc />
-        public async Task<IEnumerable<FuzzyMatchResult>> FindMatchesAsync(string fuzzyFqnInput, ISolutionManager solutionManager, CancellationToken cancellationToken)
+        public async Task<IEnumerable<FuzzyMatchResult>> FindMatchesAsync(
+            string fuzzyFqnInput,
+            ISolutionManager solutionManager,
+            CancellationToken cancellationToken
+        )
         {
             _solutionManager = solutionManager;
             if (!solutionManager.IsSolutionLoaded)
@@ -59,51 +71,79 @@ namespace UltrasharpTools.Tools.Services
 
             var potentialMatches = new ConcurrentBag<FuzzyMatchResult>();
             string trimmedFuzzyFqn = RemoveWhitespace(fuzzyFqnInput.AsSpan().Trim());
-            var allRelevantSymbols = new ConcurrentDictionary<ISymbol, byte>(SymbolEqualityComparer.Default);
+            var allRelevantSymbols = new ConcurrentDictionary<ISymbol, byte>(
+                SymbolEqualityComparer.Default
+            );
 
             // Create cancellation token for early termination when perfect match is found
-            using var earlyStopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            using var earlyStopCts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken
+            );
 
             // Process documents in parallel
             var projects = solutionManager.CurrentSolution.Projects.ToList();
-            var projectTasks = projects.Select(project => Task.Run(async () =>
-            {
-                try
-                {
-                    earlyStopCts.Token.ThrowIfCancellationRequested();
-
-                    var documentTasks = project.Documents.Select(document => Task.Run(async () =>
+            var projectTasks = projects.Select(project =>
+                Task.Run(
+                    async () =>
                     {
                         try
                         {
                             earlyStopCts.Token.ThrowIfCancellationRequested();
 
-                            var semanticModel = await solutionManager.GetSemanticModelAsync(document.Id, cancellationToken);
-                            if (semanticModel == null)
-                            {
-                                _logger.LogWarning("Could not get semantic model for document {DocumentPath}", document.FilePath);
-                                return;
-                            }
+                            var documentTasks = project.Documents.Select(document =>
+                                Task.Run(
+                                    async () =>
+                                    {
+                                        try
+                                        {
+                                            earlyStopCts.Token.ThrowIfCancellationRequested();
 
-                            // Get all symbols from the semantic model
-                            CollectSymbolsFromSemanticModelConcurrent(semanticModel, allRelevantSymbols, earlyStopCts.Token);
+                                            var semanticModel =
+                                                await solutionManager.GetSemanticModelAsync(
+                                                    document.Id,
+                                                    cancellationToken
+                                                );
+                                            if (semanticModel == null)
+                                            {
+                                                _logger.LogWarning(
+                                                    "Could not get semantic model for document {DocumentPath}",
+                                                    document.FilePath
+                                                );
+                                                return;
+                                            }
+
+                                            // Get all symbols from the semantic model
+                                            CollectSymbolsFromSemanticModelConcurrent(
+                                                semanticModel,
+                                                allRelevantSymbols,
+                                                earlyStopCts.Token
+                                            );
+                                        }
+                                        catch (OperationCanceledException)
+                                        {
+                                            // Early termination - this is expected
+                                        }
+                                    },
+                                    earlyStopCts.Token
+                                )
+                            );
+
+                            await Task.WhenAll(documentTasks);
                         }
                         catch (OperationCanceledException)
                         {
                             // Early termination - this is expected
                         }
-                    }, earlyStopCts.Token));
-
-                    await Task.WhenAll(documentTasks);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Early termination - this is expected
-                }
-            }, earlyStopCts.Token));
+                    },
+                    earlyStopCts.Token
+                )
+            );
 
             await Task.WhenAll(projectTasks);
-            _logger.LogDebug("Collected {SymbolCount} symbols from solution documents (parallel mode)", allRelevantSymbols.Count);
+            _logger.LogDebug(
+                "Collected {SymbolCount} symbols from solution documents (parallel mode)",
+                allRelevantSymbols.Count
+            );
             int prefilter = allRelevantSymbols.Count;
 
             // Convert to list for processing
@@ -116,47 +156,71 @@ namespace UltrasharpTools.Tools.Services
                 .GroupBy(GetSearchableString)
                 .ToList();
 
-            symbolsList = symbolsList.Except(partialTypes.SelectMany(g => g.Skip(1)), SymbolEqualityComparer.Default).ToList(); // Remove all but one from each group
+            symbolsList = symbolsList
+                .Except(partialTypes.SelectMany(g => g.Skip(1)), SymbolEqualityComparer.Default)
+                .ToList(); // Remove all but one from each group
 
-            _logger.LogDebug("Filtered {PrefilterCount} symbols to {SymbolCount} after removing duplicates", prefilter, symbolsList.Count);
+            _logger.LogDebug(
+                "Filtered {PrefilterCount} symbols to {SymbolCount} after removing duplicates",
+                prefilter,
+                symbolsList.Count
+            );
 
             // Match symbols against the fuzzy FQN in parallel
             const int MaxResults = 20; // Limit results for performance
             int foundPerfectMatch = 0; // 0 = not found, 1 = found
 
-            var symbolTasks = symbolsList.Select(symbol => Task.Run(() =>
-            {
-                try
-                {
-                    earlyStopCts.Token.ThrowIfCancellationRequested();
-
-                    //string canonicalFqn = symbol.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal);
-                    string canonicalFqn = GetSearchableString(symbol);
-                    //_logger.LogDebug("Checking symbol: {SymbolName} with FQN: {CanonicalFqn}", symbol.Name, canonicalFqn);
-                    var (score, reason) = CalculateMatchScore(trimmedFuzzyFqn, symbol, canonicalFqn, earlyStopCts.Token);
-
-                    if (score >= MinScoreThreshold)
+            var symbolTasks = symbolsList.Select(symbol =>
+                Task.Run(
+                    () =>
                     {
-                        potentialMatches.Add(new FuzzyMatchResult(canonicalFqn, symbol, score, reason));
+                        try
+                        {
+                            earlyStopCts.Token.ThrowIfCancellationRequested();
 
-                        // If perfect match found, signal early termination
-                        if (score >= PerfectMatchScore - 0.01 && Interlocked.CompareExchange(ref foundPerfectMatch, 1, 0) == 0)
-                        {
-                            _logger.LogDebug("Perfect match found for '{FuzzyFqn}', stopping search early", fuzzyFqnInput);
-                            earlyStopCts.Cancel();
+                            //string canonicalFqn = symbol.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal);
+                            string canonicalFqn = GetSearchableString(symbol);
+                            //_logger.LogDebug("Checking symbol: {SymbolName} with FQN: {CanonicalFqn}", symbol.Name, canonicalFqn);
+                            var (score, reason) = CalculateMatchScore(
+                                trimmedFuzzyFqn,
+                                symbol,
+                                canonicalFqn,
+                                earlyStopCts.Token
+                            );
+
+                            if (score >= MinScoreThreshold)
+                            {
+                                potentialMatches.Add(
+                                    new FuzzyMatchResult(canonicalFqn, symbol, score, reason)
+                                );
+
+                                // If perfect match found, signal early termination
+                                if (
+                                    score >= PerfectMatchScore - 0.01
+                                    && Interlocked.CompareExchange(ref foundPerfectMatch, 1, 0) == 0
+                                )
+                                {
+                                    _logger.LogDebug(
+                                        "Perfect match found for '{FuzzyFqn}', stopping search early",
+                                        fuzzyFqnInput
+                                    );
+                                    earlyStopCts.Cancel();
+                                }
+                                // If we have enough results, we can also stop early
+                                else if (potentialMatches.Count >= MaxResults * 2)
+                                {
+                                    earlyStopCts.Cancel();
+                                }
+                            }
                         }
-                        // If we have enough results, we can also stop early
-                        else if (potentialMatches.Count >= MaxResults * 2)
+                        catch (OperationCanceledException)
                         {
-                            earlyStopCts.Cancel();
+                            // Early termination - this is expected
                         }
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    // Early termination - this is expected
-                }
-            }, earlyStopCts.Token));
+                    },
+                    earlyStopCts.Token
+                )
+            );
 
             try
             {
@@ -165,7 +229,9 @@ namespace UltrasharpTools.Tools.Services
             catch (OperationCanceledException)
             {
                 // Early termination - this is expected
-                _logger.LogDebug("Symbol matching stopped early (perfect match or enough results found)");
+                _logger.LogDebug(
+                    "Symbol matching stopped early (perfect match or enough results found)"
+                );
             }
 
             // Check cancellation before sorting results
@@ -173,19 +239,28 @@ namespace UltrasharpTools.Tools.Services
 
             // Sort by score descending, then by FQN alphabetically for stable results
             var results = potentialMatches
-            .OrderByDescending(m => m.Score)
-            .ThenBy(m => m.CanonicalFqn)
-            .ToList();
+                .OrderByDescending(m => m.Score)
+                .ThenBy(m => m.CanonicalFqn)
+                .ToList();
 
-            _logger.LogDebug("Found {MatchCount} matches for fuzzy FQN '{FuzzyFqn}'", results.Count, fuzzyFqnInput);
+            _logger.LogDebug(
+                "Found {MatchCount} matches for fuzzy FQN '{FuzzyFqn}'",
+                results.Count,
+                fuzzyFqnInput
+            );
 
             // If multiple matches are found, but one is perfect, filter to that one
             if (results.Count > 1)
             {
-                var perfectMatches = results.Where(m => m.Score >= PerfectMatchScore - 0.01).ToList();
+                var perfectMatches = results
+                    .Where(m => m.Score >= PerfectMatchScore - 0.01)
+                    .ToList();
                 if (perfectMatches.Count == 1)
                 {
-                    _logger.LogDebug("Filtered to single perfect match for '{FuzzyFqn}'", fuzzyFqnInput);
+                    _logger.LogDebug(
+                        "Filtered to single perfect match for '{FuzzyFqn}'",
+                        fuzzyFqnInput
+                    );
                     return perfectMatches;
                 }
             }
@@ -195,7 +270,12 @@ namespace UltrasharpTools.Tools.Services
 
             return results;
         }
-        private void CollectSymbolsFromSemanticModel(SemanticModel semanticModel, HashSet<ISymbol> collectedSymbols, CancellationToken cancellationToken)
+
+        private void CollectSymbolsFromSemanticModel(
+            SemanticModel semanticModel,
+            HashSet<ISymbol> collectedSymbols,
+            CancellationToken cancellationToken
+        )
         {
             // Get the global namespace from the compilation
             var compilation = semanticModel.Compilation;
@@ -205,9 +285,21 @@ namespace UltrasharpTools.Tools.Services
 
             // Also collect any declarations from the syntax tree of this document
             var root = semanticModel.SyntaxTree.GetRoot(cancellationToken);
-            foreach (var node in root
-                .DescendantNodes(descendIntoChildren: n => n is MemberDeclarationSyntax or TypeDeclarationSyntax or NamespaceDeclarationSyntax or CompilationUnitSyntax)
-                .Where(n => n is MemberDeclarationSyntax or TypeDeclarationSyntax or NamespaceDeclarationSyntax))
+            foreach (
+                var node in root.DescendantNodes(descendIntoChildren: n =>
+                        n
+                            is MemberDeclarationSyntax
+                                or TypeDeclarationSyntax
+                                or NamespaceDeclarationSyntax
+                                or CompilationUnitSyntax
+                    )
+                    .Where(n =>
+                        n
+                            is MemberDeclarationSyntax
+                                or TypeDeclarationSyntax
+                                or NamespaceDeclarationSyntax
+                    )
+            )
             {
                 // Check cancellation periodically during node traversal
                 cancellationToken.ThrowIfCancellationRequested();
@@ -219,13 +311,29 @@ namespace UltrasharpTools.Tools.Services
             }
         }
 
-        private void CollectSymbolsFromSemanticModelConcurrent(SemanticModel semanticModel, ConcurrentDictionary<ISymbol, byte> collectedSymbols, CancellationToken cancellationToken)
+        private void CollectSymbolsFromSemanticModelConcurrent(
+            SemanticModel semanticModel,
+            ConcurrentDictionary<ISymbol, byte> collectedSymbols,
+            CancellationToken cancellationToken
+        )
         {
             // Thread-safe version of CollectSymbolsFromSemanticModel using ConcurrentDictionary
             var root = semanticModel.SyntaxTree.GetRoot(cancellationToken);
-            foreach (var node in root
-                .DescendantNodes(descendIntoChildren: n => n is MemberDeclarationSyntax or TypeDeclarationSyntax or NamespaceDeclarationSyntax or CompilationUnitSyntax)
-                .Where(n => n is MemberDeclarationSyntax or TypeDeclarationSyntax or NamespaceDeclarationSyntax))
+            foreach (
+                var node in root.DescendantNodes(descendIntoChildren: n =>
+                        n
+                            is MemberDeclarationSyntax
+                                or TypeDeclarationSyntax
+                                or NamespaceDeclarationSyntax
+                                or CompilationUnitSyntax
+                    )
+                    .Where(n =>
+                        n
+                            is MemberDeclarationSyntax
+                                or TypeDeclarationSyntax
+                                or NamespaceDeclarationSyntax
+                    )
+            )
             {
                 // Check cancellation periodically during node traversal
                 cancellationToken.ThrowIfCancellationRequested();
@@ -237,7 +345,11 @@ namespace UltrasharpTools.Tools.Services
             }
         }
 
-        private void CollectSymbols(INamespaceOrTypeSymbol containerSymbol, HashSet<ISymbol> collectedSymbols, CancellationToken cancellationToken)
+        private void CollectSymbols(
+            INamespaceOrTypeSymbol containerSymbol,
+            HashSet<ISymbol> collectedSymbols,
+            CancellationToken cancellationToken
+        )
         {
             // Check cancellation at the beginning of recursive operations
             cancellationToken.ThrowIfCancellationRequested();
@@ -256,10 +368,18 @@ namespace UltrasharpTools.Tools.Services
                 switch (member.Kind)
                 {
                     case SymbolKind.Namespace:
-                        CollectSymbols((INamespaceSymbol)member, collectedSymbols, cancellationToken);
+                        CollectSymbols(
+                            (INamespaceSymbol)member,
+                            collectedSymbols,
+                            cancellationToken
+                        );
                         break;
                     case SymbolKind.NamedType:
-                        CollectSymbols((INamedTypeSymbol)member, collectedSymbols, cancellationToken); // Recurse for nested types
+                        CollectSymbols(
+                            (INamedTypeSymbol)member,
+                            collectedSymbols,
+                            cancellationToken
+                        ); // Recurse for nested types
                         break;
                     case SymbolKind.Method:
                         // Includes constructors, operators, accessors, destructors
@@ -268,14 +388,18 @@ namespace UltrasharpTools.Tools.Services
                     case SymbolKind.Property:
                         var prop = (IPropertySymbol)member;
                         collectedSymbols.Add(prop); // Add property itself for FQNs like Namespace.Type.Property
-                        if (prop.GetMethod != null) collectedSymbols.Add(prop.GetMethod);
-                        if (prop.SetMethod != null) collectedSymbols.Add(prop.SetMethod);
+                        if (prop.GetMethod != null)
+                            collectedSymbols.Add(prop.GetMethod);
+                        if (prop.SetMethod != null)
+                            collectedSymbols.Add(prop.SetMethod);
                         break;
                     case SymbolKind.Event:
                         var evt = (IEventSymbol)member;
                         collectedSymbols.Add(evt); // Add event itself for FQNs like Namespace.Type.Event
-                        if (evt.AddMethod != null) collectedSymbols.Add(evt.AddMethod);
-                        if (evt.RemoveMethod != null) collectedSymbols.Add(evt.RemoveMethod);
+                        if (evt.AddMethod != null)
+                            collectedSymbols.Add(evt.AddMethod);
+                        if (evt.RemoveMethod != null)
+                            collectedSymbols.Add(evt.RemoveMethod);
                         break;
                     case SymbolKind.Field:
                         collectedSymbols.Add(member);
@@ -284,7 +408,12 @@ namespace UltrasharpTools.Tools.Services
             }
         }
 
-        private (double score, string reason) CalculateMatchScore(string userInputFqn, ISymbol symbol, string canonicalFqn, CancellationToken cancellationToken)
+        private (double score, string reason) CalculateMatchScore(
+            string userInputFqn,
+            ISymbol symbol,
+            string canonicalFqn,
+            CancellationToken cancellationToken
+        )
         {
             // Periodically check cancellation during the scoring process
             cancellationToken.ThrowIfCancellationRequested();
@@ -314,17 +443,29 @@ namespace UltrasharpTools.Tools.Services
             cancellationToken.ThrowIfCancellationRequested();
 
             // 1. Constructor shorthands
-            if (symbol is IMethodSymbol methodSymbol &&
-                (methodSymbol.MethodKind == MethodKind.Constructor || methodSymbol.MethodKind == MethodKind.StaticConstructor))
+            if (
+                symbol is IMethodSymbol methodSymbol
+                && (
+                    methodSymbol.MethodKind == MethodKind.Constructor
+                    || methodSymbol.MethodKind == MethodKind.StaticConstructor
+                )
+            )
             {
-
                 // Get containing type name with proper generic arguments
                 string typeFullName = GetSearchableString(methodSymbol.ContainingType);
 
                 // User typed "Namespace.Type.Type" or "Namespace.Type.Type()"
-                if (userInputNoParams.Equals(typeFullName + "." + methodSymbol.ContainingType.Name, StringComparison.OrdinalIgnoreCase))
+                if (
+                    userInputNoParams.Equals(
+                        typeFullName + "." + methodSymbol.ContainingType.Name,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
                 {
-                    return (ConstructorShorthandFullMatchScore, "Constructor shorthand (Type.Type)");
+                    return (
+                        ConstructorShorthandFullMatchScore,
+                        "Constructor shorthand (Type.Type)"
+                    );
                 }
 
                 // User typed "Namespace.Type" or "Namespace.Type()"
@@ -352,7 +493,12 @@ namespace UltrasharpTools.Tools.Services
             }
 
             // 3. Match with normalized generic arguments
-            if (userInputWithNormalizedGenerics.Equals(canonicalFqnWithNormalizedGenerics, StringComparison.OrdinalIgnoreCase))
+            if (
+                userInputWithNormalizedGenerics.Equals(
+                    canonicalFqnWithNormalizedGenerics,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
                 return (0.95, "Generic arguments normalized match");
             }
@@ -361,12 +507,20 @@ namespace UltrasharpTools.Tools.Services
             string userInputNoGenerics = StripGenericArgs(userInputNoParams);
             string canonicalFqnNoGenerics = StripGenericArgs(canonicalFqnNoParams);
 
-            if (userInputNoGenerics.Equals(canonicalFqnNoGenerics, StringComparison.OrdinalIgnoreCase))
+            if (
+                userInputNoGenerics.Equals(
+                    canonicalFqnNoGenerics,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
-                // If the user actually included generic args, but we had to strip them to match, 
+                // If the user actually included generic args, but we had to strip them to match,
                 // it could mean their generic args don't match the canonical ones
-                bool userHadGenericArgs = userInputNoParams.Contains("<") && userInputNoParams != userInputNoGenerics;
-                bool canonicalHadGenericArgs = canonicalFqnNoParams.Contains("<") && canonicalFqnNoParams != canonicalFqnNoGenerics;
+                bool userHadGenericArgs =
+                    userInputNoParams.Contains("<") && userInputNoParams != userInputNoGenerics;
+                bool canonicalHadGenericArgs =
+                    canonicalFqnNoParams.Contains("<")
+                    && canonicalFqnNoParams != canonicalFqnNoGenerics;
 
                 if (userHadGenericArgs && canonicalHadGenericArgs)
                 {
@@ -380,14 +534,25 @@ namespace UltrasharpTools.Tools.Services
             // 5. Nested Type: User used '.' where canonical FQN uses '+'
             // This should be less relevant now that we normalize '+' to '.' in GetSearchableString,
             // but kept for backward compatibility
-            string? userNestedFixed = TryFixNestedTypeSeparator(userInputNoGenerics, canonicalFqnNoGenerics, cancellationToken);
-            if (userNestedFixed != null && userNestedFixed.Equals(canonicalFqnNoGenerics, StringComparison.OrdinalIgnoreCase))
+            string? userNestedFixed = TryFixNestedTypeSeparator(
+                userInputNoGenerics,
+                canonicalFqnNoGenerics,
+                cancellationToken
+            );
+            if (
+                userNestedFixed != null
+                && userNestedFixed.Equals(
+                    canonicalFqnNoGenerics,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
                 return (NestedTypeDotForPlusScore, "Nested type separator '.' used for '+'");
             }
 
             return (0.0, "No significant match");
         }
+
         private string RemoveParameters(string fqn)
         {
             // A more robust way to find the first '(':
@@ -423,20 +588,28 @@ namespace UltrasharpTools.Tools.Services
             }
 
             // Use string.Create for zero-allocation string building
-            return string.Create(nonWhitespaceCount, input, (span, source) =>
-            {
-                int index = 0;
-                foreach (char c in source)
+            return string.Create(
+                nonWhitespaceCount,
+                input,
+                (span, source) =>
                 {
-                    if (!char.IsWhiteSpace(c))
+                    int index = 0;
+                    foreach (char c in source)
                     {
-                        span[index++] = c;
+                        if (!char.IsWhiteSpace(c))
+                        {
+                            span[index++] = c;
+                        }
                     }
                 }
-            });
+            );
         }
 
-        private string? TryFixNestedTypeSeparator(string userInputFqnPart, string canonicalFqnPart, CancellationToken cancellationToken)
+        private string? TryFixNestedTypeSeparator(
+            string userInputFqnPart,
+            string canonicalFqnPart,
+            CancellationToken cancellationToken
+        )
         {
             // Check cancellation at the beginning of processing
             cancellationToken.ThrowIfCancellationRequested();
@@ -449,23 +622,42 @@ namespace UltrasharpTools.Tools.Services
             int canonicalLastPlusOrDot = canonicalFqnPart.AsSpan().LastIndexOfAny(FqnSeparators);
 
             // If no dot/plus, it might be a global type or just a member name if type path was empty.
-            string userTypePath = userLastDot > -1 ? userInputFqnPart.Substring(0, userLastDot) : "";
-            string userMemberName = userLastDot > -1 ? userInputFqnPart.Substring(userLastDot) : userInputFqnPart; // Member name includes the leading '.' if present
-            string canonicalTypePath = canonicalLastPlusOrDot > -1 ? canonicalFqnPart.Substring(0, canonicalLastPlusOrDot) : "";
-            string canonicalMemberName = canonicalLastPlusOrDot > -1 ? canonicalFqnPart.Substring(canonicalLastPlusOrDot) : canonicalFqnPart;
+            string userTypePath =
+                userLastDot > -1 ? userInputFqnPart.Substring(0, userLastDot) : "";
+            string userMemberName =
+                userLastDot > -1 ? userInputFqnPart.Substring(userLastDot) : userInputFqnPart; // Member name includes the leading '.' if present
+            string canonicalTypePath =
+                canonicalLastPlusOrDot > -1
+                    ? canonicalFqnPart.Substring(0, canonicalLastPlusOrDot)
+                    : "";
+            string canonicalMemberName =
+                canonicalLastPlusOrDot > -1
+                    ? canonicalFqnPart.Substring(canonicalLastPlusOrDot)
+                    : canonicalFqnPart;
 
             if (userMemberName.Equals(canonicalMemberName, StringComparison.OrdinalIgnoreCase))
             {
-                if (userTypePath.Replace('.', '+').Equals(canonicalTypePath, StringComparison.OrdinalIgnoreCase))
+                if (
+                    userTypePath
+                        .Replace('.', '+')
+                        .Equals(canonicalTypePath, StringComparison.OrdinalIgnoreCase)
+                )
                 {
                     string result = canonicalTypePath + userMemberName;
                     return result; // Return the "fixed" version based on canonical structure
                 }
             }
             // Special case: if the whole thing is a type name (no distinct member part)
-            else if (string.IsNullOrEmpty(userMemberName) && string.IsNullOrEmpty(canonicalMemberName) || userLastDot == -1 && canonicalLastPlusOrDot == -1)
+            else if (
+                string.IsNullOrEmpty(userMemberName) && string.IsNullOrEmpty(canonicalMemberName)
+                || userLastDot == -1 && canonicalLastPlusOrDot == -1
+            )
             {
-                if (userInputFqnPart.Replace('.', '+').Equals(canonicalFqnPart, StringComparison.OrdinalIgnoreCase))
+                if (
+                    userInputFqnPart
+                        .Replace('.', '+')
+                        .Equals(canonicalFqnPart, StringComparison.OrdinalIgnoreCase)
+                )
                 {
                     return canonicalFqnPart;
                 }
@@ -479,35 +671,38 @@ namespace UltrasharpTools.Tools.Services
             var fullFormat = new SymbolDisplayFormat(
                 globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters | SymbolDisplayGenericsOptions.IncludeVariance,
-                memberOptions: SymbolDisplayMemberOptions.IncludeParameters |
-                    SymbolDisplayMemberOptions.IncludeType |
-                    SymbolDisplayMemberOptions.IncludeRef |
-                    SymbolDisplayMemberOptions.IncludeContainingType,
-                parameterOptions: SymbolDisplayParameterOptions.IncludeType |
-                    SymbolDisplayParameterOptions.IncludeName |
-                    SymbolDisplayParameterOptions.IncludeParamsRefOut |
-                    SymbolDisplayParameterOptions.IncludeDefaultValue,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters
+                    | SymbolDisplayGenericsOptions.IncludeVariance,
+                memberOptions: SymbolDisplayMemberOptions.IncludeParameters
+                    | SymbolDisplayMemberOptions.IncludeType
+                    | SymbolDisplayMemberOptions.IncludeRef
+                    | SymbolDisplayMemberOptions.IncludeContainingType,
+                parameterOptions: SymbolDisplayParameterOptions.IncludeType
+                    | SymbolDisplayParameterOptions.IncludeName
+                    | SymbolDisplayParameterOptions.IncludeParamsRefOut
+                    | SymbolDisplayParameterOptions.IncludeDefaultValue,
                 propertyStyle: SymbolDisplayPropertyStyle.NameOnly,
                 localOptions: SymbolDisplayLocalOptions.None,
-                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
-                    SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+                    | SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers
+            );
 
             // For parameters and return types, use a format that doesn't qualify types
             var shortFormat = new SymbolDisplayFormat(
                 globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
                 typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
                 genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-                memberOptions: SymbolDisplayMemberOptions.IncludeParameters |
-                    SymbolDisplayMemberOptions.IncludeType,
+                memberOptions: SymbolDisplayMemberOptions.IncludeParameters
+                    | SymbolDisplayMemberOptions.IncludeType,
                 parameterOptions: SymbolDisplayParameterOptions.IncludeType,
                 //SymbolDisplayParameterOptions.IncludeName |
                 //SymbolDisplayParameterOptions.IncludeParamsRefOut |
                 //SymbolDisplayParameterOptions.IncludeDefaultValue,
                 propertyStyle: SymbolDisplayPropertyStyle.NameOnly,
                 localOptions: SymbolDisplayLocalOptions.None,
-                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
-                    SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+                    | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
+            );
 
             var fqn = new SymbolDisplayFormat(
                 globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.OmittedAsContaining,
@@ -516,7 +711,8 @@ namespace UltrasharpTools.Tools.Services
                 memberOptions: SymbolDisplayMemberOptions.IncludeContainingType,
                 parameterOptions: SymbolDisplayParameterOptions.None,
                 propertyStyle: SymbolDisplayPropertyStyle.NameOnly,
-                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+                miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+            );
 
             if (symbol is IMethodSymbol methodSymbol)
             {
@@ -534,10 +730,16 @@ namespace UltrasharpTools.Tools.Services
                 //var nameAndContainingType = string.Concat(methodParts.Take(nameEndIndex));
 
                 // Get param types only
-                var parameters = string.Join(", ", methodSymbol.Parameters
-                    .Select(p => string.Concat(p.ToDisplayParts(shortFormat)
-                        .TakeWhile(part => part.Kind != SymbolDisplayPartKind.ParameterName)
-                        .Select(part => part.ToString()))));
+                var parameters = string.Join(
+                    ", ",
+                    methodSymbol.Parameters.Select(p =>
+                        string.Concat(
+                            p.ToDisplayParts(shortFormat)
+                                .TakeWhile(part => part.Kind != SymbolDisplayPartKind.ParameterName)
+                                .Select(part => part.ToString())
+                        )
+                    )
+                );
 
                 // Combine all parts
                 var signature = methodNameAndType + "(" + parameters + ")";
@@ -547,7 +749,12 @@ namespace UltrasharpTools.Tools.Services
             // For non-method symbols, use the original full format
             return symbol.ToDisplayString(fqn).Replace(" ", string.Empty);
         }
-        private async Task LogAmbiguityDetailsAsync(string fuzzyFqnInput, List<FuzzyMatchResult> results, CancellationToken cancellationToken)
+
+        private async Task LogAmbiguityDetailsAsync(
+            string fuzzyFqnInput,
+            List<FuzzyMatchResult> results,
+            CancellationToken cancellationToken
+        )
         {
             const double HighScoreThreshold = 0.8; // Threshold for considering a match "high-scoring"
             const int MaxDetailedLogsPerAmbiguity = 10; // Limit detailed logs to prevent spam
@@ -559,21 +766,31 @@ namespace UltrasharpTools.Tools.Services
             // Log ambiguity when we have multiple high-scoring matches
             if (highScoreMatches.Count > 1)
             {
-                _logger.LogWarning("Ambiguity detected for input '{FuzzyFqn}': Found {HighScoreCount} high-scoring matches (>= {Threshold})",
-                fuzzyFqnInput, highScoreMatches.Count, HighScoreThreshold);
+                _logger.LogWarning(
+                    "Ambiguity detected for input '{FuzzyFqn}': Found {HighScoreCount} high-scoring matches (>= {Threshold})",
+                    fuzzyFqnInput,
+                    highScoreMatches.Count,
+                    HighScoreThreshold
+                );
 
                 // Group by project to understand cross-project ambiguity
                 var matchesByProject = highScoreMatches
-                .GroupBy(match => GetProjectName(match.Symbol))
-                .ToList();
+                    .GroupBy(match => GetProjectName(match.Symbol))
+                    .ToList();
 
                 if (matchesByProject.Count > 1)
                 {
-                    _logger.LogWarning("Cross-project ambiguity detected: Matches span {ProjectCount} projects", matchesByProject.Count);
+                    _logger.LogWarning(
+                        "Cross-project ambiguity detected: Matches span {ProjectCount} projects",
+                        matchesByProject.Count
+                    );
                     foreach (var projectGroup in matchesByProject)
                     {
-                        _logger.LogInformation("Project '{ProjectName}' has {MatchCount} ambiguous matches",
-                        projectGroup.Key, projectGroup.Count());
+                        _logger.LogInformation(
+                            "Project '{ProjectName}' has {MatchCount} ambiguous matches",
+                            projectGroup.Key,
+                            projectGroup.Count()
+                        );
                     }
                 }
 
@@ -589,7 +806,12 @@ namespace UltrasharpTools.Tools.Services
                 LogAmbiguitySummary(fuzzyFqnInput, results, highScoreMatches, perfectMatches);
             }
         }
-        private void LogDetailedMatchInfoAsync(FuzzyMatchResult match, int rank, CancellationToken cancellationToken)
+
+        private void LogDetailedMatchInfoAsync(
+            FuzzyMatchResult match,
+            int rank,
+            CancellationToken cancellationToken
+        )
         {
             try
             {
@@ -599,12 +821,23 @@ namespace UltrasharpTools.Tools.Services
                 var containingType = GetContainingTypeInfo(symbol);
                 var assemblyName = GetAssemblyName(symbol);
                 var location = GetLocationInfo(symbol);
-                var formattedSignature = CodeAnalysisService.GetFormattedSignatureAsync(symbol, false);
+                var formattedSignature = CodeAnalysisService.GetFormattedSignatureAsync(
+                    symbol,
+                    false
+                );
 
-                _logger.LogWarning("Ambiguous Match #{Rank}: Score={Score:F3}, Reason='{Reason}'", rank, match.Score, match.MatchReason);
+                _logger.LogWarning(
+                    "Ambiguous Match #{Rank}: Score={Score:F3}, Reason='{Reason}'",
+                    rank,
+                    match.Score,
+                    match.MatchReason
+                );
                 _logger.LogInformation("  Symbol Details:");
                 _logger.LogInformation("    FQN: {CanonicalFqn}", match.CanonicalFqn);
-                _logger.LogInformation("    Formatted Signature: {FormattedSignature}", formattedSignature);
+                _logger.LogInformation(
+                    "    Formatted Signature: {FormattedSignature}",
+                    formattedSignature
+                );
                 _logger.LogInformation("    Symbol Kind: {SymbolKind}", symbolKind);
                 _logger.LogInformation("    Symbol Name: {SymbolName}", symbol.Name);
                 _logger.LogInformation("    Project: {ProjectName}", projectName);
@@ -630,9 +863,14 @@ namespace UltrasharpTools.Tools.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error logging detailed match info for symbol {SymbolName}", match.Symbol.Name);
+                _logger.LogError(
+                    ex,
+                    "Error logging detailed match info for symbol {SymbolName}",
+                    match.Symbol.Name
+                );
             }
         }
+
         private void LogTypeSpecificDetails(ISymbol symbol)
         {
             switch (symbol)
@@ -641,67 +879,114 @@ namespace UltrasharpTools.Tools.Services
                     _logger.LogInformation("    Type Kind: {TypeKind}", namedType.TypeKind);
                     _logger.LogInformation("    Is Generic: {IsGeneric}", namedType.IsGenericType);
                     _logger.LogInformation("    Arity: {Arity}", namedType.Arity);
-                    _logger.LogInformation("    Member Count: {MemberCount}", namedType.GetMembers().Length);
+                    _logger.LogInformation(
+                        "    Member Count: {MemberCount}",
+                        namedType.GetMembers().Length
+                    );
                     if (namedType.BaseType != null)
                     {
-                        _logger.LogInformation("    Base Type: {BaseType}", namedType.BaseType.ToDisplayString());
+                        _logger.LogInformation(
+                            "    Base Type: {BaseType}",
+                            namedType.BaseType.ToDisplayString()
+                        );
                     }
                     if (namedType.Interfaces.Any())
                     {
-                        _logger.LogInformation("    Implements: {InterfaceCount} interfaces", namedType.Interfaces.Length);
+                        _logger.LogInformation(
+                            "    Implements: {InterfaceCount} interfaces",
+                            namedType.Interfaces.Length
+                        );
                     }
                     break;
 
                 case IMethodSymbol method:
                     _logger.LogInformation("    Method Kind: {MethodKind}", method.MethodKind);
-                    _logger.LogInformation("    Return Type: {ReturnType}", method.ReturnType.ToDisplayString());
-                    _logger.LogInformation("    Parameter Count: {ParameterCount}", method.Parameters.Length);
+                    _logger.LogInformation(
+                        "    Return Type: {ReturnType}",
+                        method.ReturnType.ToDisplayString()
+                    );
+                    _logger.LogInformation(
+                        "    Parameter Count: {ParameterCount}",
+                        method.Parameters.Length
+                    );
                     _logger.LogInformation("    Is Generic: {IsGeneric}", method.IsGenericMethod);
-                    _logger.LogInformation("    Is Extension: {IsExtension}", method.IsExtensionMethod);
+                    _logger.LogInformation(
+                        "    Is Extension: {IsExtension}",
+                        method.IsExtensionMethod
+                    );
                     _logger.LogInformation("    Is Async: {IsAsync}", method.IsAsync);
                     if (method.Parameters.Any())
                     {
-                        var parameterTypes = string.Join(", ", method.Parameters.Select(p => p.Type.ToDisplayString()));
+                        var parameterTypes = string.Join(
+                            ", ",
+                            method.Parameters.Select(p => p.Type.ToDisplayString())
+                        );
                         _logger.LogInformation("    Parameters: {ParameterTypes}", parameterTypes);
                     }
                     break;
 
                 case IPropertySymbol property:
-                    _logger.LogInformation("    Property Type: {PropertyType}", property.Type.ToDisplayString());
+                    _logger.LogInformation(
+                        "    Property Type: {PropertyType}",
+                        property.Type.ToDisplayString()
+                    );
                     _logger.LogInformation("    Is ReadOnly: {IsReadOnly}", property.IsReadOnly);
                     _logger.LogInformation("    Is WriteOnly: {IsWriteOnly}", property.IsWriteOnly);
                     _logger.LogInformation("    Is Indexer: {IsIndexer}", property.IsIndexer);
                     break;
 
                 case IFieldSymbol field:
-                    _logger.LogInformation("    Field Type: {FieldType}", field.Type.ToDisplayString());
+                    _logger.LogInformation(
+                        "    Field Type: {FieldType}",
+                        field.Type.ToDisplayString()
+                    );
                     _logger.LogInformation("    Is Const: {IsConst}", field.IsConst);
                     _logger.LogInformation("    Is ReadOnly: {IsReadOnly}", field.IsReadOnly);
                     _logger.LogInformation("    Is Static: {IsStatic}", field.IsStatic);
                     if (field.IsConst && field.ConstantValue != null)
                     {
-                        _logger.LogInformation("    Constant Value: {ConstantValue}", field.ConstantValue);
+                        _logger.LogInformation(
+                            "    Constant Value: {ConstantValue}",
+                            field.ConstantValue
+                        );
                     }
                     break;
 
                 case IEventSymbol eventSymbol:
-                    _logger.LogInformation("    Event Type: {EventType}", eventSymbol.Type.ToDisplayString());
+                    _logger.LogInformation(
+                        "    Event Type: {EventType}",
+                        eventSymbol.Type.ToDisplayString()
+                    );
                     break;
             }
         }
-        private void LogAmbiguitySummary(string fuzzyFqnInput, List<FuzzyMatchResult> allResults, List<FuzzyMatchResult> highScoreMatches, List<FuzzyMatchResult> perfectMatches)
+
+        private void LogAmbiguitySummary(
+            string fuzzyFqnInput,
+            List<FuzzyMatchResult> allResults,
+            List<FuzzyMatchResult> highScoreMatches,
+            List<FuzzyMatchResult> perfectMatches
+        )
         {
             _logger.LogInformation("Ambiguity Summary for '{FuzzyFqn}':", fuzzyFqnInput);
             _logger.LogInformation("  Total matches: {TotalMatches}", allResults.Count);
-            _logger.LogInformation("  Perfect matches (>= {PerfectThreshold:F3}): {PerfectCount}", PerfectMatchScore - 0.01, perfectMatches.Count);
-            _logger.LogInformation("  High-scoring matches (>= 0.8): {HighScoreCount}", highScoreMatches.Count);
+            _logger.LogInformation(
+                "  Perfect matches (>= {PerfectThreshold:F3}): {PerfectCount}",
+                PerfectMatchScore - 0.01,
+                perfectMatches.Count
+            );
+            _logger.LogInformation(
+                "  High-scoring matches (>= 0.8): {HighScoreCount}",
+                highScoreMatches.Count
+            );
 
             // Score distribution
-            (double, double, string)[] scoreRanges = [
+            (double, double, string)[] scoreRanges =
+            [
                 (1.0, 0.95, "Excellent"),
                 (0.95, 0.9, "Very Good"),
                 (0.9, 0.8, "Good"),
-                (0.8, 0.7, "Acceptable")
+                (0.8, 0.7, "Acceptable"),
             ];
 
             foreach (var (upper, lower, label) in scoreRanges)
@@ -709,15 +994,21 @@ namespace UltrasharpTools.Tools.Services
                 var count = allResults.Count(r => r.Score < upper && r.Score >= lower);
                 if (count > 0)
                 {
-                    _logger.LogInformation("  {Label} matches ({Lower:F1}-{Upper:F1}): {Count}", label, lower, upper, count);
+                    _logger.LogInformation(
+                        "  {Label} matches ({Lower:F1}-{Upper:F1}): {Count}",
+                        label,
+                        lower,
+                        upper,
+                        count
+                    );
                 }
             }
 
             // Symbol kind distribution
             var symbolKinds = highScoreMatches
-            .CountBy(m => GetSymbolKindString(m.Symbol))
-            .OrderByDescending(g => g.Value)
-            .ToList();
+                .CountBy(m => GetSymbolKindString(m.Symbol))
+                .OrderByDescending(g => g.Value)
+                .ToList();
 
             if (symbolKinds.Any())
             {
@@ -730,16 +1021,20 @@ namespace UltrasharpTools.Tools.Services
 
             // Project distribution
             var projects = highScoreMatches
-            .CountBy(m => GetProjectName(m.Symbol))
-            .OrderByDescending(g => g.Value)
-            .ToList();
+                .CountBy(m => GetProjectName(m.Symbol))
+                .OrderByDescending(g => g.Value)
+                .ToList();
 
             if (projects.Count > 1)
             {
                 _logger.LogInformation("  Project distribution:");
                 foreach (var project in projects)
                 {
-                    _logger.LogInformation("    {ProjectName}: {Count}", project.Key, project.Value);
+                    _logger.LogInformation(
+                        "    {ProjectName}: {Count}",
+                        project.Key,
+                        project.Value
+                    );
                 }
             }
         }
@@ -766,7 +1061,15 @@ namespace UltrasharpTools.Tools.Services
                     {
                         foreach (var project in _solutionManager?.CurrentSolution?.Projects ?? [])
                         {
-                            if (project.Documents.Any(d => string.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase)))
+                            if (
+                                project.Documents.Any(d =>
+                                    string.Equals(
+                                        d.FilePath,
+                                        filePath,
+                                        StringComparison.OrdinalIgnoreCase
+                                    )
+                                )
+                            )
                             {
                                 return project.Name;
                             }
@@ -816,27 +1119,38 @@ namespace UltrasharpTools.Tools.Services
         {
             var modifiers = new List<string>();
 
-            if (symbol.IsStatic) modifiers.Add("static");
-            if (symbol.IsVirtual) modifiers.Add("virtual");
-            if (symbol.IsOverride) modifiers.Add("override");
-            if (symbol.IsAbstract) modifiers.Add("abstract");
-            if (symbol.IsSealed) modifiers.Add("sealed");
+            if (symbol.IsStatic)
+                modifiers.Add("static");
+            if (symbol.IsVirtual)
+                modifiers.Add("virtual");
+            if (symbol.IsOverride)
+                modifiers.Add("override");
+            if (symbol.IsAbstract)
+                modifiers.Add("abstract");
+            if (symbol.IsSealed)
+                modifiers.Add("sealed");
 
             if (symbol is IMethodSymbol method)
             {
-                if (method.IsAsync) modifiers.Add("async");
-                if (method.IsExtern) modifiers.Add("extern");
+                if (method.IsAsync)
+                    modifiers.Add("async");
+                if (method.IsExtern)
+                    modifiers.Add("extern");
             }
 
             if (symbol is IFieldSymbol field)
             {
-                if (field.IsReadOnly) modifiers.Add("readonly");
-                if (field.IsConst) modifiers.Add("const");
-                if (field.IsVolatile) modifiers.Add("volatile");
+                if (field.IsReadOnly)
+                    modifiers.Add("readonly");
+                if (field.IsConst)
+                    modifiers.Add("const");
+                if (field.IsVolatile)
+                    modifiers.Add("volatile");
             }
 
             return string.Join(" ", modifiers);
         }
+
         /// <summary>
         /// Normalizes generic arguments in a type name by replacing specific type names with placeholders.
         /// This allows matching between different generic instantiations.
@@ -852,19 +1166,23 @@ namespace UltrasharpTools.Tools.Services
             }
 
             // Match angle bracket content, keeping the brackets
-            return Regex.Replace(typeName, @"<([^<>]*)>", match =>
-            {
-                // Replace the content with a normalized form
-                string content = match.Groups[1].Value;
-                if (string.IsNullOrWhiteSpace(content))
+            return Regex.Replace(
+                typeName,
+                @"<([^<>]*)>",
+                match =>
                 {
-                    return "<>";
-                }
+                    // Replace the content with a normalized form
+                    string content = match.Groups[1].Value;
+                    if (string.IsNullOrWhiteSpace(content))
+                    {
+                        return "<>";
+                    }
 
-                // Handle multiple type arguments separated by commas
-                var args = content.Split(',').Select(arg => "T").ToArray();
-                return $"<{string.Join(",", args)}>";
-            });
+                    // Handle multiple type arguments separated by commas
+                    var args = content.Split(',').Select(arg => "T").ToArray();
+                    return $"<{string.Join(",", args)}>";
+                }
+            );
         }
 
         /// <summary>

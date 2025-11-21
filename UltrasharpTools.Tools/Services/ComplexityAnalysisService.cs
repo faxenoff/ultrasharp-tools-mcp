@@ -3,9 +3,8 @@
 // Original code licensed under MIT License
 // Modifications: Enhanced complexity algorithms, added cognitive complexity, recommendations engine
 
-using UltrasharpTools.Tools.Extensions;
-
 using ModelContextProtocol;
+using UltrasharpTools.Tools.Extensions;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -14,16 +13,19 @@ namespace UltrasharpTools.Tools.Services;
 /// </summary>
 public class ComplexityAnalysisService(
     ISolutionManager solutionManager,
-    ILogger<ComplexityAnalysisService> logger) : IComplexityAnalysisService
+    ILogger<ComplexityAnalysisService> logger
+) : IComplexityAnalysisService
 {
     private readonly ISolutionManager _solutionManager = solutionManager;
     private readonly ILogger<ComplexityAnalysisService> _logger = logger;
+
     public async Task AnalyzeMethodAsync(
         IMethodSymbol methodSymbol,
         Dictionary<string, object> metrics,
         List<string> recommendations,
         CancellationToken cancellationToken,
-        Compilation? compilation = null)
+        Compilation? compilation = null
+    )
     {
         var syntaxRef = methodSymbol.DeclaringSyntaxReferences.FirstOrDefault();
         if (syntaxRef == null)
@@ -32,7 +34,8 @@ public class ComplexityAnalysisService(
             return;
         }
 
-        var methodNode = await syntaxRef.GetSyntaxAsync(cancellationToken) as MethodDeclarationSyntax;
+        var methodNode =
+            await syntaxRef.GetSyntaxAsync(cancellationToken) as MethodDeclarationSyntax;
         if (methodNode == null)
         {
             _logger.LogWarning("Could not get method syntax for {Method}", methodSymbol.Name);
@@ -43,7 +46,10 @@ public class ComplexityAnalysisService(
         var lineCount = methodNode.GetText().Lines.Count;
         var statementCount = methodNode.DescendantNodes().OfType<StatementSyntax>().Count();
         var parameterCount = methodSymbol.Parameters.Length;
-        var localVarCount = methodNode.DescendantNodes().OfType<LocalDeclarationStatementSyntax>().Count();
+        var localVarCount = methodNode
+            .DescendantNodes()
+            .OfType<LocalDeclarationStatementSyntax>()
+            .Count();
 
         metrics["lineCount"] = lineCount;
         metrics["statementCount"] = statementCount;
@@ -52,26 +58,28 @@ public class ComplexityAnalysisService(
 
         // Cyclomatic complexity
         int cyclomaticComplexity = 1; // Base complexity
-        cyclomaticComplexity += methodNode.DescendantNodes().Count(n =>
-        {
-            switch (n)
+        cyclomaticComplexity += methodNode
+            .DescendantNodes()
+            .Count(n =>
             {
-                case IfStatementSyntax:
-                case SwitchSectionSyntax:
-                case ForStatementSyntax:
-                case ForEachStatementSyntax:
-                case WhileStatementSyntax:
-                case DoStatementSyntax:
-                case CatchClauseSyntax:
-                case ConditionalExpressionSyntax:
-                    return true;
-                case BinaryExpressionSyntax bex:
-                    return bex.IsKind(SyntaxKind.LogicalAndExpression) ||
-                           bex.IsKind(SyntaxKind.LogicalOrExpression);
-                default:
-                    return false;
-            }
-        });
+                switch (n)
+                {
+                    case IfStatementSyntax:
+                    case SwitchSectionSyntax:
+                    case ForStatementSyntax:
+                    case ForEachStatementSyntax:
+                    case WhileStatementSyntax:
+                    case DoStatementSyntax:
+                    case CatchClauseSyntax:
+                    case ConditionalExpressionSyntax:
+                        return true;
+                    case BinaryExpressionSyntax bex:
+                        return bex.IsKind(SyntaxKind.LogicalAndExpression)
+                            || bex.IsKind(SyntaxKind.LogicalOrExpression);
+                    default:
+                        return false;
+                }
+            });
 
         metrics["cyclomaticComplexity"] = cyclomaticComplexity;
 
@@ -100,8 +108,10 @@ public class ComplexityAnalysisService(
                     AddCognitiveComplexity(1);
                     break;
                 case BinaryExpressionSyntax bex:
-                    if (bex.IsKind(SyntaxKind.LogicalAndExpression) ||
-                        bex.IsKind(SyntaxKind.LogicalOrExpression))
+                    if (
+                        bex.IsKind(SyntaxKind.LogicalAndExpression)
+                        || bex.IsKind(SyntaxKind.LogicalOrExpression)
+                    )
                     {
                         AddCognitiveComplexity(1);
                     }
@@ -132,16 +142,23 @@ public class ComplexityAnalysisService(
             // Используем переданную compilation или загружаем новую
             compilation ??= await _solutionManager.GetCompilationAsync(
                 methodNode.SyntaxTree.GetRequiredProject(_solutionManager.CurrentSolution).Id,
-                cancellationToken);
+                cancellationToken
+            );
 
             if (compilation != null)
             {
                 var semanticModel = compilation.GetSemanticModel(methodNode.SyntaxTree);
-                var methodCalls = methodNode.DescendantNodes()
+                var methodCalls = methodNode
+                    .DescendantNodes()
                     .OfType<InvocationExpressionSyntax>()
                     .Select(i => semanticModel.GetSymbolInfo(i).Symbol)
                     .OfType<IMethodSymbol>()
-                    .Where(m => !SymbolEqualityComparer.Default.Equals(m.ContainingType, methodSymbol.ContainingType))
+                    .Where(m =>
+                        !SymbolEqualityComparer.Default.Equals(
+                            m.ContainingType,
+                            methodSymbol.ContainingType
+                        )
+                    )
                     .Select(m => m.ContainingType.ToDisplayString())
                     .Distinct()
                     .ToList();
@@ -157,30 +174,44 @@ public class ComplexityAnalysisService(
 
         // Add recommendations based on metrics
         if (lineCount > 50)
-            recommendations.Add($"Method '{methodSymbol.Name}' is {lineCount} lines long. Consider breaking it into smaller methods.");
+            recommendations.Add(
+                $"Method '{methodSymbol.Name}' is {lineCount} lines long. Consider breaking it into smaller methods."
+            );
 
         if (cyclomaticComplexity > 10)
-            recommendations.Add($"Method '{methodSymbol.Name}' has high cyclomatic complexity ({cyclomaticComplexity}). Consider refactoring into smaller methods.");
+            recommendations.Add(
+                $"Method '{methodSymbol.Name}' has high cyclomatic complexity ({cyclomaticComplexity}). Consider refactoring into smaller methods."
+            );
 
         if (cognitiveComplexity > 20)
-            recommendations.Add($"Method '{methodSymbol.Name}' has high cognitive complexity ({cognitiveComplexity}). Consider simplifying the logic or breaking it down.");
+            recommendations.Add(
+                $"Method '{methodSymbol.Name}' has high cognitive complexity ({cognitiveComplexity}). Consider simplifying the logic or breaking it down."
+            );
 
         if (parameterCount > 4)
-            recommendations.Add($"Method '{methodSymbol.Name}' has {parameterCount} parameters. Consider grouping related parameters into a class.");
+            recommendations.Add(
+                $"Method '{methodSymbol.Name}' has {parameterCount} parameters. Consider grouping related parameters into a class."
+            );
 
         if (localVarCount > 10)
-            recommendations.Add($"Method '{methodSymbol.Name}' has {localVarCount} local variables. Consider breaking some logic into helper methods.");
+            recommendations.Add(
+                $"Method '{methodSymbol.Name}' has {localVarCount} local variables. Consider breaking some logic into helper methods."
+            );
 
         if (methodCallCount > 5)
-            recommendations.Add($"Method '{methodSymbol.Name}' has {methodCallCount} external method calls. Consider reducing dependencies or breaking it into smaller methods.");
+            recommendations.Add(
+                $"Method '{methodSymbol.Name}' has {methodCallCount} external method calls. Consider reducing dependencies or breaking it into smaller methods."
+            );
     }
+
     public async Task AnalyzeTypeAsync(
         INamedTypeSymbol typeSymbol,
         Dictionary<string, object> metrics,
         List<string> recommendations,
         bool includeGeneratedCode,
         CancellationToken cancellationToken,
-        Compilation? compilation = null)
+        Compilation? compilation = null
+    )
     {
         var typeMetrics = new Dictionary<string, object>();
 
@@ -212,7 +243,9 @@ public class ComplexityAnalysisService(
 
         typeMetrics["inheritanceDepth"] = inheritanceDepth;
         typeMetrics["baseTypes"] = baseTypes;
-        typeMetrics["implementedInterfaces"] = typeSymbol.AllInterfaces.Select(i => i.ToDisplayString()).ToList();
+        typeMetrics["implementedInterfaces"] = typeSymbol
+            .AllInterfaces.Select(i => i.ToDisplayString())
+            .ToList();
 
         // Analyze methods
         var methodMetrics = new List<Dictionary<string, object>>();
@@ -221,10 +254,17 @@ public class ComplexityAnalysisService(
 
         foreach (var member in members.OfType<IMethodSymbol>())
         {
-            if (member.IsImplicitlyDeclared) continue;
+            if (member.IsImplicitlyDeclared)
+                continue;
 
             var methodDict = new Dictionary<string, object>();
-            await AnalyzeMethodAsync(member, methodDict, recommendations, cancellationToken, compilation);
+            await AnalyzeMethodAsync(
+                member,
+                methodDict,
+                recommendations,
+                cancellationToken,
+                compilation
+            );
 
             if (methodDict.ContainsKey("cyclomaticComplexity"))
             {
@@ -236,7 +276,8 @@ public class ComplexityAnalysisService(
         }
 
         typeMetrics["methods"] = methodMetrics;
-        typeMetrics["averageMethodComplexity"] = methodCount > 0 ? (double)methodComplexitySum / methodCount : 0;
+        typeMetrics["averageMethodComplexity"] =
+            methodCount > 0 ? (double)methodComplexitySum / methodCount : 0;
 
         // Coupling analysis
         var dependencies = new HashSet<string>();
@@ -248,10 +289,14 @@ public class ComplexityAnalysisService(
             foreach (var syntaxRef in syntaxRefs)
             {
                 var syntax = await syntaxRef.GetSyntaxAsync(cancellationToken);
-                var project = syntax.SyntaxTree.GetRequiredProject(_solutionManager.CurrentSolution);
+                var project = syntax.SyntaxTree.GetRequiredProject(
+                    _solutionManager.CurrentSolution
+                );
 
                 // Используем переданную compilation или загружаем новую
-                var currentCompilation = compilation ?? await _solutionManager.GetCompilationAsync(project.Id, cancellationToken);
+                var currentCompilation =
+                    compilation
+                    ?? await _solutionManager.GetCompilationAsync(project.Id, cancellationToken);
 
                 if (currentCompilation != null)
                 {
@@ -260,10 +305,19 @@ public class ComplexityAnalysisService(
                     // Find all type references in the class
                     foreach (var node in syntax.DescendantNodes())
                     {
-                        if (cancellationToken.IsCancellationRequested) break; var symbolInfo = semanticModel.GetSymbolInfo(node).Symbol;
-                        if (symbolInfo?.ContainingType != null &&
-                        !SymbolEqualityComparer.Default.Equals(symbolInfo.ContainingType, typeSymbol) &&
-                        !symbolInfo.ContainingType.SpecialType.Equals(SpecialType.System_Object))
+                        if (cancellationToken.IsCancellationRequested)
+                            break;
+                        var symbolInfo = semanticModel.GetSymbolInfo(node).Symbol;
+                        if (
+                            symbolInfo?.ContainingType != null
+                            && !SymbolEqualityComparer.Default.Equals(
+                                symbolInfo.ContainingType,
+                                typeSymbol
+                            )
+                            && !symbolInfo.ContainingType.SpecialType.Equals(
+                                SpecialType.System_Object
+                            )
+                        )
                         {
                             dependencies.Add(symbolInfo.ContainingType.ToDisplayString());
                         }
@@ -281,25 +335,35 @@ public class ComplexityAnalysisService(
 
         // Add type-level recommendations
         if (inheritanceDepth > 5)
-            recommendations.Add($"Type '{typeSymbol.Name}' has deep inheritance ({inheritanceDepth} levels). Consider composition over inheritance.");
+            recommendations.Add(
+                $"Type '{typeSymbol.Name}' has deep inheritance ({inheritanceDepth} levels). Consider composition over inheritance."
+            );
 
         if (dependencies.Count > 20)
-            recommendations.Add($"Type '{typeSymbol.Name}' has high coupling ({dependencies.Count} dependencies). Consider breaking it into smaller classes.");
+            recommendations.Add(
+                $"Type '{typeSymbol.Name}' has high coupling ({dependencies.Count} dependencies). Consider breaking it into smaller classes."
+            );
 
         if (members.Length > 50)
-            recommendations.Add($"Type '{typeSymbol.Name}' has {members.Length} members. Consider breaking it into smaller, focused classes.");
+            recommendations.Add(
+                $"Type '{typeSymbol.Name}' has {members.Length} members. Consider breaking it into smaller, focused classes."
+            );
 
         if (typeMetrics["averageMethodComplexity"] is double avg && avg > 12)
-            recommendations.Add($"Type '{typeSymbol.Name}' has high average method complexity ({avg:F1}). Consider refactoring complex methods.");
+            recommendations.Add(
+                $"Type '{typeSymbol.Name}' has high average method complexity ({avg:F1}). Consider refactoring complex methods."
+            );
 
         metrics["typeMetrics"] = typeMetrics;
     }
+
     public async Task AnalyzeProjectAsync(
         Project project,
         Dictionary<string, object> metrics,
         List<string> recommendations,
         bool includeGeneratedCode,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var projectMetrics = new Dictionary<string, object>();
         var typeMetrics = new List<Dictionary<string, object>>();
@@ -315,8 +379,8 @@ public class ComplexityAnalysisService(
         if (!includeGeneratedCode)
         {
             syntaxTrees = syntaxTrees.Where(tree =>
-                !tree.FilePath.Contains(".g.cs") &&
-                !tree.FilePath.Contains(".Designer.cs"));
+                !tree.FilePath.Contains(".g.cs") && !tree.FilePath.Contains(".Designer.cs")
+            );
         }
 
         projectMetrics["fileCount"] = syntaxTrees.Count();
@@ -325,7 +389,8 @@ public class ComplexityAnalysisService(
         var totalLines = 0;
         foreach (var tree in syntaxTrees)
         {
-            if (cancellationToken.IsCancellationRequested) break;
+            if (cancellationToken.IsCancellationRequested)
+                break;
             var text = await tree.GetTextAsync(cancellationToken);
             totalLines += text.Lines.Count;
         }
@@ -338,12 +403,13 @@ public class ComplexityAnalysisService(
             ["maxMethodComplexity"] = 0,
             ["complexMethodCount"] = 0,
             ["averageMethodComplexity"] = 0.0,
-            ["methodCount"] = 0
+            ["methodCount"] = 0,
         };
 
         foreach (var tree in syntaxTrees)
         {
-            if (cancellationToken.IsCancellationRequested) break;
+            if (cancellationToken.IsCancellationRequested)
+                break;
 
             var semanticModel = compilation.GetSemanticModel(tree);
             var root = await tree.GetRootAsync(cancellationToken);
@@ -355,25 +421,38 @@ public class ComplexityAnalysisService(
                 if (typeSymbol != null)
                 {
                     var typeDict = new Dictionary<string, object>();
-                    await AnalyzeTypeAsync(typeSymbol, typeDict, recommendations, includeGeneratedCode, cancellationToken, compilation);
+                    await AnalyzeTypeAsync(
+                        typeSymbol,
+                        typeDict,
+                        recommendations,
+                        includeGeneratedCode,
+                        cancellationToken,
+                        compilation
+                    );
                     typeMetrics.Add(typeDict);
 
                     // Aggregate complexity metrics
-                    if (typeDict.TryGetValue("typeMetrics", out var typeMetricsObj) &&
-                        typeMetricsObj is Dictionary<string, object> tm &&
-                        tm.TryGetValue("methods", out var methodsObj) &&
-                        methodsObj is List<Dictionary<string, object>> methods)
+                    if (
+                        typeDict.TryGetValue("typeMetrics", out var typeMetricsObj)
+                        && typeMetricsObj is Dictionary<string, object> tm
+                        && tm.TryGetValue("methods", out var methodsObj)
+                        && methodsObj is List<Dictionary<string, object>> methods
+                    )
                     {
                         foreach (var method in methods)
                         {
-                            if (method.TryGetValue("cyclomaticComplexity", out var ccObj) &&
-                                ccObj is int cc)
+                            if (
+                                method.TryGetValue("cyclomaticComplexity", out var ccObj)
+                                && ccObj is int cc
+                            )
                             {
                                 globalComplexityMetrics["totalCyclomaticComplexity"] =
                                     (int)globalComplexityMetrics["totalCyclomaticComplexity"] + cc;
 
-                                globalComplexityMetrics["maxMethodComplexity"] =
-                                    Math.Max((int)globalComplexityMetrics["maxMethodComplexity"], cc);
+                                globalComplexityMetrics["maxMethodComplexity"] = Math.Max(
+                                    (int)globalComplexityMetrics["maxMethodComplexity"],
+                                    cc
+                                );
 
                                 if (cc > 10)
                                     globalComplexityMetrics["complexMethodCount"] =
@@ -383,8 +462,10 @@ public class ComplexityAnalysisService(
                                     (int)globalComplexityMetrics["methodCount"] + 1;
                             }
 
-                            if (method.TryGetValue("cognitiveComplexity", out var cogObj) &&
-                                cogObj is int cog)
+                            if (
+                                method.TryGetValue("cognitiveComplexity", out var cogObj)
+                                && cogObj is int cog
+                            )
                             {
                                 globalComplexityMetrics["totalCognitiveComplexity"] =
                                     (int)globalComplexityMetrics["totalCognitiveComplexity"] + cog;
@@ -399,8 +480,8 @@ public class ComplexityAnalysisService(
         if ((int)globalComplexityMetrics["methodCount"] > 0)
         {
             globalComplexityMetrics["averageMethodComplexity"] =
-                (double)(int)globalComplexityMetrics["totalCyclomaticComplexity"] /
-                (int)globalComplexityMetrics["methodCount"];
+                (double)(int)globalComplexityMetrics["totalCyclomaticComplexity"]
+                / (int)globalComplexityMetrics["methodCount"];
         }
 
         projectMetrics["complexityMetrics"] = globalComplexityMetrics;
@@ -411,14 +492,20 @@ public class ComplexityAnalysisService(
         var complexMethodCount = (int)globalComplexityMetrics["complexMethodCount"];
 
         if (avgComplexity > 5)
-            recommendations.Add($"Project has high average method complexity ({avgComplexity:F1}). Consider refactoring complex methods.");
+            recommendations.Add(
+                $"Project has high average method complexity ({avgComplexity:F1}). Consider refactoring complex methods."
+            );
 
         if (complexMethodCount > 0)
-            recommendations.Add($"Project has {complexMethodCount} methods with high cyclomatic complexity (>10). Consider refactoring these methods.");
+            recommendations.Add(
+                $"Project has {complexMethodCount} methods with high cyclomatic complexity (>10). Consider refactoring these methods."
+            );
 
         var totalTypes = typeMetrics.Count;
         if (totalTypes > 50)
-            recommendations.Add($"Project has {totalTypes} types. Consider breaking it into multiple projects if they serve different concerns.");
+            recommendations.Add(
+                $"Project has {totalTypes} types. Consider breaking it into multiple projects if they serve different concerns."
+            );
 
         metrics["projectMetrics"] = projectMetrics;
     }

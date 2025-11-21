@@ -1,8 +1,6 @@
-
-using ModelContextProtocol;
-
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
+using ModelContextProtocol;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -12,8 +10,16 @@ public class PackageToolsLogCategory { }
 [McpServerToolType]
 public static class PackageTools
 {
-    [McpServerTool(Name = "add_package", Idempotent = false, ReadOnly = false, Destructive = false, OpenWorld = false)]
-    [Description("Adds or modifies a NuGet package in a project. Automatically performs restore and reloads the solution.")]
+    [McpServerTool(
+        Name = "add_package",
+        Idempotent = false,
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false
+    )]
+    [Description(
+        "Adds or modifies a NuGet package in a project. Automatically performs restore and reloads the solution."
+    )]
     public static async Task<string> AddOrModifyNugetPackage(
         ILogger<PackageToolsLogCategory> logger,
         ISolutionManager solutionManager,
@@ -22,127 +28,202 @@ public static class PackageTools
         string projectName,
         string nugetPackageId,
         [Description("The version of the NuGet package or 'latest' for latest")] string? version,
-        [Description("Skip automatic restore and reload (default: false)")] bool skipRestoreAndReload = false,
-        CancellationToken cancellationToken = default)
+        [Description("Skip automatic restore and reload (default: false)")]
+            bool skipRestoreAndReload = false,
+        CancellationToken cancellationToken = default
+    )
     {
-        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
-        {
-            // Validate parameters
-            ErrorHandlingHelpers.ValidateStringParameter(projectName, nameof(projectName), logger);
-            ErrorHandlingHelpers.ValidateStringParameter(nugetPackageId, nameof(nugetPackageId), logger);
-            logger.LogInformation("Adding/modifying NuGet package '{PackageId}' {Version} to {ProjectPath}",
-                nugetPackageId, version ?? "latest", projectName);
-
-            if (string.IsNullOrEmpty(version) || version.Equals("latest", StringComparison.OrdinalIgnoreCase))
+        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
+            async () =>
             {
-                version = null; // Treat 'latest' as null for processing
-            }
+                // Validate parameters
+                ErrorHandlingHelpers.ValidateStringParameter(
+                    projectName,
+                    nameof(projectName),
+                    logger
+                );
+                ErrorHandlingHelpers.ValidateStringParameter(
+                    nugetPackageId,
+                    nameof(nugetPackageId),
+                    logger
+                );
+                logger.LogInformation(
+                    "Adding/modifying NuGet package '{PackageId}' {Version} to {ProjectPath}",
+                    nugetPackageId,
+                    version ?? "latest",
+                    projectName
+                );
 
-            int indexOfParen = projectName.IndexOf('(');
-            string projectNameNormalized = indexOfParen == -1
-                ? projectName.Trim()
-                : projectName[..indexOfParen].Trim();
-
-            var project = solutionManager.GetProjects().FirstOrDefault(
-                p => p.Name == projectName
-                || p.AssemblyName == projectName
-                || p.Name == projectNameNormalized);
-
-            if (project == null)
-            {
-                logger.LogError("Project '{ProjectName}' not found in the loaded solution", projectName);
-                throw new McpException($"Project '{projectName}' not found in the solution.");
-            }
-
-            // Validate the package exists
-            var packageExists = await nugetService.ValidatePackageAsync(nugetPackageId, version, cancellationToken);
-            if (!packageExists)
-            {
-                throw new McpException($"Package '{nugetPackageId}' {(string.IsNullOrEmpty(version) ? "" : $"with version {version} ")}was not found on NuGet.org.");
-            }
-
-            // If no version specified, get the latest version
-            if (string.IsNullOrEmpty(version))
-            {
-                version = await nugetService.GetLatestVersionAsync(nugetPackageId, includePrerelease: false, cancellationToken);
-                logger.LogInformation("Using latest version {Version} for package {PackageId}", version, nugetPackageId);
-            }
-
-            ErrorHandlingHelpers.ValidateFileExists(project.FilePath, logger);
-            var projectPath = project.FilePath!;
-
-            // Detect package format and add/update accordingly
-            var packageFormat = LegacyNuGetPackageReader.DetectPackageFormat(projectPath);
-            var action = "added";
-            var projectPackages = LegacyNuGetPackageReader.GetPackagesForProject(projectPath);
-
-            // Check if package already exists to determine if we're adding or updating
-            var existingPackage = projectPackages.Packages.FirstOrDefault(p =>
-                string.Equals(p.PackageId, nugetPackageId, StringComparison.OrdinalIgnoreCase));
-
-            if (existingPackage != null)
-            {
-                action = "updated";
-                logger.LogInformation("Package {PackageId} already exists with version {OldVersion}, updating to {NewVersion}",
-                    nugetPackageId, existingPackage.Version, version);
-            }
-
-            // Update the project file based on the package format
-            if (packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference)
-            {
-                await UpdatePackageReferenceAsync(projectPath, nugetPackageId, version, existingPackage != null, documentOperations, logger, cancellationToken);
-            }
-            else
-            {
-                var packagesConfigPath = projectPackages.PackagesConfigPath ?? throw new McpException("packages.config path not found.");
-                await UpdatePackagesConfigAsync(packagesConfigPath, nugetPackageId, version, existingPackage != null, documentOperations, logger, cancellationToken);
-            }
-
-            logger.LogInformation("Package {PackageId} {Action} with version {Version}", nugetPackageId, action, version);
-
-            // Perform automatic restore and reload if not skipped
-            if (!skipRestoreAndReload)
-            {
-                var restoreCommand = packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference
-                    ? "dotnet restore"
-                    : "nuget restore";
-
-                logger.LogInformation("Performing automatic {RestoreCommand}...", restoreCommand);
-
-                try
+                if (
+                    string.IsNullOrEmpty(version)
+                    || version.Equals("latest", StringComparison.OrdinalIgnoreCase)
+                )
                 {
-                    // Run restore command
-                    var (success, output) = await ExecuteRestoreCommandAsync(
-                        Path.GetDirectoryName(projectPath)!,
-                        restoreCommand,
+                    version = null; // Treat 'latest' as null for processing
+                }
+
+                int indexOfParen = projectName.IndexOf('(');
+                string projectNameNormalized =
+                    indexOfParen == -1 ? projectName.Trim() : projectName[..indexOfParen].Trim();
+
+                var project = solutionManager
+                    .GetProjects()
+                    .FirstOrDefault(p =>
+                        p.Name == projectName
+                        || p.AssemblyName == projectName
+                        || p.Name == projectNameNormalized
+                    );
+
+                if (project == null)
+                {
+                    logger.LogError(
+                        "Project '{ProjectName}' not found in the loaded solution",
+                        projectName
+                    );
+                    throw new McpException($"Project '{projectName}' not found in the solution.");
+                }
+
+                // Validate the package exists
+                var packageExists = await nugetService.ValidatePackageAsync(
+                    nugetPackageId,
+                    version,
+                    cancellationToken
+                );
+                if (!packageExists)
+                {
+                    throw new McpException(
+                        $"Package '{nugetPackageId}' {(string.IsNullOrEmpty(version) ? "" : $"with version {version} ")}was not found on NuGet.org."
+                    );
+                }
+
+                // If no version specified, get the latest version
+                if (string.IsNullOrEmpty(version))
+                {
+                    version = await nugetService.GetLatestVersionAsync(
+                        nugetPackageId,
+                        includePrerelease: false,
+                        cancellationToken
+                    );
+                    logger.LogInformation(
+                        "Using latest version {Version} for package {PackageId}",
+                        version,
+                        nugetPackageId
+                    );
+                }
+
+                ErrorHandlingHelpers.ValidateFileExists(project.FilePath, logger);
+                var projectPath = project.FilePath!;
+
+                // Detect package format and add/update accordingly
+                var packageFormat = LegacyNuGetPackageReader.DetectPackageFormat(projectPath);
+                var action = "added";
+                var projectPackages = LegacyNuGetPackageReader.GetPackagesForProject(projectPath);
+
+                // Check if package already exists to determine if we're adding or updating
+                var existingPackage = projectPackages.Packages.FirstOrDefault(p =>
+                    string.Equals(p.PackageId, nugetPackageId, StringComparison.OrdinalIgnoreCase)
+                );
+
+                if (existingPackage != null)
+                {
+                    action = "updated";
+                    logger.LogInformation(
+                        "Package {PackageId} already exists with version {OldVersion}, updating to {NewVersion}",
+                        nugetPackageId,
+                        existingPackage.Version,
+                        version
+                    );
+                }
+
+                // Update the project file based on the package format
+                if (packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference)
+                {
+                    await UpdatePackageReferenceAsync(
+                        projectPath,
+                        nugetPackageId,
+                        version,
+                        existingPackage != null,
+                        documentOperations,
                         logger,
-                        cancellationToken);
-
-                    if (!success)
-                    {
-                        logger.LogWarning("Restore command failed: {Output}", output);
-                        return $"The package {nugetPackageId} has been {action} with version {version}, but restore failed. Please run `{restoreCommand}` manually.\n\nRestore output:\n{output}";
-                    }
-
-                    logger.LogInformation("Restore completed successfully");
-
-                    // Reload solution
-                    logger.LogInformation("Reloading solution...");
-                    await solutionManager.ReloadSolutionFromDiskAsync(cancellationToken);
-                    logger.LogInformation("Solution reloaded successfully");
-
-                    return $"The package {nugetPackageId} has been {action} with version {version}. Restore and solution reload completed successfully.";
+                        cancellationToken
+                    );
                 }
-                catch (Exception ex)
+                else
                 {
-                    logger.LogError(ex, "Error during restore or reload");
-                    return $"The package {nugetPackageId} has been {action} with version {version}, but restore/reload failed: {ex.Message}. Please run `{restoreCommand}` and reload manually.";
+                    var packagesConfigPath =
+                        projectPackages.PackagesConfigPath
+                        ?? throw new McpException("packages.config path not found.");
+                    await UpdatePackagesConfigAsync(
+                        packagesConfigPath,
+                        nugetPackageId,
+                        version,
+                        existingPackage != null,
+                        documentOperations,
+                        logger,
+                        cancellationToken
+                    );
                 }
-            }
 
-            return $"The package {nugetPackageId} has been {action} with version {version}. You must perform a `{(packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference ? "dotnet restore" : "nuget restore")}` and then reload the solution.";
-        }, logger, nameof(AddOrModifyNugetPackage), cancellationToken);
+                logger.LogInformation(
+                    "Package {PackageId} {Action} with version {Version}",
+                    nugetPackageId,
+                    action,
+                    version
+                );
+
+                // Perform automatic restore and reload if not skipped
+                if (!skipRestoreAndReload)
+                {
+                    var restoreCommand =
+                        packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference
+                            ? "dotnet restore"
+                            : "nuget restore";
+
+                    logger.LogInformation(
+                        "Performing automatic {RestoreCommand}...",
+                        restoreCommand
+                    );
+
+                    try
+                    {
+                        // Run restore command
+                        var (success, output) = await ExecuteRestoreCommandAsync(
+                            Path.GetDirectoryName(projectPath)!,
+                            restoreCommand,
+                            logger,
+                            cancellationToken
+                        );
+
+                        if (!success)
+                        {
+                            logger.LogWarning("Restore command failed: {Output}", output);
+                            return $"The package {nugetPackageId} has been {action} with version {version}, but restore failed. Please run `{restoreCommand}` manually.\n\nRestore output:\n{output}";
+                        }
+
+                        logger.LogInformation("Restore completed successfully");
+
+                        // Reload solution
+                        logger.LogInformation("Reloading solution...");
+                        await solutionManager.ReloadSolutionFromDiskAsync(cancellationToken);
+                        logger.LogInformation("Solution reloaded successfully");
+
+                        return $"The package {nugetPackageId} has been {action} with version {version}. Restore and solution reload completed successfully.";
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Error during restore or reload");
+                        return $"The package {nugetPackageId} has been {action} with version {version}, but restore/reload failed: {ex.Message}. Please run `{restoreCommand}` and reload manually.";
+                    }
+                }
+
+                return $"The package {nugetPackageId} has been {action} with version {version}. You must perform a `{(packageFormat == LegacyNuGetPackageReader.PackageFormat.PackageReference ? "dotnet restore" : "nuget restore")}` and then reload the solution.";
+            },
+            logger,
+            nameof(AddOrModifyNugetPackage),
+            cancellationToken
+        );
     }
+
     private static async Task UpdatePackageReferenceAsync(
         string projectPath,
         string packageId,
@@ -150,16 +231,21 @@ public static class PackageTools
         bool isUpdate,
         IDocumentOperationsService documentOperations,
         Microsoft.Extensions.Logging.ILogger logger,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-
         try
         {
-            var (projectContent, _) = await documentOperations.ReadFileAsync(projectPath, false, cancellationToken);
+            var (projectContent, _) = await documentOperations.ReadFileAsync(
+                projectPath,
+                false,
+                cancellationToken
+            );
             var xDoc = XDocument.Parse(projectContent);
 
             // Find ItemGroup that contains PackageReference elements or create a new one
-            var itemGroup = xDoc.Root?.Elements("ItemGroup")
+            var itemGroup = xDoc
+                .Root?.Elements("ItemGroup")
                 .FirstOrDefault(ig => ig.Elements("PackageReference").Any());
 
             if (itemGroup == null)
@@ -170,8 +256,15 @@ public static class PackageTools
             }
 
             // Find existing package reference
-            var existingPackage = itemGroup.Elements("PackageReference")
-                .FirstOrDefault(pr => string.Equals(pr.Attribute("Include")?.Value, packageId, StringComparison.OrdinalIgnoreCase));
+            var existingPackage = itemGroup
+                .Elements("PackageReference")
+                .FirstOrDefault(pr =>
+                    string.Equals(
+                        pr.Attribute("Include")?.Value,
+                        packageId,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
 
             if (existingPackage != null)
             {
@@ -199,21 +292,34 @@ public static class PackageTools
             else
             {
                 // Add new package reference
-                var packageRef = new XElement("PackageReference",
+                var packageRef = new XElement(
+                    "PackageReference",
                     new XAttribute("Include", packageId),
-                    new XAttribute("Version", version));
+                    new XAttribute("Version", version)
+                );
 
                 itemGroup.Add(packageRef);
             }
 
             // Save the updated project file
-            await documentOperations.WriteFileAsync(projectPath, xDoc.ToString(), true, cancellationToken,
-                $"{(isUpdate ? "Updated" : "Added")} NuGet package {packageId} with version {version}");
+            await documentOperations.WriteFileAsync(
+                projectPath,
+                xDoc.ToString(),
+                true,
+                cancellationToken,
+                $"{(isUpdate ? "Updated" : "Added")} NuGet package {packageId} with version {version}"
+            );
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error updating PackageReference in project file {ProjectPath}", projectPath);
-            throw new McpException($"Failed to update PackageReference in project file: {ex.Message}");
+            logger.LogError(
+                ex,
+                "Error updating PackageReference in project file {ProjectPath}",
+                projectPath
+            );
+            throw new McpException(
+                $"Failed to update PackageReference in project file: {ex.Message}"
+            );
         }
     }
 
@@ -224,9 +330,9 @@ public static class PackageTools
         bool isUpdate,
         IDocumentOperationsService documentOperations,
         Microsoft.Extensions.Logging.ILogger logger,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-
         if (string.IsNullOrEmpty(packagesConfigPath))
         {
             throw new McpException("packages.config path is null or empty.");
@@ -240,20 +346,37 @@ public static class PackageTools
 
             if (fileExists)
             {
-                var (content, _) = await documentOperations.ReadFileAsync(packagesConfigPath, false, cancellationToken);
+                var (content, _) = await documentOperations.ReadFileAsync(
+                    packagesConfigPath,
+                    false,
+                    cancellationToken
+                );
                 xDoc = XDocument.Parse(content);
             }
             else
             {
                 // Create a new packages.config file
                 xDoc = new XDocument(
-                    new XElement("packages",
-                        new XAttribute("xmlns", "http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd")));
+                    new XElement(
+                        "packages",
+                        new XAttribute(
+                            "xmlns",
+                            "http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd"
+                        )
+                    )
+                );
             }
 
             // Find existing package
-            var packageElement = xDoc.Root?.Elements("package")
-                .FirstOrDefault(p => string.Equals(p.Attribute("id")?.Value, packageId, StringComparison.OrdinalIgnoreCase));
+            var packageElement = xDoc
+                .Root?.Elements("package")
+                .FirstOrDefault(p =>
+                    string.Equals(
+                        p.Attribute("id")?.Value,
+                        packageId,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
 
             if (packageElement != null)
             {
@@ -263,21 +386,32 @@ public static class PackageTools
             else
             {
                 // Add new package entry
-                var newPackage = new XElement("package",
+                var newPackage = new XElement(
+                    "package",
                     new XAttribute("id", packageId),
                     new XAttribute("version", version),
-                    new XAttribute("targetFramework", "net40")); // Default target framework
+                    new XAttribute("targetFramework", "net40")
+                ); // Default target framework
 
                 xDoc.Root?.Add(newPackage);
             }
 
             // Save the updated packages.config
-            await documentOperations.WriteFileAsync(packagesConfigPath, xDoc.ToString(), true, cancellationToken,
-                $"{(isUpdate ? "Updated" : "Added")} NuGet package {packageId} with version {version} in packages.config");
+            await documentOperations.WriteFileAsync(
+                packagesConfigPath,
+                xDoc.ToString(),
+                true,
+                cancellationToken,
+                $"{(isUpdate ? "Updated" : "Added")} NuGet package {packageId} with version {version} in packages.config"
+            );
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error updating packages.config at {PackagesConfigPath}", packagesConfigPath);
+            logger.LogError(
+                ex,
+                "Error updating packages.config at {PackagesConfigPath}",
+                packagesConfigPath
+            );
             throw new McpException($"Failed to update packages.config: {ex.Message}");
         }
     }
@@ -286,14 +420,16 @@ public static class PackageTools
         string workingDirectory,
         string restoreCommand,
         Microsoft.Extensions.Logging.ILogger logger,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-
         try
         {
             var startInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "cmd.exe" : "/bin/bash",
+                FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? "cmd.exe"
+                    : "/bin/bash",
                 Arguments = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                     ? $"/c {restoreCommand}"
                     : $"-c \"{restoreCommand}\"",
@@ -301,7 +437,7 @@ public static class PackageTools
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
 
             using var process = new System.Diagnostics.Process { StartInfo = startInfo };

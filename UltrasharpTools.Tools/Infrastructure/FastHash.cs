@@ -1,9 +1,9 @@
 using System.Buffers;
 using System.IO.Hashing;
-
 using System.Security.Cryptography;
 
 namespace UltrasharpTools.Tools.Infrastructure;
+
 /// <summary>
 /// Fast hashing utilities optimized for performance using Span&lt;T&gt; to minimize allocations.
 /// Uses stackalloc for small strings (&lt;1KB) and ArrayPool for larger strings.

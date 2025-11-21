@@ -16,10 +16,10 @@ public interface ILogAnalysisService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Log analysis result with matched entries</returns>
     Task<LogAnalysisResult> AnalyzeLogFileAsync(
-    string filePath,
-    LogSearchCriteria criteria,
-    LogDetailLevel detailLevel = LogDetailLevel.Brief,
-    CancellationToken cancellationToken = default
+        string filePath,
+        LogSearchCriteria criteria,
+        LogDetailLevel detailLevel = LogDetailLevel.Brief,
+        CancellationToken cancellationToken = default
     );
 
     /// <summary>
@@ -29,7 +29,7 @@ public interface ILogAnalysisService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Detected log format</returns>
     Task<LogFormat> DetectLogFormatAsync(
-    string filePath,
-    CancellationToken cancellationToken = default
+        string filePath,
+        CancellationToken cancellationToken = default
     );
 }

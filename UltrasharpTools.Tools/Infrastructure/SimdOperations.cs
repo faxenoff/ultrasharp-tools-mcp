@@ -1,5 +1,4 @@
 using System.Numerics;
-
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -302,7 +301,8 @@ public static class SimdOperations
 
                 costs[j] = Math.Min(
                     Math.Min(costs[j - 1] + 1, previousCosts[j] + 1),
-                    previousCosts[j - 1] + cost);
+                    previousCosts[j - 1] + cost
+                );
             }
 
             // Swap arrays

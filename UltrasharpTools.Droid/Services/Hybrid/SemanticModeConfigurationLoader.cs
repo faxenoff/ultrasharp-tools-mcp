@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using UltrasharpTools.Droid.Models.Hybrid;
 
 namespace UltrasharpTools.Droid.Services.Hybrid;
@@ -15,10 +15,14 @@ public sealed class SemanticModeConfigurationLoader
     // Пути поиска конфигурации (в порядке приоритета)
     private static readonly string[] ConfigPaths = new[]
     {
-        "Config/semantic-mode-config.json",                // Primary location (next to exe)
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ultrasharp", "semantic-mode-config.json"), // User-specific
-        "semantic-mode-config.json",                       // Current directory
-        "Run.Config/semantic-mode-config.json"             // Development location
+        "Config/semantic-mode-config.json", // Primary location (next to exe)
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".ultrasharp",
+            "semantic-mode-config.json"
+        ), // User-specific
+        "semantic-mode-config.json", // Current directory
+        "Run.Config/semantic-mode-config.json", // Development location
     };
 
     public SemanticModeConfigurationLoader(ILogger<SemanticModeConfigurationLoader> logger)
@@ -29,26 +33,35 @@ public sealed class SemanticModeConfigurationLoader
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true
+            AllowTrailingCommas = true,
         };
     }
 
     /// <summary>
     /// Загружает конфигурацию из файла или создаёт default
     /// </summary>
-    public async Task<SemanticModeConfig> LoadOrCreateAsync(string? explicitPath = null, CancellationToken cancellationToken = default)
+    public async Task<SemanticModeConfig> LoadOrCreateAsync(
+        string? explicitPath = null,
+        CancellationToken cancellationToken = default
+    )
     {
         // 1. Explicit path имеет приоритет
         if (!string.IsNullOrWhiteSpace(explicitPath))
         {
             if (File.Exists(explicitPath))
             {
-                _logger.LogInformation("Loading semantic mode config from explicit path: {Path}", explicitPath);
+                _logger.LogInformation(
+                    "Loading semantic mode config from explicit path: {Path}",
+                    explicitPath
+                );
                 return await LoadFromFileAsync(explicitPath, cancellationToken);
             }
             else
             {
-                _logger.LogWarning("Explicit config path not found: {Path}, using default", explicitPath);
+                _logger.LogWarning(
+                    "Explicit config path not found: {Path}, using default",
+                    explicitPath
+                );
             }
         }
 
@@ -64,7 +77,11 @@ public sealed class SemanticModeConfigurationLoader
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to load config from {Path}, trying next location", configPath);
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to load config from {Path}, trying next location",
+                        configPath
+                    );
                 }
             }
         }
@@ -91,7 +108,10 @@ public sealed class SemanticModeConfigurationLoader
     /// <summary>
     /// Загружает конфигурацию из файла
     /// </summary>
-    private async Task<SemanticModeConfig> LoadFromFileAsync(string path, CancellationToken cancellationToken)
+    private async Task<SemanticModeConfig> LoadFromFileAsync(
+        string path,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -113,7 +133,8 @@ public sealed class SemanticModeConfigurationLoader
                 "Loaded semantic mode config: enabled={Enabled}, enrichmentTimeout={Timeout}s, tools={ToolCount}",
                 config.Enabled,
                 config.Enrichment.TimeoutSeconds,
-                config.ToolSettings.Count);
+                config.ToolSettings.Count
+            );
 
             return config;
         }
@@ -127,7 +148,11 @@ public sealed class SemanticModeConfigurationLoader
     /// <summary>
     /// Сохраняет конфигурацию в файл
     /// </summary>
-    public async Task SaveToFileAsync(SemanticModeConfig config, string path, CancellationToken cancellationToken = default)
+    public async Task SaveToFileAsync(
+        SemanticModeConfig config,
+        string path,
+        CancellationToken cancellationToken = default
+    )
     {
         // Валидация перед сохранением
         if (!config.Validate(out var errorMessage))
@@ -168,14 +193,18 @@ public sealed class SemanticModeConfigurationLoader
     /// <summary>
     /// Создаёт example конфигурацию с комментариями
     /// </summary>
-    public async Task CreateExampleConfigAsync(string path, CancellationToken cancellationToken = default)
+    public async Task CreateExampleConfigAsync(
+        string path,
+        CancellationToken cancellationToken = default
+    )
     {
         var config = SemanticModeConfig.CreateDefault();
 
         // Добавляем пример custom query template
         if (config.ToolSettings.TryGetValue("view_definition", out var viewDefSettings))
         {
-            viewDefSettings.QueryTemplate = "Find similar implementations of {toolName} for better understanding";
+            viewDefSettings.QueryTemplate =
+                "Find similar implementations of {toolName} for better understanding";
         }
 
         await SaveToFileAsync(config, path, cancellationToken);
@@ -200,7 +229,10 @@ public sealed class SemanticModeConfigurationLoader
     /// <summary>
     /// Перезагружает конфигурацию (hot reload)
     /// </summary>
-    public async Task<SemanticModeConfig> ReloadAsync(string? currentPath = null, CancellationToken cancellationToken = default)
+    public async Task<SemanticModeConfig> ReloadAsync(
+        string? currentPath = null,
+        CancellationToken cancellationToken = default
+    )
     {
         var path = currentPath ?? FindConfigPath();
 
@@ -219,11 +251,15 @@ public sealed class SemanticModeConfigurationLoader
     /// <summary>
     /// Мержит конфигурацию с overrides
     /// </summary>
-    public SemanticModeConfig MergeWithOverrides(SemanticModeConfig baseConfig, SemanticModeConfig overrides)
+    public SemanticModeConfig MergeWithOverrides(
+        SemanticModeConfig baseConfig,
+        SemanticModeConfig overrides
+    )
     {
         var merged = JsonSerializer.Deserialize<SemanticModeConfig>(
             JsonSerializer.Serialize(baseConfig, _jsonOptions),
-            _jsonOptions)!;
+            _jsonOptions
+        )!;
 
         // Override top-level settings
         if (overrides.Enabled != baseConfig.Enabled)
@@ -258,7 +294,10 @@ public sealed class SemanticModeConfigurationLoader
 
         if (!merged.Validate(out var errorMessage))
         {
-            _logger.LogWarning("Merged config is invalid: {Error}, using base config", errorMessage);
+            _logger.LogWarning(
+                "Merged config is invalid: {Error}, using base config",
+                errorMessage
+            );
             return baseConfig;
         }
 

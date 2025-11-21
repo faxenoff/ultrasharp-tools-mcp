@@ -1,4 +1,3 @@
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Interfaces;
@@ -36,7 +35,8 @@ public interface ILayeredIndex
         string? clientId,
         string? branch,
         string searchTerm,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Create or load branch delta (Layer 1).
@@ -50,7 +50,8 @@ public interface ILayeredIndex
         string clientId,
         string branch,
         SymbolIndexEntry symbol,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Clear working directory delta (e.g., after commit).
@@ -64,7 +65,8 @@ public interface ILayeredIndex
         string clientId,
         string branch,
         string commitSha,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Incremental update for document change.
@@ -72,7 +74,8 @@ public interface ILayeredIndex
     Task UpdateDocumentAsync(
         Solution solution,
         DocumentId documentId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Incremental add for new document.
@@ -80,12 +83,11 @@ public interface ILayeredIndex
     Task AddDocumentAsync(
         Solution solution,
         DocumentId documentId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Incremental remove for deleted document.
     /// </summary>
-    Task RemoveDocumentAsync(
-        DocumentId documentId,
-        CancellationToken cancellationToken = default);
+    Task RemoveDocumentAsync(DocumentId documentId, CancellationToken cancellationToken = default);
 }

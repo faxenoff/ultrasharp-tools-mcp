@@ -1,4 +1,3 @@
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -100,7 +99,7 @@ public sealed class WorkingDelta
         {
             BranchName = BranchName,
             BaseCommitSha = commitSha ?? string.Empty,
-            LastModified = DateTime.UtcNow
+            LastModified = DateTime.UtcNow,
         };
 
         // Copy all changes
@@ -131,7 +130,7 @@ public sealed class WorkingDelta
         {
             ClientId = ClientId,
             BranchName = BranchName,
-            LastModified = LastModified
+            LastModified = LastModified,
         };
 
         foreach (var (id, symbol) in AddedSymbols)

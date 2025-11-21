@@ -1,7 +1,7 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using UltrasharpTools.Droid.Models.Hybrid;
-using System.Collections.Concurrent;
 
 namespace UltrasharpTools.Droid.Services.Hybrid;
 
@@ -21,7 +21,8 @@ public sealed class FileWatcherService : BackgroundService
         AgentConfig config,
         IServerBridgeService bridge,
         ILogger<FileWatcherService> logger,
-        IEmbeddingService? embedding = null)
+        IEmbeddingService? embedding = null
+    )
     {
         _config = config;
         _bridge = bridge;
@@ -33,14 +34,15 @@ public sealed class FileWatcherService : BackgroundService
     {
         _logger.LogInformation(
             "FileWatcherService starting for path: {Path}",
-            _config.RepositoryPath);
+            _config.RepositoryPath
+        );
 
         try
         {
             _watcher = new FileSystemWatcher(_config.RepositoryPath)
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName,
-                IncludeSubdirectories = true
+                IncludeSubdirectories = true,
             };
 
             // Подписка на события
@@ -59,7 +61,8 @@ public sealed class FileWatcherService : BackgroundService
 
             _logger.LogInformation(
                 "FileWatcher started. Monitoring patterns: {Patterns}",
-                string.Join(", ", _config.WatchPatterns));
+                string.Join(", ", _config.WatchPatterns)
+            );
 
             // Debounce loop - обрабатываем накопленные изменения
             while (!stoppingToken.IsCancellationRequested)
@@ -93,16 +96,10 @@ public sealed class FileWatcherService : BackgroundService
             return;
         }
 
-        _logger.LogDebug(
-            "File {ChangeType}: {Path}",
-            e.ChangeType,
-            e.FullPath);
+        _logger.LogDebug("File {ChangeType}: {Path}", e.ChangeType, e.FullPath);
 
         // Добавляем в очередь с debounce
-        _pendingChanges.AddOrUpdate(
-            e.FullPath,
-            DateTime.UtcNow,
-            (_, _) => DateTime.UtcNow);
+        _pendingChanges.AddOrUpdate(e.FullPath, DateTime.UtcNow, (_, _) => DateTime.UtcNow);
     }
 
     private void OnFileRenamed(object sender, RenamedEventArgs e)
@@ -112,15 +109,9 @@ public sealed class FileWatcherService : BackgroundService
             return;
         }
 
-        _logger.LogDebug(
-            "File renamed: {OldPath} -> {NewPath}",
-            e.OldFullPath,
-            e.FullPath);
+        _logger.LogDebug("File renamed: {OldPath} -> {NewPath}", e.OldFullPath, e.FullPath);
 
-        _pendingChanges.AddOrUpdate(
-            e.FullPath,
-            DateTime.UtcNow,
-            (_, _) => DateTime.UtcNow);
+        _pendingChanges.AddOrUpdate(e.FullPath, DateTime.UtcNow, (_, _) => DateTime.UtcNow);
     }
 
     private async Task ProcessPendingChanges(CancellationToken cancellationToken)
@@ -182,18 +173,26 @@ public sealed class FileWatcherService : BackgroundService
                     {
                         _logger.LogDebug(
                             "Generated embedding: {Dimensions} dimensions",
-                            vectors.Length);
+                            vectors.Length
+                        );
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to generate embedding, continuing without vectors");
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to generate embedding, continuing without vectors"
+                    );
                 }
             }
 
             // Извлечение символов из C# кода
             SymbolInfo[]? symbols = null;
-            if (action == "modified" && content != null && fullPath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            if (
+                action == "modified"
+                && content != null
+                && fullPath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 try
                 {
@@ -203,12 +202,17 @@ public sealed class FileWatcherService : BackgroundService
                         _logger.LogDebug(
                             "Extracted {SymbolCount} symbols from {File}",
                             symbols.Length,
-                            relativePath);
+                            relativePath
+                        );
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to extract symbols from {File}, continuing without symbols", relativePath);
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to extract symbols from {File}, continuing without symbols",
+                        relativePath
+                    );
                 }
             }
 
@@ -221,7 +225,7 @@ public sealed class FileWatcherService : BackgroundService
                 Action = action,
                 Content = content,
                 Vectors = vectors,
-                Symbols = symbols
+                Symbols = symbols,
             };
 
             // Отправляем на сервер
@@ -232,14 +236,12 @@ public sealed class FileWatcherService : BackgroundService
                 evt.Project,
                 evt.Branch,
                 evt.File,
-                evt.Action);
+                evt.Action
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Failed to process file change: {Path}",
-                fullPath);
+            _logger.LogError(ex, "Failed to process file change: {Path}", fullPath);
         }
     }
 

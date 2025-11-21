@@ -57,7 +57,9 @@ public class TestConfiguration
     {
         if (!TestSolutions.TryGetValue(name, out var path))
         {
-            throw new ArgumentException($"Solution '{name}' not found in test-config.json. Available: {string.Join(", ", TestSolutions.Keys)}");
+            throw new ArgumentException(
+                $"Solution '{name}' not found in test-config.json. Available: {string.Join(", ", TestSolutions.Keys)}"
+            );
         }
 
         if (!File.Exists(path) && !Directory.Exists(path))

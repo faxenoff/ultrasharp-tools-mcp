@@ -1,5 +1,3 @@
-
-
 using System.Xml.Linq;
 
 namespace UltrasharpTools.Tools.Services;
@@ -13,12 +11,16 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
     private static readonly string[] SupportedExtensions = [".cs", ".csproj", ".xml"];
 
     public async Task<FormattingResult> FormatAsync(
-    string path,
-    bool checkOnly,
-    CancellationToken cancellationToken = default
+        string path,
+        bool checkOnly,
+        CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation("Starting formatting for path: {Path}, CheckOnly: {CheckOnly}", path, checkOnly);
+        _logger.LogInformation(
+            "Starting formatting for path: {Path}, CheckOnly: {CheckOnly}",
+            path,
+            checkOnly
+        );
 
         var filesNeedingFormatting = new List<string>();
         var filesFormatted = new List<string>();
@@ -33,7 +35,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
             {
                 FilesNeedingFormatting = [],
                 FilesFormatted = [],
-                TotalFilesChecked = 0
+                TotalFilesChecked = 0,
             };
         }
 
@@ -59,15 +61,30 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
 
                 if (formattedCode != originalCode)
                 {
-                    return (FilePath: filePath, NeedsFormatting: true, FormattedCode: formattedCode, Error: (string?)null);
+                    return (
+                        FilePath: filePath,
+                        NeedsFormatting: true,
+                        FormattedCode: formattedCode,
+                        Error: (string?)null
+                    );
                 }
 
-                return (FilePath: filePath, NeedsFormatting: false, FormattedCode: (string?)null, Error: (string?)null);
+                return (
+                    FilePath: filePath,
+                    NeedsFormatting: false,
+                    FormattedCode: (string?)null,
+                    Error: (string?)null
+                );
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to format file: {FilePath}", filePath);
-                return (FilePath: filePath, NeedsFormatting: false, FormattedCode: (string?)null, Error: ex.Message);
+                return (
+                    FilePath: filePath,
+                    NeedsFormatting: false,
+                    FormattedCode: (string?)null,
+                    Error: ex.Message
+                );
             }
         });
 
@@ -91,13 +108,21 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
                 {
                     try
                     {
-                        await File.WriteAllTextAsync(result.FilePath, result.FormattedCode!, cancellationToken);
+                        await File.WriteAllTextAsync(
+                            result.FilePath,
+                            result.FormattedCode!,
+                            cancellationToken
+                        );
                         filesFormatted.Add(result.FilePath);
                         _logger.LogInformation("Formatted file: {FilePath}", result.FilePath);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to write formatted file: {FilePath}", result.FilePath);
+                        _logger.LogError(
+                            ex,
+                            "Failed to write formatted file: {FilePath}",
+                            result.FilePath
+                        );
                         errors.Add((result.FilePath, $"Write failed: {ex.Message}"));
                     }
                 }
@@ -105,10 +130,10 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
         }
 
         _logger.LogInformation(
-        "Formatting complete. Total checked: {Total}, Need formatting: {NeedFormatting}, Formatted: {Formatted}",
-        filesToCheck.Count,
-        filesNeedingFormatting.Count,
-        filesFormatted.Count
+            "Formatting complete. Total checked: {Total}, Need formatting: {NeedFormatting}, Formatted: {Formatted}",
+            filesToCheck.Count,
+            filesNeedingFormatting.Count,
+            filesFormatted.Count
         );
 
         return new FormattingResult
@@ -116,14 +141,17 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
             FilesNeedingFormatting = filesNeedingFormatting,
             FilesFormatted = filesFormatted,
             TotalFilesChecked = filesToCheck.Count,
-            Errors = errors
+            Errors = errors,
         };
     }
 
     /// <summary>
     /// Форматирует C# код с использованием Roslyn Formatter
     /// </summary>
-    private async Task<string> FormatCSharpCodeAsync(string code, CancellationToken cancellationToken)
+    private async Task<string> FormatCSharpCodeAsync(
+        string code,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -133,7 +161,11 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
 
             // Create workspace and apply formatting
             using var workspace = new AdhocWorkspace();
-            var formattedRoot = Formatter.Format(root, workspace, cancellationToken: cancellationToken);
+            var formattedRoot = Formatter.Format(
+                root,
+                workspace,
+                cancellationToken: cancellationToken
+            );
 
             return formattedRoot.ToFullString();
         }
@@ -182,7 +214,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
             foreach (var ext in SupportedExtensions)
             {
                 filesToCheck.AddRange(
-                Directory.GetFiles(path, $"*{ext}", SearchOption.AllDirectories)
+                    Directory.GetFiles(path, $"*{ext}", SearchOption.AllDirectories)
                 );
             }
         }

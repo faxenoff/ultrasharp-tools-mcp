@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Config;
 
 namespace UltrasharpTools.Tools.Services;
@@ -23,7 +21,8 @@ public class SemanticConfigManager
         CodebaseLanguageDetector languageDetector,
         CodebaseSizeDetector sizeDetector,
         EmbeddingConfigValidator validator,
-        AutoConfigurationService autoConfig)
+        AutoConfigurationService autoConfig
+    )
     {
         _logger = logger;
         _languageDetector = languageDetector;
@@ -37,7 +36,8 @@ public class SemanticConfigManager
     /// </summary>
     public async Task<SemanticEmbeddingConfig> LoadGlobalConfigAsync(
         string? configPath = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (_globalConfig != null)
             return _globalConfig;
@@ -81,14 +81,19 @@ public class SemanticConfigManager
             // Config exists - load and validate
             _logger.LogInformation("Loading global config from: {Path}", configPath);
             var json = await File.ReadAllTextAsync(configPath, cancellationToken);
-            _globalConfig = JsonSerializer.Deserialize<SemanticEmbeddingConfig>(json) ?? CreateDefaultGlobalConfig();
+            _globalConfig =
+                JsonSerializer.Deserialize<SemanticEmbeddingConfig>(json)
+                ?? CreateDefaultGlobalConfig();
 
             // Apply ENV overrides
             ApplyEnvironmentOverrides(_globalConfig);
 
             // Validate configuration
             _logger.LogInformation("Validating configuration...");
-            var validation = await _validator.ValidateGlobalConfigAsync(_globalConfig, cancellationToken);
+            var validation = await _validator.ValidateGlobalConfigAsync(
+                _globalConfig,
+                cancellationToken
+            );
 
             if (!validation.IsValid || validation.HasWarnings)
             {
@@ -98,8 +103,12 @@ public class SemanticConfigManager
                 if (!validation.IsValid)
                 {
                     _logger.LogError("Configuration is invalid and cannot be used!");
-                    _logger.LogError("Please fix the issues above or run: .\\setup-semantic-embedding.ps1");
-                    throw new InvalidOperationException("Invalid embedding configuration - see logs for details");
+                    _logger.LogError(
+                        "Please fix the issues above or run: .\\setup-semantic-embedding.ps1"
+                    );
+                    throw new InvalidOperationException(
+                        "Invalid embedding configuration - see logs for details"
+                    );
                 }
             }
             else
@@ -117,7 +126,8 @@ public class SemanticConfigManager
     public async Task<ProjectSemanticConfig> LoadProjectConfigAsync(
         string projectDir,
         Solution solution,
-        bool forceAutoDetect = false)
+        bool forceAutoDetect = false
+    )
     {
         var configPath = Path.Combine(projectDir, ".sharptools", "semantic-config.json");
 
@@ -125,7 +135,9 @@ public class SemanticConfigManager
 
         if (!File.Exists(configPath) || forceAutoDetect)
         {
-            _logger.LogInformation("Project config not found or force auto-detect, analyzing codebase...");
+            _logger.LogInformation(
+                "Project config not found or force auto-detect, analyzing codebase..."
+            );
             config = await CreateProjectConfigWithAutoDetectionAsync(solution);
 
             Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
@@ -135,7 +147,9 @@ public class SemanticConfigManager
         {
             _logger.LogInformation("Loading project config from: {Path}", configPath);
             var json = await File.ReadAllTextAsync(configPath);
-            config = JsonSerializer.Deserialize<ProjectSemanticConfig>(json) ?? new ProjectSemanticConfig();
+            config =
+                JsonSerializer.Deserialize<ProjectSemanticConfig>(json)
+                ?? new ProjectSemanticConfig();
 
             // Auto-detect if config says "auto"
             if (config.Codebase.Size == "auto" || config.Codebase.Language == "auto")
@@ -153,7 +167,9 @@ public class SemanticConfigManager
     /// <summary>
     /// Create project config with full auto-detection
     /// </summary>
-    private async Task<ProjectSemanticConfig> CreateProjectConfigWithAutoDetectionAsync(Solution solution)
+    private async Task<ProjectSemanticConfig> CreateProjectConfigWithAutoDetectionAsync(
+        Solution solution
+    )
     {
         var config = new ProjectSemanticConfig();
 
@@ -166,7 +182,9 @@ public class SemanticConfigManager
 
             // Detect language
             var langStats = await _languageDetector.AnalyzeAsync(solution);
-            config.Codebase.Language = langStats.RecommendedLanguage(config.Codebase.MultilingualThreshold);
+            config.Codebase.Language = langStats.RecommendedLanguage(
+                config.Codebase.MultilingualThreshold
+            );
 
             // Save stats
             config.Codebase.Stats = new CodebaseStats
@@ -175,12 +193,16 @@ public class SemanticConfigManager
                 TotalComments = langStats.TotalComments,
                 NonEnglishWords = langStats.NonEnglishWords,
                 TotalWords = langStats.TotalWords,
-                NonEnglishPercentage = langStats.NonEnglishPercentage
+                NonEnglishPercentage = langStats.NonEnglishPercentage,
             };
 
             _logger.LogInformation(
                 "Auto-detection complete: Size={Size}, Files={Files}, Language={Lang} ({NonEnglish:F1}% non-English)",
-                config.Codebase.Size, sizeStats.TotalFiles, config.Codebase.Language, langStats.NonEnglishPercentage);
+                config.Codebase.Size,
+                sizeStats.TotalFiles,
+                config.Codebase.Language,
+                langStats.NonEnglishPercentage
+            );
         }
         catch (Exception ex)
         {
@@ -227,23 +249,24 @@ public class SemanticConfigManager
 
     private async Task SaveGlobalConfigAsync(SemanticEmbeddingConfig config, string path)
     {
-        var json = JsonSerializer.Serialize(config, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        var json = JsonSerializer.Serialize(
+            config,
+            new JsonSerializerOptions { WriteIndented = true }
+        );
         await File.WriteAllTextAsync(path, json);
         _logger.LogInformation("Global config saved to: {Path}", path);
     }
 
     private async Task SaveProjectConfigAsync(ProjectSemanticConfig config, string path)
     {
-        var json = JsonSerializer.Serialize(config, new JsonSerializerOptions
-        {
-            WriteIndented = true
-        });
+        var json = JsonSerializer.Serialize(
+            config,
+            new JsonSerializerOptions { WriteIndented = true }
+        );
         await File.WriteAllTextAsync(path, json);
         _logger.LogInformation("Project config saved to: {Path}", path);
     }
+
     /// <summary>
     /// Get default global config path (Config\semantic-config.json or fallback to semantic-config.json)
     /// </summary>
@@ -260,6 +283,7 @@ public class SemanticConfigManager
         // Priority 2: semantic-config.json (legacy, next to .exe)
         return Path.Combine(exeDir, "semantic-config.json");
     }
+
     private static SemanticEmbeddingConfig CreateDefaultGlobalConfig()
     {
         return new SemanticEmbeddingConfig
@@ -270,14 +294,14 @@ public class SemanticConfigManager
                 Architecture = "auto",
                 Tei = new TeiSettings(),
                 Ollama = new OllamaSettings(),
-                Memory = new MemorySettings()
+                Memory = new MemorySettings(),
             },
             AutoDetection = new AutoDetectionSettings
             {
                 GpuArchitecture = true,
                 Language = true,
-                CodebaseSize = true
-            }
+                CodebaseSize = true,
+            },
         };
     }
 }

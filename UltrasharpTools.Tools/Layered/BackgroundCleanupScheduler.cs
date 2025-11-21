@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -28,9 +27,11 @@ public class BackgroundCleanupScheduler : IDisposable
         string solutionPath,
         TimeSpan? compactionInterval = null,
         TimeSpan? cleanupInterval = null,
-        ILogger<BackgroundCleanupScheduler>? logger = null)
+        ILogger<BackgroundCleanupScheduler>? logger = null
+    )
     {
-        _compactionService = compactionService ?? throw new ArgumentNullException(nameof(compactionService));
+        _compactionService =
+            compactionService ?? throw new ArgumentNullException(nameof(compactionService));
         _cleanupService = cleanupService ?? throw new ArgumentNullException(nameof(cleanupService));
         _solutionPath = solutionPath ?? throw new ArgumentNullException(nameof(solutionPath));
         _logger = logger ?? NullLogger<BackgroundCleanupScheduler>.Instance;
@@ -41,7 +42,9 @@ public class BackgroundCleanupScheduler : IDisposable
 
         _logger.LogInformation(
             "BackgroundCleanupScheduler initialized. Compaction interval: {CompactionInterval}, Cleanup interval: {CleanupInterval}",
-            _compactionInterval, _cleanupInterval);
+            _compactionInterval,
+            _cleanupInterval
+        );
     }
 
     /// <summary>
@@ -61,16 +64,22 @@ public class BackgroundCleanupScheduler : IDisposable
         _isRunning = true;
 
         // Start compaction task
-        _compactionTask = Task.Run(async () =>
-        {
-            await RunCompactionLoopAsync(_cts.Token);
-        }, _cts.Token);
+        _compactionTask = Task.Run(
+            async () =>
+            {
+                await RunCompactionLoopAsync(_cts.Token);
+            },
+            _cts.Token
+        );
 
         // Start cleanup task
-        _cleanupTask = Task.Run(async () =>
-        {
-            await RunCleanupLoopAsync(_cts.Token);
-        }, _cts.Token);
+        _cleanupTask = Task.Run(
+            async () =>
+            {
+                await RunCleanupLoopAsync(_cts.Token);
+            },
+            _cts.Token
+        );
 
         _logger.LogInformation("Background cleanup scheduler started");
     }
@@ -196,7 +205,10 @@ public class BackgroundCleanupScheduler : IDisposable
             await _compactionService.CompactAllLargeDeltasAsync(_solutionPath, cancellationToken);
 
             var elapsed = DateTimeOffset.UtcNow - startTime;
-            _logger.LogInformation("Delta compaction pass completed in {Elapsed}ms", elapsed.TotalMilliseconds);
+            _logger.LogInformation(
+                "Delta compaction pass completed in {Elapsed}ms",
+                elapsed.TotalMilliseconds
+            );
         }
         catch (Exception ex)
         {
@@ -218,7 +230,10 @@ public class BackgroundCleanupScheduler : IDisposable
             await _cleanupService.CleanupOrphanedDeltasAsync(_solutionPath, cancellationToken);
 
             var elapsed = DateTimeOffset.UtcNow - startTime;
-            _logger.LogInformation("Orphaned delta cleanup pass completed in {Elapsed}ms", elapsed.TotalMilliseconds);
+            _logger.LogInformation(
+                "Orphaned delta cleanup pass completed in {Elapsed}ms",
+                elapsed.TotalMilliseconds
+            );
         }
         catch (Exception ex)
         {

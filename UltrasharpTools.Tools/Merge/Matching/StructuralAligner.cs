@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 
@@ -21,9 +20,10 @@ public sealed class StructuralAligner
     /// Проверить, эквивалентны ли структуры с учётом переупорядочивания.
     /// </summary>
     public bool AreStructurallyEquivalent(
-    CodeUnit unitA,
-    CodeUnit unitB,
-    Dictionary<string, FastPathMatchResult>? matches = null)
+        CodeUnit unitA,
+        CodeUnit unitB,
+        Dictionary<string, FastPathMatchResult>? matches = null
+    )
     {
         // 1. Базовые проверки
         if (unitA.Type != unitB.Type)
@@ -46,9 +46,10 @@ public sealed class StructuralAligner
     /// Проверить эквивалентность детей (игнорируя порядок).
     /// </summary>
     private bool AreChildrenEquivalent(
-    CodeUnit unitA,
-    CodeUnit unitB,
-    Dictionary<string, FastPathMatchResult>? matches)
+        CodeUnit unitA,
+        CodeUnit unitB,
+        Dictionary<string, FastPathMatchResult>? matches
+    )
     {
         // Если нет matches - невозможно определить
         if (matches == null)
@@ -77,14 +78,12 @@ public sealed class StructuralAligner
     /// Обнаружить переупорядочивания между двумя units.
     /// </summary>
     public List<Reordering> DetectReorderings(
-    CodeUnit unitA,
-    CodeUnit unitB,
-    Dictionary<string, FastPathMatchResult> matches)
+        CodeUnit unitA,
+        CodeUnit unitB,
+        Dictionary<string, FastPathMatchResult> matches
+    )
     {
-        _logger.LogDebug(
-        "Detecting reorderings between {IdA} and {IdB}",
-        unitA.Id,
-        unitB.Id);
+        _logger.LogDebug("Detecting reorderings between {IdA} and {IdB}", unitA.Id, unitB.Id);
 
         var reorderings = new List<Reordering>();
 
@@ -95,8 +94,10 @@ public sealed class StructuralAligner
 
         foreach (var childIdA in childrenA)
         {
-            if (matches.TryGetValue(childIdA, out var match) &&
-            unitB.ChildIds.Contains(match.UnitB.Id))
+            if (
+                matches.TryGetValue(childIdA, out var match)
+                && unitB.ChildIds.Contains(match.UnitB.Id)
+            )
             {
                 childMapping[childIdA] = match.UnitB.Id;
             }
@@ -115,22 +116,25 @@ public sealed class StructuralAligner
 
             if (indexInA != indexInB)
             {
-                reorderings.Add(new Reordering
-                {
-                    UnitId = childIdA,
-                    OriginalIndex = indexInA,
-                    NewIndex = indexInB,
-                    Description = $"{childIdA} moved from position {indexInA} to {indexInB}"
-                });
+                reorderings.Add(
+                    new Reordering
+                    {
+                        UnitId = childIdA,
+                        OriginalIndex = indexInA,
+                        NewIndex = indexInB,
+                        Description = $"{childIdA} moved from position {indexInA} to {indexInB}",
+                    }
+                );
             }
         }
 
         if (reorderings.Count > 0)
         {
             _logger.LogInformation(
-            "Detected {Count} reorderings in {Id}",
-            reorderings.Count,
-            unitA.Id);
+                "Detected {Count} reorderings in {Id}",
+                reorderings.Count,
+                unitA.Id
+            );
         }
 
         return reorderings;
@@ -140,16 +144,17 @@ public sealed class StructuralAligner
     /// Вычислить "canonical order" для children (по signature).
     /// </summary>
     public List<string> ComputeCanonicalOrder(
-    List<string> childIds,
-    Dictionary<string, CodeUnit> unitsById)
+        List<string> childIds,
+        Dictionary<string, CodeUnit> unitsById
+    )
     {
         var children = childIds
-        .Where(id => unitsById.ContainsKey(id))
-        .Select(id => unitsById[id])
-        .OrderBy(u => u.Signature ?? u.Name)
-        .ThenBy(u => u.Name)
-        .Select(u => u.Id)
-        .ToList();
+            .Where(id => unitsById.ContainsKey(id))
+            .Select(id => unitsById[id])
+            .OrderBy(u => u.Signature ?? u.Name)
+            .ThenBy(u => u.Name)
+            .Select(u => u.Id)
+            .ToList();
 
         return children;
     }
@@ -158,20 +163,17 @@ public sealed class StructuralAligner
     /// Сравнить два units с canonical ordering.
     /// </summary>
     public bool AreEquivalentWithCanonicalOrdering(
-    CodeUnit unitA,
-    CodeUnit unitB,
-    Dictionary<string, CodeUnit> unitsById)
+        CodeUnit unitA,
+        CodeUnit unitB,
+        Dictionary<string, CodeUnit> unitsById
+    )
     {
         if (unitA.ChildIds.Count != unitB.ChildIds.Count)
             return false;
 
-        var canonicalA = ComputeCanonicalOrder(
-        unitA.ChildIds.ToList(),
-        unitsById);
+        var canonicalA = ComputeCanonicalOrder(unitA.ChildIds.ToList(), unitsById);
 
-        var canonicalB = ComputeCanonicalOrder(
-        unitB.ChildIds.ToList(),
-        unitsById);
+        var canonicalB = ComputeCanonicalOrder(unitB.ChildIds.ToList(), unitsById);
 
         // Сравнить canonical порядки
         return canonicalA.SequenceEqual(canonicalB);
@@ -181,9 +183,10 @@ public sealed class StructuralAligner
     /// Определить, является ли изменение только reordering (без других изменений).
     /// </summary>
     public bool IsOnlyReordering(
-    CodeUnit unitA,
-    CodeUnit unitB,
-    Dictionary<string, FastPathMatchResult> matches)
+        CodeUnit unitA,
+        CodeUnit unitB,
+        Dictionary<string, FastPathMatchResult> matches
+    )
     {
         // 1. Structural hash должен отличаться (иначе нет изменений вообще)
         if (unitA.StructuralHash == unitB.StructuralHash)

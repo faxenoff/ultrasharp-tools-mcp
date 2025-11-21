@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Merge.Models;
 
 /// <summary>
@@ -58,7 +56,7 @@ public sealed record CodeUnit
 
     /// <summary>Metadata (зависит от типа парсера)</summary>
     public IReadOnlyDictionary<string, object> Metadata { get; init; } =
-    new Dictionary<string, object>();
+        new Dictionary<string, object>();
 
     /// <summary>Позиция в исходном файле (строка, колонка)</summary>
     public SourceLocation? Location { get; init; }
@@ -69,24 +67,24 @@ public sealed record CodeUnit
 /// </summary>
 public enum CodeUnitType
 {
-    File,           // Весь файл
-    Namespace,      // Namespace
-    Type,           // Class, Interface, Struct, Enum
-    Method,         // Method, Constructor
-    Property,       // Property
-    Field,          // Field
-    Block,          // Control flow block (if, loop, try-catch)
-    Statement,      // Single statement
-    JsonObject,     // JSON object (для .json файлов)
-    JsonArray,      // JSON array
-    JsonProperty,   // JSON property
-    XmlElement,     // XML element (для .xml, .csproj, .targets)
-    XmlAttribute,   // XML attribute
-    YamlNode,       // YAML scalar node
-    YamlSequence,   // YAML sequence (array)
-    YamlMapping,    // YAML mapping (dict)
+    File, // Весь файл
+    Namespace, // Namespace
+    Type, // Class, Interface, Struct, Enum
+    Method, // Method, Constructor
+    Property, // Property
+    Field, // Field
+    Block, // Control flow block (if, loop, try-catch)
+    Statement, // Single statement
+    JsonObject, // JSON object (для .json файлов)
+    JsonArray, // JSON array
+    JsonProperty, // JSON property
+    XmlElement, // XML element (для .xml, .csproj, .targets)
+    XmlAttribute, // XML attribute
+    YamlNode, // YAML scalar node
+    YamlSequence, // YAML sequence (array)
+    YamlMapping, // YAML mapping (dict)
     ScriptFunction, // Function в PowerShell/Shell скрипте
-    ScriptBlock     // Code block в скрипте
+    ScriptBlock, // Code block в скрипте
 }
 
 /// <summary>

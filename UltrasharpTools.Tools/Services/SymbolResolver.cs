@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -48,8 +46,10 @@ public class SymbolResolver
         // Check types in this namespace
         foreach (var type in namespaceSymbol.GetTypeMembers())
         {
-            var typeFqnCandidate = type.ToDisplayString(Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat)
-            .Replace("global::", "");
+            var typeFqnCandidate = type.ToDisplayString(
+                    Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat
+                )
+                .Replace("global::", "");
 
             if (typeFqnCandidate == typeFqn)
                 return type;
@@ -78,8 +78,9 @@ public class SymbolResolver
     {
         foreach (var nestedType in type.GetTypeMembers())
         {
-            var nestedFqn = nestedType.ToDisplayString(Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat)
-            .Replace("global::", "");
+            var nestedFqn = nestedType
+                .ToDisplayString(Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat)
+                .Replace("global::", "");
 
             if (nestedFqn == typeFqn)
                 return nestedType;
@@ -118,7 +119,10 @@ public class SymbolResolver
         }
 
         // Fallback: return first candidate
-        _logger.LogTrace("Multiple candidates for member {MemberName}, using first match", memberName);
+        _logger.LogTrace(
+            "Multiple candidates for member {MemberName}, using first match",
+            memberName
+        );
         return candidates[0];
     }
 
@@ -157,13 +161,14 @@ public class SymbolResolver
         {
             // Extract member name (without parameters/generics)
             var memberNameEnd = Math.Min(
-            potentialMember.IndexOf('(') >= 0 ? potentialMember.IndexOf('(') : int.MaxValue,
-            potentialMember.IndexOf('<') >= 0 ? potentialMember.IndexOf('<') : int.MaxValue
+                potentialMember.IndexOf('(') >= 0 ? potentialMember.IndexOf('(') : int.MaxValue,
+                potentialMember.IndexOf('<') >= 0 ? potentialMember.IndexOf('<') : int.MaxValue
             );
 
-            var memberName = memberNameEnd < int.MaxValue
-            ? potentialMember.Substring(0, memberNameEnd)
-            : potentialMember;
+            var memberName =
+                memberNameEnd < int.MaxValue
+                    ? potentialMember.Substring(0, memberNameEnd)
+                    : potentialMember;
 
             return (fqn.Substring(0, lastDotIndex), memberName);
         }
@@ -178,10 +183,11 @@ public class SymbolResolver
     /// Uses parallel processing with compilation caching per project
     /// </summary>
     public async Task<List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>> ResolveSymbolsAsync(
-    List<SerializableSymbolEntry> entries,
-    Solution solution,
-    CancellationToken cancellationToken,
-    Action<int, int>? progressCallback = null)
+        List<SerializableSymbolEntry> entries,
+        Solution solution,
+        CancellationToken cancellationToken,
+        Action<int, int>? progressCallback = null
+    )
     {
         // Pre-load all compilations in parallel (much faster than loading one-by-one)
         var compilationCache = new Dictionary<string, Compilation?>();
@@ -189,19 +195,22 @@ public class SymbolResolver
 
         _logger.LogDebug("Pre-loading {Count} project compilations in parallel...", projects.Count);
         var compilationTasks = projects
-        .Select(async p =>
-        {
-            var compilation = await p.GetCompilationAsync(cancellationToken);
-            return (p.Name, compilation);
-        })
-        .ToList();
+            .Select(async p =>
+            {
+                var compilation = await p.GetCompilationAsync(cancellationToken);
+                return (p.Name, compilation);
+            })
+            .ToList();
 
         var compilations = await Task.WhenAll(compilationTasks);
         foreach (var (name, compilation) in compilations)
         {
             compilationCache[name] = compilation;
         }
-        _logger.LogDebug("Loaded {Count} compilations", compilationCache.Count(c => c.Value != null));
+        _logger.LogDebug(
+            "Loaded {Count} compilations",
+            compilationCache.Count(c => c.Value != null)
+        );
 
         // Process symbols in parallel batches (256 at a time to avoid overwhelming the system)
         var results = new List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>(entries.Count);
@@ -217,19 +226,24 @@ public class SymbolResolver
             var batch = entries.Skip(i).Take(batchSize).ToList();
 
             var batchResults = await Task.WhenAll(
-            batch.Select(async entry =>
-            {
-                var symbol = await TryResolveSymbolAsync(entry, solution, compilationCache, cancellationToken);
-
-                // Thread-safe progress reporting
-                var current = Interlocked.Increment(ref processedCount);
-                if (progressCallback != null && current % 1000 == 0) // Report every 1000 symbols
+                batch.Select(async entry =>
                 {
-                    progressCallback(current, totalCount);
-                }
+                    var symbol = await TryResolveSymbolAsync(
+                        entry,
+                        solution,
+                        compilationCache,
+                        cancellationToken
+                    );
 
-                return (entry, symbol);
-            })
+                    // Thread-safe progress reporting
+                    var current = Interlocked.Increment(ref processedCount);
+                    if (progressCallback != null && current % 1000 == 0) // Report every 1000 symbols
+                    {
+                        progressCallback(current, totalCount);
+                    }
+
+                    return (entry, symbol);
+                })
             );
 
             lock (resultsLock)
@@ -248,17 +262,24 @@ public class SymbolResolver
     /// Try to resolve ISymbol from SerializableSymbolEntry using cached compilations
     /// </summary>
     private async Task<ISymbol?> TryResolveSymbolAsync(
-    SerializableSymbolEntry entry,
-    Solution solution,
-    Dictionary<string, Compilation?> compilationCache,
-    CancellationToken cancellationToken)
+        SerializableSymbolEntry entry,
+        Solution solution,
+        Dictionary<string, Compilation?> compilationCache,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
             // Use cached compilation instead of loading each time
-            if (!compilationCache.TryGetValue(entry.ProjectName, out var compilation) || compilation == null)
+            if (
+                !compilationCache.TryGetValue(entry.ProjectName, out var compilation)
+                || compilation == null
+            )
             {
-                _logger.LogTrace("Compilation not available for project {ProjectName}", entry.ProjectName);
+                _logger.LogTrace(
+                    "Compilation not available for project {ProjectName}",
+                    entry.ProjectName
+                );
                 return null;
             }
 

@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -16,10 +15,11 @@ public class OrphanedDeltaCleanupService
     private readonly ILogger<OrphanedDeltaCleanupService> _logger;
 
     public OrphanedDeltaCleanupService(
-    IGitService gitService,
-    LayeredCacheManager? symbolCacheManager = null,
-    VectorCacheManager? vectorCacheManager = null,
-    ILogger<OrphanedDeltaCleanupService>? logger = null)
+        IGitService gitService,
+        LayeredCacheManager? symbolCacheManager = null,
+        VectorCacheManager? vectorCacheManager = null,
+        ILogger<OrphanedDeltaCleanupService>? logger = null
+    )
     {
         _gitService = gitService ?? throw new ArgumentNullException(nameof(gitService));
         _symbolCacheManager = symbolCacheManager;
@@ -27,15 +27,20 @@ public class OrphanedDeltaCleanupService
         _logger = logger ?? NullLogger<OrphanedDeltaCleanupService>.Instance;
 
         _logger.LogInformation(
-        "OrphanedDeltaCleanupService initialized. Symbol cache: {HasSymbols}, Vector cache: {HasVectors}",
-        symbolCacheManager != null, vectorCacheManager != null);
+            "OrphanedDeltaCleanupService initialized. Symbol cache: {HasSymbols}, Vector cache: {HasVectors}",
+            symbolCacheManager != null,
+            vectorCacheManager != null
+        );
     }
 
     /// <summary>
     /// Finds and removes orphaned branch deltas.
     /// An orphaned delta is a delta for a branch that no longer exists in git.
     /// </summary>
-    public async Task CleanupOrphanedDeltasAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task CleanupOrphanedDeltasAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation("Starting orphaned delta cleanup...");
 
@@ -45,8 +50,14 @@ public class OrphanedDeltaCleanupService
         try
         {
             // Get all branches from git
-            var gitBranches = await _gitService.GetAllBranchesAsync(solutionPath, cancellationToken);
-            var gitBranchSet = new HashSet<string>(gitBranches, Infrastructure.FastStringComparer.OrdinalIgnoreCase);
+            var gitBranches = await _gitService.GetAllBranchesAsync(
+                solutionPath,
+                cancellationToken
+            );
+            var gitBranchSet = new HashSet<string>(
+                gitBranches,
+                Infrastructure.FastStringComparer.OrdinalIgnoreCase
+            );
 
             _logger.LogInformation("Found {Count} branches in git repository", gitBranches.Count);
 
@@ -67,8 +78,10 @@ public class OrphanedDeltaCleanupService
             var elapsed = DateTimeOffset.UtcNow - startTime;
 
             _logger.LogInformation(
-            "Orphaned delta cleanup completed. Removed {Count} orphaned deltas in {Elapsed}ms",
-            totalCleaned, elapsed.TotalMilliseconds);
+                "Orphaned delta cleanup completed. Removed {Count} orphaned deltas in {Elapsed}ms",
+                totalCleaned,
+                elapsed.TotalMilliseconds
+            );
         }
         catch (Exception ex)
         {
@@ -81,8 +94,9 @@ public class OrphanedDeltaCleanupService
     /// Cleanup orphaned symbol deltas.
     /// </summary>
     private async Task<int> CleanupSymbolDeltasAsync(
-    HashSet<string> gitBranches,
-    CancellationToken cancellationToken)
+        HashSet<string> gitBranches,
+        CancellationToken cancellationToken
+    )
     {
         if (_symbolCacheManager == null)
             return 0;
@@ -90,12 +104,16 @@ public class OrphanedDeltaCleanupService
         try
         {
             // Get all cached branch names
-            var cachedBranches = await _symbolCacheManager.GetAllBranchNamesAsync(cancellationToken);
+            var cachedBranches = await _symbolCacheManager.GetAllBranchNamesAsync(
+                cancellationToken
+            );
             var orphaned = cachedBranches.Where(b => !gitBranches.Contains(b)).ToList();
 
             _logger.LogInformation(
-            "Found {Count} orphaned symbol deltas out of {Total} cached",
-            orphaned.Count, cachedBranches.Count);
+                "Found {Count} orphaned symbol deltas out of {Total} cached",
+                orphaned.Count,
+                cachedBranches.Count
+            );
 
             // Delete orphaned deltas
             foreach (var branch in orphaned)
@@ -109,7 +127,11 @@ public class OrphanedDeltaCleanupService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete orphaned symbol delta: {Branch}", branch);
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to delete orphaned symbol delta: {Branch}",
+                        branch
+                    );
                 }
             }
 
@@ -126,8 +148,9 @@ public class OrphanedDeltaCleanupService
     /// Cleanup orphaned vector deltas.
     /// </summary>
     private async Task<int> CleanupVectorDeltasAsync(
-    HashSet<string> gitBranches,
-    CancellationToken cancellationToken)
+        HashSet<string> gitBranches,
+        CancellationToken cancellationToken
+    )
     {
         if (_vectorCacheManager == null)
             return 0;
@@ -135,12 +158,16 @@ public class OrphanedDeltaCleanupService
         try
         {
             // Get all cached branch names
-            var cachedBranches = await _vectorCacheManager.GetAllBranchNamesAsync(cancellationToken);
+            var cachedBranches = await _vectorCacheManager.GetAllBranchNamesAsync(
+                cancellationToken
+            );
             var orphaned = cachedBranches.Where(b => !gitBranches.Contains(b)).ToList();
 
             _logger.LogInformation(
-            "Found {Count} orphaned vector deltas out of {Total} cached",
-            orphaned.Count, cachedBranches.Count);
+                "Found {Count} orphaned vector deltas out of {Total} cached",
+                orphaned.Count,
+                cachedBranches.Count
+            );
 
             // Delete orphaned deltas
             foreach (var branch in orphaned)
@@ -154,7 +181,11 @@ public class OrphanedDeltaCleanupService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete orphaned vector delta: {Branch}", branch);
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to delete orphaned vector delta: {Branch}",
+                        branch
+                    );
                 }
             }
 
@@ -170,20 +201,31 @@ public class OrphanedDeltaCleanupService
     /// <summary>
     /// Gets list of orphaned branches (cached but not in git).
     /// </summary>
-    public async Task<List<string>> GetOrphanedBranchesAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<List<string>> GetOrphanedBranchesAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         var orphaned = new HashSet<string>(Infrastructure.FastStringComparer.OrdinalIgnoreCase);
 
         try
         {
             // Get all branches from git
-            var gitBranches = await _gitService.GetAllBranchesAsync(solutionPath, cancellationToken);
-            var gitBranchSet = new HashSet<string>(gitBranches, Infrastructure.FastStringComparer.OrdinalIgnoreCase);
+            var gitBranches = await _gitService.GetAllBranchesAsync(
+                solutionPath,
+                cancellationToken
+            );
+            var gitBranchSet = new HashSet<string>(
+                gitBranches,
+                Infrastructure.FastStringComparer.OrdinalIgnoreCase
+            );
 
             // Check symbol cache
             if (_symbolCacheManager != null)
             {
-                var cachedBranches = await _symbolCacheManager.GetAllBranchNamesAsync(cancellationToken);
+                var cachedBranches = await _symbolCacheManager.GetAllBranchNamesAsync(
+                    cancellationToken
+                );
                 foreach (var branch in cachedBranches)
                 {
                     if (!gitBranchSet.Contains(branch))
@@ -196,7 +238,9 @@ public class OrphanedDeltaCleanupService
             // Check vector cache
             if (_vectorCacheManager != null)
             {
-                var cachedBranches = await _vectorCacheManager.GetAllBranchNamesAsync(cancellationToken);
+                var cachedBranches = await _vectorCacheManager.GetAllBranchNamesAsync(
+                    cancellationToken
+                );
                 foreach (var branch in cachedBranches)
                 {
                     if (!gitBranchSet.Contains(branch))

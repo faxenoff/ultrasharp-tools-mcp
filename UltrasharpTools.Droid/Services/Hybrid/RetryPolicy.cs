@@ -18,7 +18,8 @@ public sealed class RetryPolicy
         int maxRetries = 3,
         TimeSpan? initialDelay = null,
         TimeSpan? maxDelay = null,
-        double backoffMultiplier = 2.0)
+        double backoffMultiplier = 2.0
+    )
     {
         _logger = logger;
         _maxRetries = maxRetries;
@@ -34,7 +35,8 @@ public sealed class RetryPolicy
         Func<CancellationToken, Task<T>> operation,
         string operationName,
         CancellationToken cancellationToken = default,
-        Func<Exception, bool>? shouldRetry = null)
+        Func<Exception, bool>? shouldRetry = null
+    )
     {
         var attempt = 0;
         var delay = _initialDelay;
@@ -55,7 +57,8 @@ public sealed class RetryPolicy
                         ex,
                         "Operation {OperationName} failed after {Attempts} attempts",
                         operationName,
-                        attempt);
+                        attempt
+                    );
                     throw;
                 }
 
@@ -65,13 +68,18 @@ public sealed class RetryPolicy
                     operationName,
                     attempt,
                     _maxRetries,
-                    delay.TotalMilliseconds);
+                    delay.TotalMilliseconds
+                );
 
                 await Task.Delay(delay, cancellationToken);
 
                 // Exponential backoff
                 delay = TimeSpan.FromMilliseconds(
-                    Math.Min(delay.TotalMilliseconds * _backoffMultiplier, _maxDelay.TotalMilliseconds));
+                    Math.Min(
+                        delay.TotalMilliseconds * _backoffMultiplier,
+                        _maxDelay.TotalMilliseconds
+                    )
+                );
             }
         }
     }
@@ -83,7 +91,8 @@ public sealed class RetryPolicy
         Func<CancellationToken, Task> operation,
         string operationName,
         CancellationToken cancellationToken = default,
-        Func<Exception, bool>? shouldRetry = null)
+        Func<Exception, bool>? shouldRetry = null
+    )
     {
         await ExecuteAsync<object?>(
             async ct =>
@@ -93,7 +102,8 @@ public sealed class RetryPolicy
             },
             operationName,
             cancellationToken,
-            shouldRetry);
+            shouldRetry
+        );
     }
 
     /// <summary>
@@ -113,6 +123,9 @@ public sealed class RetryPolicy
         // - OperationCanceledException (timeouts)
         return ex is HttpRequestException
             || (ex is TaskCanceledException tce && !tce.CancellationToken.IsCancellationRequested)
-            || (ex is OperationCanceledException oce && !oce.CancellationToken.IsCancellationRequested);
+            || (
+                ex is OperationCanceledException oce
+                && !oce.CancellationToken.IsCancellationRequested
+            );
     }
 }

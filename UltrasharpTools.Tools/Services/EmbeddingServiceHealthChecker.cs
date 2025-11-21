@@ -1,4 +1,3 @@
-
 using System.Net.Http;
 
 namespace UltrasharpTools.Tools.Services;
@@ -13,7 +12,8 @@ public class EmbeddingServiceHealthChecker
 
     public EmbeddingServiceHealthChecker(
         ILogger<EmbeddingServiceHealthChecker> logger,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory
+    )
     {
         _logger = logger;
         _httpClient = httpClientFactory.CreateClient();
@@ -33,7 +33,8 @@ public class EmbeddingServiceHealthChecker
     /// </summary>
     public async Task<HealthResult> CheckTeiHealthAsync(
         string endpoint,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var startTime = DateTime.UtcNow;
         var result = new HealthResult();
@@ -90,7 +91,8 @@ public class EmbeddingServiceHealthChecker
     /// </summary>
     public async Task<HealthResult> CheckOllamaHealthAsync(
         string endpoint,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var startTime = DateTime.UtcNow;
         var result = new HealthResult();
@@ -112,8 +114,13 @@ public class EmbeddingServiceHealthChecker
                 var modelCount = models.GetArrayLength();
 
                 result.IsHealthy = true;
-                result.Details = $"Ollama is available with {modelCount} model(s) ({result.ResponseTime.TotalMilliseconds:F0}ms)";
-                _logger.LogInformation("✓ Ollama is healthy at {Endpoint} ({Count} models)", endpoint, modelCount);
+                result.Details =
+                    $"Ollama is available with {modelCount} model(s) ({result.ResponseTime.TotalMilliseconds:F0}ms)";
+                _logger.LogInformation(
+                    "✓ Ollama is healthy at {Endpoint} ({Count} models)",
+                    endpoint,
+                    modelCount
+                );
             }
             else
             {
@@ -127,7 +134,8 @@ public class EmbeddingServiceHealthChecker
         {
             result.IsHealthy = false;
             result.ErrorMessage = "Cannot connect to Ollama server";
-            result.Details = $"Endpoint: {endpoint}\nError: {ex.Message}\n\nIs Ollama installed? Visit: https://ollama.ai";
+            result.Details =
+                $"Endpoint: {endpoint}\nError: {ex.Message}\n\nIs Ollama installed? Visit: https://ollama.ai";
             _logger.LogWarning("✗ Ollama connection failed: {Error}", ex.Message);
         }
         catch (TaskCanceledException)
@@ -154,7 +162,8 @@ public class EmbeddingServiceHealthChecker
     public async Task<bool> CheckOllamaModelAsync(
         string endpoint,
         string modelName,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -170,8 +179,7 @@ public class EmbeddingServiceHealthChecker
             var models = doc.RootElement.GetProperty("models");
             foreach (var model in models.EnumerateArray())
             {
-                if (model.TryGetProperty("name", out var name) &&
-                    name.GetString() == modelName)
+                if (model.TryGetProperty("name", out var name) && name.GetString() == modelName)
                 {
                     _logger.LogDebug("✓ Ollama model found: {Model}", modelName);
                     return true;

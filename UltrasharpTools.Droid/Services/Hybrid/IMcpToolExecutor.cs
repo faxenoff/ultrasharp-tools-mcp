@@ -51,7 +51,8 @@ public interface IMcpToolExecutor
     Task<McpToolExecutionResult> ExecuteToolAsync(
         string toolName,
         Dictionary<string, object> arguments,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Проверяет, поддерживается ли инструмент

@@ -12,21 +12,27 @@ public abstract class SymbolicValue
 
     // Factory methods for common types
     public static SymbolicValue Integer(string? name = null) =>
-    new SymbolicInt { Name = name ?? GenerateName("i"), TypeName = "int" };
+        new SymbolicInt { Name = name ?? GenerateName("i"), TypeName = "int" };
 
     public static SymbolicValue Boolean(string? name = null) =>
-    new SymbolicBool { Name = name ?? GenerateName("b"), TypeName = "bool" };
+        new SymbolicBool { Name = name ?? GenerateName("b"), TypeName = "bool" };
 
     public static SymbolicValue String(string? name = null) =>
-    new SymbolicString { Name = name ?? GenerateName("s"), TypeName = "string" };
+        new SymbolicString { Name = name ?? GenerateName("s"), TypeName = "string" };
 
     public static SymbolicValue Reference(string typeName, string? name = null) =>
-    new SymbolicReference { Name = name ?? GenerateName("ref"), TypeName = typeName };
+        new SymbolicReference { Name = name ?? GenerateName("ref"), TypeName = typeName };
 
     public static SymbolicValue Array(string elementType, string? name = null) =>
-    new SymbolicArray { Name = name ?? GenerateName("arr"), TypeName = $"{elementType}[]", ElementType = elementType };
+        new SymbolicArray
+        {
+            Name = name ?? GenerateName("arr"),
+            TypeName = $"{elementType}[]",
+            ElementType = elementType,
+        };
 
     private static int _nameCounter = 0;
+
     private static string GenerateName(string prefix) => $"{prefix}{_nameCounter++}";
 }
 
@@ -104,7 +110,7 @@ public sealed class ComparisonConstraint : SymbolicConstraint
             ComparisonOp.LessThan => "<",
             ComparisonOp.GreaterThanOrEqual => ">=",
             ComparisonOp.LessThanOrEqual => "<=",
-            _ => throw new NotSupportedException()
+            _ => throw new NotSupportedException(),
         };
 
         if (Operator == ComparisonOp.NotEqual)
@@ -115,19 +121,19 @@ public sealed class ComparisonConstraint : SymbolicConstraint
         return $"({op} {Left} {Right})";
     }
 
-    public override string ToString() =>
-    $"{Left} {OperatorToString(Operator)} {Right}";
+    public override string ToString() => $"{Left} {OperatorToString(Operator)} {Right}";
 
-    private static string OperatorToString(ComparisonOp op) => op switch
-    {
-        ComparisonOp.Equal => "==",
-        ComparisonOp.NotEqual => "!=",
-        ComparisonOp.GreaterThan => ">",
-        ComparisonOp.LessThan => "<",
-        ComparisonOp.GreaterThanOrEqual => ">=",
-        ComparisonOp.LessThanOrEqual => "<=",
-        _ => "?"
-    };
+    private static string OperatorToString(ComparisonOp op) =>
+        op switch
+        {
+            ComparisonOp.Equal => "==",
+            ComparisonOp.NotEqual => "!=",
+            ComparisonOp.GreaterThan => ">",
+            ComparisonOp.LessThan => "<",
+            ComparisonOp.GreaterThanOrEqual => ">=",
+            ComparisonOp.LessThanOrEqual => "<=",
+            _ => "?",
+        };
 }
 
 /// <summary>
@@ -145,7 +151,7 @@ public sealed class LogicalConstraint : SymbolicConstraint
             LogicalOp.And => "and",
             LogicalOp.Or => "or",
             LogicalOp.Not => "not",
-            _ => throw new NotSupportedException()
+            _ => throw new NotSupportedException(),
         };
 
         var operandExprs = Operands.Select(o => o.ToZ3Expression());
@@ -179,8 +185,7 @@ public sealed class NullCheckConstraint : SymbolicConstraint
         return IsNull ? $"(= {Variable}_isnull true)" : $"(= {Variable}_isnull false)";
     }
 
-    public override string ToString() =>
-    IsNull ? $"{Variable} == null" : $"{Variable} != null";
+    public override string ToString() => IsNull ? $"{Variable} == null" : $"{Variable} != null";
 }
 
 /// <summary>
@@ -202,24 +207,24 @@ public sealed class ArithmeticConstraint : SymbolicConstraint
             ArithmeticOp.Multiply => "*",
             ArithmeticOp.Divide => "div",
             ArithmeticOp.Modulo => "mod",
-            _ => throw new NotSupportedException()
+            _ => throw new NotSupportedException(),
         };
 
         return $"(= {Result} ({op} {Left} {Right}))";
     }
 
-    public override string ToString() =>
-    $"{Result} = {Left} {OperatorToString(Operator)} {Right}";
+    public override string ToString() => $"{Result} = {Left} {OperatorToString(Operator)} {Right}";
 
-    private static string OperatorToString(ArithmeticOp op) => op switch
-    {
-        ArithmeticOp.Add => "+",
-        ArithmeticOp.Subtract => "-",
-        ArithmeticOp.Multiply => "*",
-        ArithmeticOp.Divide => "/",
-        ArithmeticOp.Modulo => "%",
-        _ => "?"
-    };
+    private static string OperatorToString(ArithmeticOp op) =>
+        op switch
+        {
+            ArithmeticOp.Add => "+",
+            ArithmeticOp.Subtract => "-",
+            ArithmeticOp.Multiply => "*",
+            ArithmeticOp.Divide => "/",
+            ArithmeticOp.Modulo => "%",
+            _ => "?",
+        };
 }
 
 public enum ComparisonOp
@@ -229,14 +234,14 @@ public enum ComparisonOp
     GreaterThan,
     LessThan,
     GreaterThanOrEqual,
-    LessThanOrEqual
+    LessThanOrEqual,
 }
 
 public enum LogicalOp
 {
     And,
     Or,
-    Not
+    Not,
 }
 
 public enum ArithmeticOp
@@ -245,5 +250,5 @@ public enum ArithmeticOp
     Subtract,
     Multiply,
     Divide,
-    Modulo
+    Modulo,
 }

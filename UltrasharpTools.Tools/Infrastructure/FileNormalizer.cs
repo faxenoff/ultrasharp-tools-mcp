@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Infrastructure;
 
 /// <summary>
@@ -9,7 +7,9 @@ namespace UltrasharpTools.Tools.Infrastructure;
 /// </summary>
 public static class FileNormalizer
 {
-    private static readonly Encoding TargetEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+    private static readonly Encoding TargetEncoding = new UTF8Encoding(
+        encoderShouldEmitUTF8Identifier: false
+    );
 
     /// <summary>
     /// Прочитать и нормализовать файл.
@@ -18,8 +18,9 @@ public static class FileNormalizer
     /// <param name="ct">Cancellation token</param>
     /// <returns>Нормализованное содержимое (UTF-8 no BOM, LF line endings)</returns>
     public static async Task<string> ReadNormalizedAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         // 1. Прочитать raw bytes
         var bytes = await File.ReadAllBytesAsync(filePath, ct);
@@ -47,9 +48,10 @@ public static class FileNormalizer
     /// Всегда использует UTF-8 без BOM и LF line endings.
     /// </summary>
     public static async Task WriteNormalizedAsync(
-    string filePath,
-    string content,
-    CancellationToken ct = default)
+        string filePath,
+        string content,
+        CancellationToken ct = default
+    )
     {
         // Нормализовать line endings перед записью
         content = NormalizeLineEndings(content);
@@ -75,8 +77,7 @@ public static class FileNormalizer
         // BOM detection
 
         // UTF-8 BOM: EF BB BF
-        if (bytes.Length >= 3 &&
-        bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
         {
             hasBom = true;
             return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
@@ -97,9 +98,13 @@ public static class FileNormalizer
         }
 
         // UTF-32 LE BOM: FF FE 00 00
-        if (bytes.Length >= 4 &&
-        bytes[0] == 0xFF && bytes[1] == 0xFE &&
-        bytes[2] == 0x00 && bytes[3] == 0x00)
+        if (
+            bytes.Length >= 4
+            && bytes[0] == 0xFF
+            && bytes[1] == 0xFE
+            && bytes[2] == 0x00
+            && bytes[3] == 0x00
+        )
         {
             hasBom = true;
             return Encoding.UTF32; // UTF-32 LE

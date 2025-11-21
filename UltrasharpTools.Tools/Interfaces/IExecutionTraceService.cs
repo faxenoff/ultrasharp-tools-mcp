@@ -21,14 +21,14 @@ public interface IExecutionTraceService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Execution trace with steps</returns>
     Task<ExecutionTrace> TraceExecutionAsync(
-    string entryPointFqn,
-    string? exitPointFqn = null,
-    int maxDepth = 10,
-    bool includeExternalCalls = true,
-    bool traceAllPaths = false,
-    int maxPaths = 10,
-    bool unwrapAsync = true,
-    bool unwrapLinq = false,
-    CancellationToken cancellationToken = default
+        string entryPointFqn,
+        string? exitPointFqn = null,
+        int maxDepth = 10,
+        bool includeExternalCalls = true,
+        bool traceAllPaths = false,
+        int maxPaths = 10,
+        bool unwrapAsync = true,
+        bool unwrapLinq = false,
+        CancellationToken cancellationToken = default
     );
 }

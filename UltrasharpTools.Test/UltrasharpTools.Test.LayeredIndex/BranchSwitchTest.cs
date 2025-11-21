@@ -38,7 +38,9 @@ public class BranchSwitchTest
 
         try
         {
-            logger.LogInformation("=== Phase 7.3-7.5: Branch Switching & Delta Management Test ===");
+            logger.LogInformation(
+                "=== Phase 7.3-7.5: Branch Switching & Delta Management Test ==="
+            );
 
             var solutionPath = @"D:\FABUZA2\Fabuza.sln";
             var solutionManager = serviceProvider.GetRequiredService<ISolutionManager>();
@@ -58,11 +60,17 @@ public class BranchSwitchTest
             }
 
             // Get current branch
-            var originalBranch = await gitService.GetCurrentBranchAsync(solutionPath, CancellationToken.None);
+            var originalBranch = await gitService.GetCurrentBranchAsync(
+                solutionPath,
+                CancellationToken.None
+            );
             logger.LogInformation("Current branch: {Branch}", originalBranch);
 
             // Get all branches
-            var allBranches = await gitService.GetAllBranchesAsync(solutionPath, CancellationToken.None);
+            var allBranches = await gitService.GetAllBranchesAsync(
+                solutionPath,
+                CancellationToken.None
+            );
             logger.LogInformation("Available branches: {Count}", allBranches.Count);
             foreach (var branch in allBranches.Take(10))
             {
@@ -76,22 +84,25 @@ public class BranchSwitchTest
             await layeredIndex.EnsureBranchDeltaAsync(originalBranch, CancellationToken.None);
 
             var elapsed = DateTimeOffset.UtcNow - startTime;
-            logger.LogInformation("✅ EnsureBranchDelta completed in {Time}ms", elapsed.TotalMilliseconds);
+            logger.LogInformation(
+                "✅ EnsureBranchDelta completed in {Time}ms",
+                elapsed.TotalMilliseconds
+            );
 
             // Test 2: Branch switching simulation
             if (allBranches.Count > 1)
             {
                 var targetBranch = allBranches.FirstOrDefault(b =>
-                    b != originalBranch &&
-                    b != "main" &&
-                    b != "master" &&
-                    !b.StartsWith("origin/")
+                    b != originalBranch && b != "main" && b != "master" && !b.StartsWith("origin/")
                 );
 
                 if (targetBranch != null)
                 {
-                    logger.LogInformation("=== Test 7.3.2: Branch Switch Simulation ({Original} → {Target}) ===",
-                        originalBranch, targetBranch);
+                    logger.LogInformation(
+                        "=== Test 7.3.2: Branch Switch Simulation ({Original} → {Target}) ===",
+                        originalBranch,
+                        targetBranch
+                    );
 
                     startTime = DateTimeOffset.UtcNow;
 
@@ -103,7 +114,10 @@ public class BranchSwitchTest
                     await layeredIndex.EnsureBranchDeltaAsync(targetBranch, CancellationToken.None);
 
                     elapsed = DateTimeOffset.UtcNow - startTime;
-                    logger.LogInformation("✅ Branch switch simulation completed in {Time}ms", elapsed.TotalMilliseconds);
+                    logger.LogInformation(
+                        "✅ Branch switch simulation completed in {Time}ms",
+                        elapsed.TotalMilliseconds
+                    );
                 }
                 else
                 {
@@ -128,7 +142,10 @@ public class BranchSwitchTest
             if (resultsList.Any())
             {
                 var symbolToUpdate = resultsList.First();
-                logger.LogInformation("Updating working delta for symbol: {Symbol}", symbolToUpdate.CanonicalFqn);
+                logger.LogInformation(
+                    "Updating working delta for symbol: {Symbol}",
+                    symbolToUpdate.CanonicalFqn
+                );
 
                 startTime = DateTimeOffset.UtcNow;
                 await layeredIndex.UpdateWorkingDeltaAsync(
@@ -139,7 +156,10 @@ public class BranchSwitchTest
                 );
                 elapsed = DateTimeOffset.UtcNow - startTime;
 
-                logger.LogInformation("✅ Working delta updated in {Time}ms", elapsed.TotalMilliseconds);
+                logger.LogInformation(
+                    "✅ Working delta updated in {Time}ms",
+                    elapsed.TotalMilliseconds
+                );
 
                 // Verify working delta exists
                 var hasUncommitted = await gitWorkflow.HasUncommittedChangesAsync(
@@ -147,13 +167,19 @@ public class BranchSwitchTest
                     originalBranch,
                     CancellationToken.None
                 );
-                logger.LogInformation("Has uncommitted changes after update: {HasChanges}", hasUncommitted);
+                logger.LogInformation(
+                    "Has uncommitted changes after update: {HasChanges}",
+                    hasUncommitted
+                );
             }
 
             // Test 4: Promote Working to Branch Delta (simulate commit)
             logger.LogInformation("=== Test 7.5: Promote Working Delta → Branch Delta ===");
 
-            var currentCommitSha = await gitService.GetCurrentCommitShaAsync(solutionPath, CancellationToken.None);
+            var currentCommitSha = await gitService.GetCurrentCommitShaAsync(
+                solutionPath,
+                CancellationToken.None
+            );
             logger.LogInformation("Current commit SHA: {Sha}", currentCommitSha);
 
             startTime = DateTimeOffset.UtcNow;
@@ -165,7 +191,10 @@ public class BranchSwitchTest
             );
             elapsed = DateTimeOffset.UtcNow - startTime;
 
-            logger.LogInformation("✅ Working delta promoted to branch delta in {Time}ms", elapsed.TotalMilliseconds);
+            logger.LogInformation(
+                "✅ Working delta promoted to branch delta in {Time}ms",
+                elapsed.TotalMilliseconds
+            );
 
             // Verify no uncommitted changes after promotion
             var hasUncommittedAfterPromote = await gitWorkflow.HasUncommittedChangesAsync(
@@ -173,7 +202,10 @@ public class BranchSwitchTest
                 originalBranch,
                 CancellationToken.None
             );
-            logger.LogInformation("Has uncommitted changes after promotion: {HasChanges}", hasUncommittedAfterPromote);
+            logger.LogInformation(
+                "Has uncommitted changes after promotion: {HasChanges}",
+                hasUncommittedAfterPromote
+            );
 
             // Check cache files
             var ultrasharpDir = Path.Combine(Path.GetDirectoryName(solutionPath)!, ".ultrasharp");
@@ -186,9 +218,11 @@ public class BranchSwitchTest
                 foreach (var file in files)
                 {
                     var fileInfo = new FileInfo(file);
-                    logger.LogInformation("  - {Name}: {Size} KB",
+                    logger.LogInformation(
+                        "  - {Name}: {Size} KB",
                         Path.GetFileName(file),
-                        fileInfo.Length / 1024);
+                        fileInfo.Length / 1024
+                    );
                 }
             }
 

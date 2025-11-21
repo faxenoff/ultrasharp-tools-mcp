@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Interfaces
 {
     /// <summary>
@@ -12,7 +10,11 @@ namespace UltrasharpTools.Tools.Interfaces
         /// </summary>
         /// <param name="fuzzyFqnInput">The fuzzy fully qualified name to search for</param>
         /// <returns>A collection of match results ordered by relevance</returns>
-        Task<IEnumerable<FuzzyMatchResult>> FindMatchesAsync(string fuzzyFqnInput, ISolutionManager solutionManager, CancellationToken cancellationToken);
+        Task<IEnumerable<FuzzyMatchResult>> FindMatchesAsync(
+            string fuzzyFqnInput,
+            ISolutionManager solutionManager,
+            CancellationToken cancellationToken
+        );
     }
 
     /// <summary>

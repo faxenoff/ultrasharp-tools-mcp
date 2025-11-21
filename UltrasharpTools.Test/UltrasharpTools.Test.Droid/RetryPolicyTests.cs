@@ -16,7 +16,8 @@ public class RetryPolicyTests
         // Act
         var result = await policy.ExecuteAsync(
             _ => Task.FromResult(expectedResult),
-            "test-operation");
+            "test-operation"
+        );
 
         // Assert
         Assert.Equal(expectedResult, result);
@@ -29,7 +30,8 @@ public class RetryPolicyTests
         var policy = new RetryPolicy(
             NullLogger.Instance,
             maxRetries: 3,
-            initialDelay: TimeSpan.FromMilliseconds(10));
+            initialDelay: TimeSpan.FromMilliseconds(10)
+        );
 
         var attemptCount = 0;
         var expectedResult = "success";
@@ -45,7 +47,8 @@ public class RetryPolicyTests
                 }
                 return Task.FromResult(expectedResult);
             },
-            "test-operation");
+            "test-operation"
+        );
 
         // Assert
         Assert.Equal(expectedResult, result);
@@ -59,7 +62,8 @@ public class RetryPolicyTests
         var policy = new RetryPolicy(
             NullLogger.Instance,
             maxRetries: 3,
-            initialDelay: TimeSpan.FromMilliseconds(10));
+            initialDelay: TimeSpan.FromMilliseconds(10)
+        );
 
         var attemptCount = 0;
 
@@ -72,7 +76,8 @@ public class RetryPolicyTests
                     attemptCount++;
                     throw new HttpRequestException("Persistent failure");
                 },
-                "test-operation");
+                "test-operation"
+            );
         });
 
         Assert.Equal(3, attemptCount); // All 3 attempts should have been made
@@ -86,7 +91,8 @@ public class RetryPolicyTests
             NullLogger.Instance,
             maxRetries: 3,
             initialDelay: TimeSpan.FromMilliseconds(50),
-            backoffMultiplier: 2.0);
+            backoffMultiplier: 2.0
+        );
 
         var attemptTimes = new List<DateTime>();
 
@@ -99,7 +105,8 @@ public class RetryPolicyTests
                     attemptTimes.Add(DateTime.UtcNow);
                     throw new HttpRequestException("Test failure");
                 },
-                "test-operation");
+                "test-operation"
+            );
         }
         catch
         {
@@ -133,7 +140,8 @@ public class RetryPolicyTests
                     attemptCount++;
                     throw new InvalidOperationException("Non-retryable");
                 },
-                "test-operation");
+                "test-operation"
+            );
         });
 
         Assert.Equal(1, attemptCount); // Should not retry
@@ -146,7 +154,8 @@ public class RetryPolicyTests
         var policy = new RetryPolicy(
             NullLogger.Instance,
             maxRetries: 3,
-            initialDelay: TimeSpan.FromMilliseconds(10));
+            initialDelay: TimeSpan.FromMilliseconds(10)
+        );
 
         var attemptCount = 0;
 
@@ -166,7 +175,8 @@ public class RetryPolicyTests
             },
             "test-operation",
             CancellationToken.None,
-            CustomRetryCheck);
+            CustomRetryCheck
+        );
 
         // Assert
         Assert.Equal("success", result);

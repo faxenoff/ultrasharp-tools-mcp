@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-
 using Microsoft.Extensions.Http;
 using UltrasharpTools.Tools.Semantic.Models;
 
@@ -22,17 +21,22 @@ public sealed class OllamaProvider : IEmbeddingProvider
     public int MaxContextTokens => 512;
     public int? Dimension => _dimension;
 
-    public ProviderInfo Info => new()
-    {
-        Name = "ollama",
-        Model = _options.Model,
-        Dimension = _dimension ?? 0,
-        MaxTokens = 512,
-        IsLocal = true,
-        Version = "1.0"
-    };
+    public ProviderInfo Info =>
+        new()
+        {
+            Name = "ollama",
+            Model = _options.Model,
+            Dimension = _dimension ?? 0,
+            MaxTokens = 512,
+            IsLocal = true,
+            Version = "1.0",
+        };
 
-    public OllamaProvider(OllamaOptions options, ILogger<OllamaProvider> logger, IHttpClientFactory httpClientFactory)
+    public OllamaProvider(
+        OllamaOptions options,
+        ILogger<OllamaProvider> logger,
+        IHttpClientFactory httpClientFactory
+    )
     {
         _options = options;
         _logger = logger;
@@ -51,7 +55,9 @@ public sealed class OllamaProvider : IEmbeddingProvider
             var available = await CheckServerAsync(cancellationToken);
             if (!available)
             {
-                throw new InvalidOperationException($"Ollama server is not available at {_options.BaseUrl}");
+                throw new InvalidOperationException(
+                    $"Ollama server is not available at {_options.BaseUrl}"
+                );
             }
         }
 
@@ -61,7 +67,10 @@ public sealed class OllamaProvider : IEmbeddingProvider
         {
             if (_options.AutoPull)
             {
-                _logger.LogInformation("[Ollama] Model not found, pulling: {Model}", _options.Model);
+                _logger.LogInformation(
+                    "[Ollama] Model not found, pulling: {Model}",
+                    _options.Model
+                );
                 await PullModelAsync(cancellationToken);
             }
             else
@@ -75,7 +84,10 @@ public sealed class OllamaProvider : IEmbeddingProvider
         {
             var testEmbedding = await EmbedAsync("test", cancellationToken);
             _dimension = testEmbedding.Length;
-            _logger.LogInformation("[Ollama] Initialized successfully (dimension: {Dim})", _dimension);
+            _logger.LogInformation(
+                "[Ollama] Initialized successfully (dimension: {Dim})",
+                _dimension
+            );
         }
         catch (Exception ex)
         {
@@ -84,20 +96,25 @@ public sealed class OllamaProvider : IEmbeddingProvider
         }
     }
 
-    public async Task<float[]> EmbedAsync(string text, CancellationToken cancellationToken = default)
+    public async Task<float[]> EmbedAsync(
+        string text,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            var request = new OllamaRequest
-            {
-                Model = _options.Model,
-                Prompt = text
-            };
+            var request = new OllamaRequest { Model = _options.Model, Prompt = text };
 
-            var response = await _httpClient.PostAsJsonAsync("/api/embeddings", request, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync(
+                "/api/embeddings",
+                request,
+                cancellationToken
+            );
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<OllamaResponse>(cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<OllamaResponse>(
+                cancellationToken
+            );
             if (result?.Embedding == null || result.Embedding.Length == 0)
             {
                 throw new InvalidOperationException("Ollama returned empty embedding");
@@ -112,7 +129,10 @@ public sealed class OllamaProvider : IEmbeddingProvider
         }
     }
 
-    public async Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+    public async Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken cancellationToken = default
+    )
     {
         // Ollama doesn't support native batch - process with concurrency limit
         var tasks = texts.Select(async text =>
@@ -163,7 +183,9 @@ public sealed class OllamaProvider : IEmbeddingProvider
             var response = await _httpClient.GetAsync("/api/tags", cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<OllamaTagsResponse>(cancellationToken);
+            var result = await response.Content.ReadFromJsonAsync<OllamaTagsResponse>(
+                cancellationToken
+            );
             return result?.Models?.Any(m => m.Name == _options.Model) ?? false;
         }
         catch (Exception ex)
@@ -202,7 +224,10 @@ public sealed class OllamaProvider : IEmbeddingProvider
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Ollama] Failed to pull model");
-            throw new InvalidOperationException($"Failed to pull Ollama model: {_options.Model}", ex);
+            throw new InvalidOperationException(
+                $"Failed to pull Ollama model: {_options.Model}",
+                ex
+            );
         }
     }
 

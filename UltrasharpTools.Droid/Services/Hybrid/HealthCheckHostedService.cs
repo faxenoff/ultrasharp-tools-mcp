@@ -19,7 +19,8 @@ public sealed class HealthCheckHostedService : BackgroundService
         ILogger<HealthCheckHostedService> _logger,
         IToolRouter toolRouter,
         ConfigurationService configService,
-        string? solutionPath = null)
+        string? solutionPath = null
+    )
     {
         this._logger = _logger;
         _toolRouter = toolRouter;
@@ -36,7 +37,8 @@ public sealed class HealthCheckHostedService : BackgroundService
 
         _logger.LogInformation(
             "Health check service started. Interval: {Interval}s",
-            config.HealthCheckIntervalSeconds);
+            config.HealthCheckIntervalSeconds
+        );
 
         // Первая проверка сразу
         await CheckHealthAsync(stoppingToken);
@@ -80,14 +82,19 @@ public sealed class HealthCheckHostedService : BackgroundService
                 }
                 else
                 {
-                    _logger.LogWarning("Overlord is now UNAVAILABLE - routing will fallback to LOCAL");
+                    _logger.LogWarning(
+                        "Overlord is now UNAVAILABLE - routing will fallback to LOCAL"
+                    );
                 }
 
                 _lastKnownStatus = isAvailable;
             }
             else
             {
-                _logger.LogTrace("Overlord status: {Status}", isAvailable ? "AVAILABLE" : "UNAVAILABLE");
+                _logger.LogTrace(
+                    "Overlord status: {Status}",
+                    isAvailable ? "AVAILABLE" : "UNAVAILABLE"
+                );
             }
         }
         catch (Exception ex)

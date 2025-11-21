@@ -1,5 +1,3 @@
-
-
 using Microsoft.CodeAnalysis.Operations;
 
 namespace UltrasharpTools.Tools.Services;
@@ -10,34 +8,101 @@ namespace UltrasharpTools.Tools.Services;
 public static class LinqQueryAnalyzer
 {
     private static readonly HashSet<string> LinqMethods = new()
-{
-"Where", "Select", "SelectMany", "Join", "GroupBy", "GroupJoin",
-"OrderBy", "OrderByDescending", "ThenBy", "ThenByDescending",
-"Take", "Skip", "TakeWhile", "SkipWhile",
-"First", "FirstOrDefault", "Last", "LastOrDefault",
-"Single", "SingleOrDefault", "Any", "All", "Count", "Sum",
-"Min", "Max", "Average", "Aggregate",
-"Distinct", "Union", "Intersect", "Except", "Concat",
-"ToList", "ToArray", "ToDictionary", "ToHashSet",
-"AsEnumerable", "AsQueryable", "Cast", "OfType"
-};
+    {
+        "Where",
+        "Select",
+        "SelectMany",
+        "Join",
+        "GroupBy",
+        "GroupJoin",
+        "OrderBy",
+        "OrderByDescending",
+        "ThenBy",
+        "ThenByDescending",
+        "Take",
+        "Skip",
+        "TakeWhile",
+        "SkipWhile",
+        "First",
+        "FirstOrDefault",
+        "Last",
+        "LastOrDefault",
+        "Single",
+        "SingleOrDefault",
+        "Any",
+        "All",
+        "Count",
+        "Sum",
+        "Min",
+        "Max",
+        "Average",
+        "Aggregate",
+        "Distinct",
+        "Union",
+        "Intersect",
+        "Except",
+        "Concat",
+        "ToList",
+        "ToArray",
+        "ToDictionary",
+        "ToHashSet",
+        "AsEnumerable",
+        "AsQueryable",
+        "Cast",
+        "OfType",
+    };
 
     private static readonly HashSet<string> DeferredExecutionMethods = new()
-{
-"Where", "Select", "SelectMany", "Join", "GroupBy", "GroupJoin",
-"OrderBy", "OrderByDescending", "ThenBy", "ThenByDescending",
-"Take", "Skip", "TakeWhile", "SkipWhile",
-"Distinct", "Union", "Intersect", "Except", "Concat",
-"AsEnumerable", "AsQueryable", "Cast", "OfType", "Reverse"
-};
+    {
+        "Where",
+        "Select",
+        "SelectMany",
+        "Join",
+        "GroupBy",
+        "GroupJoin",
+        "OrderBy",
+        "OrderByDescending",
+        "ThenBy",
+        "ThenByDescending",
+        "Take",
+        "Skip",
+        "TakeWhile",
+        "SkipWhile",
+        "Distinct",
+        "Union",
+        "Intersect",
+        "Except",
+        "Concat",
+        "AsEnumerable",
+        "AsQueryable",
+        "Cast",
+        "OfType",
+        "Reverse",
+    };
 
     private static readonly HashSet<string> ImmediateExecutionMethods = new()
-{
-"ToList", "ToArray", "ToDictionary", "ToHashSet",
-"First", "FirstOrDefault", "Last", "LastOrDefault",
-"Single", "SingleOrDefault", "Any", "All", "Count", "Sum",
-"Min", "Max", "Average", "Aggregate", "Contains", "ElementAt"
-};
+    {
+        "ToList",
+        "ToArray",
+        "ToDictionary",
+        "ToHashSet",
+        "First",
+        "FirstOrDefault",
+        "Last",
+        "LastOrDefault",
+        "Single",
+        "SingleOrDefault",
+        "Any",
+        "All",
+        "Count",
+        "Sum",
+        "Min",
+        "Max",
+        "Average",
+        "Aggregate",
+        "Contains",
+        "ElementAt",
+    };
 
     /// <summary>
     /// Checks if an invocation is a LINQ method.
@@ -58,10 +123,10 @@ public static class LinqQueryAnalyzer
         }
 
         var typeName = containingType.ToDisplayString();
-        return typeName.StartsWith("System.Linq.Enumerable") ||
-        typeName.StartsWith("System.Linq.Queryable") ||
-        typeName == "System.Linq.Enumerable" ||
-        typeName == "System.Linq.Queryable";
+        return typeName.StartsWith("System.Linq.Enumerable")
+            || typeName.StartsWith("System.Linq.Queryable")
+            || typeName == "System.Linq.Enumerable"
+            || typeName == "System.Linq.Queryable";
     }
 
     /// <summary>
@@ -87,14 +152,16 @@ public static class LinqQueryAnalyzer
             IsDeferred = isDeferred,
             IsImmediate = isImmediate,
             LambdaExpressions = lambdaExpressions,
-            FullExpression = invocation.Syntax.ToString()
+            FullExpression = invocation.Syntax.ToString(),
         };
     }
 
     /// <summary>
     /// Extracts lambda expressions from LINQ method arguments.
     /// </summary>
-    private static List<LambdaExpressionInfo> ExtractLambdaExpressions(IInvocationOperation invocation)
+    private static List<LambdaExpressionInfo> ExtractLambdaExpressions(
+        IInvocationOperation invocation
+    )
     {
         var result = new List<LambdaExpressionInfo>();
 
@@ -104,22 +171,26 @@ public static class LinqQueryAnalyzer
             {
                 if (delegateCreation.Target is IAnonymousFunctionOperation lambda)
                 {
-                    result.Add(new LambdaExpressionInfo
-                    {
-                        Parameters = lambda.Symbol.Parameters.Select(p => p.Name).ToList(),
-                        Expression = lambda.Syntax.ToString(),
-                        ReturnType = lambda.Symbol.ReturnType?.ToDisplayString()
-                    });
+                    result.Add(
+                        new LambdaExpressionInfo
+                        {
+                            Parameters = lambda.Symbol.Parameters.Select(p => p.Name).ToList(),
+                            Expression = lambda.Syntax.ToString(),
+                            ReturnType = lambda.Symbol.ReturnType?.ToDisplayString(),
+                        }
+                    );
                 }
             }
             else if (argument.Value is IAnonymousFunctionOperation directLambda)
             {
-                result.Add(new LambdaExpressionInfo
-                {
-                    Parameters = directLambda.Symbol.Parameters.Select(p => p.Name).ToList(),
-                    Expression = directLambda.Syntax.ToString(),
-                    ReturnType = directLambda.Symbol.ReturnType?.ToDisplayString()
-                });
+                result.Add(
+                    new LambdaExpressionInfo
+                    {
+                        Parameters = directLambda.Symbol.Parameters.Select(p => p.Name).ToList(),
+                        Expression = directLambda.Syntax.ToString(),
+                        ReturnType = directLambda.Symbol.ReturnType?.ToDisplayString(),
+                    }
+                );
             }
         }
 
@@ -129,7 +200,10 @@ public static class LinqQueryAnalyzer
     /// <summary>
     /// Analyzes a query expression syntax (from ... where ... select).
     /// </summary>
-    public static QueryExpressionInfo? AnalyzeQueryExpression(QueryExpressionSyntax query, SemanticModel semanticModel)
+    public static QueryExpressionInfo? AnalyzeQueryExpression(
+        QueryExpressionSyntax query,
+        SemanticModel semanticModel
+    )
     {
         var operations = new List<string>();
         var clauses = query.Body.Clauses.ToList();
@@ -177,7 +251,7 @@ public static class LinqQueryAnalyzer
         {
             FullExpression = query.ToString(),
             Operations = operations,
-            IsDeferred = true // Query expressions are always deferred
+            IsDeferred = true, // Query expressions are always deferred
         };
     }
 }

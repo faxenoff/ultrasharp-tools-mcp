@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UltrasharpTools.Tools.Merge.Indexing;
@@ -15,12 +13,15 @@ public sealed class ContentNormalizer
     private readonly ContentNormalizerConfig _config;
 
     // Целевая нормализация для всех файлов
-    private static readonly Encoding TargetEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+    private static readonly Encoding TargetEncoding = new UTF8Encoding(
+        encoderShouldEmitUTF8Identifier: false
+    );
     private const string TargetLineEnding = "\n"; // LF (Unix-style)
 
     public ContentNormalizer(
-    ContentNormalizerConfig? config = null,
-    ILogger<ContentNormalizer>? logger = null)
+        ContentNormalizerConfig? config = null,
+        ILogger<ContentNormalizer>? logger = null
+    )
     {
         _config = config ?? ContentNormalizerConfig.Default;
         _logger = logger ?? NullLogger<ContentNormalizer>.Instance;
@@ -30,8 +31,9 @@ public sealed class ContentNormalizer
     /// Нормализовать содержимое файла для точного сравнения.
     /// </summary>
     public async Task<NormalizedContent> NormalizeAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         // 1. Прочитать raw bytes
         var rawBytes = await File.ReadAllBytesAsync(filePath, ct);
@@ -75,7 +77,7 @@ public sealed class ContentNormalizer
             HadBOM = hasBom,
             OriginalLineEnding = originalLineEnding,
             NormalizedEncoding = TargetEncoding,
-            NormalizedLineEnding = TargetLineEnding
+            NormalizedLineEnding = TargetLineEnding,
         };
     }
 
@@ -92,8 +94,7 @@ public sealed class ContentNormalizer
         // BOM detection
 
         // UTF-8 BOM: EF BB BF
-        if (bytes.Length >= 3 &&
-        bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
         {
             hasBom = true;
             return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
@@ -114,9 +115,13 @@ public sealed class ContentNormalizer
         }
 
         // UTF-32 LE BOM: FF FE 00 00
-        if (bytes.Length >= 4 &&
-        bytes[0] == 0xFF && bytes[1] == 0xFE &&
-        bytes[2] == 0x00 && bytes[3] == 0x00)
+        if (
+            bytes.Length >= 4
+            && bytes[0] == 0xFF
+            && bytes[1] == 0xFE
+            && bytes[2] == 0x00
+            && bytes[3] == 0x00
+        )
         {
             hasBom = true;
             return Encoding.UTF32; // UTF-32 LE
@@ -219,20 +224,22 @@ public sealed record ContentNormalizerConfig
     /// <summary>
     /// Строгая нормализация (для production).
     /// </summary>
-    public static ContentNormalizerConfig Strict => new()
-    {
-        TrimTrailingWhitespace = true,
-        RemoveTrailingEmptyLines = true,
-        IgnoreWhitespaceChanges = false
-    };
+    public static ContentNormalizerConfig Strict =>
+        new()
+        {
+            TrimTrailingWhitespace = true,
+            RemoveTrailingEmptyLines = true,
+            IgnoreWhitespaceChanges = false,
+        };
 
     /// <summary>
     /// Relaxed mode (игнорирует whitespace различия).
     /// </summary>
-    public static ContentNormalizerConfig Relaxed => new()
-    {
-        TrimTrailingWhitespace = true,
-        RemoveTrailingEmptyLines = true,
-        IgnoreWhitespaceChanges = true
-    };
+    public static ContentNormalizerConfig Relaxed =>
+        new()
+        {
+            TrimTrailingWhitespace = true,
+            RemoveTrailingEmptyLines = true,
+            IgnoreWhitespaceChanges = true,
+        };
 }

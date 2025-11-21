@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Engine;
 using UltrasharpTools.Tools.Merge.Indexing;
@@ -17,9 +16,10 @@ public sealed class SemanticMergeService
     private readonly ILogger<SemanticMergeService> _logger;
 
     public SemanticMergeService(
-    MultiVersionIndexer indexer,
-    ThreeWayMerger merger,
-    ILogger<SemanticMergeService>? logger = null)
+        MultiVersionIndexer indexer,
+        ThreeWayMerger merger,
+        ILogger<SemanticMergeService>? logger = null
+    )
     {
         _indexer = indexer;
         _merger = merger;
@@ -30,11 +30,11 @@ public sealed class SemanticMergeService
     /// Выполнить полный semantic merge workflow.
     /// </summary>
     public async Task<MergeResult> MergeAsync(
-    IndexingRequest request,
-    CancellationToken ct = default)
+        IndexingRequest request,
+        CancellationToken ct = default
+    )
     {
-        _logger.LogInformation(
-        "Starting Semantic Merge workflow");
+        _logger.LogInformation("Starting Semantic Merge workflow");
 
         // 1. Индексация всех версий
         _logger.LogInformation("Step 1: Indexing versions");
@@ -43,16 +43,18 @@ public sealed class SemanticMergeService
         // 2. Three-way merge
         _logger.LogInformation("Step 2: Three-way merge");
         var mergeResult = await _merger.MergeAsync(
-        indexResult.BaseIndex,
-        indexResult.BranchAIndex,
-        indexResult.BranchBIndex,
-        ct);
+            indexResult.BaseIndex,
+            indexResult.BranchAIndex,
+            indexResult.BranchBIndex,
+            ct
+        );
 
         _logger.LogInformation(
-        "Semantic Merge completed: {Success}, {Actions} actions, {Conflicts} conflicts",
-        mergeResult.IsSuccess,
-        mergeResult.Actions.Count,
-        mergeResult.Conflicts.Count);
+            "Semantic Merge completed: {Success}, {Actions} actions, {Conflicts} conflicts",
+            mergeResult.IsSuccess,
+            mergeResult.Actions.Count,
+            mergeResult.Conflicts.Count
+        );
 
         return mergeResult;
     }
@@ -62,7 +64,8 @@ public sealed class SemanticMergeService
     /// </summary>
     public string GetMergeSummary(MergeResult result)
     {
-        var summary = $@"
+        var summary =
+            $@"
 === Semantic Merge Summary ===
 Status: {(result.IsSuccess ? "SUCCESS" : "CONFLICTS DETECTED")}
 

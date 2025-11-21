@@ -26,5 +26,5 @@ public enum VectorStoreBackendType
     /// - Если &gt; 10,000 векторов → Vectorlite (производительность)
     /// Порог настраивается через конфигурацию.
     /// </summary>
-    Auto
+    Auto,
 }

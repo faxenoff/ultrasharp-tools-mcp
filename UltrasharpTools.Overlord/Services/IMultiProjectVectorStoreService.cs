@@ -17,7 +17,8 @@ public interface IMultiProjectVectorStoreService
         float[] vectors,
         string? content = null,
         SymbolInfoDto[]? symbols = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Удалить векторы для файла
@@ -26,7 +27,8 @@ public interface IMultiProjectVectorStoreService
         string project,
         string branch,
         string filePath,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Поиск похожих векторов ПО ВСЕМ проектам команды
@@ -36,7 +38,8 @@ public interface IMultiProjectVectorStoreService
         double threshold = 0.7,
         int limit = 10,
         string[]? projects = null, // null = all projects
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Поиск похожих векторов в конкретном проекте/ветке
@@ -47,7 +50,8 @@ public interface IMultiProjectVectorStoreService
         float[] queryVector,
         double threshold = 0.7,
         int limit = 10,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Получить список всех проектов
@@ -57,7 +61,10 @@ public interface IMultiProjectVectorStoreService
     /// <summary>
     /// Получить список веток для проекта
     /// </summary>
-    Task<List<string>> GetBranchesAsync(string project, CancellationToken cancellationToken = default);
+    Task<List<string>> GetBranchesAsync(
+        string project,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Получить статистику по проектам

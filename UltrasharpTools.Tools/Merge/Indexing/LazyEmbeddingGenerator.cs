@@ -1,8 +1,7 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
+using UltrasharpTools.Tools.Layered;
 using UltrasharpTools.Tools.Merge.Models;
 using UltrasharpTools.Tools.Semantic;
-using UltrasharpTools.Tools.Layered;
 
 namespace UltrasharpTools.Tools.Merge.Indexing;
 
@@ -17,8 +16,9 @@ public sealed class LazyEmbeddingGenerator
     private readonly ILogger<LazyEmbeddingGenerator> _logger;
 
     public LazyEmbeddingGenerator(
-    EmbeddingGenerator embeddingGenerator,
-    ILogger<LazyEmbeddingGenerator>? logger = null)
+        EmbeddingGenerator embeddingGenerator,
+        ILogger<LazyEmbeddingGenerator>? logger = null
+    )
     {
         _embeddingGenerator = embeddingGenerator;
         _logger = logger ?? NullLogger<LazyEmbeddingGenerator>.Instance;
@@ -28,12 +28,11 @@ public sealed class LazyEmbeddingGenerator
     /// Сгенерировать embeddings для списка CodeUnits.
     /// </summary>
     public async Task<List<CodeUnit>> GenerateEmbeddingsAsync(
-    List<CodeUnit> units,
-    CancellationToken ct = default)
+        List<CodeUnit> units,
+        CancellationToken ct = default
+    )
     {
-        _logger.LogInformation(
-        "Generating embeddings for {Count} units",
-        units.Count);
+        _logger.LogInformation("Generating embeddings for {Count} units", units.Count);
 
         var updatedUnits = new List<CodeUnit>();
 
@@ -52,14 +51,15 @@ public sealed class LazyEmbeddingGenerator
                 var embedding = await GenerateEmbeddingForUnitAsync(unit, ct);
 
                 // Обновить unit
-                var updatedUnit = unit with { Embedding = embedding };
+                var updatedUnit = unit with
+                {
+                    Embedding = embedding,
+                };
                 updatedUnits.Add(updatedUnit);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
-                "Failed to generate embedding for unit {Id}",
-                unit.Id);
+                _logger.LogWarning(ex, "Failed to generate embedding for unit {Id}", unit.Id);
 
                 // Добавить без embedding
                 updatedUnits.Add(unit);
@@ -67,8 +67,9 @@ public sealed class LazyEmbeddingGenerator
         }
 
         _logger.LogInformation(
-        "Generated {Count} embeddings",
-        updatedUnits.Count(u => u.Embedding != null));
+            "Generated {Count} embeddings",
+            updatedUnits.Count(u => u.Embedding != null)
+        );
 
         return updatedUnits;
     }
@@ -76,25 +77,19 @@ public sealed class LazyEmbeddingGenerator
     /// <summary>
     /// Сгенерировать embedding для одного CodeUnit.
     /// </summary>
-    private async Task<float[]?> GenerateEmbeddingForUnitAsync(
-    CodeUnit unit,
-    CancellationToken ct)
+    private async Task<float[]?> GenerateEmbeddingForUnitAsync(CodeUnit unit, CancellationToken ct)
     {
         // Выбрать текст для embedding
         var textToEmbed = SelectTextForEmbedding(unit);
 
         if (string.IsNullOrWhiteSpace(textToEmbed))
         {
-            _logger.LogDebug(
-            "No text to embed for unit {Id}",
-            unit.Id);
+            _logger.LogDebug("No text to embed for unit {Id}", unit.Id);
             return null;
         }
 
         // Генерировать embedding
-        var embedding = await _embeddingGenerator.EmbedAsync(
-        textToEmbed,
-        ct);
+        var embedding = await _embeddingGenerator.EmbedAsync(textToEmbed, ct);
 
         return embedding;
     }
@@ -117,8 +112,8 @@ public sealed class LazyEmbeddingGenerator
             case CodeUnitType.Type:
                 // Для типов - signature + имена членов
                 var members = unit.ChildIds.Any()
-                ? $"members: {string.Join(", ", unit.ChildIds.Take(10))}"
-                : "";
+                    ? $"members: {string.Join(", ", unit.ChildIds.Take(10))}"
+                    : "";
                 return $"{unit.Signature} {members}";
 
             case CodeUnitType.Method:
@@ -149,19 +144,19 @@ public sealed class LazyEmbeddingGenerator
     /// Обновить VersionedIndex с embeddings.
     /// </summary>
     public async Task<VersionedIndex> EnrichIndexWithEmbeddingsAsync(
-    VersionedIndex index,
-    List<CodeUnit> unitsNeedingEmbeddings,
-    CancellationToken ct = default)
+        VersionedIndex index,
+        List<CodeUnit> unitsNeedingEmbeddings,
+        CancellationToken ct = default
+    )
     {
         _logger.LogInformation(
-        "Enriching index {Version} with embeddings for {Count} units",
-        index.Version,
-        unitsNeedingEmbeddings.Count);
+            "Enriching index {Version} with embeddings for {Count} units",
+            index.Version,
+            unitsNeedingEmbeddings.Count
+        );
 
         // Генерировать embeddings
-        var enrichedUnits = await GenerateEmbeddingsAsync(
-        unitsNeedingEmbeddings,
-        ct);
+        var enrichedUnits = await GenerateEmbeddingsAsync(unitsNeedingEmbeddings, ct);
 
         // Обновить units в индексе
         var updatedUnits = new Dictionary<string, CodeUnit>(index.Units);
@@ -188,16 +183,13 @@ public sealed class LazyEmbeddingGenerator
 
         // Обновить статистику
         var unitsWithEmbeddings = updatedUnits.Values.Count(u => u.Embedding != null);
-        var updatedStats = index.Statistics with
-        {
-            UnitsWithEmbeddings = unitsWithEmbeddings
-        };
+        var updatedStats = index.Statistics with { UnitsWithEmbeddings = unitsWithEmbeddings };
 
         return index with
         {
             Units = updatedUnits,
             VectorStore = updatedVectorStore,
-            Statistics = updatedStats
+            Statistics = updatedStats,
         };
     }
 
@@ -205,25 +197,22 @@ public sealed class LazyEmbeddingGenerator
     /// Batch генерация embeddings (более эффективно).
     /// </summary>
     public async Task<List<CodeUnit>> GenerateEmbeddingsBatchAsync(
-    List<CodeUnit> units,
-    int batchSize = 32,
-    CancellationToken ct = default)
+        List<CodeUnit> units,
+        int batchSize = 32,
+        CancellationToken ct = default
+    )
     {
-        _logger.LogInformation(
-        "Generating embeddings in batches of {BatchSize}",
-        batchSize);
+        _logger.LogInformation("Generating embeddings in batches of {BatchSize}", batchSize);
 
         var updatedUnits = new List<CodeUnit>();
-        var batches = units
-        .Where(u => u.Embedding == null)
-        .Chunk(batchSize);
+        var batches = units.Where(u => u.Embedding == null).Chunk(batchSize);
 
         foreach (var batch in batches)
         {
             var texts = batch
-            .Select(SelectTextForEmbedding)
-            .Where(t => !string.IsNullOrWhiteSpace(t))
-            .ToList();
+                .Select(SelectTextForEmbedding)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .ToList();
 
             if (texts.Count == 0)
             {
@@ -253,8 +242,7 @@ public sealed class LazyEmbeddingGenerator
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
-                "Failed to generate embeddings for batch");
+                _logger.LogWarning(ex, "Failed to generate embeddings for batch");
 
                 updatedUnits.AddRange(batch);
             }
@@ -265,5 +253,4 @@ public sealed class LazyEmbeddingGenerator
 
         return updatedUnits;
     }
-
 }

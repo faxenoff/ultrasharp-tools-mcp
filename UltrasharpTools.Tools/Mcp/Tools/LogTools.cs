@@ -1,10 +1,7 @@
-
-
 using ModelContextProtocol;
-using UltrasharpTools.Tools.Mcp;
-
-using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Mcp;
+using UltrasharpTools.Tools.Models;
 using LogLevel = UltrasharpTools.Tools.Models.LogLevel;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
@@ -19,101 +16,110 @@ public static partial class LogTools
     /// Analyzes log files with automatic format detection and efficient searching.
     /// </summary>
     [McpServerTool(
-    Name = "analyze_logs",
-    Idempotent = true,
-    ReadOnly = true,
-    Destructive = false,
-    OpenWorld = false
+        Name = "analyze_logs",
+        Idempotent = true,
+        ReadOnly = true,
+        Destructive = false,
+        OpenWorld = false
     )]
     [Description(
-    "Analyzes log files with automatic format detection (ECS/JSON, PlainText, Logcat, WebServer, XML). " +
-    "Efficiently searches for keywords, log levels, and status codes without loading entire file into memory. " +
-    "Returns brief summary by default (timestamp, level, message, stacktrace, url/path) with context lines. " +
-    "Supports pagination to handle large log files."
+        "Analyzes log files with automatic format detection (ECS/JSON, PlainText, Logcat, WebServer, XML). "
+            + "Efficiently searches for keywords, log levels, and status codes without loading entire file into memory. "
+            + "Returns brief summary by default (timestamp, level, message, stacktrace, url/path) with context lines. "
+            + "Supports pagination to handle large log files."
     )]
     public static async Task<object> AnalyzeLogs(
-    ILogAnalysisService logAnalysisService,
-    ILogger<LogToolsLogCategory> logger,
-    [Description("Path to the log file to analyze")]
-string filePath,
-    [Description("Optional: Keywords to search for (case-insensitive). Searches in message and stacktrace.")]
-List<string>? keywords = null,
-    [Description("Optional: Log levels to filter (Verbose, Debug, Info, Warning, Error, Fatal)")]
-List<string>? levels = null,
-    [Description("Optional: HTTP status codes to filter (e.g., 404, 500)")]
-List<int>? statusCodes = null,
-    [Description("Number of context lines before each match. Default: 5")]
-int contextBefore = 5,
-    [Description("Number of context lines after each match. Default: 5")]
-int contextAfter = 5,
-    [Description("Detail level: Brief (default) or Full. Brief includes only time, level, message, stacktrace, url/path.")]
-string detailLevel = "Brief",
-    [Description("Number of results to skip for pagination. Default: 0")]
-int skip = 0,
-    [Description("Number of results to return. Default: 100")]
-int take = 100,
-    CancellationToken cancellationToken = default
+        ILogAnalysisService logAnalysisService,
+        ILogger<LogToolsLogCategory> logger,
+        [Description("Path to the log file to analyze")] string filePath,
+        [Description(
+            "Optional: Keywords to search for (case-insensitive). Searches in message and stacktrace."
+        )]
+            List<string>? keywords = null,
+        [Description(
+            "Optional: Log levels to filter (Verbose, Debug, Info, Warning, Error, Fatal)"
+        )]
+            List<string>? levels = null,
+        [Description("Optional: HTTP status codes to filter (e.g., 404, 500)")]
+            List<int>? statusCodes = null,
+        [Description("Number of context lines before each match. Default: 5")]
+            int contextBefore = 5,
+        [Description("Number of context lines after each match. Default: 5")] int contextAfter = 5,
+        [Description(
+            "Detail level: Brief (default) or Full. Brief includes only time, level, message, stacktrace, url/path."
+        )]
+            string detailLevel = "Brief",
+        [Description("Number of results to skip for pagination. Default: 0")] int skip = 0,
+        [Description("Number of results to return. Default: 100")] int take = 100,
+        CancellationToken cancellationToken = default
     )
     {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-        async () =>
-        {
-            ErrorHandlingHelpers.ValidateStringParameter(filePath, nameof(filePath), logger);
-
-            logger.LogInformation(
-    "Analyzing log file: {FilePath}, Keywords: {Keywords}, Levels: {Levels}",
-    filePath,
-    keywords != null ? string.Join(", ", keywords) : "none",
-    levels != null ? string.Join(", ", levels) : "all"
-    );
-
-            // Parse detail level
-            var parsedDetailLevel = detailLevel.Equals("Full", StringComparison.OrdinalIgnoreCase)
-    ? LogDetailLevel.Full
-    : LogDetailLevel.Brief;
-
-            // Parse log levels
-            List<LogLevel>? parsedLevels = null;
-            if (levels?.Count > 0)
+            async () =>
             {
-                parsedLevels = levels.Select(ParseLogLevel).Where(l => l.HasValue).Select(l => l!.Value).ToList();
-            }
+                ErrorHandlingHelpers.ValidateStringParameter(filePath, nameof(filePath), logger);
 
-            // Create search criteria
-            var criteria = new LogSearchCriteria
-            {
-                Keywords = keywords,
-                Levels = parsedLevels,
-                StatusCodes = statusCodes,
-                ContextLinesBefore = contextBefore,
-                ContextLinesAfter = contextAfter,
-                Skip = skip,
-                Take = take
-            };
+                logger.LogInformation(
+                    "Analyzing log file: {FilePath}, Keywords: {Keywords}, Levels: {Levels}",
+                    filePath,
+                    keywords != null ? string.Join(", ", keywords) : "none",
+                    levels != null ? string.Join(", ", levels) : "all"
+                );
 
-            // Analyze log file
-            var result = await logAnalysisService.AnalyzeLogFileAsync(
-    filePath,
-    criteria,
-    parsedDetailLevel,
-    cancellationToken
-    );
+                // Parse detail level
+                var parsedDetailLevel = detailLevel.Equals(
+                    "Full",
+                    StringComparison.OrdinalIgnoreCase
+                )
+                    ? LogDetailLevel.Full
+                    : LogDetailLevel.Brief;
 
-            // Format result
-            var formatted = FormatLogAnalysisResult(result);
+                // Parse log levels
+                List<LogLevel>? parsedLevels = null;
+                if (levels?.Count > 0)
+                {
+                    parsedLevels = levels
+                        .Select(ParseLogLevel)
+                        .Where(l => l.HasValue)
+                        .Select(l => l!.Value)
+                        .ToList();
+                }
 
-            logger.LogInformation(
-    "Log analysis completed: {Format}, {Matches} matches, {Returned} returned",
-    result.DetectedFormat,
-    result.TotalMatches,
-    result.Entries.Count
-    );
+                // Create search criteria
+                var criteria = new LogSearchCriteria
+                {
+                    Keywords = keywords,
+                    Levels = parsedLevels,
+                    StatusCodes = statusCodes,
+                    ContextLinesBefore = contextBefore,
+                    ContextLinesAfter = contextAfter,
+                    Skip = skip,
+                    Take = take,
+                };
 
-            return ToolHelpers.ToJson(formatted);
-        },
-        logger,
-        nameof(AnalyzeLogs),
-        cancellationToken
+                // Analyze log file
+                var result = await logAnalysisService.AnalyzeLogFileAsync(
+                    filePath,
+                    criteria,
+                    parsedDetailLevel,
+                    cancellationToken
+                );
+
+                // Format result
+                var formatted = FormatLogAnalysisResult(result);
+
+                logger.LogInformation(
+                    "Log analysis completed: {Format}, {Matches} matches, {Returned} returned",
+                    result.DetectedFormat,
+                    result.TotalMatches,
+                    result.Entries.Count
+                );
+
+                return ToolHelpers.ToJson(formatted);
+            },
+            logger,
+            nameof(AnalyzeLogs),
+            cancellationToken
         );
     }
 
@@ -127,7 +133,7 @@ int take = 100,
             ["returned"] = result.Entries.Count,
             ["skip"] = result.Skip,
             ["take"] = result.Take,
-            ["hasMore"] = result.HasMore
+            ["hasMore"] = result.HasMore,
         };
 
         if (!string.IsNullOrEmpty(result.ErrorMessage))
@@ -148,7 +154,9 @@ int take = 100,
 
             if (result.HasMore)
             {
-                sb.AppendLine($"⚠ More results available. Use skip={result.Skip + result.Take} to see next page.");
+                sb.AppendLine(
+                    $"⚠ More results available. Use skip={result.Skip + result.Take} to see next page."
+                );
             }
 
             sb.AppendLine();
@@ -171,15 +179,17 @@ int take = 100,
                         LogLevel.Warning => "🟡",
                         LogLevel.Info => "🔵",
                         LogLevel.Debug => "🟢",
-                        _ => "⚪"
+                        _ => "⚪",
                     };
                     sb.AppendLine($"  {levelIcon} [{entry.Level.Value}]");
                 }
 
                 if (entry.StatusCode.HasValue)
                 {
-                    var statusIcon = entry.StatusCode.Value >= 500 ? "🔴" :
-                    entry.StatusCode.Value >= 400 ? "🟡" : "🟢";
+                    var statusIcon =
+                        entry.StatusCode.Value >= 500 ? "🔴"
+                        : entry.StatusCode.Value >= 400 ? "🟡"
+                        : "🟢";
                     sb.AppendLine($"  {statusIcon} HTTP {entry.StatusCode.Value}");
                 }
 
@@ -240,21 +250,23 @@ int take = 100,
         }
 
         // Include raw entries for programmatic access
-        formatted["entries"] = result.Entries.Select(e => new
-        {
-            lineNumber = e.LineNumber,
-            timestamp = e.Timestamp?.ToString("O"),
-            level = e.Level?.ToString(),
-            message = e.Message,
-            source = e.Source,
-            stackTrace = e.StackTrace,
-            url = e.Url,
-            path = e.Path,
-            statusCode = e.StatusCode,
-            contextBefore = e.ContextBefore,
-            contextAfter = e.ContextAfter,
-            additionalFields = e.AdditionalFields
-        }).ToList();
+        formatted["entries"] = result
+            .Entries.Select(e => new
+            {
+                lineNumber = e.LineNumber,
+                timestamp = e.Timestamp?.ToString("O"),
+                level = e.Level?.ToString(),
+                message = e.Message,
+                source = e.Source,
+                stackTrace = e.StackTrace,
+                url = e.Url,
+                path = e.Path,
+                statusCode = e.StatusCode,
+                contextBefore = e.ContextBefore,
+                contextAfter = e.ContextAfter,
+                additionalFields = e.AdditionalFields,
+            })
+            .ToList();
 
         return formatted;
     }
@@ -269,7 +281,7 @@ int take = 100,
             "WARNING" or "WARN" or "W" => LogLevel.Warning,
             "ERROR" or "ERR" or "E" => LogLevel.Error,
             "FATAL" or "F" or "CRITICAL" => LogLevel.Fatal,
-            _ => null
+            _ => null,
         };
     }
 }

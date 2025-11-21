@@ -15,7 +15,8 @@ public static class FileLoggerExtensions
     public static ILoggingBuilder AddFile(
         this ILoggingBuilder builder,
         string filePath,
-        LogLevel minLevel = LogLevel.Information)
+        LogLevel minLevel = LogLevel.Information
+    )
     {
         if (builder == null)
         {
@@ -27,11 +28,7 @@ public static class FileLoggerExtensions
             throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
         }
 
-        var options = new FileLoggerOptions
-        {
-            FilePath = filePath,
-            MinimumLevel = minLevel
-        };
+        var options = new FileLoggerOptions { FilePath = filePath, MinimumLevel = minLevel };
 
         return builder.AddFile(options);
     }
@@ -42,9 +39,7 @@ public static class FileLoggerExtensions
     /// <param name="builder">The logging builder.</param>
     /// <param name="options">File logger options.</param>
     /// <returns>The logging builder for chaining.</returns>
-    public static ILoggingBuilder AddFile(
-        this ILoggingBuilder builder,
-        FileLoggerOptions options)
+    public static ILoggingBuilder AddFile(this ILoggingBuilder builder, FileLoggerOptions options)
     {
         if (builder == null)
         {
@@ -69,7 +64,8 @@ public static class FileLoggerExtensions
     /// <returns>The logging builder for chaining.</returns>
     public static ILoggingBuilder AddFile(
         this ILoggingBuilder builder,
-        Action<FileLoggerOptions> configure)
+        Action<FileLoggerOptions> configure
+    )
     {
         if (builder == null)
         {

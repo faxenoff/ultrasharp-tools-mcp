@@ -12,7 +12,8 @@ public interface IMcpProxyService
         string toolName,
         string argumentsJson,
         string? projectContext = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Получить список доступных MCP tools

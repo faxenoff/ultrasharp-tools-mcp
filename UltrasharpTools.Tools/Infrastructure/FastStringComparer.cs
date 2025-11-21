@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Infrastructure;
 
 /// <summary>
@@ -17,7 +15,9 @@ public sealed class FastStringComparer : IEqualityComparer<string>
     /// <summary>
     /// Singleton instance with case-insensitive comparison.
     /// </summary>
-    public static readonly FastStringComparer OrdinalIgnoreCase = new(StringComparison.OrdinalIgnoreCase);
+    public static readonly FastStringComparer OrdinalIgnoreCase = new(
+        StringComparison.OrdinalIgnoreCase
+    );
 
     private readonly StringComparison _comparison;
 

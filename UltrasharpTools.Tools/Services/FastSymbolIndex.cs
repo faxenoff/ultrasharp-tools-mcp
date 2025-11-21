@@ -1,6 +1,5 @@
 using System.Collections.Frozen;
 using System.Collections.Immutable;
-
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Models;
 
@@ -73,23 +72,34 @@ public sealed class FastSymbolIndex
         // Try to load from cache if cache manager is available
         if (_cacheManager != null)
         {
-            var (cacheValid, cachedEntries, metadata) = await _cacheManager.TryLoadCacheAsync(solution, cancellationToken);
+            var (cacheValid, cachedEntries, metadata) = await _cacheManager.TryLoadCacheAsync(
+                solution,
+                cancellationToken
+            );
 
             if (cacheValid && cachedEntries != null && metadata != null)
             {
-                _logger.LogInformation("Valid cache found with {Count} symbols (created: {Created}). Attempting to restore from cache...",
-                    metadata.SymbolCount, metadata.Created);
+                _logger.LogInformation(
+                    "Valid cache found with {Count} symbols (created: {Created}). Attempting to restore from cache...",
+                    metadata.SymbolCount,
+                    metadata.Created
+                );
 
                 entries = await LoadFromCacheAsync(solution, cachedEntries, cancellationToken);
 
                 if (entries != null && entries.Count > 0)
                 {
-                    _logger.LogInformation("Successfully restored {Count} symbols from cache in {ElapsedMs}ms",
-                        entries.Count, sw.ElapsedMilliseconds);
+                    _logger.LogInformation(
+                        "Successfully restored {Count} symbols from cache in {ElapsedMs}ms",
+                        entries.Count,
+                        sw.ElapsedMilliseconds
+                    );
                 }
                 else
                 {
-                    _logger.LogWarning("Cache restoration failed or incomplete, falling back to full build");
+                    _logger.LogWarning(
+                        "Cache restoration failed or incomplete, falling back to full build"
+                    );
                     entries = null; // Force full rebuild
                 }
             }
@@ -109,7 +119,10 @@ public sealed class FastSymbolIndex
                 var compilation = await project.GetCompilationAsync(cancellationToken);
                 if (compilation == null)
                 {
-                    _logger.LogWarning("Could not get compilation for project: {ProjectName}", project.Name);
+                    _logger.LogWarning(
+                        "Could not get compilation for project: {ProjectName}",
+                        project.Name
+                    );
                     continue;
                 }
 
@@ -117,11 +130,18 @@ public sealed class FastSymbolIndex
                 // Get all symbols from the compilation
                 CollectSymbolsFromCompilation(compilation, entries, seenSymbols, cancellationToken);
                 var addedCount = entries.Count - beforeCount;
-                _logger.LogDebug("Collected {AddedCount} symbols from project {ProjectName} (total: {TotalCount})",
-                    addedCount, project.Name, entries.Count);
+                _logger.LogDebug(
+                    "Collected {AddedCount} symbols from project {ProjectName} (total: {TotalCount})",
+                    addedCount,
+                    project.Name,
+                    entries.Count
+                );
             }
 
-            _logger.LogDebug("Collected {SymbolCount} unique symbols, building indices...", entries.Count);
+            _logger.LogDebug(
+                "Collected {SymbolCount} unique symbols, building indices...",
+                entries.Count
+            );
         }
 
         // Build all indices
@@ -129,26 +149,35 @@ public sealed class FastSymbolIndex
 
         sw.Stop();
         _logger.LogInformation(
-            "Fast symbol index built: {SymbolCount} symbols indexed in {ElapsedMs}ms. " +
-            "Bloom filter: {BloomStats}. Namespaces: {NamespaceCount}",
-            _totalSymbols, sw.ElapsedMilliseconds,
+            "Fast symbol index built: {SymbolCount} symbols indexed in {ElapsedMs}ms. "
+                + "Bloom filter: {BloomStats}. Namespaces: {NamespaceCount}",
+            _totalSymbols,
+            sw.ElapsedMilliseconds,
             _nameBloomFilter.GetStatistics(),
-            _byNamespace.Count);
+            _byNamespace.Count
+        );
 
         // Save cache in background (non-blocking)
         if (_cacheManager != null && entries.Count > 0)
         {
-            _ = Task.Run(async () =>
-            {
-                try
+            _ = Task.Run(
+                async () =>
                 {
-                    await _cacheManager.SaveCacheAsync(solution, entries, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to save symbol cache (non-critical)");
-                }
-            }, CancellationToken.None);
+                    try
+                    {
+                        await _cacheManager.SaveCacheAsync(
+                            solution,
+                            entries,
+                            CancellationToken.None
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to save symbol cache (non-critical)");
+                    }
+                },
+                CancellationToken.None
+            );
         }
     }
 
@@ -159,9 +188,9 @@ public sealed class FastSymbolIndex
         Compilation compilation,
         List<SymbolIndexEntry> entries,
         HashSet<ISymbol> seenSymbols,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-
         var skippedDuplicates = 0;
         var skippedImplicit = 0;
         var skippedByKind = 0;
@@ -189,7 +218,13 @@ public sealed class FastSymbolIndex
             }
 
             // Skip some symbol kinds that aren't useful for lookup
-            if (symbol.Kind is SymbolKind.Alias or SymbolKind.ArrayType or SymbolKind.PointerType or SymbolKind.DynamicType)
+            if (
+                symbol.Kind
+                is SymbolKind.Alias
+                    or SymbolKind.ArrayType
+                    or SymbolKind.PointerType
+                    or SymbolKind.DynamicType
+            )
             {
                 skippedByKind++;
                 shouldIndex = false;
@@ -200,7 +235,10 @@ public sealed class FastSymbolIndex
             {
                 try
                 {
-                    var canonicalFqn = symbol.ToDisplayString(Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat)
+                    var canonicalFqn = symbol
+                        .ToDisplayString(
+                            Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat
+                        )
                         .Replace("global::", ""); // Remove global:: prefix
 
                     var entry = SymbolIndexEntryBuilder.Build(symbol, canonicalFqn);
@@ -226,7 +264,10 @@ public sealed class FastSymbolIndex
         var globalNs = compilation.GlobalNamespace;
         if (globalNs == null)
         {
-            _logger.LogWarning("Compilation has null GlobalNamespace: {AssemblyName}", compilation.AssemblyName);
+            _logger.LogWarning(
+                "Compilation has null GlobalNamespace: {AssemblyName}",
+                compilation.AssemblyName
+            );
             return;
         }
 
@@ -238,7 +279,11 @@ public sealed class FastSymbolIndex
 
         _logger.LogDebug(
             "CollectSymbolsFromCompilation stats: Visited={Visited}, Skipped (Duplicates={Duplicates}, Implicit={Implicit}, ByKind={ByKind})",
-            visited, skippedDuplicates, skippedImplicit, skippedByKind);
+            visited,
+            skippedDuplicates,
+            skippedImplicit,
+            skippedByKind
+        );
     }
 
     /// <summary>
@@ -295,14 +340,16 @@ public sealed class FastSymbolIndex
             .ToFrozenDictionary(
                 g => g.Key,
                 g => g.ToImmutableArray(),
-                StringComparer.OrdinalIgnoreCase);
+                StringComparer.OrdinalIgnoreCase
+            );
 
         _byNamespace = entries
             .GroupBy(e => e.Namespace, StringComparer.OrdinalIgnoreCase)
             .ToFrozenDictionary(
                 g => g.Key,
                 g => g.ToImmutableArray(),
-                StringComparer.OrdinalIgnoreCase);
+                StringComparer.OrdinalIgnoreCase
+            );
 
         // Compute available flags (bitwise OR of all flags)
         _availableFlags = SymbolMetadataFlags.None;
@@ -328,9 +375,9 @@ public sealed class FastSymbolIndex
         string searchTerm,
         SymbolMetadataFlags requiredFlags = SymbolMetadataFlags.None,
         SymbolMetadataFlags excludedFlags = SymbolMetadataFlags.None,
-        Func<SymbolIndexEntry, bool>? additionalFilter = null)
+        Func<SymbolIndexEntry, bool>? additionalFilter = null
+    )
     {
-
         if (!IsBuilt)
             return Enumerable.Empty<SymbolIndexEntry>();
 
@@ -360,8 +407,9 @@ public sealed class FastSymbolIndex
             // Fallback: fuzzy search across all symbols
             // This is still fast due to pre-filtering with Bloom filter
             candidates = _allSymbols.Where(e =>
-                e.SimpleName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                e.CanonicalFqn.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+                e.SimpleName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                || e.CanonicalFqn.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+            );
         }
 
         // === Layer 4: Bitwise filtering ===
@@ -369,8 +417,8 @@ public sealed class FastSymbolIndex
         if (requiredFlags != SymbolMetadataFlags.None || excludedFlags != SymbolMetadataFlags.None)
         {
             candidates = candidates.Where(e =>
-                e.Flags.HasAllFlags(requiredFlags) &&
-                e.Flags.HasNoFlags(excludedFlags));
+                e.Flags.HasAllFlags(requiredFlags) && e.Flags.HasNoFlags(excludedFlags)
+            );
         }
 
         // === Layer 5: Additional custom filter ===
@@ -390,8 +438,7 @@ public sealed class FastSymbolIndex
         if (!IsBuilt || !_fqnBloomFilter.MightContain(fqn))
             return Enumerable.Empty<SymbolIndexEntry>();
 
-        return _allSymbols.Where(e =>
-            string.Equals(e.CanonicalFqn, fqn, StringComparison.Ordinal));
+        return _allSymbols.Where(e => string.Equals(e.CanonicalFqn, fqn, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -399,9 +446,9 @@ public sealed class FastSymbolIndex
     /// </summary>
     public IEnumerable<SymbolIndexEntry> FindByNamespace(
         string namespaceName,
-        SymbolMetadataFlags requiredFlags = SymbolMetadataFlags.None)
+        SymbolMetadataFlags requiredFlags = SymbolMetadataFlags.None
+    )
     {
-
         if (!IsBuilt || !_byNamespace.TryGetValue(namespaceName, out var symbols))
             return Enumerable.Empty<SymbolIndexEntry>();
 
@@ -414,10 +461,8 @@ public sealed class FastSymbolIndex
     /// <summary>
     /// Find symbols with specific accessibility
     /// </summary>
-    public IEnumerable<SymbolIndexEntry> FindByAccessibility(
-        SymbolMetadataFlags accessibility)
+    public IEnumerable<SymbolIndexEntry> FindByAccessibility(SymbolMetadataFlags accessibility)
     {
-
         if (!IsBuilt)
             return Enumerable.Empty<SymbolIndexEntry>();
 
@@ -430,11 +475,14 @@ public sealed class FastSymbolIndex
     public IEnumerable<SymbolIndexEntry> GetPublicApi()
     {
         return FindByAccessibility(SymbolMetadataFlags.Public)
-            .Where(e => e.Flags.HasAnyFlag(
-                SymbolMetadataFlags.IsClass |
-                SymbolMetadataFlags.IsInterface |
-                SymbolMetadataFlags.IsMethod |
-                SymbolMetadataFlags.IsProperty));
+            .Where(e =>
+                e.Flags.HasAnyFlag(
+                    SymbolMetadataFlags.IsClass
+                        | SymbolMetadataFlags.IsInterface
+                        | SymbolMetadataFlags.IsMethod
+                        | SymbolMetadataFlags.IsProperty
+                )
+            );
     }
 
     /// <summary>
@@ -463,7 +511,8 @@ public sealed class FastSymbolIndex
             if (access != SymbolMetadataFlags.None)
             {
                 var accessName = access.ToString();
-                accessibilityBreakdown[accessName] = accessibilityBreakdown.GetValueOrDefault(accessName) + 1;
+                accessibilityBreakdown[accessName] =
+                    accessibilityBreakdown.GetValueOrDefault(accessName) + 1;
             }
         }
 
@@ -475,7 +524,7 @@ public sealed class FastSymbolIndex
             AvailableFlags = _availableFlags,
             BloomFilterStats = _nameBloomFilter.GetStatistics(),
             TypeBreakdown = typeBreakdown,
-            AccessibilityBreakdown = accessibilityBreakdown
+            AccessibilityBreakdown = accessibilityBreakdown,
         };
     }
 
@@ -485,9 +534,9 @@ public sealed class FastSymbolIndex
     private async Task<List<SymbolIndexEntry>?> LoadFromCacheAsync(
         Solution solution,
         List<SerializableSymbolEntry> cachedEntries,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-
         try
         {
             _logger.LogInformation("Restoring {Count} symbols from cache...", cachedEntries.Count);
@@ -510,11 +559,16 @@ public sealed class FastSymbolIndex
                     if (processed - lastProgressReport >= progressThreshold)
                     {
                         var percent = (int)((processed / (double)total) * 100);
-                        _logger.LogDebug("Cache restoration progress: {Percent}% ({Processed}/{Total})",
-                            percent, processed, total);
+                        _logger.LogDebug(
+                            "Cache restoration progress: {Percent}% ({Processed}/{Total})",
+                            percent,
+                            processed,
+                            total
+                        );
                         lastProgressReport = processed;
                     }
-                });
+                }
+            );
 
             foreach (var (entry, symbol) in results)
             {
@@ -538,7 +592,7 @@ public sealed class FastSymbolIndex
                     NameLength = entry.NameLength,
                     FqnLength = entry.FqnLength,
                     FirstChar = entry.FirstChar,
-                    SimpleNameHashCode = entry.SimpleNameHashCode
+                    SimpleNameHashCode = entry.SimpleNameHashCode,
                 };
 
                 entries.Add(symbolEntry);
@@ -546,12 +600,15 @@ public sealed class FastSymbolIndex
                 // Early success rate check after processing earlyCheckThreshold symbols
                 if (entries.Count + failedCount >= earlyCheckThreshold)
                 {
-                    var currentSuccessRate = (entries.Count / (double)(entries.Count + failedCount)) * 100;
+                    var currentSuccessRate =
+                        (entries.Count / (double)(entries.Count + failedCount)) * 100;
                     if (currentSuccessRate < 50)
                     {
                         _logger.LogWarning(
                             "Early cache check: success rate too low ({Rate:F1}% after {Count} symbols), aborting cache restoration",
-                            currentSuccessRate, entries.Count + failedCount);
+                            currentSuccessRate,
+                            entries.Count + failedCount
+                        );
                         return null;
                     }
                     // Only check once at the threshold
@@ -562,13 +619,19 @@ public sealed class FastSymbolIndex
             var successRate = (entries.Count / (double)cachedEntries.Count) * 100;
             _logger.LogInformation(
                 "Cache restoration complete: {Success}/{Total} symbols restored ({Rate:F1}%), {Failed} failed",
-                entries.Count, cachedEntries.Count, successRate, failedCount);
+                entries.Count,
+                cachedEntries.Count,
+                successRate,
+                failedCount
+            );
 
             // Consider cache restoration successful if we got at least 80% of symbols
             if (successRate < 80)
             {
-                _logger.LogWarning("Cache restoration success rate too low ({Rate:F1}%), discarding cache",
-                    successRate);
+                _logger.LogWarning(
+                    "Cache restoration success rate too low ({Rate:F1}%), discarding cache",
+                    successRate
+                );
                 return null;
             }
 
@@ -590,7 +653,8 @@ public sealed class FastSymbolIndex
     public async Task UpdateDocumentAsync(
         Solution solution,
         DocumentId documentId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
@@ -622,7 +686,12 @@ public sealed class FastSymbolIndex
 
             _logger.LogInformation(
                 "Incremental update completed: {DocumentId}, removed {Removed} symbols, added {Added} symbols in {ElapsedMs}ms (update #{Counter})",
-                documentId, removedCount, newSymbols.Count, sw.ElapsedMilliseconds, _updateCounter);
+                documentId,
+                removedCount,
+                newSymbols.Count,
+                sw.ElapsedMilliseconds,
+                _updateCounter
+            );
         }
         finally
         {
@@ -636,7 +705,8 @@ public sealed class FastSymbolIndex
     public async Task AddDocumentAsync(
         Solution solution,
         DocumentId documentId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
@@ -661,7 +731,11 @@ public sealed class FastSymbolIndex
 
             _logger.LogInformation(
                 "Incremental add completed: {DocumentId}, added {Added} symbols in {ElapsedMs}ms (update #{Counter})",
-                documentId, newSymbols.Count, sw.ElapsedMilliseconds, _updateCounter);
+                documentId,
+                newSymbols.Count,
+                sw.ElapsedMilliseconds,
+                _updateCounter
+            );
         }
         finally
         {
@@ -674,13 +748,17 @@ public sealed class FastSymbolIndex
     /// </summary>
     public async Task RemoveDocumentAsync(
         DocumentId documentId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            _logger.LogDebug("Incremental remove: Processing deleted document {DocumentId}", documentId);
+            _logger.LogDebug(
+                "Incremental remove: Processing deleted document {DocumentId}",
+                documentId
+            );
 
             var removedCount = _allSymbolsList.RemoveAll(e => e.DocumentId == documentId);
 
@@ -694,7 +772,11 @@ public sealed class FastSymbolIndex
 
             _logger.LogInformation(
                 "Incremental remove completed: {DocumentId}, removed {Removed} symbols in {ElapsedMs}ms (update #{Counter})",
-                documentId, removedCount, sw.ElapsedMilliseconds, _updateCounter);
+                documentId,
+                removedCount,
+                sw.ElapsedMilliseconds,
+                _updateCounter
+            );
         }
         finally
         {
@@ -708,7 +790,8 @@ public sealed class FastSymbolIndex
     /// </summary>
     internal static async Task<List<SymbolIndexEntry>> ExtractSymbolsFromDocumentAsync(
         Document document,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var entries = new List<SymbolIndexEntry>();
         var seenSymbols = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
@@ -729,7 +812,8 @@ public sealed class FastSymbolIndex
             }
 
             // Extract all declared symbols from this document
-            var declaredSymbols = semanticModel.Compilation.GetSemanticModel(syntaxRoot)
+            var declaredSymbols = semanticModel
+                .Compilation.GetSemanticModel(syntaxRoot)
                 .SyntaxTree.GetRoot(cancellationToken)
                 .DescendantNodes()
                 .Select(node => semanticModel.GetDeclaredSymbol(node, cancellationToken))
@@ -749,21 +833,31 @@ public sealed class FastSymbolIndex
                     continue;
                 }
 
-                if (symbol.Kind is SymbolKind.Alias or SymbolKind.ArrayType or SymbolKind.PointerType or SymbolKind.DynamicType)
+                if (
+                    symbol.Kind
+                    is SymbolKind.Alias
+                        or SymbolKind.ArrayType
+                        or SymbolKind.PointerType
+                        or SymbolKind.DynamicType
+                )
                 {
                     continue;
                 }
 
                 try
                 {
-                    var canonicalFqn = symbol.ToDisplayString(Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat)
+                    var canonicalFqn = symbol
+                        .ToDisplayString(
+                            Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat
+                        )
                         .Replace("global::", "");
 
                     var entry = SymbolIndexEntryBuilder.Build(
                         symbol,
                         canonicalFqn,
                         document.Id,
-                        document.FilePath);
+                        document.FilePath
+                    );
 
                     entries.Add(entry);
                 }

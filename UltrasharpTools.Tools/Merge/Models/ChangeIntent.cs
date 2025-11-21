@@ -23,12 +23,12 @@ public sealed record ChangeIntent
 /// </summary>
 public enum IntentType
 {
-    Unknown,            // Неизвестно
-    BugFix,             // Исправление бага
-    Refactoring,        // Рефакторинг (не меняет поведение)
-    FeatureAddition,    // Новая функциональность
-    PerformanceOpt,     // Оптимизация производительности
-    CodeCleanup,        // Форматирование, комментарии
-    APIChange,          // Изменение API (signatures)
-    Modification        // Общая модификация
+    Unknown, // Неизвестно
+    BugFix, // Исправление бага
+    Refactoring, // Рефакторинг (не меняет поведение)
+    FeatureAddition, // Новая функциональность
+    PerformanceOpt, // Оптимизация производительности
+    CodeCleanup, // Форматирование, комментарии
+    APIChange, // Изменение API (signatures)
+    Modification, // Общая модификация
 }

@@ -46,7 +46,10 @@ public interface IEmbeddingProvider : IAsyncDisposable
     /// <param name="texts">Texts to embed</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Array of embedding vectors</returns>
-    Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default);
+    Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Check if provider is available

@@ -1,6 +1,4 @@
-
 using System.Threading.Channels;
-
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -26,17 +24,16 @@ public sealed class IncrementalUpdateQueue : IDisposable
 
     public IncrementalUpdateQueue(
         FastSymbolIndex symbolIndex,
-        ILogger<IncrementalUpdateQueue>? logger = null)
+        ILogger<IncrementalUpdateQueue>? logger = null
+    )
     {
         _symbolIndex = symbolIndex ?? throw new ArgumentNullException(nameof(symbolIndex));
         _logger = logger ?? NullLogger<IncrementalUpdateQueue>.Instance;
 
         // Unbounded channel for updates (backpressure handled by batching)
-        _updateChannel = Channel.CreateUnbounded<DocumentUpdate>(new UnboundedChannelOptions
-        {
-            SingleReader = true,
-            SingleWriter = false
-        });
+        _updateChannel = Channel.CreateUnbounded<DocumentUpdate>(
+            new UnboundedChannelOptions { SingleReader = true, SingleWriter = false }
+        );
 
         // Start background processor
         _processorTask = Task.Run(ProcessUpdatesAsync, _disposalCts.Token);
@@ -44,20 +41,21 @@ public sealed class IncrementalUpdateQueue : IDisposable
         _logger.LogInformation(
             "IncrementalUpdateQueue started (batch window: {BatchWindow}ms, max batch: {MaxBatch})",
             _batchWindow.TotalMilliseconds,
-            _maxBatchSize);
+            _maxBatchSize
+        );
     }
 
     /// <summary>
     /// Enqueue document update for processing.
     /// Deduplicates updates to same document.
     /// </summary>
-    public async Task EnqueueAsync(DocumentUpdate update, CancellationToken cancellationToken = default)
+    public async Task EnqueueAsync(
+        DocumentUpdate update,
+        CancellationToken cancellationToken = default
+    )
     {
         // Deduplicate: only keep latest update for each document
-        _pendingUpdates.AddOrUpdate(
-            update.DocumentId,
-            update,
-            (_, _) => update);
+        _pendingUpdates.AddOrUpdate(update.DocumentId, update, (_, _) => update);
 
         await _updateChannel.Writer.WriteAsync(update, cancellationToken);
     }
@@ -122,7 +120,9 @@ public sealed class IncrementalUpdateQueue : IDisposable
                 }
 
                 // Try to read more updates with timeout
-                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken
+                );
                 timeoutCts.CancelAfter(remaining);
 
                 try
@@ -148,20 +148,23 @@ public sealed class IncrementalUpdateQueue : IDisposable
     /// <summary>
     /// Apply batch of updates to symbol index.
     /// </summary>
-    private async Task ApplyBatchAsync(List<DocumentUpdate> batch, CancellationToken cancellationToken)
+    private async Task ApplyBatchAsync(
+        List<DocumentUpdate> batch,
+        CancellationToken cancellationToken
+    )
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var successCount = 0;
         var failureCount = 0;
 
         // Deduplicate batch: only keep latest update per document
-        var deduplicatedBatch = batch
-            .GroupBy(u => u.DocumentId)
-            .Select(g => g.Last())
-            .ToList();
+        var deduplicatedBatch = batch.GroupBy(u => u.DocumentId).Select(g => g.Last()).ToList();
 
-        _logger.LogDebug("Applying {Count} updates (deduplicated from {Original})",
-            deduplicatedBatch.Count, batch.Count);
+        _logger.LogDebug(
+            "Applying {Count} updates (deduplicated from {Original})",
+            deduplicatedBatch.Count,
+            batch.Count
+        );
 
         foreach (var update in deduplicatedBatch)
         {
@@ -176,9 +179,12 @@ public sealed class IncrementalUpdateQueue : IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex,
+                _logger.LogWarning(
+                    ex,
                     "Failed to apply update for document {DocumentId} ({Kind})",
-                    update.DocumentId, update.Kind);
+                    update.DocumentId,
+                    update.Kind
+                );
                 failureCount++;
             }
         }
@@ -186,7 +192,10 @@ public sealed class IncrementalUpdateQueue : IDisposable
         sw.Stop();
         _logger.LogInformation(
             "Batch completed: {Success} succeeded, {Failure} failed in {Elapsed}ms",
-            successCount, failureCount, sw.ElapsedMilliseconds);
+            successCount,
+            failureCount,
+            sw.ElapsedMilliseconds
+        );
     }
 
     /// <summary>
@@ -204,12 +213,20 @@ public sealed class IncrementalUpdateQueue : IDisposable
         switch (update.Kind)
         {
             case DocumentChangeKind.Added:
-                await _symbolIndex.AddDocumentAsync(update.Solution, update.DocumentId, cancellationToken);
+                await _symbolIndex.AddDocumentAsync(
+                    update.Solution,
+                    update.DocumentId,
+                    cancellationToken
+                );
                 _logger.LogDebug("Added document: {FilePath}", document.FilePath);
                 break;
 
             case DocumentChangeKind.Modified:
-                await _symbolIndex.UpdateDocumentAsync(update.Solution, update.DocumentId, cancellationToken);
+                await _symbolIndex.UpdateDocumentAsync(
+                    update.Solution,
+                    update.DocumentId,
+                    cancellationToken
+                );
                 _logger.LogDebug("Updated document: {FilePath}", document.FilePath);
                 break;
 
@@ -252,10 +269,7 @@ public sealed class IncrementalUpdateQueue : IDisposable
 /// <summary>
 /// Represents a document update event.
 /// </summary>
-public record DocumentUpdate(
-    DocumentId DocumentId,
-    DocumentChangeKind Kind,
-    Solution Solution);
+public record DocumentUpdate(DocumentId DocumentId, DocumentChangeKind Kind, Solution Solution);
 
 /// <summary>
 /// Type of document change.
@@ -264,5 +278,5 @@ public enum DocumentChangeKind
 {
     Added,
     Modified,
-    Removed
+    Removed,
 }

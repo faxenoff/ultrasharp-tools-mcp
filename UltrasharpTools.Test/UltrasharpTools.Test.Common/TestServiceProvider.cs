@@ -15,7 +15,8 @@ public static class TestServiceProvider
     public static ServiceProvider CreateForLayeredIndexTest(
         TestConfiguration config,
         string preset = "Development",
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null
+    )
     {
         var services = new ServiceCollection();
 
@@ -36,9 +37,10 @@ public static class TestServiceProvider
         );
 
         // Configure layered indexing
-        var layeredConfig = preset == "Production"
-            ? config.LayeredIndexing.Production
-            : config.LayeredIndexing.Development;
+        var layeredConfig =
+            preset == "Production"
+                ? config.LayeredIndexing.Production
+                : config.LayeredIndexing.Development;
 
         services.WithLayeredIndexing(
             maxBranchDeltas: layeredConfig.MaxBranchDeltas,
@@ -59,7 +61,8 @@ public static class TestServiceProvider
         TestConfiguration config,
         string provider = "memory",
         int? dimension = null,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null
+    )
     {
         var services = new ServiceCollection();
 
@@ -111,7 +114,8 @@ public static class TestServiceProvider
         TestConfiguration config,
         string provider = "memory",
         int? dimension = null,
-        Action<IServiceCollection>? configureServices = null)
+        Action<IServiceCollection>? configureServices = null
+    )
     {
         var services = new ServiceCollection();
 
@@ -168,7 +172,7 @@ public static class TestServiceProvider
             "warning" => LogLevel.Warning,
             "error" => LogLevel.Error,
             "critical" => LogLevel.Critical,
-            _ => LogLevel.Information
+            _ => LogLevel.Information,
         };
     }
 }

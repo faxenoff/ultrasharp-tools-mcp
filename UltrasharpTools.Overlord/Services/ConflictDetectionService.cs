@@ -18,7 +18,8 @@ public sealed class ConflictDetectionService : IConflictDetectionService
     public ConflictDetectionService(
         ILogger<ConflictDetectionService> logger,
         IMultiProjectVectorStoreService vectorStore,
-        INotificationService notificationService)
+        INotificationService notificationService
+    )
     {
         _logger = logger;
         _vectorStore = vectorStore;
@@ -32,11 +33,15 @@ public sealed class ConflictDetectionService : IConflictDetectionService
         float[] vectors,
         string? content,
         double duplicateThreshold = 0.85,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogDebug(
             "Detecting duplicates for {Project}/{Branch}/{File}",
-            project, branch, file);
+            project,
+            branch,
+            file
+        );
 
         try
         {
@@ -46,29 +51,30 @@ public sealed class ConflictDetectionService : IConflictDetectionService
                 threshold: duplicateThreshold,
                 limit: 10,
                 projects: null, // Поиск во всех проектах
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken
+            );
 
             var duplicates = new List<DuplicateMatch>();
 
             foreach (var match in matches)
             {
                 // Пропускаем сам файл
-                if (match.Project == project &&
-                    match.Branch == branch &&
-                    match.FilePath == file)
+                if (match.Project == project && match.Branch == branch && match.FilePath == file)
                 {
                     continue;
                 }
 
-                duplicates.Add(new DuplicateMatch
-                {
-                    Project = match.Project,
-                    Branch = match.Branch,
-                    File = match.FilePath,
-                    Line = match.Line,
-                    Similarity = match.Similarity,
-                    Code = match.Code
-                });
+                duplicates.Add(
+                    new DuplicateMatch
+                    {
+                        Project = match.Project,
+                        Branch = match.Branch,
+                        File = match.FilePath,
+                        Line = match.Line,
+                        Similarity = match.Similarity,
+                        Code = match.Code,
+                    }
+                );
             }
 
             // Автоматические уведомления о значимых дубликатах
@@ -79,24 +85,22 @@ public sealed class ConflictDetectionService : IConflictDetectionService
                     branch,
                     file,
                     duplicates,
-                    cancellationToken);
+                    cancellationToken
+                );
             }
 
             _logger.LogInformation(
                 "Found {Count} duplicates for {Project}/{File}",
                 duplicates.Count,
                 project,
-                file);
+                file
+            );
 
             return duplicates;
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Failed to detect duplicates for {Project}/{File}",
-                project,
-                file);
+            _logger.LogError(ex, "Failed to detect duplicates for {Project}/{File}", project, file);
             return new List<DuplicateMatch>();
         }
     }
@@ -106,7 +110,8 @@ public sealed class ConflictDetectionService : IConflictDetectionService
         string branch,
         string file,
         List<DuplicateMatch> duplicates,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // Отправляем уведомления только о самых значимых дубликатах
         var significantDuplicates = duplicates
@@ -126,20 +131,18 @@ public sealed class ConflictDetectionService : IConflictDetectionService
                 DuplicateProject = duplicate.Project,
                 DuplicateFile = duplicate.File,
                 DuplicateLine = duplicate.Line,
-                CodeSnippet = TruncateCode(duplicate.Code, 200)
+                CodeSnippet = TruncateCode(duplicate.Code, 200),
             };
 
             // Отправляем уведомление проекту, в котором обнаружен дубликат
-            await _notificationService.SendToProjectAsync(
-                project,
-                notification,
-                cancellationToken);
+            await _notificationService.SendToProjectAsync(project, notification, cancellationToken);
 
             _logger.LogInformation(
                 "Sent duplicate notification: {Project} -> {DuplicateProject} (similarity: {Similarity:P0})",
                 project,
                 duplicate.Project,
-                duplicate.Similarity);
+                duplicate.Similarity
+            );
         }
 
         // Рекомендация по переиспользованию, если найден дубликат в другом проекте
@@ -157,13 +160,15 @@ public sealed class ConflictDetectionService : IConflictDetectionService
                 SourceProject = crossProjectDuplicate.Project,
                 SourceFile = crossProjectDuplicate.File,
                 Similarity = crossProjectDuplicate.Similarity,
-                Description = $"Found highly similar code (similarity: {crossProjectDuplicate.Similarity:P0})"
+                Description =
+                    $"Found highly similar code (similarity: {crossProjectDuplicate.Similarity:P0})",
             };
 
             await _notificationService.SendToProjectAsync(
                 project,
                 recommendation,
-                cancellationToken);
+                cancellationToken
+            );
         }
     }
 

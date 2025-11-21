@@ -43,7 +43,9 @@ public class SemanticAnalysisTest
             var solutionManager = serviceProvider.GetRequiredService<ISolutionManager>();
             var codeAnalysisService = serviceProvider.GetRequiredService<ICodeAnalysisService>();
             var semanticSearchService = serviceProvider.GetRequiredService<SemanticSearchService>();
-            var logger = serviceProvider.GetRequiredService<ILogger<UltrasharpTools.Tools.Mcp.Tools.SemanticAnalysisToolsLogCategory>>();
+            var logger = serviceProvider.GetRequiredService<
+                ILogger<UltrasharpTools.Tools.Mcp.Tools.SemanticAnalysisToolsLogCategory>
+            >();
 
             // Load UltrasharpTools solution (self-testing)
             var solutionPath = @"D:\github\ultrasharp-tools-mcp\UltrasharpTools.sln";
@@ -70,7 +72,12 @@ public class SemanticAnalysisTest
             await TestSemanticSearch(semanticSearchService, solutionManager, logger);
 
             // Test 2: semantic_diff
-            await TestSemanticDiff(semanticSearchService, solutionManager, codeAnalysisService, logger);
+            await TestSemanticDiff(
+                semanticSearchService,
+                solutionManager,
+                codeAnalysisService,
+                logger
+            );
 
             // Test 3: detect_code_clones
             await TestDetectCodeClones(semanticSearchService, solutionManager, logger);
@@ -99,7 +106,8 @@ public class SemanticAnalysisTest
     private static async Task TestSemanticSearch(
         SemanticSearchService searchService,
         ISolutionManager solutionManager,
-        ILogger<UltrasharpTools.Tools.Mcp.Tools.SemanticAnalysisToolsLogCategory> logger)
+        ILogger<UltrasharpTools.Tools.Mcp.Tools.SemanticAnalysisToolsLogCategory> logger
+    )
     {
         Console.WriteLine("=== TEST 1: semantic_search ===");
         Console.WriteLine();
@@ -119,7 +127,9 @@ public class SemanticAnalysisTest
             cancellationToken: CancellationToken.None
         );
 
-        Console.WriteLine(JsonSerializer.Serialize(result1, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine(
+            JsonSerializer.Serialize(result1, new JsonSerializerOptions { WriteIndented = true })
+        );
         Console.WriteLine();
 
         // Test query 2: Find logging code
@@ -135,7 +145,9 @@ public class SemanticAnalysisTest
             cancellationToken: CancellationToken.None
         );
 
-        Console.WriteLine(JsonSerializer.Serialize(result2, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine(
+            JsonSerializer.Serialize(result2, new JsonSerializerOptions { WriteIndented = true })
+        );
         Console.WriteLine();
 
         // Test query 3: Specific scope (methods only)
@@ -151,7 +163,9 @@ public class SemanticAnalysisTest
             cancellationToken: CancellationToken.None
         );
 
-        Console.WriteLine(JsonSerializer.Serialize(result3, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine(
+            JsonSerializer.Serialize(result3, new JsonSerializerOptions { WriteIndented = true })
+        );
         Console.WriteLine();
 
         sw.Stop();
@@ -163,7 +177,8 @@ public class SemanticAnalysisTest
         SemanticSearchService searchService,
         ISolutionManager solutionManager,
         ICodeAnalysisService codeAnalysisService,
-        ILogger<UltrasharpTools.Tools.Mcp.Tools.SemanticAnalysisToolsLogCategory> logger)
+        ILogger<UltrasharpTools.Tools.Mcp.Tools.SemanticAnalysisToolsLogCategory> logger
+    )
     {
         Console.WriteLine("=== TEST 2: semantic_diff ===");
         Console.WriteLine();
@@ -187,7 +202,9 @@ public class SemanticAnalysisTest
         );
 
         // Extract FQNs from search results
-        dynamic? searchData = JsonSerializer.Deserialize<dynamic>(JsonSerializer.Serialize(searchResult));
+        dynamic? searchData = JsonSerializer.Deserialize<dynamic>(
+            JsonSerializer.Serialize(searchResult)
+        );
         if (searchData == null)
         {
             Console.WriteLine("⚠️ No search results for semantic_diff test");
@@ -228,7 +245,9 @@ public class SemanticAnalysisTest
             cancellationToken: CancellationToken.None
         );
 
-        Console.WriteLine(JsonSerializer.Serialize(diffResult, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine(
+            JsonSerializer.Serialize(diffResult, new JsonSerializerOptions { WriteIndented = true })
+        );
         Console.WriteLine();
 
         sw.Stop();
@@ -239,7 +258,8 @@ public class SemanticAnalysisTest
     private static async Task TestDetectCodeClones(
         SemanticSearchService searchService,
         ISolutionManager solutionManager,
-        ILogger<UltrasharpTools.Tools.Mcp.Tools.SemanticAnalysisToolsLogCategory> logger)
+        ILogger<UltrasharpTools.Tools.Mcp.Tools.SemanticAnalysisToolsLogCategory> logger
+    )
     {
         Console.WriteLine("=== TEST 3: detect_code_clones ===");
         Console.WriteLine();
@@ -260,7 +280,9 @@ public class SemanticAnalysisTest
             cancellationToken: CancellationToken.None
         );
 
-        Console.WriteLine(JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine(
+            JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true })
+        );
         Console.WriteLine();
 
         sw.Stop();

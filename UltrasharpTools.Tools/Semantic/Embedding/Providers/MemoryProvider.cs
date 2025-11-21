@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-
 using UltrasharpTools.Tools.Semantic.Models;
 
 namespace UltrasharpTools.Tools.Semantic.Embedding.Providers;
@@ -19,15 +18,16 @@ public sealed class MemoryProvider : IEmbeddingProvider
     public int MaxContextTokens => 0; // No ML, unlimited "context"
     public int? Dimension => EmbeddingDimension;
 
-    public ProviderInfo Info => new()
-    {
-        Name = "memory",
-        Model = _options.UseDeterministicHash ? "sha256-hash" : "random-seeded",
-        Dimension = EmbeddingDimension,
-        MaxTokens = 0,
-        IsLocal = true,
-        Version = "1.0"
-    };
+    public ProviderInfo Info =>
+        new()
+        {
+            Name = "memory",
+            Model = _options.UseDeterministicHash ? "sha256-hash" : "random-seeded",
+            Dimension = EmbeddingDimension,
+            MaxTokens = 0,
+            IsLocal = true,
+            Version = "1.0",
+        };
 
     public MemoryProvider(MemoryOptions options, ILogger<MemoryProvider> logger)
     {
@@ -53,7 +53,10 @@ public sealed class MemoryProvider : IEmbeddingProvider
         }
     }
 
-    public Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+    public Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken cancellationToken = default
+    )
     {
         var embeddings = new float[texts.Count][];
         for (int i = 0; i < texts.Count; i++)

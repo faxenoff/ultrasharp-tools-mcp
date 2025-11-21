@@ -1,5 +1,3 @@
-
-
 using System.Xml;
 using System.Xml.Linq;
 
@@ -23,7 +21,7 @@ public class LegacyNuGetPackageReader
     public enum PackageFormat
     {
         PackageReference,
-        PackagesConfig
+        PackagesConfig,
     }
 
     public class ProjectPackageInfo
@@ -42,7 +40,7 @@ public class LegacyNuGetPackageReader
         var info = new ProjectPackageInfo
         {
             ProjectPath = projectPath,
-            Format = DetectPackageFormat(projectPath)
+            Format = DetectPackageFormat(projectPath),
         };
 
         if (info.Format == PackageFormat.PackageReference)
@@ -88,12 +86,14 @@ public class LegacyNuGetPackageReader
 
                 if (!string.IsNullOrEmpty(packageId) && !string.IsNullOrEmpty(version))
                 {
-                    packages.Add(new PackageReference
-                    {
-                        PackageId = packageId,
-                        Version = version,
-                        Format = PackageFormat.PackageReference
-                    });
+                    packages.Add(
+                        new PackageReference
+                        {
+                            PackageId = packageId,
+                            Version = version,
+                            Format = PackageFormat.PackageReference,
+                        }
+                    );
                 }
             }
         }
@@ -132,7 +132,9 @@ public class LegacyNuGetPackageReader
         {
             var xDoc = XDocument.Load(projectPath);
             var hasPackageReference = xDoc.Descendants("PackageReference").Any();
-            return hasPackageReference ? PackageFormat.PackageReference : PackageFormat.PackagesConfig;
+            return hasPackageReference
+                ? PackageFormat.PackageReference
+                : PackageFormat.PackagesConfig;
         }
         catch
         {
@@ -175,19 +177,23 @@ public class LegacyNuGetPackageReader
                     var version = packageElement.Attribute("version")?.Value;
                     var targetFramework = packageElement.Attribute("targetFramework")?.Value;
                     var isDevelopmentDependency = string.Equals(
-                        packageElement.Attribute("developmentDependency")?.Value, "true",
-                        StringComparison.OrdinalIgnoreCase);
+                        packageElement.Attribute("developmentDependency")?.Value,
+                        "true",
+                        StringComparison.OrdinalIgnoreCase
+                    );
 
                     if (!string.IsNullOrEmpty(packageId) && !string.IsNullOrEmpty(version))
                     {
-                        packages.Add(new PackageReference
-                        {
-                            PackageId = packageId,
-                            Version = version,
-                            TargetFramework = targetFramework,
-                            IsDevelopmentDependency = isDevelopmentDependency,
-                            Format = PackageFormat.PackagesConfig
-                        });
+                        packages.Add(
+                            new PackageReference
+                            {
+                                PackageId = packageId,
+                                Version = version,
+                                TargetFramework = targetFramework,
+                                IsDevelopmentDependency = isDevelopmentDependency,
+                                Format = PackageFormat.PackagesConfig,
+                            }
+                        );
                     }
                 }
             }
@@ -211,7 +217,9 @@ public class LegacyNuGetPackageReader
         }
 
         var projectDir = Path.GetDirectoryName(projectPath);
-        return string.IsNullOrEmpty(projectDir) ? string.Empty : Path.Combine(projectDir, "packages.config");
+        return string.IsNullOrEmpty(projectDir)
+            ? string.Empty
+            : Path.Combine(projectDir, "packages.config");
     }
 
     /// <summary>
@@ -248,6 +256,7 @@ public class LegacyNuGetPackageReader
 
         return packages;
     }
+
     public static List<PackageReference> GetAllPackageReferences(string projectPath)
     {
         if (string.IsNullOrEmpty(projectPath) || !File.Exists(projectPath))

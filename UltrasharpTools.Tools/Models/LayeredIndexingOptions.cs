@@ -86,26 +86,28 @@ public sealed record LayeredIndexingOptions
     /// <summary>
     /// Options for development (more aggressive caching, faster updates).
     /// </summary>
-    public static LayeredIndexingOptions Development => new()
-    {
-        MaxBranchDeltas = 50, // More branches in memory
-        DeltaCompactionThreshold = 500, // More aggressive compaction
-        PersistenceDebounceMs = 500, // Faster persistence
-        CleanupIntervalHours = 1, // More frequent cleanup
-        CompactionIntervalMinutes = 15, // More frequent compaction
-        CleanupIntervalMinutes = 30 // More frequent orphaned cleanup
-    };
+    public static LayeredIndexingOptions Development =>
+        new()
+        {
+            MaxBranchDeltas = 50, // More branches in memory
+            DeltaCompactionThreshold = 500, // More aggressive compaction
+            PersistenceDebounceMs = 500, // Faster persistence
+            CleanupIntervalHours = 1, // More frequent cleanup
+            CompactionIntervalMinutes = 15, // More frequent compaction
+            CleanupIntervalMinutes = 30, // More frequent orphaned cleanup
+        };
 
     /// <summary>
     /// Options for production (conservative, stable).
     /// </summary>
-    public static LayeredIndexingOptions Production => new()
-    {
-        MaxBranchDeltas = 20,
-        DeltaCompactionThreshold = 1000,
-        PersistenceDebounceMs = 2000,
-        CleanupIntervalHours = 24,
-        CompactionIntervalMinutes = 30,
-        CleanupIntervalMinutes = 60
-    };
+    public static LayeredIndexingOptions Production =>
+        new()
+        {
+            MaxBranchDeltas = 20,
+            DeltaCompactionThreshold = 1000,
+            PersistenceDebounceMs = 2000,
+            CleanupIntervalHours = 24,
+            CompactionIntervalMinutes = 30,
+            CleanupIntervalMinutes = 60,
+        };
 }

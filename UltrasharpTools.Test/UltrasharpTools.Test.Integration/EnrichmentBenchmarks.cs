@@ -29,11 +29,13 @@ public class EnrichmentBenchmarks
         // Setup быстрого mock embedding (минимальный overhead)
         _embeddingMock
             .Setup(x => x.GetEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string text, CancellationToken ct) =>
-            {
-                // Минимальный вектор для benchmark
-                return new float[768];
-            });
+            .ReturnsAsync(
+                (string text, CancellationToken ct) =>
+                {
+                    // Минимальный вектор для benchmark
+                    return new float[768];
+                }
+            );
 
         var config = SemanticModeConfig.CreateDefault();
         _provider = new SemanticModeProvider(
@@ -41,12 +43,10 @@ public class EnrichmentBenchmarks
             _embeddingMock.Object,
             null,
             null,
-            config);
+            config
+        );
 
-        _enricher = new ToolEnricher(
-            enricherLogger.Object,
-            _provider,
-            config);
+        _enricher = new ToolEnricher(enricherLogger.Object, _provider, config);
     }
 
     #region Phase 12.1 - Core Strategies Benchmarks
@@ -74,7 +74,7 @@ public class EnrichmentBenchmarks
         var args = new Dictionary<string, object>
         {
             ["fqn"] = "MyApp.Test.Method",
-            ["newCode"] = "public void Method() { }"
+            ["newCode"] = "public void Method() { }",
         };
         await _enricher.EnrichAsync("overwrite_member", result, args);
     }
@@ -86,7 +86,7 @@ public class EnrichmentBenchmarks
         var args = new Dictionary<string, object>
         {
             ["typeFqn"] = "MyApp.Test",
-            ["newCode"] = "public void NewMethod() { }"
+            ["newCode"] = "public void NewMethod() { }",
         };
         await _enricher.EnrichAsync("add_member", result, args);
     }
@@ -98,7 +98,7 @@ public class EnrichmentBenchmarks
         var args = new Dictionary<string, object>
         {
             ["fqn"] = "MyApp.Test.Method",
-            ["newName"] = "RenamedMethod"
+            ["newName"] = "RenamedMethod",
         };
         await _enricher.EnrichAsync("rename_symbol", result, args);
     }
@@ -190,7 +190,12 @@ public class EnrichmentBenchmarks
     [Benchmark]
     public async Task Benchmark_GetDiagnostics()
     {
-        var result = new { errors = 0, warnings = 1, info = 5 };
+        var result = new
+        {
+            errors = 0,
+            warnings = 1,
+            info = 5,
+        };
         var args = new Dictionary<string, object> { ["filePath"] = "Test.cs" };
         await _enricher.EnrichAsync("get_diagnostics", result, args);
     }
@@ -202,7 +207,7 @@ public class EnrichmentBenchmarks
         var args = new Dictionary<string, object>
         {
             ["filePath"] = "Test.cs",
-            ["diagnosticIds"] = new[] { "CS0168" }
+            ["diagnosticIds"] = new[] { "CS0168" },
         };
         await _enricher.EnrichAsync("apply_code_fixes", result, args);
     }
@@ -280,7 +285,7 @@ public class EnrichmentBenchmarks
             ("find_references", new Dictionary<string, object> { ["fqn"] = "Test.Method" }),
             ("get_members", new Dictionary<string, object> { ["typeFqn"] = "Test.Class" }),
             ("analyze_complexity", new Dictionary<string, object> { ["fqn"] = "Test.Method" }),
-            ("list_types", new Dictionary<string, object> { ["namespace"] = "Test" })
+            ("list_types", new Dictionary<string, object> { ["namespace"] = "Test" }),
         };
 
         var result = new { test = "data" };
@@ -299,15 +304,16 @@ public class EnrichmentBenchmarks
             ("find_references", new Dictionary<string, object> { ["fqn"] = "Test.Method" }),
             ("get_members", new Dictionary<string, object> { ["typeFqn"] = "Test.Class" }),
             ("analyze_complexity", new Dictionary<string, object> { ["fqn"] = "Test.Method" }),
-            ("list_types", new Dictionary<string, object> { ["namespace"] = "Test" })
+            ("list_types", new Dictionary<string, object> { ["namespace"] = "Test" }),
         };
 
         var result = new { test = "data" };
-        var tasks = strategies.Select(s => _enricher.EnrichAsync(s.Item1, result, s.Item2)).ToArray();
+        var tasks = strategies
+            .Select(s => _enricher.EnrichAsync(s.Item1, result, s.Item2))
+            .ToArray();
 
         await Task.WhenAll(tasks);
     }
 
     #endregion
 }
-

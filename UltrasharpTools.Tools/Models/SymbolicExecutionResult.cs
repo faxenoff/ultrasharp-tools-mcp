@@ -95,7 +95,7 @@ public enum IssueType
     UnreachableExit,
     InfiniteLoop,
     InvalidCast,
-    Overflow
+    Overflow,
 }
 
 /// <summary>
@@ -106,5 +106,5 @@ public enum IssueSeverity
     Info,
     Warning,
     Error,
-    Critical
+    Critical,
 }

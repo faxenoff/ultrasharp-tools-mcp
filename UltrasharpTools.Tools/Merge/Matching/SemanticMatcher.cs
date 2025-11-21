@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 using UltrasharpTools.Tools.Semantic.Models;
@@ -14,9 +13,9 @@ public sealed class SemanticMatcher
     private readonly ILogger<SemanticMatcher> _logger;
 
     // Пороги similarity для разных типов matches
-    private const float HighSimilarityThreshold = 0.90f;   // Очень похожий код
+    private const float HighSimilarityThreshold = 0.90f; // Очень похожий код
     private const float MediumSimilarityThreshold = 0.75f; // Возможно тот же код
-    private const float LowSimilarityThreshold = 0.60f;    // Сомнительное совпадение
+    private const float LowSimilarityThreshold = 0.60f; // Сомнительное совпадение
 
     public SemanticMatcher(ILogger<SemanticMatcher>? logger = null)
     {
@@ -27,47 +26,46 @@ public sealed class SemanticMatcher
     /// Найти semantic match для CodeUnit.
     /// </summary>
     public async Task<SemanticMatchResult?> FindSemanticMatchAsync(
-    CodeUnit sourceUnit,
-    VersionedIndex targetVersion,
-    CancellationToken ct = default)
+        CodeUnit sourceUnit,
+        VersionedIndex targetVersion,
+        CancellationToken ct = default
+    )
     {
         if (sourceUnit.Embedding == null)
         {
             _logger.LogWarning(
-            "Source unit {Id} has no embedding, cannot perform semantic matching",
-            sourceUnit.Id);
+                "Source unit {Id} has no embedding, cannot perform semantic matching",
+                sourceUnit.Id
+            );
             return null;
         }
 
         // 1. Поиск по VectorStore
         var similarUnits = await targetVersion.VectorStore.SearchAsync(
-        sourceUnit.Embedding,
-        limit: 10,
-        minSimilarity: LowSimilarityThreshold,
-        cancellationToken: ct);
+            sourceUnit.Embedding,
+            limit: 10,
+            minSimilarity: LowSimilarityThreshold,
+            cancellationToken: ct
+        );
 
         if (similarUnits.Count == 0)
         {
-            _logger.LogDebug(
-            "No semantic matches found for {Id}",
-            sourceUnit.Id);
+            _logger.LogDebug("No semantic matches found for {Id}", sourceUnit.Id);
             return null;
         }
 
         // 2. Найти лучший match с учётом типа
-        var bestMatch = FindBestMatch(
-        sourceUnit,
-        similarUnits,
-        targetVersion);
+        var bestMatch = FindBestMatch(sourceUnit, similarUnits, targetVersion);
 
         if (bestMatch == null)
             return null;
 
         _logger.LogInformation(
-        "Semantic match found: {SourceId} -> {TargetId} (similarity: {Similarity:F3})",
-        sourceUnit.Id,
-        bestMatch.TargetUnit.Id,
-        bestMatch.Similarity);
+            "Semantic match found: {SourceId} -> {TargetId} (similarity: {Similarity:F3})",
+            sourceUnit.Id,
+            bestMatch.TargetUnit.Id,
+            bestMatch.Similarity
+        );
 
         return bestMatch;
     }
@@ -76,22 +74,21 @@ public sealed class SemanticMatcher
     /// Batch semantic matching для нескольких units.
     /// </summary>
     public async Task<Dictionary<string, SemanticMatchResult>> FindSemanticMatchesBatchAsync(
-    List<CodeUnit> sourceUnits,
-    VersionedIndex targetVersion,
-    CancellationToken ct = default)
+        List<CodeUnit> sourceUnits,
+        VersionedIndex targetVersion,
+        CancellationToken ct = default
+    )
     {
         _logger.LogInformation(
-        "Performing batch semantic matching for {Count} units",
-        sourceUnits.Count);
+            "Performing batch semantic matching for {Count} units",
+            sourceUnits.Count
+        );
 
         var matches = new Dictionary<string, SemanticMatchResult>();
 
         foreach (var sourceUnit in sourceUnits)
         {
-            var match = await FindSemanticMatchAsync(
-            sourceUnit,
-            targetVersion,
-            ct);
+            var match = await FindSemanticMatchAsync(sourceUnit, targetVersion, ct);
 
             if (match != null)
             {
@@ -100,9 +97,10 @@ public sealed class SemanticMatcher
         }
 
         _logger.LogInformation(
-        "Semantic matching: {Matched}/{Total} units matched",
-        matches.Count,
-        sourceUnits.Count);
+            "Semantic matching: {Matched}/{Total} units matched",
+            matches.Count,
+            sourceUnits.Count
+        );
 
         return matches;
     }
@@ -111,9 +109,10 @@ public sealed class SemanticMatcher
     /// Найти лучший match среди кандидатов.
     /// </summary>
     private SemanticMatchResult? FindBestMatch(
-    CodeUnit sourceUnit,
-    List<SimilarityResult> candidates,
-    VersionedIndex targetVersion)
+        CodeUnit sourceUnit,
+        List<SimilarityResult> candidates,
+        VersionedIndex targetVersion
+    )
     {
         SemanticMatchResult? bestMatch = null;
         float bestScore = 0f;
@@ -126,10 +125,7 @@ public sealed class SemanticMatcher
             var similarity = candidate.Similarity;
 
             // Вычислить composite score (similarity + type match + name similarity)
-            var score = ComputeMatchScore(
-            sourceUnit,
-            candidateUnit,
-            similarity);
+            var score = ComputeMatchScore(sourceUnit, candidateUnit, similarity);
 
             if (score > bestScore && score >= LowSimilarityThreshold)
             {
@@ -144,7 +140,7 @@ public sealed class SemanticMatcher
                     Similarity = similarity,
                     MatchType = ClassifyMatchType(similarity),
                     Confidence = confidence,
-                    Score = score
+                    Score = score,
                 };
             }
         }
@@ -156,9 +152,10 @@ public sealed class SemanticMatcher
     /// Вычислить composite score для matching.
     /// </summary>
     private float ComputeMatchScore(
-    CodeUnit sourceUnit,
-    CodeUnit candidateUnit,
-    float baseSimilarity)
+        CodeUnit sourceUnit,
+        CodeUnit candidateUnit,
+        float baseSimilarity
+    )
     {
         float score = baseSimilarity;
 
@@ -169,19 +166,14 @@ public sealed class SemanticMatcher
         }
 
         // Bonus: похожие имена
-        var nameSimilarity = ComputeNameSimilarity(
-        sourceUnit.Name,
-        candidateUnit.Name);
+        var nameSimilarity = ComputeNameSimilarity(sourceUnit.Name, candidateUnit.Name);
 
         score += nameSimilarity * 0.1f;
 
         // Penalty: сильно разная длина
-        var lengthRatio = (float)Math.Min(
-        sourceUnit.Content.Length,
-        candidateUnit.Content.Length) /
-        Math.Max(
-        sourceUnit.Content.Length,
-        candidateUnit.Content.Length);
+        var lengthRatio =
+            (float)Math.Min(sourceUnit.Content.Length, candidateUnit.Content.Length)
+            / Math.Max(sourceUnit.Content.Length, candidateUnit.Content.Length);
 
         if (lengthRatio < 0.5f)
         {
@@ -199,9 +191,7 @@ public sealed class SemanticMatcher
         if (string.Equals(name1, name2, StringComparison.OrdinalIgnoreCase))
             return 1.0f;
 
-        var distance = LevenshteinDistance(
-        name1.ToLowerInvariant(),
-        name2.ToLowerInvariant());
+        var distance = LevenshteinDistance(name1.ToLowerInvariant(), name2.ToLowerInvariant());
 
         var maxLength = Math.Max(name1.Length, name2.Length);
         if (maxLength == 0)
@@ -232,10 +222,9 @@ public sealed class SemanticMatcher
                 var cost = s1[i - 1] == s2[j - 1] ? 0 : 1;
 
                 matrix[i, j] = Math.Min(
-                Math.Min(
-                matrix[i - 1, j] + 1,
-                matrix[i, j - 1] + 1),
-                matrix[i - 1, j - 1] + cost);
+                    Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
+                    matrix[i - 1, j - 1] + cost
+                );
             }
         }
 
@@ -293,7 +282,7 @@ public sealed record SemanticMatchResult
 /// </summary>
 public enum SemanticMatchType
 {
-    HighSimilarity,    // >= 0.90 - очень похожий код
-    MediumSimilarity,  // >= 0.75 - вероятно тот же код
-    LowSimilarity      // >= 0.60 - сомнительное совпадение
+    HighSimilarity, // >= 0.90 - очень похожий код
+    MediumSimilarity, // >= 0.75 - вероятно тот же код
+    LowSimilarity, // >= 0.60 - сомнительное совпадение
 }

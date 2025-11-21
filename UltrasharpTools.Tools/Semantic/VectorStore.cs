@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Semantic.Backends;
 using UltrasharpTools.Tools.Semantic.Models;
@@ -19,9 +18,7 @@ public sealed class VectorStore : IAsyncDisposable
     private VectorStoreBackendType _currentBackendType;
     private bool _initialized;
 
-    public VectorStore(
-    VectorStoreConfig? config = null,
-    ILogger<VectorStore>? logger = null)
+    public VectorStore(VectorStoreConfig? config = null, ILogger<VectorStore>? logger = null)
     {
         _config = config ?? VectorStoreConfig.Default;
         _backendSelector = new BackendSelector(_config.BackendSelectorConfig);
@@ -32,18 +29,22 @@ public sealed class VectorStore : IAsyncDisposable
     /// Инициализировать vector store.
     /// </summary>
     public async Task InitializeAsync(
-    string connectionString,
-    int dimension,
-    CancellationToken cancellationToken = default)
+        string connectionString,
+        int dimension,
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation(
-        "Initializing VectorStore with dimension={Dimension}, backend={BackendType}",
-        dimension, _config.PreferredBackend);
+            "Initializing VectorStore with dimension={Dimension}, backend={BackendType}",
+            dimension,
+            _config.PreferredBackend
+        );
 
         // Создать начальный backend
-        var initialBackendType = _config.PreferredBackend == VectorStoreBackendType.Auto
-        ? VectorStoreBackendType.SqliteVec // Начинаем с SqliteVec для малых баз
-        : _config.PreferredBackend;
+        var initialBackendType =
+            _config.PreferredBackend == VectorStoreBackendType.Auto
+                ? VectorStoreBackendType.SqliteVec // Начинаем с SqliteVec для малых баз
+                : _config.PreferredBackend;
 
         _currentBackend = _backendSelector.CreateBackend(initialBackendType);
         _currentBackendType = initialBackendType;
@@ -53,14 +54,18 @@ public sealed class VectorStore : IAsyncDisposable
         _initialized = true;
 
         _logger.LogInformation(
-        "VectorStore initialized with {BackendType} backend",
-        _currentBackendType);
+            "VectorStore initialized with {BackendType} backend",
+            _currentBackendType
+        );
     }
 
     /// <summary>
     /// Вставить один embedding.
     /// </summary>
-    public async Task InsertAsync(VectorEmbedding embedding, CancellationToken cancellationToken = default)
+    public async Task InsertAsync(
+        VectorEmbedding embedding,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
@@ -74,8 +79,9 @@ public sealed class VectorStore : IAsyncDisposable
     /// Вставить batch embeddings.
     /// </summary>
     public async Task InsertBatchAsync(
-    IEnumerable<VectorEmbedding> embeddings,
-    CancellationToken cancellationToken = default)
+        IEnumerable<VectorEmbedding> embeddings,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
@@ -89,14 +95,20 @@ public sealed class VectorStore : IAsyncDisposable
     /// Поиск по similarity.
     /// </summary>
     public async Task<List<SimilarityResult>> SearchAsync(
-    float[] queryVector,
-    int limit,
-    float minSimilarity = 0.0f,
-    CancellationToken cancellationToken = default)
+        float[] queryVector,
+        int limit,
+        float minSimilarity = 0.0f,
+        CancellationToken cancellationToken = default
+    )
     {
         ThrowIfNotInitialized();
 
-        return await _currentBackend!.SearchAsync(queryVector, limit, minSimilarity, cancellationToken);
+        return await _currentBackend!.SearchAsync(
+            queryVector,
+            limit,
+            minSimilarity,
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -138,7 +150,7 @@ public sealed class VectorStore : IAsyncDisposable
     /// Получить описание текущего backend.
     /// </summary>
     public string GetBackendDescription() =>
-    _backendSelector.GetBackendDescription(_currentBackendType);
+        _backendSelector.GetBackendDescription(_currentBackendType);
 
     /// <summary>
     /// Health check.
@@ -169,15 +181,18 @@ public sealed class VectorStore : IAsyncDisposable
         if (!_initialized || _currentBackend == null)
         {
             throw new InvalidOperationException(
-            "VectorStore not initialized. Call InitializeAsync first.");
+                "VectorStore not initialized. Call InitializeAsync first."
+            );
         }
     }
 
     private async Task CheckAndSwitchBackendIfNeededAsync(CancellationToken cancellationToken)
     {
         // Если Auto mode выключен или не используется Auto backend, не переключаем
-        if (!_config.BackendSelectorConfig.EnableAutoSwitching ||
-        _config.PreferredBackend != VectorStoreBackendType.Auto)
+        if (
+            !_config.BackendSelectorConfig.EnableAutoSwitching
+            || _config.PreferredBackend != VectorStoreBackendType.Auto
+        )
         {
             return;
         }
@@ -193,15 +208,20 @@ public sealed class VectorStore : IAsyncDisposable
         var newBackendType = _backendSelector.SelectBackend(currentCount);
 
         _logger.LogInformation(
-        "Switching backend from {OldBackend} to {NewBackend} (vector count: {Count})",
-        _currentBackendType, newBackendType, currentCount);
+            "Switching backend from {OldBackend} to {NewBackend} (vector count: {Count})",
+            _currentBackendType,
+            newBackendType,
+            currentCount
+        );
 
         // TODO: Миграция данных между backend (будет реализовано позже)
         // Пока просто логируем предупреждение
         _logger.LogWarning(
-        "Backend switching detected but data migration not yet implemented. " +
-        "Manual reindexing required after switching from {OldBackend} to {NewBackend}.",
-        _currentBackendType, newBackendType);
+            "Backend switching detected but data migration not yet implemented. "
+                + "Manual reindexing required after switching from {OldBackend} to {NewBackend}.",
+            _currentBackendType,
+            newBackendType
+        );
 
         // Можно добавить здесь автоматическую миграцию:
         // 1. Экспортировать все embeddings из старого backend
@@ -225,7 +245,8 @@ public sealed record VectorStoreConfig
     /// <summary>
     /// Конфигурация для BackendSelector.
     /// </summary>
-    public BackendSelectorConfig BackendSelectorConfig { get; init; } = BackendSelectorConfig.Default;
+    public BackendSelectorConfig BackendSelectorConfig { get; init; } =
+        BackendSelectorConfig.Default;
 
     /// <summary>
     /// Connection string для SQLite database.
@@ -244,32 +265,35 @@ public sealed record VectorStoreConfig
     /// <summary>
     /// Конфигурация для production с persistent storage.
     /// </summary>
-    public static VectorStoreConfig ForProduction(string databasePath, int dimension = 768) => new()
-    {
-        ConnectionString = $"Data Source={databasePath}",
-        Dimension = dimension,
-        PreferredBackend = VectorStoreBackendType.Auto,
-        BackendSelectorConfig = BackendSelectorConfig.Default
-    };
+    public static VectorStoreConfig ForProduction(string databasePath, int dimension = 768) =>
+        new()
+        {
+            ConnectionString = $"Data Source={databasePath}",
+            Dimension = dimension,
+            PreferredBackend = VectorStoreBackendType.Auto,
+            BackendSelectorConfig = BackendSelectorConfig.Default,
+        };
 
     /// <summary>
     /// Конфигурация для корпоративных проектов (большие кодовые базы).
     /// </summary>
-    public static VectorStoreConfig ForEnterprise(string databasePath, int dimension = 768) => new()
-    {
-        ConnectionString = $"Data Source={databasePath}",
-        Dimension = dimension,
-        PreferredBackend = VectorStoreBackendType.Auto,
-        BackendSelectorConfig = BackendSelectorConfig.ForEnterprise
-    };
+    public static VectorStoreConfig ForEnterprise(string databasePath, int dimension = 768) =>
+        new()
+        {
+            ConnectionString = $"Data Source={databasePath}",
+            Dimension = dimension,
+            PreferredBackend = VectorStoreBackendType.Auto,
+            BackendSelectorConfig = BackendSelectorConfig.ForEnterprise,
+        };
 
     /// <summary>
     /// Конфигурация для тестирования (in-memory).
     /// </summary>
-    public static VectorStoreConfig ForTesting(int dimension = 768) => new()
-    {
-        ConnectionString = ":memory:",
-        Dimension = dimension,
-        PreferredBackend = VectorStoreBackendType.SqliteVec // Для тестов используем SqliteVec
-    };
+    public static VectorStoreConfig ForTesting(int dimension = 768) =>
+        new()
+        {
+            ConnectionString = ":memory:",
+            Dimension = dimension,
+            PreferredBackend = VectorStoreBackendType.SqliteVec, // Для тестов используем SqliteVec
+        };
 }

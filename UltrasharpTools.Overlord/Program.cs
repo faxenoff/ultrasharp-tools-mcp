@@ -1,15 +1,16 @@
-using UltrasharpTools.Tools.Services;
-using UltrasharpTools.Tools.Interfaces;
-using UltrasharpTools.Tools.Mcp.Tools;
-using UltrasharpTools.Tools.Extensions;
-using UltrasharpTools.Tools.Infrastructure;
-using UltrasharpTools.Tools.Logging;
 using System.CommandLine;
 using System.CommandLine.Parsing;
-using Microsoft.AspNetCore.HttpLogging;
-using ModelContextProtocol.Protocol;
 using System.Reflection;
+using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
+using UltrasharpTools.Tools.Extensions;
+using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Interfaces;
+using UltrasharpTools.Tools.Logging;
+using UltrasharpTools.Tools.Mcp.Tools;
+using UltrasharpTools.Tools.Services;
+
 namespace UltrasharpTools.Overlord;
 
 public class Program
@@ -17,6 +18,7 @@ public class Program
     // --- Application ---
     public const string ApplicationName = "UltrasharpToolsMcpOverlord";
     public const string ApplicationVersion = "3.0.6";
+
     public static async Task<int> Main(string[] args)
     {
         // Ensure tool assemblies are loaded for MCP SDK's WithToolsFromAssembly
@@ -27,78 +29,84 @@ public class Program
         var portOption = new Option<int>("--port")
         {
             Description = "The port number for the MCP server to listen on.",
-            DefaultValueFactory = _ => 3001
+            DefaultValueFactory = _ => 3001,
         };
 
         var logFileOption = new Option<string?>("--log-file")
         {
-            Description = "Optional path to a log file. If not specified, uses .ultrasharp/logs/{ApplicationName}-.log in project root."
+            Description =
+                "Optional path to a log file. If not specified, uses .ultrasharp/logs/{ApplicationName}-.log in project root.",
         };
 
         var logLevelOption = new Option<LogLevel>("--log-level")
         {
             Description = "Minimum log level for console and file.",
-            DefaultValueFactory = _ => LogLevel.Information
+            DefaultValueFactory = _ => LogLevel.Information,
         };
 
         var loadSolutionOption = new Option<string?>("--load-solution")
         {
-            Description = "Path to a solution file (.sln) to load immediately on startup."
+            Description = "Path to a solution file (.sln) to load immediately on startup.",
         };
 
         var buildConfigurationOption = new Option<string?>("--build-configuration")
         {
-            Description = "Build configuration to use when loading the solution (Debug, Release, etc.)."
+            Description =
+                "Build configuration to use when loading the solution (Debug, Release, etc.).",
         };
 
         var disableGitOption = new Option<bool>("--disable-git")
         {
             Description = "Disable Git integration.",
-            DefaultValueFactory = _ => false
+            DefaultValueFactory = _ => false,
         };
 
         var symbolCacheEnabledOption = new Option<bool>("--symbol-cache")
         {
-            Description = "Enable persistent symbol cache for 10x faster solution initialization (33s → 3-5s).",
-            DefaultValueFactory = _ => true
+            Description =
+                "Enable persistent symbol cache for 10x faster solution initialization (33s → 3-5s).",
+            DefaultValueFactory = _ => true,
         };
 
         var symbolCacheClearOption = new Option<bool>("--symbol-cache-clear")
         {
             Description = "Clear all symbol cache data on startup.",
-            DefaultValueFactory = _ => false
+            DefaultValueFactory = _ => false,
         };
 
         var symbolCacheDirectoryOption = new Option<string?>("--symbol-cache-directory")
         {
-            Description = "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache)."
+            Description =
+                "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache).",
         };
 
         var embeddingUrlOption = new Option<string?>("--embedding-url")
         {
-            Description = "URL of embedding service (Ollama or TEI). If not specified, embedding features are disabled.",
-            DefaultValueFactory = _ => null
+            Description =
+                "URL of embedding service (Ollama or TEI). If not specified, embedding features are disabled.",
+            DefaultValueFactory = _ => null,
         };
 
         var embeddingModelOption = new Option<string>("--embedding-model")
         {
             Description = "Name of embedding model to use (default: nomic-embed-text for Ollama).",
-            DefaultValueFactory = _ => "nomic-embed-text"
+            DefaultValueFactory = _ => "nomic-embed-text",
         };
 
-        var rootCommand = new RootCommand("UltrasharpTools MCP Overlord") {
-        portOption,
-        logFileOption,
-        logLevelOption,
-        loadSolutionOption,
-        buildConfigurationOption,
-        disableGitOption,
-        symbolCacheEnabledOption,
-        symbolCacheClearOption,
-        symbolCacheDirectoryOption,
-        embeddingUrlOption,
-        embeddingModelOption
-    };
+        var rootCommand = new RootCommand("UltrasharpTools MCP Overlord")
+        {
+            portOption,
+            logFileOption,
+            logLevelOption,
+            loadSolutionOption,
+            buildConfigurationOption,
+            disableGitOption,
+            symbolCacheEnabledOption,
+            symbolCacheClearOption,
+            symbolCacheDirectoryOption,
+            embeddingUrlOption,
+            embeddingModelOption,
+        };
 
         // Parse arguments first to get values
         var parseResult = rootCommand.Parse(args);
@@ -130,7 +138,9 @@ public class Program
             Directory.CreateDirectory(logDirectory);
         }
 
-        Console.WriteLine($"Logging to file: {Path.GetFullPath(logFilePath)} with minimum level {minimumLogLevel}");
+        Console.WriteLine(
+            $"Logging to file: {Path.GetFullPath(logFilePath)} with minimum level {minimumLogLevel}"
+        );
 
         // Early startup information (before DI/logging is configured)
         if (disableGit)
@@ -172,7 +182,9 @@ public class Program
 
         try
         {
-            Console.WriteLine($"Configuring {ApplicationName} v{ApplicationVersion} to run on {serverUrl} with minimum log level {minimumLogLevel}");
+            Console.WriteLine(
+                $"Configuring {ApplicationName} v{ApplicationVersion} to run on {serverUrl} with minimum log level {minimumLogLevel}"
+            );
 
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args });
 
@@ -185,7 +197,10 @@ public class Program
             builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
             builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Information);
             builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Information);
-            builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Information);
+            builder.Logging.AddFilter(
+                "Microsoft.AspNetCore.Hosting.Diagnostics",
+                LogLevel.Information
+            );
             builder.Logging.AddFilter("Microsoft.AspNetCore.Routing", LogLevel.Information);
             builder.Logging.AddFilter("Microsoft.AspNetCore.Server.Kestrel", LogLevel.Debug);
             builder.Logging.AddFilter("Microsoft.CodeAnalysis", LogLevel.Information);
@@ -201,8 +216,8 @@ public class Program
                 logging.FileSizeLimit = 5 * 1024 * 1024; // 5 MB
                 logging.RetainedFileCountLimit = 2;
                 logging.FileName = "access-"; // Prefix for log files
-                                              // By default, logs to a 'logs' subdirectory of the app's content root.
-                                              // Can be configured: logging.RootPath = ...
+                // By default, logs to a 'logs' subdirectory of the app's content root.
+                // Can be configured: logging.RootPath = ...
             });
 
             // Create SymbolCacheOptions from command line arguments
@@ -210,54 +225,100 @@ public class Program
             {
                 Enabled = symbolCacheEnabled,
                 ClearOnStartup = symbolCacheClear,
-                CacheDirectory = symbolCacheDirectory
+                CacheDirectory = symbolCacheDirectory,
             };
 
-            builder.Services.WithUltrasharpToolsServices(!disableGit, buildConfiguration, null, null, symbolCacheOptions);
+            builder.Services.WithUltrasharpToolsServices(
+                !disableGit,
+                buildConfiguration,
+                null,
+                null,
+                symbolCacheOptions
+            );
 
             // Регистрируем MultiProjectVectorStore для hybrid архитектуры
-            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.IMultiProjectVectorStoreService>(sp =>
-            {
-                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Overlord.Services.MultiProjectVectorStoreService>>();
-                var basePath = Path.Combine(AppContext.BaseDirectory, "data", "multi-project-vectors");
-                return new UltrasharpTools.Overlord.Services.MultiProjectVectorStoreService(logger, basePath, 768);
-            });
+            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.IMultiProjectVectorStoreService>(
+                sp =>
+                {
+                    var logger = sp.GetRequiredService<
+                        ILogger<UltrasharpTools.Overlord.Services.MultiProjectVectorStoreService>
+                    >();
+                    var basePath = Path.Combine(
+                        AppContext.BaseDirectory,
+                        "data",
+                        "multi-project-vectors"
+                    );
+                    return new UltrasharpTools.Overlord.Services.MultiProjectVectorStoreService(
+                        logger,
+                        basePath,
+                        768
+                    );
+                }
+            );
 
             // Регистрируем Symbol Resolution Service для MCP Proxy
-            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.ISymbolResolutionService, UltrasharpTools.Overlord.Services.SymbolResolutionService>();
+            builder.Services.AddSingleton<
+                UltrasharpTools.Overlord.Services.ISymbolResolutionService,
+                UltrasharpTools.Overlord.Services.SymbolResolutionService
+            >();
 
             // Регистрируем Embedding Service (опционально)
             if (!string.IsNullOrEmpty(embeddingUrl))
             {
-                builder.Services.AddHttpClient<UltrasharpTools.Overlord.Services.IEmbeddingService, UltrasharpTools.Overlord.Services.EmbeddingService>()
+                builder
+                    .Services.AddHttpClient<
+                        UltrasharpTools.Overlord.Services.IEmbeddingService,
+                        UltrasharpTools.Overlord.Services.EmbeddingService
+                    >()
                     .ConfigureHttpClient(client =>
                     {
-                        client.Timeout = TimeSpan.FromMinutes(5);  // Embedding может занять время
+                        client.Timeout = TimeSpan.FromMinutes(5); // Embedding может занять время
                     });
 
                 // Регистрируем фабрику для передачи параметров
-                builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.IEmbeddingService>(sp =>
-                {
-                    var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(UltrasharpTools.Overlord.Services.EmbeddingService));
-                    var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Overlord.Services.EmbeddingService>>();
-                    return new UltrasharpTools.Overlord.Services.EmbeddingService(httpClient, logger, embeddingUrl, embeddingModel ?? "nomic-embed-text");
-                });
+                builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.IEmbeddingService>(
+                    sp =>
+                    {
+                        var httpClient = sp.GetRequiredService<IHttpClientFactory>()
+                            .CreateClient(
+                                nameof(UltrasharpTools.Overlord.Services.EmbeddingService)
+                            );
+                        var logger = sp.GetRequiredService<
+                            ILogger<UltrasharpTools.Overlord.Services.EmbeddingService>
+                        >();
+                        return new UltrasharpTools.Overlord.Services.EmbeddingService(
+                            httpClient,
+                            logger,
+                            embeddingUrl,
+                            embeddingModel ?? "nomic-embed-text"
+                        );
+                    }
+                );
             }
 
             // Регистрируем MCP Proxy Service
-            builder.Services.AddScoped<UltrasharpTools.Overlord.Services.IMcpProxyService, UltrasharpTools.Overlord.Services.McpProxyService>();
+            builder.Services.AddScoped<
+                UltrasharpTools.Overlord.Services.IMcpProxyService,
+                UltrasharpTools.Overlord.Services.McpProxyService
+            >();
 
             // Регистрируем Notification Service для SSE
-            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.INotificationService, UltrasharpTools.Overlord.Services.NotificationService>();
+            builder.Services.AddSingleton<
+                UltrasharpTools.Overlord.Services.INotificationService,
+                UltrasharpTools.Overlord.Services.NotificationService
+            >();
 
             // Регистрируем Conflict Detection Service
-            builder.Services.AddSingleton<UltrasharpTools.Overlord.Services.IConflictDetectionService, UltrasharpTools.Overlord.Services.ConflictDetectionService>();
+            builder.Services.AddSingleton<
+                UltrasharpTools.Overlord.Services.IConflictDetectionService,
+                UltrasharpTools.Overlord.Services.ConflictDetectionService
+            >();
 
             // Регистрируем controllers для Agent API
             builder.Services.AddControllers();
 
-            builder.Services
-                .AddMcpServer(options =>
+            builder
+                .Services.AddMcpServer(options =>
                 {
                     options.ServerInfo = new Implementation
                     {
@@ -280,7 +341,8 @@ public class Program
                 try
                 {
                     var solutionManager = app.Services.GetRequiredService<ISolutionManager>();
-                    var editorConfigProvider = app.Services.GetRequiredService<IEditorConfigProvider>();
+                    var editorConfigProvider =
+                        app.Services.GetRequiredService<IEditorConfigProvider>();
 
                     logger.LogInformation("Loading solution: {SolutionPath}", solutionPath);
                     await solutionManager.LoadSolutionAsync(solutionPath, CancellationToken.None);
@@ -288,12 +350,21 @@ public class Program
                     var solutionDir = Path.GetDirectoryName(solutionPath);
                     if (!string.IsNullOrEmpty(solutionDir))
                     {
-                        await editorConfigProvider.InitializeAsync(solutionDir, CancellationToken.None);
-                        logger.LogInformation("Solution loaded successfully: {SolutionPath}", solutionPath);
+                        await editorConfigProvider.InitializeAsync(
+                            solutionDir,
+                            CancellationToken.None
+                        );
+                        logger.LogInformation(
+                            "Solution loaded successfully: {SolutionPath}",
+                            solutionPath
+                        );
                     }
                     else
                     {
-                        logger.LogWarning("Could not determine directory for solution path: {SolutionPath}", solutionPath);
+                        logger.LogWarning(
+                            "Could not determine directory for solution path: {SolutionPath}",
+                            solutionPath
+                        );
                     }
                 }
                 catch (Exception ex)
@@ -309,36 +380,47 @@ public class Program
             // app.UseW3CLogging(); // This is needed if W3CLogging is writing its own files.
 
             // 2. Custom Request Logging Middleware (very early in the pipeline)
-            app.Use(async (context, next) =>
-            {
-                var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
-                var requestLogger = loggerFactory.CreateLogger(ApplicationName);
-                requestLogger.LogDebug("Incoming Request: {Method} {Path} {QueryString} from {RemoteIpAddress}",
-                    context.Request.Method,
-                    context.Request.Path,
-                    context.Request.QueryString,
-                    context.Connection.RemoteIpAddress);
-
-                // Log headers for more detail if needed (can be verbose)
-                // foreach (var header in context.Request.Headers) {
-                //     logger.LogTrace("Header: {Key}: {Value}", header.Key, header.Value);
-                // }
-                try
+            app.Use(
+                async (context, next) =>
                 {
-                    await next(context);
-                }
-                catch (Exception ex)
-                {
-                    requestLogger.LogError(ex, "Error processing request: {Method} {Path}", context.Request.Method, context.Request.Path);
-                    throw; // Re-throw to let ASP.NET Core handle it
-                }
+                    var loggerFactory =
+                        context.RequestServices.GetRequiredService<ILoggerFactory>();
+                    var requestLogger = loggerFactory.CreateLogger(ApplicationName);
+                    requestLogger.LogDebug(
+                        "Incoming Request: {Method} {Path} {QueryString} from {RemoteIpAddress}",
+                        context.Request.Method,
+                        context.Request.Path,
+                        context.Request.QueryString,
+                        context.Connection.RemoteIpAddress
+                    );
 
-                requestLogger.LogDebug("Outgoing Response: {StatusCode} for {Method} {Path}",
-                    context.Response.StatusCode,
-                    context.Request.Method,
-                    context.Request.Path);
-            });
+                    // Log headers for more detail if needed (can be verbose)
+                    // foreach (var header in context.Request.Headers) {
+                    //     logger.LogTrace("Header: {Key}: {Value}", header.Key, header.Value);
+                    // }
+                    try
+                    {
+                        await next(context);
+                    }
+                    catch (Exception ex)
+                    {
+                        requestLogger.LogError(
+                            ex,
+                            "Error processing request: {Method} {Path}",
+                            context.Request.Method,
+                            context.Request.Path
+                        );
+                        throw; // Re-throw to let ASP.NET Core handle it
+                    }
 
+                    requestLogger.LogDebug(
+                        "Outgoing Response: {StatusCode} for {Method} {Path}",
+                        context.Response.StatusCode,
+                        context.Request.Method,
+                        context.Request.Path
+                    );
+                }
+            );
 
             // 3. Standard ASP.NET Core middleware (HTTPS redirection, routing, auth, etc. - not used here yet)
             // if (app.Environment.IsDevelopment()) { }
@@ -355,7 +437,6 @@ public class Program
             await app.RunAsync(serverUrl);
 
             return 0;
-
         }
         catch (Exception ex)
         {

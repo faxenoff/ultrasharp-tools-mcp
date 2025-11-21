@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Services
 {
     public class MethodSemanticFeatures
@@ -40,7 +38,8 @@ namespace UltrasharpTools.Tools.Services
             int loopCount,
             int cyclomaticComplexity,
             Dictionary<string, int> operationCounts,
-            HashSet<string> distinctAccessedMemberTypes)
+            HashSet<string> distinctAccessedMemberTypes
+        )
         {
             FullyQualifiedMethodName = fullyQualifiedMethodName;
             FilePath = filePath;

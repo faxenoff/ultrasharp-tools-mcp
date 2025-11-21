@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -18,10 +16,10 @@ internal static class CallerInfoConverter
         {
             CallingSymbolFqn = callerInfo.CallingSymbol.ToDisplayString(),
             IsDirect = callerInfo.IsDirect,
-            CallSiteLocations = callerInfo.Locations
-                .Where(loc => loc.IsInSource)
+            CallSiteLocations = callerInfo
+                .Locations.Where(loc => loc.IsInSource)
                 .Select(ToSerializableLocation)
-                .ToList()
+                .ToList(),
         };
     }
 
@@ -39,7 +37,7 @@ internal static class CallerInfoConverter
             StartCharacter = lineSpan.StartLinePosition.Character,
             EndLine = lineSpan.EndLinePosition.Line,
             EndCharacter = lineSpan.EndLinePosition.Character,
-            SourceSnippet = TryGetSourceSnippet(location)
+            SourceSnippet = TryGetSourceSnippet(location),
         };
     }
 

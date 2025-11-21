@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 
@@ -21,15 +20,17 @@ public sealed class MovementDetector
     /// Обнаружить перемещения между двумя версиями.
     /// </summary>
     public List<CodeMovement> DetectMovements(
-    VersionedIndex baseVersion,
-    VersionedIndex targetVersion,
-    Dictionary<string, FastPathMatchResult> fastMatches,
-    Dictionary<string, SemanticMatchResult> semanticMatches)
+        VersionedIndex baseVersion,
+        VersionedIndex targetVersion,
+        Dictionary<string, FastPathMatchResult> fastMatches,
+        Dictionary<string, SemanticMatchResult> semanticMatches
+    )
     {
         _logger.LogInformation(
-        "Detecting code movements between {Base} and {Target}",
-        baseVersion.Version,
-        targetVersion.Version);
+            "Detecting code movements between {Base} and {Target}",
+            baseVersion.Version,
+            targetVersion.Version
+        );
 
         var movements = new List<CodeMovement>();
 
@@ -53,9 +54,7 @@ public sealed class MovementDetector
             }
         }
 
-        _logger.LogInformation(
-        "Detected {Count} code movements",
-        movements.Count);
+        _logger.LogInformation("Detected {Count} code movements", movements.Count);
 
         return movements;
     }
@@ -75,7 +74,7 @@ public sealed class MovementDetector
                 MovementType = CodeMovementType.FileChange,
                 SourceLocation = sourceUnit.FilePath,
                 TargetLocation = targetUnit.FilePath,
-                Description = $"Moved from {sourceUnit.FilePath} to {targetUnit.FilePath}"
+                Description = $"Moved from {sourceUnit.FilePath} to {targetUnit.FilePath}",
             };
         }
 
@@ -91,7 +90,7 @@ public sealed class MovementDetector
                 MovementType = movementType,
                 SourceLocation = sourceUnit.ParentId ?? "root",
                 TargetLocation = targetUnit.ParentId ?? "root",
-                Description = $"Moved from {sourceUnit.ParentId} to {targetUnit.ParentId}"
+                Description = $"Moved from {sourceUnit.ParentId} to {targetUnit.ParentId}",
             };
         }
 
@@ -105,7 +104,8 @@ public sealed class MovementDetector
                 MovementType = CodeMovementType.Rename,
                 SourceLocation = sourceUnit.FullyQualifiedName,
                 TargetLocation = targetUnit.FullyQualifiedName,
-                Description = $"Renamed from {sourceUnit.FullyQualifiedName} to {targetUnit.FullyQualifiedName}"
+                Description =
+                    $"Renamed from {sourceUnit.FullyQualifiedName} to {targetUnit.FullyQualifiedName}",
             };
         }
 
@@ -116,22 +116,25 @@ public sealed class MovementDetector
     /// <summary>
     /// Классифицировать тип движения внутри файла.
     /// </summary>
-    private CodeMovementType ClassifyIntraFileMovement(
-    CodeUnit sourceUnit,
-    CodeUnit targetUnit)
+    private CodeMovementType ClassifyIntraFileMovement(CodeUnit sourceUnit, CodeUnit targetUnit)
     {
         // Type изменил namespace
-        if (sourceUnit.Type == CodeUnitType.Type &&
-        IsNamespaceChange(sourceUnit.ParentId, targetUnit.ParentId))
+        if (
+            sourceUnit.Type == CodeUnitType.Type
+            && IsNamespaceChange(sourceUnit.ParentId, targetUnit.ParentId)
+        )
         {
             return CodeMovementType.NamespaceChange;
         }
 
         // Method/Property/Field изменил parent class
-        if ((sourceUnit.Type == CodeUnitType.Method ||
-        sourceUnit.Type == CodeUnitType.Property ||
-        sourceUnit.Type == CodeUnitType.Field) &&
-        IsTypeChange(sourceUnit.ParentId, targetUnit.ParentId))
+        if (
+            (
+                sourceUnit.Type == CodeUnitType.Method
+                || sourceUnit.Type == CodeUnitType.Property
+                || sourceUnit.Type == CodeUnitType.Field
+            ) && IsTypeChange(sourceUnit.ParentId, targetUnit.ParentId)
+        )
         {
             return CodeMovementType.ClassChange;
         }
@@ -145,8 +148,8 @@ public sealed class MovementDetector
     /// </summary>
     private bool IsNamespaceChange(string? sourceParentId, string? targetParentId)
     {
-        return sourceParentId?.StartsWith("namespace:") == true &&
-        targetParentId?.StartsWith("namespace:") == true;
+        return sourceParentId?.StartsWith("namespace:") == true
+            && targetParentId?.StartsWith("namespace:") == true;
     }
 
     /// <summary>
@@ -154,43 +157,34 @@ public sealed class MovementDetector
     /// </summary>
     private bool IsTypeChange(string? sourceParentId, string? targetParentId)
     {
-        return sourceParentId?.StartsWith("type:") == true &&
-        targetParentId?.StartsWith("type:") == true;
+        return sourceParentId?.StartsWith("type:") == true
+            && targetParentId?.StartsWith("type:") == true;
     }
 
     /// <summary>
     /// Найти все units, которые были перемещены ИЗ указанного родителя.
     /// </summary>
-    public List<CodeMovement> FindMovementsFrom(
-    string parentId,
-    List<CodeMovement> allMovements)
+    public List<CodeMovement> FindMovementsFrom(string parentId, List<CodeMovement> allMovements)
     {
-        return allMovements
-        .Where(m => m.SourceLocation == parentId)
-        .ToList();
+        return allMovements.Where(m => m.SourceLocation == parentId).ToList();
     }
 
     /// <summary>
     /// Найти все units, которые были перемещены В указанного родителя.
     /// </summary>
-    public List<CodeMovement> FindMovementsTo(
-    string parentId,
-    List<CodeMovement> allMovements)
+    public List<CodeMovement> FindMovementsTo(string parentId, List<CodeMovement> allMovements)
     {
-        return allMovements
-        .Where(m => m.TargetLocation == parentId)
-        .ToList();
+        return allMovements.Where(m => m.TargetLocation == parentId).ToList();
     }
 
     /// <summary>
     /// Группировать movements по типу.
     /// </summary>
     public Dictionary<CodeMovementType, List<CodeMovement>> GroupByType(
-    List<CodeMovement> movements)
+        List<CodeMovement> movements
+    )
     {
-        return movements
-        .GroupBy(m => m.MovementType)
-        .ToDictionary(g => g.Key, g => g.ToList());
+        return movements.GroupBy(m => m.MovementType).ToDictionary(g => g.Key, g => g.ToList());
     }
 }
 
@@ -212,9 +206,9 @@ public sealed record CodeMovement
 /// </summary>
 public enum CodeMovementType
 {
-    FileChange,       // Переместился в другой файл
-    NamespaceChange,  // Изменил namespace
-    ClassChange,      // Переместился в другой класс
-    ParentChange,     // Изменил родителя (generic)
-    Rename            // Переименование (без движения)
+    FileChange, // Переместился в другой файл
+    NamespaceChange, // Изменил namespace
+    ClassChange, // Переместился в другой класс
+    ParentChange, // Изменил родителя (generic)
+    Rename, // Переименование (без движения)
 }

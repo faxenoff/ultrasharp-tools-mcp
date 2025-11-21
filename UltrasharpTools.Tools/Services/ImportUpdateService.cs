@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Services;
 
 /// <summary>
@@ -13,9 +11,11 @@ public class ImportUpdateService
 
     public ImportUpdateService(
         ISolutionManager solutionManager,
-        ILogger<ImportUpdateService> logger)
+        ILogger<ImportUpdateService> logger
+    )
     {
-        _solutionManager = solutionManager ?? throw new ArgumentNullException(nameof(solutionManager));
+        _solutionManager =
+            solutionManager ?? throw new ArgumentNullException(nameof(solutionManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -24,7 +24,8 @@ public class ImportUpdateService
     /// </summary>
     public async Task<List<string>> AnalyzeRequiredUsingsAsync(
         string filePath,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogDebug("Analyzing required usings for: {FilePath}", filePath);
 
@@ -78,8 +79,11 @@ public class ImportUpdateService
             requiredNamespaces.RemoveWhere(ns => ns == "System");
         }
 
-        _logger.LogDebug("Found {Count} required namespaces for {FilePath}",
-            requiredNamespaces.Count, filePath);
+        _logger.LogDebug(
+            "Found {Count} required namespaces for {FilePath}",
+            requiredNamespaces.Count,
+            filePath
+        );
 
         return requiredNamespaces.OrderBy(ns => ns).ToList();
     }
@@ -91,10 +95,15 @@ public class ImportUpdateService
         string filePath,
         bool removeUnused = true,
         bool addMissing = true,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogInformation("Updating usings for: {FilePath} (removeUnused={Remove}, addMissing={Add})",
-            filePath, removeUnused, addMissing);
+        _logger.LogInformation(
+            "Updating usings for: {FilePath} (removeUnused={Remove}, addMissing={Add})",
+            filePath,
+            removeUnused,
+            addMissing
+        );
 
         var document = await GetDocumentByPathAsync(filePath, cancellationToken);
         if (document == null)
@@ -102,7 +111,7 @@ public class ImportUpdateService
             return new ImportUpdateResult
             {
                 Success = false,
-                ErrorMessage = $"File not found in solution: {filePath}"
+                ErrorMessage = $"File not found in solution: {filePath}",
             };
         }
 
@@ -112,11 +121,14 @@ public class ImportUpdateService
             return new ImportUpdateResult
             {
                 Success = false,
-                ErrorMessage = "Failed to parse file"
+                ErrorMessage = "Failed to parse file",
             };
         }
 
-        var originalUsings = root.Usings.Select(u => u.Name?.ToString() ?? "").Where(s => !string.IsNullOrEmpty(s)).ToList();
+        var originalUsings = root
+            .Usings.Select(u => u.Name?.ToString() ?? "")
+            .Where(s => !string.IsNullOrEmpty(s))
+            .ToList();
         var requiredUsings = await AnalyzeRequiredUsingsAsync(filePath, cancellationToken);
 
         var usingsToAdd = new List<string>();
@@ -146,7 +158,7 @@ public class ImportUpdateService
                 UpdatedUsings = originalUsings,
                 UsingsAdded = new List<string>(),
                 UsingsRemoved = new List<string>(),
-                Message = "No changes needed"
+                Message = "No changes needed",
             };
         }
 
@@ -159,17 +171,19 @@ public class ImportUpdateService
         // Update the file
         var newRoot = root.WithUsings(
             SyntaxFactory.List(
-                newUsings.Select(ns =>
-                    SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(ns))
-                )
+                newUsings.Select(ns => SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(ns)))
             )
         );
 
         var newCode = newRoot.NormalizeWhitespace().ToFullString();
         await File.WriteAllTextAsync(filePath, newCode, cancellationToken);
 
-        _logger.LogInformation("Updated usings for {FilePath}: +{Added} -{Removed}",
-            filePath, usingsToAdd.Count, usingsToRemove.Count);
+        _logger.LogInformation(
+            "Updated usings for {FilePath}: +{Added} -{Removed}",
+            filePath,
+            usingsToAdd.Count,
+            usingsToRemove.Count
+        );
 
         return new ImportUpdateResult
         {
@@ -179,7 +193,7 @@ public class ImportUpdateService
             UpdatedUsings = newUsings,
             UsingsAdded = usingsToAdd,
             UsingsRemoved = usingsToRemove,
-            Message = $"Added {usingsToAdd.Count} usings, removed {usingsToRemove.Count} usings"
+            Message = $"Added {usingsToAdd.Count} usings, removed {usingsToRemove.Count} usings",
         };
     }
 
@@ -190,7 +204,8 @@ public class ImportUpdateService
         string[] filePaths,
         bool removeUnused = true,
         bool addMissing = true,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation("Batch updating usings for {Count} files", filePaths.Length);
 
@@ -200,24 +215,34 @@ public class ImportUpdateService
         {
             try
             {
-                var result = await UpdateUsingsAsync(filePath, removeUnused, addMissing, cancellationToken);
+                var result = await UpdateUsingsAsync(
+                    filePath,
+                    removeUnused,
+                    addMissing,
+                    cancellationToken
+                );
                 results.Add(result);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to update usings for {FilePath}", filePath);
-                results.Add(new ImportUpdateResult
-                {
-                    Success = false,
-                    FilePath = filePath,
-                    ErrorMessage = ex.Message
-                });
+                results.Add(
+                    new ImportUpdateResult
+                    {
+                        Success = false,
+                        FilePath = filePath,
+                        ErrorMessage = ex.Message,
+                    }
+                );
             }
         }
 
         var successCount = results.Count(r => r.Success);
-        _logger.LogInformation("Batch update complete: {Success}/{Total} files updated",
-            successCount, results.Count);
+        _logger.LogInformation(
+            "Batch update complete: {Success}/{Total} files updated",
+            successCount,
+            results.Count
+        );
 
         return results;
     }
@@ -228,10 +253,14 @@ public class ImportUpdateService
     public async Task<ImportAnalysisResult> AnalyzeImportChangesAsync(
         string originalFile,
         string[] newFiles,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
-        _logger.LogDebug("Analyzing import changes: {Original} -> {Count} new files",
-            originalFile, newFiles.Length);
+        _logger.LogDebug(
+            "Analyzing import changes: {Original} -> {Count} new files",
+            originalFile,
+            newFiles.Length
+        );
 
         var originalUsings = await AnalyzeRequiredUsingsAsync(originalFile, cancellationToken);
 
@@ -243,8 +272,11 @@ public class ImportUpdateService
         }
 
         var allNewUsings = newFileUsings.Values.SelectMany(u => u).Distinct().ToList();
-        var commonUsings = newFileUsings.Values
-            .Aggregate((IEnumerable<string>)originalUsings, (acc, usings) => acc.Intersect(usings))
+        var commonUsings = newFileUsings
+            .Values.Aggregate(
+                (IEnumerable<string>)originalUsings,
+                (acc, usings) => acc.Intersect(usings)
+            )
             .ToList();
 
         return new ImportAnalysisResult
@@ -256,18 +288,23 @@ public class ImportUpdateService
             AllNewUsings = allNewUsings,
             UsingsPerFile = newFileUsings.ToDictionary(
                 kvp => kvp.Key,
-                kvp => (object)new
-                {
-                    Total = kvp.Value.Count,
-                    Unique = kvp.Value.Except(commonUsings).Count()
-                }
-            )
+                kvp =>
+                    (object)
+                        new
+                        {
+                            Total = kvp.Value.Count,
+                            Unique = kvp.Value.Except(commonUsings).Count(),
+                        }
+            ),
         };
     }
 
     // ==================== Helper Methods ====================
 
-    private async Task<Document?> GetDocumentByPathAsync(string filePath, CancellationToken cancellationToken)
+    private async Task<Document?> GetDocumentByPathAsync(
+        string filePath,
+        CancellationToken cancellationToken
+    )
     {
         var solution = _solutionManager.CurrentWorkspace?.CurrentSolution;
         if (solution == null)

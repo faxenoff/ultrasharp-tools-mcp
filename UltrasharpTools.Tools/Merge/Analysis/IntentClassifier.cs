@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 
@@ -38,7 +37,8 @@ public sealed class IntentClassifier
         else if (baseUnit.Signature != modifiedUnit.Signature)
         {
             intentType = IntentType.APIChange;
-            description = $"Signature changed from '{baseUnit.Signature}' to '{modifiedUnit.Signature}'";
+            description =
+                $"Signature changed from '{baseUnit.Signature}' to '{modifiedUnit.Signature}'";
             confidence = 0.9f;
         }
         // 3. Содержимое изменилось
@@ -54,7 +54,7 @@ public sealed class IntentClassifier
             Type = intentType,
             Description = description,
             AffectedSymbols = affectedSymbols,
-            Confidence = confidence
+            Confidence = confidence,
         };
     }
 }

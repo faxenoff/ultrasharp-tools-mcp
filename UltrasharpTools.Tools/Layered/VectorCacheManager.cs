@@ -1,8 +1,6 @@
-using Microsoft.Data.Sqlite;
-
-using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
-
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -22,12 +20,10 @@ public class VectorCacheManager : IAsyncDisposable
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = false,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public VectorCacheManager(
-    string solutionPath,
-    ILogger<VectorCacheManager>? logger = null)
+    public VectorCacheManager(string solutionPath, ILogger<VectorCacheManager>? logger = null)
     {
         var ultrasharpDir = ProjectPathHelper.GetProjectUltrasharpDir(solutionPath);
         var layeredDir = Path.Combine(ultrasharpDir, "layered");
@@ -36,7 +32,10 @@ public class VectorCacheManager : IAsyncDisposable
         _databasePath = Path.Combine(layeredDir, "vector_deltas.db");
         _logger = logger ?? NullLogger<VectorCacheManager>.Instance;
 
-        _logger.LogInformation("VectorCacheManager initialized with database: {Path}", _databasePath);
+        _logger.LogInformation(
+            "VectorCacheManager initialized with database: {Path}",
+            _databasePath
+        );
     }
 
     /// <summary>
@@ -53,7 +52,8 @@ public class VectorCacheManager : IAsyncDisposable
             await using var connection = new SqliteConnection($"Data Source={_databasePath}");
             await connection.OpenAsync(cancellationToken);
 
-            var createTableSql = @"
+            var createTableSql =
+                @"
 CREATE TABLE IF NOT EXISTS VectorDeltas (
 BranchName TEXT PRIMARY KEY,
 BaseCommitSha TEXT NOT NULL,
@@ -80,8 +80,9 @@ DeletedSymbolIds TEXT NOT NULL
     /// Save vector delta to SQLite.
     /// </summary>
     public async Task SaveVectorDeltaAsync(
-    VectorDelta delta,
-    CancellationToken cancellationToken = default)
+        VectorDelta delta,
+        CancellationToken cancellationToken = default
+    )
     {
         await EnsureInitializedAsync(cancellationToken);
         await _dbLock.WaitAsync(cancellationToken);
@@ -91,13 +92,15 @@ DeletedSymbolIds TEXT NOT NULL
             var addedJson = SerializeEmbeddings(delta.AddedEmbeddings);
             var modifiedJson = SerializeEmbeddings(delta.ModifiedEmbeddings);
             var deletedJson = JsonSerializer.Serialize(
-            delta.DeletedSymbolIds.Items.ToList(),
-            JsonOptions);
+                delta.DeletedSymbolIds.Items.ToList(),
+                JsonOptions
+            );
 
             await using var connection = new SqliteConnection($"Data Source={_databasePath}");
             await connection.OpenAsync(cancellationToken);
 
-            var sql = @"
+            var sql =
+                @"
 INSERT OR REPLACE INTO VectorDeltas
 (BranchName, BaseCommitSha, LastModified, AddedEmbeddings, ModifiedEmbeddings, DeletedSymbolIds)
 VALUES (@branchName, @baseCommitSha, @lastModified, @addedEmbeddings, @modifiedEmbeddings, @deletedSymbolIds)";
@@ -106,7 +109,10 @@ VALUES (@branchName, @baseCommitSha, @lastModified, @addedEmbeddings, @modifiedE
             command.CommandText = sql;
             command.Parameters.AddWithValue("@branchName", delta.BranchName);
             command.Parameters.AddWithValue("@baseCommitSha", delta.BaseCommitSha);
-            command.Parameters.AddWithValue("@lastModified", delta.LastModified.ToUnixTimeSeconds());
+            command.Parameters.AddWithValue(
+                "@lastModified",
+                delta.LastModified.ToUnixTimeSeconds()
+            );
             command.Parameters.AddWithValue("@addedEmbeddings", addedJson);
             command.Parameters.AddWithValue("@modifiedEmbeddings", modifiedJson);
             command.Parameters.AddWithValue("@deletedSymbolIds", deletedJson);
@@ -114,11 +120,12 @@ VALUES (@branchName, @baseCommitSha, @lastModified, @addedEmbeddings, @modifiedE
             await command.ExecuteNonQueryAsync(cancellationToken);
 
             _logger.LogDebug(
-            "Saved vector delta to database: {Branch} ({AddedCount} added, {ModifiedCount} modified, {DeletedCount} deleted)",
-            delta.BranchName,
-            delta.AddedEmbeddings.Count,
-            delta.ModifiedEmbeddings.Count,
-            delta.DeletedSymbolIds.Count);
+                "Saved vector delta to database: {Branch} ({AddedCount} added, {ModifiedCount} modified, {DeletedCount} deleted)",
+                delta.BranchName,
+                delta.AddedEmbeddings.Count,
+                delta.ModifiedEmbeddings.Count,
+                delta.DeletedSymbolIds.Count
+            );
         }
         catch (Exception ex)
         {
@@ -135,8 +142,9 @@ VALUES (@branchName, @baseCommitSha, @lastModified, @addedEmbeddings, @modifiedE
     /// Load vector delta from SQLite.
     /// </summary>
     public async Task<VectorDelta?> LoadVectorDeltaAsync(
-    string branchName,
-    CancellationToken cancellationToken = default)
+        string branchName,
+        CancellationToken cancellationToken = default
+    )
     {
         await EnsureInitializedAsync(cancellationToken);
         await _dbLock.WaitAsync(cancellationToken);
@@ -145,7 +153,8 @@ VALUES (@branchName, @baseCommitSha, @lastModified, @addedEmbeddings, @modifiedE
             await using var connection = new SqliteConnection($"Data Source={_databasePath}");
             await connection.OpenAsync(cancellationToken);
 
-            var sql = @"
+            var sql =
+                @"
 SELECT BranchName, BaseCommitSha, LastModified, AddedEmbeddings, ModifiedEmbeddings, DeletedSymbolIds
 FROM VectorDeltas
 WHERE BranchName = @branchName";
@@ -165,7 +174,7 @@ WHERE BranchName = @branchName";
             {
                 BranchName = reader.GetString(0),
                 BaseCommitSha = reader.GetString(1),
-                LastModified = DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(2))
+                LastModified = DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(2)),
             };
 
             // Deserialize embeddings
@@ -186,11 +195,12 @@ WHERE BranchName = @branchName";
             }
 
             _logger.LogDebug(
-            "Loaded vector delta from database: {Branch} ({AddedCount} added, {ModifiedCount} modified, {DeletedCount} deleted)",
-            delta.BranchName,
-            delta.AddedEmbeddings.Count,
-            delta.ModifiedEmbeddings.Count,
-            delta.DeletedSymbolIds.Count);
+                "Loaded vector delta from database: {Branch} ({AddedCount} added, {ModifiedCount} modified, {DeletedCount} deleted)",
+                delta.BranchName,
+                delta.AddedEmbeddings.Count,
+                delta.ModifiedEmbeddings.Count,
+                delta.DeletedSymbolIds.Count
+            );
 
             return delta;
         }
@@ -209,8 +219,9 @@ WHERE BranchName = @branchName";
     /// Delete vector delta from database.
     /// </summary>
     public async Task DeleteVectorDeltaAsync(
-    string branchName,
-    CancellationToken cancellationToken = default)
+        string branchName,
+        CancellationToken cancellationToken = default
+    )
     {
         await EnsureInitializedAsync(cancellationToken);
         await _dbLock.WaitAsync(cancellationToken);
@@ -246,7 +257,9 @@ WHERE BranchName = @branchName";
     /// <summary>
     /// Get all branch names with stored deltas.
     /// </summary>
-    public async Task<List<string>> GetAllBranchNamesAsync(CancellationToken cancellationToken = default)
+    public async Task<List<string>> GetAllBranchNamesAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         await EnsureInitializedAsync(cancellationToken);
         await _dbLock.WaitAsync(cancellationToken);
@@ -291,18 +304,20 @@ WHERE BranchName = @branchName";
     /// Uses Utf8JsonWriter with ArrayPool-backed buffer.
     /// </summary>
     private static string SerializeEmbeddings(
-    System.Collections.Concurrent.ConcurrentDictionary<string, float[]> embeddings)
+        System.Collections.Concurrent.ConcurrentDictionary<string, float[]> embeddings
+    )
     {
         if (embeddings.IsEmpty)
             return "{}";
 
         // Use ArrayPool-backed buffer for reduced allocations
         var bufferWriter = new ArrayBufferWriter<byte>(initialCapacity: 4096);
-        using (var writer = new Utf8JsonWriter(bufferWriter, new JsonWriterOptions
-        {
-            Indented = false,
-            SkipValidation = false
-        }))
+        using (
+            var writer = new Utf8JsonWriter(
+                bufferWriter,
+                new JsonWriterOptions { Indented = false, SkipValidation = false }
+            )
+        )
         {
             writer.WriteStartObject();
 
@@ -328,8 +343,9 @@ WHERE BranchName = @branchName";
     /// Uses Utf8JsonReader with ReadOnlySpan.
     /// </summary>
     private static void DeserializeEmbeddings(
-    string json,
-    System.Collections.Concurrent.ConcurrentDictionary<string, float[]> target)
+        string json,
+        System.Collections.Concurrent.ConcurrentDictionary<string, float[]> target
+    )
     {
         if (string.IsNullOrWhiteSpace(json))
             return;

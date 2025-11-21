@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace UltrasharpTools.Droid.Services.Hybrid;
 
@@ -16,19 +16,27 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
 
     // Локальные инструменты будут выполняться через делегаты
     // (регистрируются через RegisterLocalToolExecutor)
-    private readonly Dictionary<string, Func<Dictionary<string, object>, CancellationToken, Task<object>>> _localToolExecutors;
+    private readonly Dictionary<
+        string,
+        Func<Dictionary<string, object>, CancellationToken, Task<object>>
+    > _localToolExecutors;
 
     public McpToolInterceptor(
         ILogger<McpToolInterceptor> logger,
         IToolRouter router,
         IToolEnricher enricher,
-        IServerBridgeService? serverBridge = null)
+        IServerBridgeService? serverBridge = null
+    )
     {
         _logger = logger;
         _router = router;
         _enricher = enricher;
         _serverBridge = serverBridge;
-        _localToolExecutors = new Dictionary<string, Func<Dictionary<string, object>, CancellationToken, Task<object>>>();
+        _localToolExecutors =
+            new Dictionary<
+                string,
+                Func<Dictionary<string, object>, CancellationToken, Task<object>>
+            >();
 
         _logger.LogInformation("McpToolInterceptor initialized");
     }
@@ -38,7 +46,8 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
     /// </summary>
     public void RegisterLocalToolExecutor(
         string toolName,
-        Func<Dictionary<string, object>, CancellationToken, Task<object>> executor)
+        Func<Dictionary<string, object>, CancellationToken, Task<object>> executor
+    )
     {
         _localToolExecutors[toolName] = executor;
         _logger.LogDebug("Registered local executor for {Tool}", toolName);
@@ -48,11 +57,16 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
     public async Task<McpToolExecutionResult> ExecuteToolAsync(
         string toolName,
         Dictionary<string, object> arguments,
-        CancellationToken ct = default)
+        CancellationToken ct = default
+    )
     {
         var sw = Stopwatch.StartNew();
 
-        _logger.LogDebug("Executing MCP tool: {Tool} with {ArgCount} arguments", toolName, arguments?.Count ?? 0);
+        _logger.LogDebug(
+            "Executing MCP tool: {Tool} with {ArgCount} arguments",
+            toolName,
+            arguments?.Count ?? 0
+        );
 
         try
         {
@@ -67,8 +81,14 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
             {
                 ToolRoutingDecision.Local => await ExecuteLocalAsync(toolName, arguments, ct),
                 ToolRoutingDecision.Overlord => await ExecuteOverlordAsync(toolName, arguments, ct),
-                ToolRoutingDecision.OverlordWithFallback => await ExecuteWithFallbackAsync(toolName, arguments, ct),
-                _ => throw new NotSupportedException($"Unknown routing decision: {routingDecision}")
+                ToolRoutingDecision.OverlordWithFallback => await ExecuteWithFallbackAsync(
+                    toolName,
+                    arguments,
+                    ct
+                ),
+                _ => throw new NotSupportedException(
+                    $"Unknown routing decision: {routingDecision}"
+                ),
             };
 
             // 3. Apply semantic enrichment if supported
@@ -88,7 +108,8 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
                 toolName,
                 sw.ElapsedMilliseconds,
                 routingDecision,
-                wasEnriched);
+                wasEnriched
+            );
 
             return new McpToolExecutionResult
             {
@@ -96,13 +117,18 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
                 Result = result,
                 RoutingDecision = routingDecision,
                 WasEnriched = wasEnriched,
-                ExecutionTimeMs = sw.ElapsedMilliseconds
+                ExecutionTimeMs = sw.ElapsedMilliseconds,
             };
         }
         catch (Exception ex)
         {
             sw.Stop();
-            _logger.LogError(ex, "Tool {Tool} execution failed after {Time}ms", toolName, sw.ElapsedMilliseconds);
+            _logger.LogError(
+                ex,
+                "Tool {Tool} execution failed after {Time}ms",
+                toolName,
+                sw.ElapsedMilliseconds
+            );
 
             return new McpToolExecutionResult
             {
@@ -111,7 +137,7 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
                 RoutingDecision = ToolRoutingDecision.Local,
                 WasEnriched = false,
                 ExecutionTimeMs = sw.ElapsedMilliseconds,
-                ErrorMessage = ex.Message
+                ErrorMessage = ex.Message,
             };
         }
     }
@@ -130,13 +156,16 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
     private async Task<object> ExecuteLocalAsync(
         string toolName,
         Dictionary<string, object> arguments,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         _logger.LogTrace("Executing {Tool} locally", toolName);
 
         if (!_localToolExecutors.TryGetValue(toolName, out var executor))
         {
-            throw new InvalidOperationException($"No local executor registered for tool: {toolName}");
+            throw new InvalidOperationException(
+                $"No local executor registered for tool: {toolName}"
+            );
         }
 
         return await executor(arguments, ct);
@@ -145,13 +174,16 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
     private async Task<object> ExecuteOverlordAsync(
         string toolName,
         Dictionary<string, object> arguments,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         _logger.LogTrace("Executing {Tool} on Overlord", toolName);
 
         if (_serverBridge == null)
         {
-            throw new InvalidOperationException("Overlord routing requested but ServerBridgeService is not available");
+            throw new InvalidOperationException(
+                "Overlord routing requested but ServerBridgeService is not available"
+            );
         }
 
         return await _serverBridge.CallMcpProxyAsync(toolName, arguments, null, ct);
@@ -160,7 +192,8 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
     private async Task<object> ExecuteWithFallbackAsync(
         string toolName,
         Dictionary<string, object> arguments,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         _logger.LogTrace("Executing {Tool} with Overlord fallback", toolName);
 
@@ -178,7 +211,11 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Overlord execution failed for {Tool} - falling back to LOCAL", toolName);
+                _logger.LogWarning(
+                    ex,
+                    "Overlord execution failed for {Tool} - falling back to LOCAL",
+                    toolName
+                );
             }
         }
 

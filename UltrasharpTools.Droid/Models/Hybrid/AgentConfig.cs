@@ -53,13 +53,6 @@ public sealed class AgentConfig
     /// <summary>
     /// Паттерны файлов для игнорирования
     /// </summary>
-    public string[] IgnorePatterns { get; init; } = new[]
-    {
-        "obj/**",
-        "bin/**",
-        ".git/**",
-        ".vs/**",
-        "*.Designer.cs",
-        "*.generated.cs"
-    };
+    public string[] IgnorePatterns { get; init; } =
+        new[] { "obj/**", "bin/**", ".git/**", ".vs/**", "*.Designer.cs", "*.generated.cs" };
 }

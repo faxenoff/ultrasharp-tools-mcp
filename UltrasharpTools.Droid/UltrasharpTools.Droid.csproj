@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <ItemGroup>
     <ProjectReference Include="..\UltrasharpTools.Tools\UltrasharpTools.Tools.csproj" />
   </ItemGroup>
@@ -58,7 +57,11 @@
 
   <!-- Clean up PDB files after publish (Release only) -->
   <!-- Note: BuildHost directories cleaned by publish-mcp.ps1 -->
-  <Target Name="CleanPublishOutput" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+  <Target
+    Name="CleanPublishOutput"
+    AfterTargets="Publish"
+    Condition="'$(Configuration)' == 'Release'"
+  >
     <ItemGroup>
       <!-- Remove all PDB files (embedded debug info is in DLLs) -->
       <PdbFiles Include="$(PublishDir)**\*.pdb" />
@@ -66,7 +69,10 @@
 
     <Delete Files="@(PdbFiles)" />
 
-    <Message Importance="high" Text="Cleaned up PDB files from publish output" Condition="'@(PdbFiles)' != ''" />
+    <Message
+      Importance="high"
+      Text="Cleaned up PDB files from publish output"
+      Condition="'@(PdbFiles)' != ''"
+    />
   </Target>
-
 </Project>

@@ -1,7 +1,5 @@
-
 using Microsoft.CodeAnalysis.FlowAnalysis;
 using Microsoft.CodeAnalysis.Operations;
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -17,9 +15,10 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
     private readonly Z3ConstraintSolver _z3Solver;
 
     public SymbolicExecutionService(
-    ISolutionManager solutionManager,
-    ILogger<SymbolicExecutionService> logger,
-    Z3ConstraintSolver z3Solver)
+        ISolutionManager solutionManager,
+        ILogger<SymbolicExecutionService> logger,
+        Z3ConstraintSolver z3Solver
+    )
     {
         _solutionManager = solutionManager;
         _logger = logger;
@@ -27,35 +26,52 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
     }
 
     public async Task<SymbolicExecutionResult> AnalyzePathFeasibilityAsync(
-    string entryPointFqn,
-    string? exitPointFqn = null,
-    int maxDepth = 10,
-    Dictionary<string, string>? initialConstraints = null,
-    CancellationToken cancellationToken = default)
+        string entryPointFqn,
+        string? exitPointFqn = null,
+        int maxDepth = 10,
+        Dictionary<string, string>? initialConstraints = null,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             // Find entry point method
-            var entrySymbol = await _solutionManager.FindRoslynSymbolAsync(entryPointFqn, cancellationToken);
+            var entrySymbol = await _solutionManager.FindRoslynSymbolAsync(
+                entryPointFqn,
+                cancellationToken
+            );
             if (entrySymbol is not IMethodSymbol entryMethod)
             {
-                return CreateErrorResult(entryPointFqn, exitPointFqn, $"Entry point not found: {entryPointFqn}");
+                return CreateErrorResult(
+                    entryPointFqn,
+                    exitPointFqn,
+                    $"Entry point not found: {entryPointFqn}"
+                );
             }
 
             // Get method syntax and semantic model
             var syntaxRef = entryMethod.DeclaringSyntaxReferences.FirstOrDefault();
             if (syntaxRef == null)
             {
-                return CreateErrorResult(entryPointFqn, exitPointFqn, "Entry point has no syntax reference");
+                return CreateErrorResult(
+                    entryPointFqn,
+                    exitPointFqn,
+                    "Entry point has no syntax reference"
+                );
             }
 
             var methodSyntax = await syntaxRef.GetSyntaxAsync(cancellationToken);
-            var semanticModel = await _solutionManager.CurrentSolution!.GetDocument(syntaxRef.SyntaxTree)!
-            .GetSemanticModelAsync(cancellationToken);
+            var semanticModel = await _solutionManager
+                .CurrentSolution!.GetDocument(syntaxRef.SyntaxTree)!
+                .GetSemanticModelAsync(cancellationToken);
 
             if (semanticModel == null)
             {
-                return CreateErrorResult(entryPointFqn, exitPointFqn, "Could not get semantic model");
+                return CreateErrorResult(
+                    entryPointFqn,
+                    exitPointFqn,
+                    "Could not get semantic model"
+                );
             }
 
             // Get control flow graph
@@ -67,7 +83,11 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Could not create CFG for {Method}", entryPointFqn);
-                return CreateErrorResult(entryPointFqn, exitPointFqn, $"CFG creation failed: {ex.Message}");
+                return CreateErrorResult(
+                    entryPointFqn,
+                    exitPointFqn,
+                    $"CFG creation failed: {ex.Message}"
+                );
             }
 
             // Initialize symbolic state with parameters
@@ -78,7 +98,7 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
             {
                 Paths = new List<SymbolicPath>(),
                 Issues = new List<PotentialIssue>(),
-                PathIdCounter = 0
+                PathIdCounter = 0,
             };
 
             // Check if CFG is valid before accessing
@@ -90,21 +110,21 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
                     EntryPointFqn = entryPointFqn,
                     ExitPointFqn = exitPointFqn,
                     Paths = new List<SymbolicPath>(),
-                    Issues = new List<PotentialIssue>()
+                    Issues = new List<PotentialIssue>(),
                 };
             }
 
             await ExplorePathsAsync(
-            cfg,
-            cfg.Blocks![0],
-            new List<SymbolicConstraint>(),
-            initialState,
-            new List<SymbolicStep>(),
-            context,
-            currentDepth: 0,
-            maxDepth,
-            exitPointFqn,
-            cancellationToken
+                cfg,
+                cfg.Blocks![0],
+                new List<SymbolicConstraint>(),
+                initialState,
+                new List<SymbolicStep>(),
+                context,
+                currentDepth: 0,
+                maxDepth,
+                exitPointFqn,
+                cancellationToken
             );
 
             var paths = context.Paths;
@@ -123,15 +143,19 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
                 Paths = paths,
                 Issues = issues,
                 TotalConstraints = paths.Sum(p => p.Constraints.Count),
-                ExitPointReachable = exitPointFqn == null || paths.Any(p => p.IsFeasible && p.Steps.Any(s => s.Description.Contains("EXIT"))),
-                MaxDepthReached = paths.Any() ? paths.Max(p => p.Depth) : 0
+                ExitPointReachable =
+                    exitPointFqn == null
+                    || paths.Any(p =>
+                        p.IsFeasible && p.Steps.Any(s => s.Description.Contains("EXIT"))
+                    ),
+                MaxDepthReached = paths.Any() ? paths.Max(p => p.Depth) : 0,
             };
 
             _logger.LogInformation(
-            "Symbolic execution completed: {Feasible}/{Total} paths feasible, {Issues} issues found",
-            result.FeasiblePaths,
-            result.TotalPaths,
-            result.Issues.Count
+                "Symbolic execution completed: {Feasible}/{Total} paths feasible, {Issues} issues found",
+                result.FeasiblePaths,
+                result.TotalPaths,
+                result.Issues.Count
             );
 
             return result;
@@ -144,8 +168,9 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
     }
 
     private Dictionary<string, SymbolicValue> InitializeSymbolicState(
-    IMethodSymbol method,
-    Dictionary<string, string>? initialConstraints)
+        IMethodSymbol method,
+        Dictionary<string, string>? initialConstraints
+    )
     {
         var state = new Dictionary<string, SymbolicValue>();
 
@@ -161,9 +186,11 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
                 "bool" or "System.Boolean" => SymbolicValue.Boolean(paramName),
                 "string" or "System.String" => SymbolicValue.String(paramName),
                 _ when param.Type.IsReferenceType => SymbolicValue.Reference(paramType, paramName),
-                _ when param.Type is IArrayTypeSymbol arrayType =>
-                SymbolicValue.Array(arrayType.ElementType.ToDisplayString(), paramName),
-                _ => SymbolicValue.Reference(paramType, paramName)
+                _ when param.Type is IArrayTypeSymbol arrayType => SymbolicValue.Array(
+                    arrayType.ElementType.ToDisplayString(),
+                    paramName
+                ),
+                _ => SymbolicValue.Reference(paramType, paramName),
             };
 
             state[paramName] = symbolicValue;
@@ -173,16 +200,17 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
     }
 
     private async Task ExplorePathsAsync(
-    ControlFlowGraph cfg,
-    BasicBlock currentBlock,
-    List<SymbolicConstraint> currentConstraints,
-    Dictionary<string, SymbolicValue> currentState,
-    List<SymbolicStep> currentSteps,
-    SymbolicExecutionContext context,
-    int currentDepth,
-    int maxDepth,
-    string? exitPointFqn,
-    CancellationToken cancellationToken)
+        ControlFlowGraph cfg,
+        BasicBlock currentBlock,
+        List<SymbolicConstraint> currentConstraints,
+        Dictionary<string, SymbolicValue> currentState,
+        List<SymbolicStep> currentSteps,
+        SymbolicExecutionContext context,
+        int currentDepth,
+        int maxDepth,
+        string? exitPointFqn,
+        CancellationToken cancellationToken
+    )
     {
         if (currentDepth >= maxDepth || currentBlock == null)
         {
@@ -194,7 +222,14 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
         // Process operations in this block
         foreach (var operation in currentBlock.Operations)
         {
-            ProcessOperation(operation, currentConstraints, currentState, currentSteps, context.Issues, currentDepth);
+            ProcessOperation(
+                operation,
+                currentConstraints,
+                currentState,
+                currentSteps,
+                context.Issues,
+                currentDepth
+            );
         }
 
         // Handle branching
@@ -213,30 +248,30 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
 
             var trueState = new Dictionary<string, SymbolicValue>(currentState);
             var trueSteps = new List<SymbolicStep>(currentSteps)
-{
-new SymbolicStep
-{
-StepNumber = currentSteps.Count + 1,
-Type = TraceStepType.Conditional,
-Description = $"Branch: {branchValue.Syntax} → TRUE",
-SymbolicState = StateToStrings(trueState),
-AddedConstraint = trueCondition?.ToString()
-}
-};
+            {
+                new SymbolicStep
+                {
+                    StepNumber = currentSteps.Count + 1,
+                    Type = TraceStepType.Conditional,
+                    Description = $"Branch: {branchValue.Syntax} → TRUE",
+                    SymbolicState = StateToStrings(trueState),
+                    AddedConstraint = trueCondition?.ToString(),
+                },
+            };
 
             if (currentBlock.ConditionalSuccessor?.Destination != null)
             {
                 await ExplorePathsAsync(
-                cfg,
-                currentBlock.ConditionalSuccessor.Destination,
-                trueConstraints,
-                trueState,
-                trueSteps,
-                context,
-                currentDepth + 1,
-                maxDepth,
-                exitPointFqn,
-                cancellationToken
+                    cfg,
+                    currentBlock.ConditionalSuccessor.Destination,
+                    trueConstraints,
+                    trueState,
+                    trueSteps,
+                    context,
+                    currentDepth + 1,
+                    maxDepth,
+                    exitPointFqn,
+                    cancellationToken
                 );
             }
 
@@ -252,28 +287,28 @@ AddedConstraint = trueCondition?.ToString()
 
                 var falseState = new Dictionary<string, SymbolicValue>(currentState);
                 var falseSteps = new List<SymbolicStep>(currentSteps)
-{
-new SymbolicStep
-{
-StepNumber = currentSteps.Count + 1,
-Type = TraceStepType.Conditional,
-Description = $"Branch: {branchValue.Syntax} → FALSE",
-SymbolicState = StateToStrings(falseState),
-AddedConstraint = falseCondition?.ToString()
-}
-};
+                {
+                    new SymbolicStep
+                    {
+                        StepNumber = currentSteps.Count + 1,
+                        Type = TraceStepType.Conditional,
+                        Description = $"Branch: {branchValue.Syntax} → FALSE",
+                        SymbolicState = StateToStrings(falseState),
+                        AddedConstraint = falseCondition?.ToString(),
+                    },
+                };
 
                 await ExplorePathsAsync(
-                cfg,
-                currentBlock.FallThroughSuccessor.Destination,
-                falseConstraints,
-                falseState,
-                falseSteps,
-                context,
-                currentDepth + 1,
-                maxDepth,
-                exitPointFqn,
-                cancellationToken
+                    cfg,
+                    currentBlock.FallThroughSuccessor.Destination,
+                    falseConstraints,
+                    falseState,
+                    falseSteps,
+                    context,
+                    currentDepth + 1,
+                    maxDepth,
+                    exitPointFqn,
+                    cancellationToken
                 );
             }
         }
@@ -284,16 +319,16 @@ AddedConstraint = falseCondition?.ToString()
             if (nextBranch?.Destination != null)
             {
                 await ExplorePathsAsync(
-                cfg,
-                nextBranch.Destination,
-                currentConstraints,
-                currentState,
-                currentSteps,
-                context,
-                currentDepth + 1,
-                maxDepth,
-                exitPointFqn,
-                cancellationToken
+                    cfg,
+                    nextBranch.Destination,
+                    currentConstraints,
+                    currentState,
+                    currentSteps,
+                    context,
+                    currentDepth + 1,
+                    maxDepth,
+                    exitPointFqn,
+                    cancellationToken
                 );
             }
             else
@@ -305,12 +340,13 @@ AddedConstraint = falseCondition?.ToString()
     }
 
     private void ProcessOperation(
-    IOperation operation,
-    List<SymbolicConstraint> constraints,
-    Dictionary<string, SymbolicValue> state,
-    List<SymbolicStep> steps,
-    List<PotentialIssue> issues,
-    int depth)
+        IOperation operation,
+        List<SymbolicConstraint> constraints,
+        Dictionary<string, SymbolicValue> state,
+        List<SymbolicStep> steps,
+        List<PotentialIssue> issues,
+        int depth
+    )
     {
         // ✅ Enhanced operation processing with state updates
 
@@ -331,16 +367,18 @@ AddedConstraint = falseCondition?.ToString()
                         "int" or "System.Int32" => SymbolicValue.Integer(valueName),
                         "bool" or "System.Boolean" => SymbolicValue.Boolean(valueName),
                         "string" or "System.String" => SymbolicValue.String(valueName),
-                        _ => SymbolicValue.Reference(valueType, valueName)
+                        _ => SymbolicValue.Reference(valueType, valueName),
                     };
 
-                    steps.Add(new SymbolicStep
-                    {
-                        StepNumber = steps.Count + 1,
-                        Type = TraceStepType.Assignment,
-                        Description = $"{targetName} = {valueName}",
-                        SymbolicState = StateToStrings(state)
-                    });
+                    steps.Add(
+                        new SymbolicStep
+                        {
+                            StepNumber = steps.Count + 1,
+                            Type = TraceStepType.Assignment,
+                            Description = $"{targetName} = {valueName}",
+                            SymbolicState = StateToStrings(state),
+                        }
+                    );
                 }
                 break;
 
@@ -349,7 +387,8 @@ AddedConstraint = falseCondition?.ToString()
                 var varName = declarator.Symbol.Name;
                 if (declarator.Initializer != null)
                 {
-                    var initValue = declarator.Initializer.Value.Syntax?.ToString().Trim() ?? "init";
+                    var initValue =
+                        declarator.Initializer.Value.Syntax?.ToString().Trim() ?? "init";
                     var varType = declarator.Symbol.Type.ToDisplayString();
 
                     state[varName] = varType switch
@@ -357,52 +396,60 @@ AddedConstraint = falseCondition?.ToString()
                         "int" or "System.Int32" => SymbolicValue.Integer(initValue),
                         "bool" or "System.Boolean" => SymbolicValue.Boolean(initValue),
                         "string" or "System.String" => SymbolicValue.String(initValue),
-                        _ => SymbolicValue.Reference(varType, initValue)
+                        _ => SymbolicValue.Reference(varType, initValue),
                     };
 
-                    steps.Add(new SymbolicStep
-                    {
-                        StepNumber = steps.Count + 1,
-                        Type = TraceStepType.Assignment, // Use Assignment for variable declarations
-                        Description = $"var {varName} = {initValue}",
-                        SymbolicState = StateToStrings(state)
-                    });
+                    steps.Add(
+                        new SymbolicStep
+                        {
+                            StepNumber = steps.Count + 1,
+                            Type = TraceStepType.Assignment, // Use Assignment for variable declarations
+                            Description = $"var {varName} = {initValue}",
+                            SymbolicState = StateToStrings(state),
+                        }
+                    );
                 }
                 break;
 
             case IInvocationOperation invocation:
                 // Method call - simplified handling
                 var methodName = invocation.TargetMethod.Name;
-                steps.Add(new SymbolicStep
-                {
-                    StepNumber = steps.Count + 1,
-                    Type = TraceStepType.MethodCall,
-                    Description = $"Call: {methodName}()",
-                    SymbolicState = StateToStrings(state)
-                });
+                steps.Add(
+                    new SymbolicStep
+                    {
+                        StepNumber = steps.Count + 1,
+                        Type = TraceStepType.MethodCall,
+                        Description = $"Call: {methodName}()",
+                        SymbolicState = StateToStrings(state),
+                    }
+                );
                 break;
 
             case IReturnOperation returnOp:
                 // Return statement
                 var returnValue = returnOp.ReturnedValue?.Syntax?.ToString().Trim() ?? "void";
-                steps.Add(new SymbolicStep
-                {
-                    StepNumber = steps.Count + 1,
-                    Type = TraceStepType.Return,
-                    Description = $"return {returnValue}",
-                    SymbolicState = StateToStrings(state)
-                });
+                steps.Add(
+                    new SymbolicStep
+                    {
+                        StepNumber = steps.Count + 1,
+                        Type = TraceStepType.Return,
+                        Description = $"return {returnValue}",
+                        SymbolicState = StateToStrings(state),
+                    }
+                );
                 break;
 
             default:
                 // Generic operation
-                steps.Add(new SymbolicStep
-                {
-                    StepNumber = steps.Count + 1,
-                    Type = TraceStepType.Assignment, // Generic fallback
-                    Description = operation.Syntax?.ToString().Trim() ?? "operation",
-                    SymbolicState = StateToStrings(state)
-                });
+                steps.Add(
+                    new SymbolicStep
+                    {
+                        StepNumber = steps.Count + 1,
+                        Type = TraceStepType.Assignment, // Generic fallback
+                        Description = operation.Syntax?.ToString().Trim() ?? "operation",
+                        SymbolicState = StateToStrings(state),
+                    }
+                );
                 break;
         }
 
@@ -411,41 +458,50 @@ AddedConstraint = falseCondition?.ToString()
     }
 
     private void DetectIssues(
-    IOperation operation,
-    List<SymbolicConstraint> constraints,
-    Dictionary<string, SymbolicValue> state,
-    List<PotentialIssue> issues)
+        IOperation operation,
+        List<SymbolicConstraint> constraints,
+        Dictionary<string, SymbolicValue> state,
+        List<PotentialIssue> issues
+    )
     {
         // ✅ 1. Division by zero detection
-        if (operation is IBinaryOperation binaryOp &&
-        (binaryOp.OperatorKind == BinaryOperatorKind.Divide ||
-        binaryOp.OperatorKind == BinaryOperatorKind.Remainder))
+        if (
+            operation is IBinaryOperation binaryOp
+            && (
+                binaryOp.OperatorKind == BinaryOperatorKind.Divide
+                || binaryOp.OperatorKind == BinaryOperatorKind.Remainder
+            )
+        )
         {
             var rightOperand = binaryOp.RightOperand.Syntax?.ToString().Trim();
 
             // Check if divisor is constant zero
             if (rightOperand == "0")
             {
-                issues.Add(new PotentialIssue
-                {
-                    Type = IssueType.DivisionByZero,
-                    Description = $"Division by zero: {operation.Syntax}",
-                    SourceLocation = operation.Syntax?.GetLocation().ToString() ?? "unknown",
-                    TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
-                    Severity = IssueSeverity.Error
-                });
+                issues.Add(
+                    new PotentialIssue
+                    {
+                        Type = IssueType.DivisionByZero,
+                        Description = $"Division by zero: {operation.Syntax}",
+                        SourceLocation = operation.Syntax?.GetLocation().ToString() ?? "unknown",
+                        TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
+                        Severity = IssueSeverity.Error,
+                    }
+                );
             }
             // Check if divisor could be zero based on constraints
             else if (rightOperand != null && !IsDefinitelyNonZero(rightOperand, constraints))
             {
-                issues.Add(new PotentialIssue
-                {
-                    Type = IssueType.DivisionByZero,
-                    Description = $"Potential division by zero: {operation.Syntax}",
-                    SourceLocation = operation.Syntax?.GetLocation().ToString() ?? "unknown",
-                    TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
-                    Severity = IssueSeverity.Warning
-                });
+                issues.Add(
+                    new PotentialIssue
+                    {
+                        Type = IssueType.DivisionByZero,
+                        Description = $"Potential division by zero: {operation.Syntax}",
+                        SourceLocation = operation.Syntax?.GetLocation().ToString() ?? "unknown",
+                        TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
+                        Severity = IssueSeverity.Warning,
+                    }
+                );
             }
         }
 
@@ -461,26 +517,36 @@ AddedConstraint = falseCondition?.ToString()
                 {
                     if (symbolicValue is SymbolicReference refValue && refValue.IsNull)
                     {
-                        issues.Add(new PotentialIssue
-                        {
-                            Type = IssueType.NullReference,
-                            Description = $"Null reference: {operation.Syntax}",
-                            SourceLocation = operation.Syntax?.GetLocation().ToString() ?? "unknown",
-                            TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
-                            Severity = IssueSeverity.Error
-                        });
+                        issues.Add(
+                            new PotentialIssue
+                            {
+                                Type = IssueType.NullReference,
+                                Description = $"Null reference: {operation.Syntax}",
+                                SourceLocation =
+                                    operation.Syntax?.GetLocation().ToString() ?? "unknown",
+                                TriggeringConstraints = constraints
+                                    .Select(c => c.ToString())
+                                    .ToList(),
+                                Severity = IssueSeverity.Error,
+                            }
+                        );
                     }
                     else if (symbolicValue is SymbolicReference refVal && refVal.IsUnknown)
                     {
                         // Unknown nullability
-                        issues.Add(new PotentialIssue
-                        {
-                            Type = IssueType.NullReference,
-                            Description = $"Potential null reference: {operation.Syntax}",
-                            SourceLocation = operation.Syntax?.GetLocation().ToString() ?? "unknown",
-                            TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
-                            Severity = IssueSeverity.Warning
-                        });
+                        issues.Add(
+                            new PotentialIssue
+                            {
+                                Type = IssueType.NullReference,
+                                Description = $"Potential null reference: {operation.Syntax}",
+                                SourceLocation =
+                                    operation.Syntax?.GetLocation().ToString() ?? "unknown",
+                                TriggeringConstraints = constraints
+                                    .Select(c => c.ToString())
+                                    .ToList(),
+                                Severity = IssueSeverity.Warning,
+                            }
+                        );
                     }
                 }
             }
@@ -492,7 +558,11 @@ AddedConstraint = falseCondition?.ToString()
             var arrayName = arrayRef.ArrayReference.Syntax?.ToString().Trim();
             var indices = arrayRef.Indices;
 
-            if (arrayName != null && indices.Length > 0 && state.TryGetValue(arrayName, out var symbolicValue))
+            if (
+                arrayName != null
+                && indices.Length > 0
+                && state.TryGetValue(arrayName, out var symbolicValue)
+            )
             {
                 if (symbolicValue is SymbolicArray arrayValue && arrayValue.Length.HasValue)
                 {
@@ -502,14 +572,19 @@ AddedConstraint = falseCondition?.ToString()
                     {
                         if (constantIndex < 0 || constantIndex >= arrayValue.Length.Value)
                         {
-                            issues.Add(new PotentialIssue
-                            {
-                                Type = IssueType.ArrayOutOfBounds,
-                                Description = $"Array index out of bounds: {operation.Syntax}",
-                                SourceLocation = operation.Syntax?.GetLocation().ToString() ?? "unknown",
-                                TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
-                                Severity = IssueSeverity.Error
-                            });
+                            issues.Add(
+                                new PotentialIssue
+                                {
+                                    Type = IssueType.ArrayOutOfBounds,
+                                    Description = $"Array index out of bounds: {operation.Syntax}",
+                                    SourceLocation =
+                                        operation.Syntax?.GetLocation().ToString() ?? "unknown",
+                                    TriggeringConstraints = constraints
+                                        .Select(c => c.ToString())
+                                        .ToList(),
+                                    Severity = IssueSeverity.Error,
+                                }
+                            );
                         }
                     }
                 }
@@ -528,14 +603,18 @@ AddedConstraint = falseCondition?.ToString()
                 // Simplified: Flag downcasts as potential issues
                 if (!IsCompatibleCast(fromType, toType))
                 {
-                    issues.Add(new PotentialIssue
-                    {
-                        Type = IssueType.InvalidCast,
-                        Description = $"Potential invalid cast: ({toType}){conversion.Operand.Syntax}",
-                        SourceLocation = operation.Syntax?.GetLocation().ToString() ?? "unknown",
-                        TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
-                        Severity = IssueSeverity.Warning
-                    });
+                    issues.Add(
+                        new PotentialIssue
+                        {
+                            Type = IssueType.InvalidCast,
+                            Description =
+                                $"Potential invalid cast: ({toType}){conversion.Operand.Syntax}",
+                            SourceLocation =
+                                operation.Syntax?.GetLocation().ToString() ?? "unknown",
+                            TriggeringConstraints = constraints.Select(c => c.ToString()).ToList(),
+                            Severity = IssueSeverity.Warning,
+                        }
+                    );
                 }
             }
         }
@@ -551,15 +630,27 @@ AddedConstraint = falseCondition?.ToString()
             if (constraint is ComparisonConstraint comp)
             {
                 // Check constraints like "x > 0" or "x != 0"
-                if (comp.Left == variable && comp.Operator == ComparisonOp.NotEqual && comp.Right == "0")
+                if (
+                    comp.Left == variable
+                    && comp.Operator == ComparisonOp.NotEqual
+                    && comp.Right == "0"
+                )
                 {
                     return true;
                 }
-                if (comp.Left == variable && comp.Operator == ComparisonOp.GreaterThan && comp.Right == "0")
+                if (
+                    comp.Left == variable
+                    && comp.Operator == ComparisonOp.GreaterThan
+                    && comp.Right == "0"
+                )
                 {
                     return true;
                 }
-                if (comp.Left == "0" && comp.Operator == ComparisonOp.LessThan && comp.Right == variable)
+                if (
+                    comp.Left == "0"
+                    && comp.Operator == ComparisonOp.LessThan
+                    && comp.Right == variable
+                )
                 {
                     return true;
                 }
@@ -594,9 +685,10 @@ AddedConstraint = falseCondition?.ToString()
     }
 
     private SymbolicConstraint? ExtractCondition(
-    IOperation branchValue,
-    Dictionary<string, SymbolicValue> state,
-    bool isTrue)
+        IOperation branchValue,
+        Dictionary<string, SymbolicValue> state,
+        bool isTrue
+    )
     {
         // Simplified condition extraction
         if (branchValue is IBinaryOperation binaryOp)
@@ -612,7 +704,7 @@ AddedConstraint = falseCondition?.ToString()
                 BinaryOperatorKind.LessThan => ComparisonOp.LessThan,
                 BinaryOperatorKind.GreaterThanOrEqual => ComparisonOp.GreaterThanOrEqual,
                 BinaryOperatorKind.LessThanOrEqual => ComparisonOp.LessThanOrEqual,
-                _ => (ComparisonOp?)null
+                _ => (ComparisonOp?)null,
             };
 
             if (op.HasValue)
@@ -621,7 +713,7 @@ AddedConstraint = falseCondition?.ToString()
                 {
                     Left = left,
                     Operator = isTrue ? op.Value : NegateOp(op.Value),
-                    Right = right
+                    Right = right,
                 };
 
                 return constraint;
@@ -631,28 +723,30 @@ AddedConstraint = falseCondition?.ToString()
         return null;
     }
 
-    private ComparisonOp NegateOp(ComparisonOp op) => op switch
-    {
-        ComparisonOp.Equal => ComparisonOp.NotEqual,
-        ComparisonOp.NotEqual => ComparisonOp.Equal,
-        ComparisonOp.GreaterThan => ComparisonOp.LessThanOrEqual,
-        ComparisonOp.LessThan => ComparisonOp.GreaterThanOrEqual,
-        ComparisonOp.GreaterThanOrEqual => ComparisonOp.LessThan,
-        ComparisonOp.LessThanOrEqual => ComparisonOp.GreaterThan,
-        _ => op
-    };
+    private ComparisonOp NegateOp(ComparisonOp op) =>
+        op switch
+        {
+            ComparisonOp.Equal => ComparisonOp.NotEqual,
+            ComparisonOp.NotEqual => ComparisonOp.Equal,
+            ComparisonOp.GreaterThan => ComparisonOp.LessThanOrEqual,
+            ComparisonOp.LessThan => ComparisonOp.GreaterThanOrEqual,
+            ComparisonOp.GreaterThanOrEqual => ComparisonOp.LessThan,
+            ComparisonOp.LessThanOrEqual => ComparisonOp.GreaterThan,
+            _ => op,
+        };
 
     private void SavePath(
-    SymbolicExecutionContext context,
-    List<SymbolicConstraint> constraints,
-    List<SymbolicStep> steps)
+        SymbolicExecutionContext context,
+        List<SymbolicConstraint> constraints,
+        List<SymbolicStep> steps
+    )
     {
         var path = new SymbolicPath
         {
             PathId = context.PathIdCounter++,
             Steps = new List<SymbolicStep>(steps),
             Constraints = constraints.Select(c => c.ToString()).ToList(),
-            IsFeasible = true // Will be checked later
+            IsFeasible = true, // Will be checked later
         };
 
         context.Paths.Add(path);
@@ -706,8 +800,7 @@ AddedConstraint = falseCondition?.ToString()
             var reasonProp = pathType.GetProperty(nameof(SymbolicPath.InfeasibilityReason))!;
             reasonProp.SetValue(path, result.Reason ?? "Unsatisfiable constraints");
 
-            _logger.LogDebug("Path {PathId} is INFEASIBLE: {Reason}",
-            path.PathId, result.Reason);
+            _logger.LogDebug("Path {PathId} is INFEASIBLE: {Reason}", path.PathId, result.Reason);
         }
         else if (result.ExampleInputs != null && result.ExampleInputs.Count > 0)
         {
@@ -715,8 +808,11 @@ AddedConstraint = falseCondition?.ToString()
             var exampleProp = pathType.GetProperty(nameof(SymbolicPath.ExampleInputs))!;
             exampleProp.SetValue(path, result.ExampleInputs);
 
-            _logger.LogDebug("Path {PathId} is FEASIBLE. Example inputs: {Inputs}",
-            path.PathId, string.Join(", ", result.ExampleInputs.Select(kv => $"{kv.Key}={kv.Value}")));
+            _logger.LogDebug(
+                "Path {PathId} is FEASIBLE. Example inputs: {Inputs}",
+                path.PathId,
+                string.Join(", ", result.ExampleInputs.Select(kv => $"{kv.Key}={kv.Value}"))
+            );
         }
     }
 
@@ -747,7 +843,7 @@ AddedConstraint = falseCondition?.ToString()
                         "<" => ComparisonOp.LessThan,
                         ">=" => ComparisonOp.GreaterThanOrEqual,
                         "<=" => ComparisonOp.LessThanOrEqual,
-                        _ => (ComparisonOp?)null
+                        _ => (ComparisonOp?)null,
                     };
 
                     if (compOp.HasValue)
@@ -756,7 +852,7 @@ AddedConstraint = falseCondition?.ToString()
                         {
                             Left = left,
                             Operator = compOp.Value,
-                            Right = right
+                            Right = right,
                         };
                     }
                 }
@@ -786,13 +882,14 @@ AddedConstraint = falseCondition?.ToString()
 
     private Dictionary<string, string> StateToStrings(Dictionary<string, SymbolicValue> state)
     {
-        return state.ToDictionary(
-        kvp => kvp.Key,
-        kvp => kvp.Value.ToString()
-        );
+        return state.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToString());
     }
 
-    private SymbolicExecutionResult CreateErrorResult(string entryFqn, string? exitFqn, string error)
+    private SymbolicExecutionResult CreateErrorResult(
+        string entryFqn,
+        string? exitFqn,
+        string error
+    )
     {
         return new SymbolicExecutionResult
         {
@@ -803,7 +900,7 @@ AddedConstraint = falseCondition?.ToString()
             TotalConstraints = 0,
             ExitPointReachable = false,
             MaxDepthReached = 0,
-            ErrorMessage = error
+            ErrorMessage = error,
         };
     }
 }

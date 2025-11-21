@@ -1,4 +1,3 @@
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -40,7 +39,8 @@ public class VectorDelta
     /// <summary>
     /// Total number of changes in this delta.
     /// </summary>
-    public int TotalChanges => AddedEmbeddings.Count + ModifiedEmbeddings.Count + DeletedSymbolIds.Count;
+    public int TotalChanges =>
+        AddedEmbeddings.Count + ModifiedEmbeddings.Count + DeletedSymbolIds.Count;
 
     /// <summary>
     /// Applies this delta to a list of vector search results.
@@ -52,9 +52,7 @@ public class VectorDelta
     public List<VectorSearchResult> Apply(List<VectorSearchResult> baseResults, int topK)
     {
         // Start with base results, filtered by deletions
-        var merged = baseResults
-        .Where(r => !DeletedSymbolIds.Contains(r.SymbolId))
-        .ToList();
+        var merged = baseResults.Where(r => !DeletedSymbolIds.Contains(r.SymbolId)).ToList();
 
         // Update modified embeddings (recalculate scores if needed)
         foreach (var result in merged)
@@ -70,19 +68,18 @@ public class VectorDelta
         foreach (var (symbolId, embedding) in AddedEmbeddings)
         {
             // Score calculation happens in LayeredVectorStore
-            merged.Add(new VectorSearchResult
-            {
-                SymbolId = symbolId,
-                Embedding = embedding,
-                Score = 0f // Will be recalculated
-            });
+            merged.Add(
+                new VectorSearchResult
+                {
+                    SymbolId = symbolId,
+                    Embedding = embedding,
+                    Score = 0f, // Will be recalculated
+                }
+            );
         }
 
         // Re-sort by score and take topK
-        return merged
-        .OrderByDescending(r => r.Score)
-        .Take(topK)
-        .ToList();
+        return merged.OrderByDescending(r => r.Score).Take(topK).ToList();
     }
 
     /// <summary>
@@ -136,7 +133,7 @@ public class VectorDelta
         {
             BranchName = BranchName,
             BaseCommitSha = BaseCommitSha,
-            LastModified = LastModified
+            LastModified = LastModified,
         };
 
         foreach (var kvp in AddedEmbeddings)
@@ -166,17 +163,24 @@ public class VectorSearchResult
 /// <summary>
 /// Concurrent HashSet implementation (not provided by BCL).
 /// </summary>
-public class ConcurrentHashSet<T> : IEnumerable<T> where T : notnull
+public class ConcurrentHashSet<T> : IEnumerable<T>
+    where T : notnull
 {
     private readonly ConcurrentDictionary<T, byte> _dict = new();
 
     public bool Add(T item) => _dict.TryAdd(item, 0);
+
     public bool Contains(T item) => _dict.ContainsKey(item);
+
     public bool Remove(T item) => _dict.TryRemove(item, out _);
+
     public void Clear() => _dict.Clear();
+
     public int Count => _dict.Count;
     public IEnumerable<T> Items => _dict.Keys;
 
     public IEnumerator<T> GetEnumerator() => _dict.Keys.GetEnumerator();
-    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() =>
+        GetEnumerator();
 }

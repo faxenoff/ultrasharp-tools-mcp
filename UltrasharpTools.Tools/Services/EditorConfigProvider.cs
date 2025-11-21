@@ -13,7 +13,8 @@ public class EditorConfigProvider : IEditorConfigProvider
 
     public Task InitializeAsync(string solutionDirectory, CancellationToken cancellationToken)
     {
-        _solutionDirectory = solutionDirectory ?? throw new ArgumentNullException(nameof(solutionDirectory));
+        _solutionDirectory =
+            solutionDirectory ?? throw new ArgumentNullException(nameof(solutionDirectory));
         _rootEditorConfigPath = FindRootEditorConfig(_solutionDirectory);
 
         if (_rootEditorConfigPath != null)
@@ -22,7 +23,9 @@ public class EditorConfigProvider : IEditorConfigProvider
         }
         else
         {
-            _logger.LogInformation(".editorconfig not found in solution directory or parent directories up to repository root.");
+            _logger.LogInformation(
+                ".editorconfig not found in solution directory or parent directories up to repository root."
+            );
         }
         return Task.CompletedTask;
     }

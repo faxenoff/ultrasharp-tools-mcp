@@ -16,9 +16,9 @@ public interface ICallGraphCacheService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of caller FQNs, or null if not cached or stale</returns>
     Task<List<string>?> GetCallersAsync(
-    string methodFqn,
-    string solutionHash,
-    CancellationToken cancellationToken = default
+        string methodFqn,
+        string solutionHash,
+        CancellationToken cancellationToken = default
     );
 
     /// <summary>
@@ -29,10 +29,10 @@ public interface ICallGraphCacheService
     /// <param name="solutionHash">Hash of the current solution state</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task SetCallersAsync(
-    string methodFqn,
-    List<string> callerFqns,
-    string solutionHash,
-    CancellationToken cancellationToken = default
+        string methodFqn,
+        List<string> callerFqns,
+        string solutionHash,
+        CancellationToken cancellationToken = default
     );
 
     /// <summary>
@@ -41,8 +41,8 @@ public interface ICallGraphCacheService
     /// <param name="modifiedFilePaths">Paths of modified files</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task InvalidateByFilesAsync(
-    List<string> modifiedFilePaths,
-    CancellationToken cancellationToken = default
+        List<string> modifiedFilePaths,
+        CancellationToken cancellationToken = default
     );
 
     /// <summary>
@@ -69,9 +69,9 @@ public interface ICallGraphCacheService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of caller info with locations, or null if not cached</returns>
     Task<List<SerializableCallerInfo>?> GetCallersFullAsync(
-    string methodFqn,
-    string solutionHash,
-    CancellationToken cancellationToken = default
+        string methodFqn,
+        string solutionHash,
+        CancellationToken cancellationToken = default
     );
 
     /// <summary>
@@ -82,9 +82,9 @@ public interface ICallGraphCacheService
     /// <param name="solutionHash">Hash of the current solution state</param>
     /// <param name="cancellationToken">Cancellation token</param>
     Task SetCallersFullAsync(
-    string methodFqn,
-    List<SerializableCallerInfo> callers,
-    string solutionHash,
-    CancellationToken cancellationToken = default
+        string methodFqn,
+        List<SerializableCallerInfo> callers,
+        string solutionHash,
+        CancellationToken cancellationToken = default
     );
 }

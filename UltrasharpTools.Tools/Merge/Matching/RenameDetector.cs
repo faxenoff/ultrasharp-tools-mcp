@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 
@@ -14,9 +12,9 @@ public sealed class RenameDetector
     private readonly ILogger<RenameDetector> _logger;
 
     // Пороги similarity для rename detection
-    private const float HighConfidenceThreshold = 0.95f;   // Очень похоже - скорее всего rename
+    private const float HighConfidenceThreshold = 0.95f; // Очень похоже - скорее всего rename
     private const float MediumConfidenceThreshold = 0.85f; // Вероятно rename
-    private const float LowConfidenceThreshold = 0.70f;    // Возможно rename
+    private const float LowConfidenceThreshold = 0.70f; // Возможно rename
 
     public RenameDetector(ILogger<RenameDetector>? logger = null)
     {
@@ -53,10 +51,7 @@ public sealed class RenameDetector
         }
 
         // Вычислить composite score
-        var score = ComputeRenameScore(
-        unitA,
-        unitB,
-        structuralSimilarity);
+        var score = ComputeRenameScore(unitA, unitB, structuralSimilarity);
 
         if (score < LowConfidenceThreshold)
         {
@@ -66,11 +61,12 @@ public sealed class RenameDetector
         var confidence = ClassifyConfidence(score);
 
         _logger.LogInformation(
-        "Rename detected: {NameA} -> {NameB} (similarity: {Similarity:F3}, confidence: {Confidence})",
-        unitA.Name,
-        unitB.Name,
-        structuralSimilarity,
-        confidence);
+            "Rename detected: {NameA} -> {NameB} (similarity: {Similarity:F3}, confidence: {Confidence})",
+            unitA.Name,
+            unitB.Name,
+            structuralSimilarity,
+            confidence
+        );
 
         return new RenameDetectionResult
         {
@@ -78,7 +74,7 @@ public sealed class RenameDetector
             RenamedUnit = unitB,
             StructuralSimilarity = structuralSimilarity,
             Confidence = confidence,
-            Score = score
+            Score = score,
         };
     }
 
@@ -97,8 +93,16 @@ public sealed class RenameDetector
         var treeA = CSharpSyntaxTree.ParseText(unitA.Content);
         var treeB = CSharpSyntaxTree.ParseText(unitB.Content);
 
-        var methodA = treeA.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        var methodB = treeB.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        var methodA = treeA
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault();
+        var methodB = treeB
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault();
 
         if (methodA == null || methodB == null)
         {
@@ -141,8 +145,11 @@ public sealed class RenameDetector
             }
 
             // Сравнить модификаторы (ref/out/in/params)
-            if (!paramA.Modifiers.Select(m => m.ValueText).SequenceEqual(
-            paramB.Modifiers.Select(m => m.ValueText)))
+            if (
+                !paramA
+                    .Modifiers.Select(m => m.ValueText)
+                    .SequenceEqual(paramB.Modifiers.Select(m => m.ValueText))
+            )
             {
                 return false;
             }
@@ -180,8 +187,12 @@ public sealed class RenameDetector
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to compute structural similarity for {IdA} vs {IdB}",
-            unitA.Id, unitB.Id);
+            _logger.LogWarning(
+                ex,
+                "Failed to compute structural similarity for {IdA} vs {IdB}",
+                unitA.Id,
+                unitB.Id
+            );
 
             // Fallback: простое текстовое сравнение
             return ComputeTextSimilarity(unitA.Content, unitB.Content);
@@ -260,15 +271,29 @@ public sealed class RenameDetector
         {
             // Примитивные типы C#
             var primitives = new HashSet<string>
-{
-"int", "long", "short", "byte", "sbyte",
-"uint", "ulong", "ushort",
-"float", "double", "decimal",
-"bool", "char", "string", "object",
-"void", "var", "dynamic"
-};
+            {
+                "int",
+                "long",
+                "short",
+                "byte",
+                "sbyte",
+                "uint",
+                "ulong",
+                "ushort",
+                "float",
+                "double",
+                "decimal",
+                "bool",
+                "char",
+                "string",
+                "object",
+                "void",
+                "var",
+                "dynamic",
+            };
 
-            return primitives.Contains(name) || SyntaxFacts.IsKeywordKind(SyntaxFacts.GetKeywordKind(name));
+            return primitives.Contains(name)
+                || SyntaxFacts.IsKeywordKind(SyntaxFacts.GetKeywordKind(name));
         }
     }
 
@@ -324,10 +349,12 @@ public sealed class RenameDetector
                 var cost = s1[i - 1] == s2[j - 1] ? 0 : 1;
 
                 matrix[i, j] = Math.Min(
-                Math.Min(
-                matrix[i - 1, j] + 1,     // deletion
-                matrix[i, j - 1] + 1),    // insertion
-                matrix[i - 1, j - 1] + cost); // substitution
+                    Math.Min(
+                        matrix[i - 1, j] + 1, // deletion
+                        matrix[i, j - 1] + 1
+                    ), // insertion
+                    matrix[i - 1, j - 1] + cost
+                ); // substitution
             }
         }
 
@@ -337,10 +364,7 @@ public sealed class RenameDetector
     /// <summary>
     /// Вычислить composite score для rename detection.
     /// </summary>
-    private float ComputeRenameScore(
-    CodeUnit unitA,
-    CodeUnit unitB,
-    float structuralSimilarity)
+    private float ComputeRenameScore(CodeUnit unitA, CodeUnit unitB, float structuralSimilarity)
     {
         float score = structuralSimilarity;
 
@@ -353,12 +377,9 @@ public sealed class RenameDetector
         score += nameSimilarity * 0.05f;
 
         // Penalty: сильно разная длина
-        var lengthRatio = (float)Math.Min(
-        unitA.Content.Length,
-        unitB.Content.Length) /
-        Math.Max(
-        unitA.Content.Length,
-        unitB.Content.Length);
+        var lengthRatio =
+            (float)Math.Min(unitA.Content.Length, unitB.Content.Length)
+            / Math.Max(unitA.Content.Length, unitB.Content.Length);
 
         if (lengthRatio < 0.7f)
         {
@@ -425,9 +446,7 @@ public sealed class RenameDetector
             return 1.0f;
         }
 
-        var distance = LevenshteinDistance(
-        nameA.ToLowerInvariant(),
-        nameB.ToLowerInvariant());
+        var distance = LevenshteinDistance(nameA.ToLowerInvariant(), nameB.ToLowerInvariant());
 
         var maxLength = Math.Max(nameA.Length, nameB.Length);
         if (maxLength == 0)
@@ -461,20 +480,22 @@ public sealed class RenameDetector
     /// Batch rename detection для нескольких units.
     /// </summary>
     public Dictionary<string, RenameDetectionResult> DetectRenamesBatch(
-    List<CodeUnit> sourceUnits,
-    List<CodeUnit> targetUnits)
+        List<CodeUnit> sourceUnits,
+        List<CodeUnit> targetUnits
+    )
     {
         _logger.LogInformation(
-        "Performing batch rename detection for {SourceCount} source units vs {TargetCount} target units",
-        sourceUnits.Count,
-        targetUnits.Count);
+            "Performing batch rename detection for {SourceCount} source units vs {TargetCount} target units",
+            sourceUnits.Count,
+            targetUnits.Count
+        );
 
         var results = new Dictionary<string, RenameDetectionResult>();
 
         // Фильтруем target units по типу для оптимизации
         var targetByType = targetUnits
-        .GroupBy(u => u.Type)
-        .ToDictionary(g => g.Key, g => g.ToList());
+            .GroupBy(u => u.Type)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var sourceUnit in sourceUnits)
         {
@@ -505,9 +526,10 @@ public sealed class RenameDetector
         }
 
         _logger.LogInformation(
-        "Rename detection: {Matched}/{Total} renames detected",
-        results.Count,
-        sourceUnits.Count);
+            "Rename detection: {Matched}/{Total} renames detected",
+            results.Count,
+            sourceUnits.Count
+        );
 
         return results;
     }
@@ -528,9 +550,10 @@ public sealed class RenameDetector
 
         // Убираем модификаторы доступа для сравнения
         signature = System.Text.RegularExpressions.Regex.Replace(
-        signature,
-        @"\b(public|private|protected|internal|static|virtual|override|abstract|sealed|async)\s+",
-        "");
+            signature,
+            @"\b(public|private|protected|internal|static|virtual|override|abstract|sealed|async)\s+",
+            ""
+        );
 
         return signature;
     }
@@ -563,7 +586,10 @@ public sealed class RenameDetector
             // Нет параметров - вернуть только возвращаемый тип
             var beforeParen = signature.Split('(')[0].Trim();
             // Убрать имя метода (последнее слово перед скобкой)
-            var words = beforeParen.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            var words = beforeParen.Split(
+                new[] { ' ', '\t' },
+                StringSplitOptions.RemoveEmptyEntries
+            );
             if (words.Length > 0)
             {
                 // Возвращаемый тип - всё кроме последнего слова (имени метода)
@@ -587,9 +613,10 @@ public sealed class RenameDetector
 
             // Убрать модификаторы (ref/out/in/params)
             trimmed = System.Text.RegularExpressions.Regex.Replace(
-            trimmed,
-            @"^(ref|out|in|params)\s+",
-            "");
+                trimmed,
+                @"^(ref|out|in|params)\s+",
+                ""
+            );
 
             // Взять первое слово (тип)
             var words = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
@@ -603,12 +630,17 @@ public sealed class RenameDetector
 
         // Извлечь возвращаемый тип (всё до имени метода перед скобкой)
         var beforeParams = signature.Substring(0, match.Index).Trim();
-        var returnTypeParts = beforeParams.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+        var returnTypeParts = beforeParams.Split(
+            new[] { ' ', '\t' },
+            StringSplitOptions.RemoveEmptyEntries
+        );
 
         // Возвращаемый тип - всё кроме последнего слова (имени метода)
-        var returnType = returnTypeParts.Length > 1
-        ? string.Join(" ", returnTypeParts.Take(returnTypeParts.Length - 1))
-        : returnTypeParts.Length == 1 ? returnTypeParts[0] : "";
+        var returnType =
+            returnTypeParts.Length > 1
+                ? string.Join(" ", returnTypeParts.Take(returnTypeParts.Length - 1))
+            : returnTypeParts.Length == 1 ? returnTypeParts[0]
+            : "";
 
         return $"{returnType}({normalizedParamsStr})";
     }
@@ -631,7 +663,7 @@ public sealed record RenameDetectionResult
 /// </summary>
 public enum RenameConfidence
 {
-    Low,    // >= 0.70 - возможно rename
+    Low, // >= 0.70 - возможно rename
     Medium, // >= 0.85 - вероятно rename
-    High    // >= 0.95 - скорее всего rename
+    High, // >= 0.95 - скорее всего rename
 }

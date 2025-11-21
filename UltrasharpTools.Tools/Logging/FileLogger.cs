@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Logging;
@@ -20,7 +18,8 @@ internal sealed partial class FileLogger : ILogger
         _processor = processor ?? throw new ArgumentNullException(nameof(processor));
     }
 
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+    public IDisposable? BeginScope<TState>(TState state)
+        where TState : notnull => null;
 
     public bool IsEnabled(LogLevel logLevel)
     {
@@ -32,7 +31,8 @@ internal sealed partial class FileLogger : ILogger
         EventId eventId,
         TState state,
         Exception? exception,
-        Func<TState, Exception?, string> formatter)
+        Func<TState, Exception?, string> formatter
+    )
     {
         if (!IsEnabled(logLevel))
         {
@@ -59,7 +59,12 @@ internal sealed partial class FileLogger : ILogger
         _processor.EnqueueMessage(logEntry);
     }
 
-    private string BuildLogEntry(LogLevel logLevel, string category, string message, Exception? exception)
+    private string BuildLogEntry(
+        LogLevel logLevel,
+        string category,
+        string message,
+        Exception? exception
+    )
     {
         var sb = ObjectPoolProvider.Instance.GetStringBuilder();
         try
@@ -110,11 +115,14 @@ internal sealed partial class FileLogger : ILogger
             LogLevel.Warning => "WARN",
             LogLevel.Error => "ERROR",
             LogLevel.Critical => "FATAL",
-            _ => "UNKNOWN"
+            _ => "UNKNOWN",
         };
     }
 
-    private static string FormatStructuredMessage(string template, IReadOnlyList<KeyValuePair<string, object?>> properties)
+    private static string FormatStructuredMessage(
+        string template,
+        IReadOnlyList<KeyValuePair<string, object?>> properties
+    )
     {
         // Simple structured logging: replace {ParameterName} with actual values
         var message = template;
@@ -158,7 +166,7 @@ internal sealed class FileLoggerProcessor : IDisposable
         _outputThread = new Thread(ProcessLogQueue)
         {
             IsBackground = true,
-            Name = "FileLogger Processor"
+            Name = "FileLogger Processor",
         };
         _outputThread.Start();
     }
@@ -207,7 +215,8 @@ internal sealed class FileLoggerProcessor : IDisposable
                     _bufferCount++;
 
                     // Estimate size increase
-                    _currentFileSize += Encoding.UTF8.GetByteCount(message) + Environment.NewLine.Length;
+                    _currentFileSize +=
+                        Encoding.UTF8.GetByteCount(message) + Environment.NewLine.Length;
 
                     // Check if we need to flush
                     if (_options.AutoFlush || _bufferCount >= _options.BufferSize)
@@ -217,7 +226,10 @@ internal sealed class FileLoggerProcessor : IDisposable
                     }
 
                     // Check if we need to rotate
-                    if (_options.MaxFileSizeBytes > 0 && _currentFileSize >= _options.MaxFileSizeBytes)
+                    if (
+                        _options.MaxFileSizeBytes > 0
+                        && _currentFileSize >= _options.MaxFileSizeBytes
+                    )
                     {
                         RotateLogFile();
                     }
@@ -252,11 +264,15 @@ internal sealed class FileLoggerProcessor : IDisposable
             FileAccess.Write,
             FileShare.Read,
             bufferSize: 4096,
-            useAsync: false);
+            useAsync: false
+        );
 
-        _streamWriter = new StreamWriter(fileStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false))
+        _streamWriter = new StreamWriter(
+            fileStream,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
+        )
         {
-            AutoFlush = false // We'll flush manually
+            AutoFlush = false, // We'll flush manually
         };
 
         // Get current file size

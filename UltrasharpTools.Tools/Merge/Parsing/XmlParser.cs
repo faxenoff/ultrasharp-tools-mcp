@@ -1,6 +1,5 @@
 using System.Xml;
 using System.Xml.Linq;
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
@@ -18,9 +17,10 @@ public sealed class XmlParser
     private readonly ContentNormalizer _normalizer;
 
     public XmlParser(
-    StructuralFingerprint fingerprint,
-    ContentNormalizer normalizer,
-    ILogger<XmlParser>? logger = null)
+        StructuralFingerprint fingerprint,
+        ContentNormalizer normalizer,
+        ILogger<XmlParser>? logger = null
+    )
     {
         _fingerprint = fingerprint;
         _normalizer = normalizer;
@@ -31,8 +31,9 @@ public sealed class XmlParser
     /// Парсить XML файл и извлечь CodeUnits.
     /// </summary>
     public async Task<List<CodeUnit>> ParseFileAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         // 1. Нормализовать контент
         var normalized = await _normalizer.NormalizeAsync(filePath, ct);
@@ -66,9 +67,10 @@ public sealed class XmlParser
         }
 
         _logger.LogInformation(
-        "Parsed XML {FilePath}: extracted {Count} units",
-        filePath,
-        units.Count);
+            "Parsed XML {FilePath}: extracted {Count} units",
+            filePath,
+            units.Count
+        );
 
         return units;
     }
@@ -102,8 +104,8 @@ public sealed class XmlParser
             Metadata = new Dictionary<string, object>
             {
                 ["FileSize"] = content.Length,
-                ["Extension"] = Path.GetExtension(filePath)
-            }
+                ["Extension"] = Path.GetExtension(filePath),
+            },
         };
     }
 
@@ -136,8 +138,8 @@ public sealed class XmlParser
             {
                 ["FileSize"] = content.Length,
                 ["Extension"] = Path.GetExtension(filePath),
-                ["ParsingFailed"] = true
-            }
+                ["ParsingFailed"] = true,
+            },
         };
     }
 
@@ -145,11 +147,12 @@ public sealed class XmlParser
     /// Рекурсивно извлечь XML элемент и его дочерние элементы.
     /// </summary>
     private void ExtractElement(
-    XElement element,
-    string path,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units)
+        XElement element,
+        string path,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units
+    )
     {
         var content = element.ToString();
         var contentHash = ContentNormalizer.ComputeContentHash(content);
@@ -164,7 +167,7 @@ public sealed class XmlParser
         var metadata = new Dictionary<string, object>
         {
             ["ElementName"] = element.Name.LocalName,
-            ["ChildCount"] = element.Elements().Count()
+            ["ChildCount"] = element.Elements().Count(),
         };
 
         // Добавить атрибуты в metadata
@@ -197,7 +200,7 @@ public sealed class XmlParser
             ChildIds = new HashSet<string>(),
             StartLine = startLine,
             EndLine = endLine,
-            Metadata = metadata
+            Metadata = metadata,
         };
 
         units.Add(elementUnit);
@@ -220,7 +223,15 @@ public sealed class XmlParser
         var signature = $"<{element.Name.LocalName}";
 
         // Для .csproj важные атрибуты
-        var importantAttrs = new[] { "Include", "Update", "Remove", "Version", "Name", "Condition" };
+        var importantAttrs = new[]
+        {
+            "Include",
+            "Update",
+            "Remove",
+            "Version",
+            "Name",
+            "Condition",
+        };
         foreach (var attrName in importantAttrs)
         {
             var attr = element.Attribute(attrName);

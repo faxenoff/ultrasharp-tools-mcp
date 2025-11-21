@@ -1,4 +1,3 @@
-
 using Microsoft.Z3;
 
 namespace UltrasharpTools.Tools.Services;
@@ -18,10 +17,10 @@ public sealed class Z3ConstraintSolver : IDisposable
 
         // Create Z3 context with reasonable timeout
         var config = new Dictionary<string, string>
-{
-{ "timeout", "5000" }, // 5 seconds
-{ "model", "true" } // Generate models for satisfiable constraints
-};
+        {
+            { "timeout", "5000" }, // 5 seconds
+            { "model", "true" }, // Generate models for satisfiable constraints
+        };
 
         _context = new Context(config);
     }
@@ -54,14 +53,12 @@ public sealed class Z3ConstraintSolver : IDisposable
                 var model = solver.Model;
                 var exampleInputs = ExtractModelValues(model);
 
-                _logger.LogDebug("Constraints satisfiable. Example: {Example}",
-                string.Join(", ", exampleInputs.Select(kv => $"{kv.Key}={kv.Value}")));
+                _logger.LogDebug(
+                    "Constraints satisfiable. Example: {Example}",
+                    string.Join(", ", exampleInputs.Select(kv => $"{kv.Key}={kv.Value}"))
+                );
 
-                return new SolverResult
-                {
-                    IsSatisfiable = true,
-                    ExampleInputs = exampleInputs
-                };
+                return new SolverResult { IsSatisfiable = true, ExampleInputs = exampleInputs };
             }
             else if (status == Status.UNSATISFIABLE)
             {
@@ -70,7 +67,7 @@ public sealed class Z3ConstraintSolver : IDisposable
                 return new SolverResult
                 {
                     IsSatisfiable = false,
-                    Reason = "Constraints are contradictory"
+                    Reason = "Constraints are contradictory",
                 };
             }
             else
@@ -80,7 +77,7 @@ public sealed class Z3ConstraintSolver : IDisposable
                 return new SolverResult
                 {
                     IsSatisfiable = false,
-                    Reason = "Solver timeout or unknown"
+                    Reason = "Solver timeout or unknown",
                 };
             }
         }
@@ -91,7 +88,7 @@ public sealed class Z3ConstraintSolver : IDisposable
             return new SolverResult
             {
                 IsSatisfiable = false,
-                Reason = $"Solver error: {ex.Message}"
+                Reason = $"Solver error: {ex.Message}",
             };
         }
     }
@@ -110,11 +107,19 @@ public sealed class Z3ConstraintSolver : IDisposable
             sexpr = sexpr.Trim();
 
             // Handle comparison operators
-            if (sexpr.StartsWith("(=") || sexpr.StartsWith("(>") ||
-            sexpr.StartsWith("(<") || sexpr.StartsWith("(>=") || sexpr.StartsWith("(<="))
+            if (
+                sexpr.StartsWith("(=")
+                || sexpr.StartsWith("(>")
+                || sexpr.StartsWith("(<")
+                || sexpr.StartsWith("(>=")
+                || sexpr.StartsWith("(<=")
+            )
             {
                 // Extract operator and operands
-                var parts = sexpr.TrimStart('(').TrimEnd(')').Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var parts = sexpr
+                    .TrimStart('(')
+                    .TrimEnd(')')
+                    .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 var op = parts[0];
                 var left = parts[1];
                 var right = parts[2];
@@ -131,7 +136,7 @@ public sealed class Z3ConstraintSolver : IDisposable
                         "<" => _context.MkLt(leftArith, rightArith),
                         ">=" => _context.MkGe(leftArith, rightArith),
                         "<=" => _context.MkLe(leftArith, rightArith),
-                        _ => null
+                        _ => null,
                     };
                 }
             }
@@ -145,7 +150,11 @@ public sealed class Z3ConstraintSolver : IDisposable
 
                 // Split by space (simplified)
                 var operands = SplitSExpression(inner);
-                var exprs = operands.Select(ParseZ3Expression).Where(e => e != null).Cast<BoolExpr>().ToArray();
+                var exprs = operands
+                    .Select(ParseZ3Expression)
+                    .Where(e => e != null)
+                    .Cast<BoolExpr>()
+                    .ToArray();
 
                 if (exprs.Length > 0)
                 {
@@ -164,8 +173,12 @@ public sealed class Z3ConstraintSolver : IDisposable
             }
 
             // Handle arithmetic
-            if (sexpr.StartsWith("(+") || sexpr.StartsWith("(-") ||
-            sexpr.StartsWith("(*") || sexpr.StartsWith("(div"))
+            if (
+                sexpr.StartsWith("(+")
+                || sexpr.StartsWith("(-")
+                || sexpr.StartsWith("(*")
+                || sexpr.StartsWith("(div")
+            )
             {
                 // Similar pattern
             }
@@ -202,8 +215,10 @@ public sealed class Z3ConstraintSolver : IDisposable
 
         foreach (var ch in expr)
         {
-            if (ch == '(') depth++;
-            if (ch == ')') depth--;
+            if (ch == '(')
+                depth++;
+            if (ch == ')')
+                depth--;
 
             if (ch == ' ' && depth == 0 && !string.IsNullOrWhiteSpace(current))
             {
@@ -256,7 +271,8 @@ public sealed class Z3ConstraintSolver : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         _context?.Dispose();
         _disposed = true;

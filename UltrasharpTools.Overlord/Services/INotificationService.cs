@@ -14,7 +14,12 @@ public interface INotificationService
     /// <param name="project">Проект клиента (для фильтрации уведомлений)</param>
     /// <param name="writer">TextWriter для отправки SSE событий</param>
     /// <param name="cancellationToken">Токен отмены</param>
-    Task RegisterClientAsync(string clientId, string? project, TextWriter writer, CancellationToken cancellationToken);
+    Task RegisterClientAsync(
+        string clientId,
+        string? project,
+        TextWriter writer,
+        CancellationToken cancellationToken
+    );
 
     /// <summary>
     /// Отменяет регистрацию клиента
@@ -27,7 +32,10 @@ public interface INotificationService
     /// </summary>
     /// <param name="notification">Уведомление для отправки</param>
     /// <param name="cancellationToken">Токен отмены</param>
-    Task BroadcastNotificationAsync(NotificationMessage notification, CancellationToken cancellationToken = default);
+    Task BroadcastNotificationAsync(
+        NotificationMessage notification,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Отправляет уведомление конкретному проекту
@@ -35,7 +43,11 @@ public interface INotificationService
     /// <param name="project">Имя проекта</param>
     /// <param name="notification">Уведомление для отправки</param>
     /// <param name="cancellationToken">Токен отмены</param>
-    Task SendToProjectAsync(string project, NotificationMessage notification, CancellationToken cancellationToken = default);
+    Task SendToProjectAsync(
+        string project,
+        NotificationMessage notification,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Возвращает количество активных клиентов

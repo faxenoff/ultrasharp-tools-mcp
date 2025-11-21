@@ -26,12 +26,16 @@ public sealed class NuGetHttpService
     public async Task<bool> ValidatePackageAsync(
         string packageId,
         string? version = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
-            _logger.LogDebug("Validating package {PackageId} {Version} on NuGet.org",
-                packageId, version ?? "latest");
+            _logger.LogDebug(
+                "Validating package {PackageId} {Version} on NuGet.org",
+                packageId,
+                version ?? "latest"
+            );
 
             // Get all versions from NuGet API
             var versions = await GetPackageVersionsAsync(packageId, cancellationToken);
@@ -50,18 +54,28 @@ public sealed class NuGetHttpService
 
             // Check if specific version exists
             var versionExists = versions.Any(v =>
-                string.Equals(v, version, StringComparison.OrdinalIgnoreCase));
+                string.Equals(v, version, StringComparison.OrdinalIgnoreCase)
+            );
 
             if (!versionExists)
             {
-                _logger.LogWarning("Version {Version} not found for package {PackageId}", version, packageId);
+                _logger.LogWarning(
+                    "Version {Version} not found for package {PackageId}",
+                    version,
+                    packageId
+                );
             }
 
             return versionExists;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error validating NuGet package {PackageId} {Version}", packageId, version);
+            _logger.LogError(
+                ex,
+                "Error validating NuGet package {PackageId} {Version}",
+                packageId,
+                version
+            );
             return false;
         }
     }
@@ -72,7 +86,8 @@ public sealed class NuGetHttpService
     public async Task<string> GetLatestVersionAsync(
         string packageId,
         bool includePrerelease = false,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -90,7 +105,9 @@ public sealed class NuGetHttpService
 
             if (filteredVersions.Length == 0)
             {
-                throw new InvalidOperationException($"No stable versions found for package '{packageId}'");
+                throw new InvalidOperationException(
+                    $"No stable versions found for package '{packageId}'"
+                );
             }
 
             // Parse versions and get the latest
@@ -102,7 +119,9 @@ public sealed class NuGetHttpService
 
             if (parsedVersions.Count == 0)
             {
-                throw new InvalidOperationException($"Could not parse any versions for package '{packageId}'");
+                throw new InvalidOperationException(
+                    $"Could not parse any versions for package '{packageId}'"
+                );
             }
 
             var latest = parsedVersions[0].Original;
@@ -123,7 +142,8 @@ public sealed class NuGetHttpService
     /// </summary>
     private async Task<string[]> GetPackageVersionsAsync(
         string packageId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -132,7 +152,8 @@ public sealed class NuGetHttpService
 
             var response = await _httpClient.GetFromJsonAsync<NuGetVersionsResponse>(
                 url,
-                cancellationToken);
+                cancellationToken
+            );
 
             return response?.Versions ?? Array.Empty<string>();
         }

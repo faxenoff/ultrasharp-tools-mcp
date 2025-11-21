@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Interfaces
 {
     public class SourceResult
@@ -10,6 +8,7 @@ namespace UltrasharpTools.Tools.Interfaces
         public bool IsDecompiled { get; set; }
         public string ResolutionMethod { get; set; } = string.Empty;
     }
+
     public interface ISourceResolutionService
     {
         /// <summary>
@@ -18,7 +17,10 @@ namespace UltrasharpTools.Tools.Interfaces
         /// <param name="symbol">The symbol to resolve source for</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Source result containing the resolved source code and metadata</returns>
-        Task<SourceResult?> ResolveSourceAsync(Microsoft.CodeAnalysis.ISymbol symbol, CancellationToken cancellationToken);
+        Task<SourceResult?> ResolveSourceAsync(
+            Microsoft.CodeAnalysis.ISymbol symbol,
+            CancellationToken cancellationToken
+        );
 
         /// <summary>
         /// Tries to get source via Source Link information in PDBs
@@ -26,7 +28,10 @@ namespace UltrasharpTools.Tools.Interfaces
         /// <param name="symbol">The symbol to resolve source for</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Source result if successful, null otherwise</returns>
-        Task<SourceResult?> TrySourceLinkAsync(Microsoft.CodeAnalysis.ISymbol symbol, CancellationToken cancellationToken);
+        Task<SourceResult?> TrySourceLinkAsync(
+            Microsoft.CodeAnalysis.ISymbol symbol,
+            CancellationToken cancellationToken
+        );
 
         /// <summary>
         /// Tries to get embedded source from the assembly
@@ -34,7 +39,10 @@ namespace UltrasharpTools.Tools.Interfaces
         /// <param name="symbol">The symbol to resolve source for</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Source result if successful, null otherwise</returns>
-        Task<SourceResult?> TryEmbeddedSourceAsync(Microsoft.CodeAnalysis.ISymbol symbol, CancellationToken cancellationToken);
+        Task<SourceResult?> TryEmbeddedSourceAsync(
+            Microsoft.CodeAnalysis.ISymbol symbol,
+            CancellationToken cancellationToken
+        );
 
         /// <summary>
         /// Tries to decompile the symbol from its metadata
@@ -42,6 +50,9 @@ namespace UltrasharpTools.Tools.Interfaces
         /// <param name="symbol">The symbol to resolve source for</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Source result if successful, null otherwise</returns>
-        Task<SourceResult?> TryDecompilationAsync(Microsoft.CodeAnalysis.ISymbol symbol, CancellationToken cancellationToken);
+        Task<SourceResult?> TryDecompilationAsync(
+            Microsoft.CodeAnalysis.ISymbol symbol,
+            CancellationToken cancellationToken
+        );
     }
 }

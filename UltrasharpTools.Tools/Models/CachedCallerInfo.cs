@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Models;
 
 /// <summary>

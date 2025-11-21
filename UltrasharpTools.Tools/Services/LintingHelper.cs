@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Services;
@@ -41,11 +39,14 @@ public static class LintingHelper
                     Before = null,
                     After = null,
                     ChangedFiles = [],
-                    HasLintResults = false
+                    HasLintResults = false,
                 };
             }
 
-            logger.LogDebug("Files changed: {Count}, running post-modification lint...", changedFilesList.Count);
+            logger.LogDebug(
+                "Files changed: {Count}, running post-modification lint...",
+                changedFilesList.Count
+            );
 
             // 2. Запускаем линтинг ПОСЛЕ изменения (в отдельной задаче)
             var lintAfter = await quickLintService.LintFilesAsync(
@@ -65,7 +66,7 @@ public static class LintingHelper
                 Before = null, // До линтинг не делаем - экономим время
                 After = lintAfter,
                 ChangedFiles = changedFilesList,
-                HasLintResults = true
+                HasLintResults = true,
             };
         }
         catch (Exception ex)
@@ -76,7 +77,7 @@ public static class LintingHelper
                 Before = null,
                 After = null,
                 ChangedFiles = [],
-                HasLintResults = false
+                HasLintResults = false,
             };
         }
     }
@@ -125,7 +126,10 @@ public static class LintingHelper
                 sb.AppendLine("**Top issues:**");
                 foreach (var issue in after.TopIssues.Take(5))
                 {
-                    var emoji = issue.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error ? "❌" : "⚠️";
+                    var emoji =
+                        issue.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error
+                            ? "❌"
+                            : "⚠️";
                     var fileName = Path.GetFileName(issue.FilePath);
                     sb.AppendLine($"  {emoji} **{issue.Id}**: {issue.Message}");
                     sb.AppendLine($"     `{fileName}:{issue.Line}`");
@@ -138,13 +142,16 @@ public static class LintingHelper
             }
 
             sb.AppendLine();
-            sb.AppendLine("💡 **Tip:** Use `UltrasharpTool_AnalyzeCodeStyle` for full analysis or `UltrasharpTool_ApplyCodeFixes` to auto-fix common issues.");
+            sb.AppendLine(
+                "💡 **Tip:** Use `UltrasharpTool_AnalyzeCodeStyle` for full analysis or `UltrasharpTool_ApplyCodeFixes` to auto-fix common issues."
+            );
         }
 
         var result = sb.ToString();
         ObjectPoolProvider.Instance.ReturnStringBuilder(sb);
         return result;
     }
+
     /// <summary>
     /// Проверяет есть ли критические проблемы в результатах линтинга
     /// </summary>
@@ -152,6 +159,7 @@ public static class LintingHelper
     {
         return result.HasLintResults && result.After?.ErrorCount > 0;
     }
+
     /// <summary>
     /// Checks if the linting result is clean (no errors or warnings).
     /// </summary>
@@ -159,6 +167,7 @@ public static class LintingHelper
     {
         return !result.HasLintResults || result.After == null || result.After.TotalIssues == 0;
     }
+
     /// <summary>
     /// Gets a summary message for the linting result.
     /// </summary>

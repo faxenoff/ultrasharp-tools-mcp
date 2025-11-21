@@ -1,20 +1,17 @@
-
-
 using Microsoft.Extensions.Options;
 using UltrasharpTools.Tools.Infrastructure;
-
+using UltrasharpTools.Tools.Layered;
+using UltrasharpTools.Tools.Merge;
+using UltrasharpTools.Tools.Merge.Analysis;
+using UltrasharpTools.Tools.Merge.Engine;
+using UltrasharpTools.Tools.Merge.Indexing;
+using UltrasharpTools.Tools.Merge.Matching;
+using UltrasharpTools.Tools.Merge.Parsing;
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Semantic;
 using UltrasharpTools.Tools.Semantic.Embedding;
-using UltrasharpTools.Tools.Semantic.Hybrid;
 using UltrasharpTools.Tools.Semantic.GPU;
-using UltrasharpTools.Tools.Merge;
-using UltrasharpTools.Tools.Merge.Parsing;
-using UltrasharpTools.Tools.Merge.Indexing;
-using UltrasharpTools.Tools.Merge.Matching;
-using UltrasharpTools.Tools.Merge.Engine;
-using UltrasharpTools.Tools.Merge.Analysis;
-using UltrasharpTools.Tools.Layered;
+using UltrasharpTools.Tools.Semantic.Hybrid;
 
 namespace UltrasharpTools.Tools.Extensions;
 
@@ -28,21 +25,26 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection WithUltrasharpToolsServices(this IServiceCollection services, bool enableGit = true, string? buildConfiguration = null, GitOptions? gitOptions = null, SolutionReloadOptions? reloadOptions = null, SymbolCacheOptions? symbolCacheOptions = null)
+    public static IServiceCollection WithUltrasharpToolsServices(
+        this IServiceCollection services,
+        bool enableGit = true,
+        string? buildConfiguration = null,
+        GitOptions? gitOptions = null,
+        SolutionReloadOptions? reloadOptions = null,
+        SymbolCacheOptions? symbolCacheOptions = null
+    )
     {
         services.AddSingleton<IFuzzyFqnLookupService, FuzzyFqnLookupService>();
-        services.AddSingleton<ISolutionManager>(sp =>
-            new SolutionManager(
-                sp.GetRequiredService<ILogger<SolutionManager>>(),
-                sp.GetRequiredService<IFuzzyFqnLookupService>(),
-                buildConfiguration,
-                reloadOptions,
-                symbolCacheOptions,
-                sp.GetService<LazyVectorStoreInitializer>(), // Optional: null if Semantic RAG not registered
-                sp.GetService<LayeredIndexingOptions>(), // Optional: null if Layered Indexing not enabled
-                sp.GetService<IGitService>() // Optional: null if Git not enabled
-            )
-        );
+        services.AddSingleton<ISolutionManager>(sp => new SolutionManager(
+            sp.GetRequiredService<ILogger<SolutionManager>>(),
+            sp.GetRequiredService<IFuzzyFqnLookupService>(),
+            buildConfiguration,
+            reloadOptions,
+            symbolCacheOptions,
+            sp.GetService<LazyVectorStoreInitializer>(), // Optional: null if Semantic RAG not registered
+            sp.GetService<LayeredIndexingOptions>(), // Optional: null if Layered Indexing not enabled
+            sp.GetService<IGitService>() // Optional: null if Git not enabled
+        ));
         // Register AnalysisCacheService (optional, for performance)
         services.AddSingleton(sp =>
         {
@@ -114,8 +116,7 @@ public static class ServiceCollectionExtensions
     {
         var toolAssembly = Assembly.Load("UltrasharpTools.Tools");
 
-        return builder
-            .WithToolsFromAssembly(toolAssembly);
+        return builder.WithToolsFromAssembly(toolAssembly);
     }
 
     /// <summary>
@@ -130,7 +131,8 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection WithEmbeddingServices(
         this IServiceCollection services,
-        Action<EmbeddingOptions>? configure = null)
+        Action<EmbeddingOptions>? configure = null
+    )
     {
         // Register embedding options
         if (configure != null)
@@ -139,8 +141,7 @@ public static class ServiceCollectionExtensions
         }
         else
         {
-            services.AddOptions<EmbeddingOptions>()
-                .BindConfiguration("Embedding");
+            services.AddOptions<EmbeddingOptions>().BindConfiguration("Embedding");
         }
 
         // Register HttpClientFactory for TEI and Ollama
@@ -178,14 +179,19 @@ public static class ServiceCollectionExtensions
         string? databasePath = null,
         int dimension = 768,
         Action<EmbeddingOptions>? configureEmbedding = null,
-        CodeSemanticIndexerConfig? indexerConfig = null)
+        CodeSemanticIndexerConfig? indexerConfig = null
+    )
     {
         // Register VectorStore configuration
         // NOTE: databasePath будет resolved lazily через LazyVectorStoreInitializer
         // чтобы можно было использовать ProjectPathHelper с solutionPath
-        var vectorStoreConfig = databasePath != null
-            ? VectorStoreConfig.ForProduction(databasePath, dimension)
-            : VectorStoreConfig.Default with { Dimension = dimension };
+        var vectorStoreConfig =
+            databasePath != null
+                ? VectorStoreConfig.ForProduction(databasePath, dimension)
+                : VectorStoreConfig.Default with
+                {
+                    Dimension = dimension,
+                };
 
         services.AddSingleton(vectorStoreConfig);
 
@@ -251,7 +257,13 @@ public static class ServiceCollectionExtensions
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
             var featureExtractor = sp.GetRequiredService<QueryFeatureExtractor>();
             var logger = sp.GetService<ILogger<HybridSearchService>>();
-            return new HybridSearchService(vectorSearch, solutionManager, featureExtractor, null, logger);
+            return new HybridSearchService(
+                vectorSearch,
+                solutionManager,
+                featureExtractor,
+                null,
+                logger
+            );
         });
 
         // Optionally: Replace ISemanticSimilarityService with vector-based implementation
@@ -344,7 +356,15 @@ public static class ServiceCollectionExtensions
             var powershellParser = sp.GetRequiredService<PowerShellParser>();
             var shellParser = sp.GetRequiredService<ShellParser>();
             var logger = sp.GetService<ILogger<CodeUnitExtractor>>();
-            return new CodeUnitExtractor(csharpParser, jsonParser, xmlParser, yamlParser, powershellParser, shellParser, logger);
+            return new CodeUnitExtractor(
+                csharpParser,
+                jsonParser,
+                xmlParser,
+                yamlParser,
+                powershellParser,
+                shellParser,
+                logger
+            );
         });
 
         // Indexing services
@@ -400,7 +420,8 @@ public static class ServiceCollectionExtensions
                 semanticMatcher,
                 movementDetector,
                 embeddingGenerator,
-                logger);
+                logger
+            );
         });
 
         // Analysis services
@@ -441,15 +462,18 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         int maxBranchDeltas = 20,
         bool enablePersistence = true,
-        int deltaCompactionThreshold = 1000)
+        int deltaCompactionThreshold = 1000
+    )
     {
         // Register layered indexing configuration
-        services.AddSingleton(new LayeredIndexingOptions
-        {
-            MaxBranchDeltas = maxBranchDeltas,
-            EnablePersistence = enablePersistence,
-            DeltaCompactionThreshold = deltaCompactionThreshold
-        });
+        services.AddSingleton(
+            new LayeredIndexingOptions
+            {
+                MaxBranchDeltas = maxBranchDeltas,
+                EnablePersistence = enablePersistence,
+                DeltaCompactionThreshold = deltaCompactionThreshold,
+            }
+        );
 
         // Register LayeredSymbolIndex (Phase 1.1 + 1.2)
         services.AddSingleton<ILayeredIndex>(sp =>

@@ -17,7 +17,8 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
     public SymbolResolutionService(
         ILogger<SymbolResolutionService> logger,
         ISolutionManager solutionManager,
-        IFuzzyFqnLookupService fuzzyLookup)
+        IFuzzyFqnLookupService fuzzyLookup
+    )
     {
         _logger = logger;
         _solutionManager = solutionManager;
@@ -26,7 +27,10 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
 
     public bool IsSolutionLoaded => _solutionManager.IsSolutionLoaded;
 
-    public async Task<ISymbol?> FindSymbolAsync(string fullyQualifiedName, CancellationToken cancellationToken = default)
+    public async Task<ISymbol?> FindSymbolAsync(
+        string fullyQualifiedName,
+        CancellationToken cancellationToken = default
+    )
     {
         if (!_solutionManager.IsSolutionLoaded)
         {
@@ -37,7 +41,10 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
         try
         {
             // Используем существующий метод из ISolutionManager
-            var symbol = await _solutionManager.FindRoslynSymbolAsync(fullyQualifiedName, cancellationToken);
+            var symbol = await _solutionManager.FindRoslynSymbolAsync(
+                fullyQualifiedName,
+                cancellationToken
+            );
 
             if (symbol != null)
             {
@@ -46,8 +53,15 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
             }
 
             // Fallback: попытка через fuzzy lookup
-            _logger.LogDebug("Symbol {Fqn} not found via SolutionManager, trying fuzzy lookup", fullyQualifiedName);
-            var matches = await _fuzzyLookup.FindMatchesAsync(fullyQualifiedName, _solutionManager, cancellationToken);
+            _logger.LogDebug(
+                "Symbol {Fqn} not found via SolutionManager, trying fuzzy lookup",
+                fullyQualifiedName
+            );
+            var matches = await _fuzzyLookup.FindMatchesAsync(
+                fullyQualifiedName,
+                _solutionManager,
+                cancellationToken
+            );
             var bestMatch = matches.OrderByDescending(m => m.Score).FirstOrDefault();
 
             if (bestMatch != null)
@@ -56,7 +70,8 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
                     "Found symbol {Fqn} via fuzzy lookup (score: {Score}, reason: {Reason})",
                     bestMatch.CanonicalFqn,
                     bestMatch.Score,
-                    bestMatch.MatchReason);
+                    bestMatch.MatchReason
+                );
                 return bestMatch.Symbol;
             }
 
@@ -72,18 +87,25 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
 
     public async Task<INamedTypeSymbol?> FindNamedTypeSymbolAsync(
         string fullyQualifiedTypeName,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (!_solutionManager.IsSolutionLoaded)
         {
-            _logger.LogWarning("Cannot find type {Fqn}: no solution loaded", fullyQualifiedTypeName);
+            _logger.LogWarning(
+                "Cannot find type {Fqn}: no solution loaded",
+                fullyQualifiedTypeName
+            );
             return null;
         }
 
         try
         {
             // Используем существующий метод из ISolutionManager
-            var symbol = await _solutionManager.FindRoslynNamedTypeSymbolAsync(fullyQualifiedTypeName, cancellationToken);
+            var symbol = await _solutionManager.FindRoslynNamedTypeSymbolAsync(
+                fullyQualifiedTypeName,
+                cancellationToken
+            );
 
             if (symbol != null)
             {
@@ -92,8 +114,15 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
             }
 
             // Fallback: попытка через fuzzy lookup
-            _logger.LogDebug("Type {Fqn} not found via SolutionManager, trying fuzzy lookup", fullyQualifiedTypeName);
-            var matches = await _fuzzyLookup.FindMatchesAsync(fullyQualifiedTypeName, _solutionManager, cancellationToken);
+            _logger.LogDebug(
+                "Type {Fqn} not found via SolutionManager, trying fuzzy lookup",
+                fullyQualifiedTypeName
+            );
+            var matches = await _fuzzyLookup.FindMatchesAsync(
+                fullyQualifiedTypeName,
+                _solutionManager,
+                cancellationToken
+            );
             var bestMatch = matches
                 .Where(m => m.Symbol is INamedTypeSymbol)
                 .OrderByDescending(m => m.Score)
@@ -104,7 +133,8 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
                 _logger.LogInformation(
                     "Found type {Fqn} via fuzzy lookup (score: {Score})",
                     bestMatch.CanonicalFqn,
-                    bestMatch.Score);
+                    bestMatch.Score
+                );
                 return (INamedTypeSymbol)bestMatch.Symbol;
             }
 

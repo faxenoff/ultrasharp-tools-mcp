@@ -15,7 +15,7 @@ public sealed class NotificationService : INotificationService
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false
+        WriteIndented = false,
     };
 
     public NotificationService(ILogger<NotificationService> logger)
@@ -27,7 +27,8 @@ public sealed class NotificationService : INotificationService
         string clientId,
         string? project,
         TextWriter writer,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var connection = new ClientConnection(clientId, project, writer);
 
@@ -36,17 +37,23 @@ public sealed class NotificationService : INotificationService
             _logger.LogInformation(
                 "Client {ClientId} registered for project {Project}",
                 clientId,
-                project ?? "all");
+                project ?? "all"
+            );
 
             try
             {
                 // Отправляем приветственное сообщение
-                await SendEventAsync(writer, "connected", new
-                {
-                    clientId,
-                    project,
-                    timestamp = DateTime.UtcNow
-                }, cancellationToken);
+                await SendEventAsync(
+                    writer,
+                    "connected",
+                    new
+                    {
+                        clientId,
+                        project,
+                        timestamp = DateTime.UtcNow,
+                    },
+                    cancellationToken
+                );
 
                 // Ждем пока клиент отключится
                 await Task.Delay(Timeout.Infinite, cancellationToken);
@@ -77,15 +84,19 @@ public sealed class NotificationService : INotificationService
 
     public async Task BroadcastNotificationAsync(
         NotificationMessage notification,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation(
             "Broadcasting notification type {Type} to {Count} clients",
             notification.Type,
-            _clients.Count);
+            _clients.Count
+        );
 
-        var tasks = _clients.Values
-            .Select(client => SendNotificationToClientAsync(client, notification, cancellationToken))
+        var tasks = _clients
+            .Values.Select(client =>
+                SendNotificationToClientAsync(client, notification, cancellationToken)
+            )
             .ToList();
 
         await Task.WhenAll(tasks);
@@ -94,16 +105,20 @@ public sealed class NotificationService : INotificationService
     public async Task SendToProjectAsync(
         string project,
         NotificationMessage notification,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation(
             "Sending notification type {Type} to project {Project}",
             notification.Type,
-            project);
+            project
+        );
 
-        var tasks = _clients.Values
-            .Where(c => c.Project == null || c.Project == project)
-            .Select(client => SendNotificationToClientAsync(client, notification, cancellationToken))
+        var tasks = _clients
+            .Values.Where(c => c.Project == null || c.Project == project)
+            .Select(client =>
+                SendNotificationToClientAsync(client, notification, cancellationToken)
+            )
             .ToList();
 
         if (tasks.Count == 0)
@@ -120,22 +135,20 @@ public sealed class NotificationService : INotificationService
     private async Task SendNotificationToClientAsync(
         ClientConnection client,
         NotificationMessage notification,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
-            await SendEventAsync(
-                client.Writer,
-                notification.Type,
-                notification,
-                cancellationToken);
+            await SendEventAsync(client.Writer, notification.Type, notification, cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
                 "Failed to send notification to client {ClientId}",
-                client.ClientId);
+                client.ClientId
+            );
 
             // Отключаем проблемного клиента
             UnregisterClient(client.ClientId);
@@ -146,7 +159,8 @@ public sealed class NotificationService : INotificationService
         TextWriter writer,
         string eventType,
         object data,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var json = JsonSerializer.Serialize(data, _jsonOptions);
 

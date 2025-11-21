@@ -1,5 +1,3 @@
-
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -8,9 +6,9 @@ namespace UltrasharpTools.Tools.Services;
 /// Service for backtracing from a crash/failure point to potential entry points.
 /// </summary>
 public sealed class BacktraceService(
-ISolutionManager solutionManager,
-ICallGraphCacheService callGraphCache,
-IPdbSymbolResolver pdbResolver
+    ISolutionManager solutionManager,
+    ICallGraphCacheService callGraphCache,
+    IPdbSymbolResolver pdbResolver
 ) : IBacktraceService
 {
     private readonly ISolutionManager _solutionManager = solutionManager;
@@ -30,13 +28,13 @@ IPdbSymbolResolver pdbResolver
     }
 
     public async Task<BacktraceResult> BacktraceFromCrashAsync(
-    string crashPointFqn,
-    string? startPointFqn = null,
-    List<string>? stackTraceHints = null,
-    int maxDepth = 15,
-    int maxPaths = 5,
-    bool includeExternalCallers = false,
-    CancellationToken cancellationToken = default
+        string crashPointFqn,
+        string? startPointFqn = null,
+        List<string>? stackTraceHints = null,
+        int maxDepth = 15,
+        int maxPaths = 5,
+        bool includeExternalCallers = false,
+        CancellationToken cancellationToken = default
     )
     {
         var context = new BacktraceContext
@@ -45,7 +43,7 @@ IPdbSymbolResolver pdbResolver
             StackTraceHints = stackTraceHints,
             MaxDepth = maxDepth,
             MaxPaths = maxPaths,
-            IncludeExternalCallers = includeExternalCallers
+            IncludeExternalCallers = includeExternalCallers,
         };
 
         string? errorMessage = null;
@@ -64,7 +62,7 @@ IPdbSymbolResolver pdbResolver
                     CallPaths = new List<CallPath>(),
                     MaxDepthReached = 0,
                     StartPointReached = false,
-                    ErrorMessage = $"Crash point method not found: {crashPointFqn}"
+                    ErrorMessage = $"Crash point method not found: {crashPointFqn}",
                 };
             }
 
@@ -78,16 +76,19 @@ IPdbSymbolResolver pdbResolver
                 Parameters = GetMethodParameters(crashSymbol),
                 CallSite = null,
                 MatchesStackTrace = MatchesStackTrace(crashSymbol, stackTraceHints),
-                StackTraceConfidence = FuzzyStackTraceMatcher.MatchConfidence(crashSymbol, stackTraceHints)
+                StackTraceConfidence = FuzzyStackTraceMatcher.MatchConfidence(
+                    crashSymbol,
+                    stackTraceHints
+                ),
             };
 
             // Build call paths backwards
             await BuildCallPathsAsync(
-            crashSymbol,
-            new List<CallFrame> { initialFrame },
-            context,
-            currentDepth: 0,
-            cancellationToken
+                crashSymbol,
+                new List<CallFrame> { initialFrame },
+                context,
+                currentDepth: 0,
+                cancellationToken
             );
 
             // Rank paths by confidence
@@ -106,16 +107,16 @@ IPdbSymbolResolver pdbResolver
             CallPaths = context.CompletedPaths,
             MaxDepthReached = context.MaxDepthReached,
             StartPointReached = context.StartPointReached,
-            ErrorMessage = errorMessage
+            ErrorMessage = errorMessage,
         };
     }
 
     private async Task BuildCallPathsAsync(
-    IMethodSymbol currentMethod,
-    List<CallFrame> currentPath,
-    BacktraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        IMethodSymbol currentMethod,
+        List<CallFrame> currentPath,
+        BacktraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
         // Check limits
@@ -130,8 +131,10 @@ IPdbSymbolResolver pdbResolver
 
         // Check if we reached the start point
         var currentFqn = currentMethod.ToDisplayString();
-        if (context.StartPointFqn != null &&
-        string.Equals(currentFqn, context.StartPointFqn, StringComparison.OrdinalIgnoreCase))
+        if (
+            context.StartPointFqn != null
+            && string.Equals(currentFqn, context.StartPointFqn, StringComparison.OrdinalIgnoreCase)
+        )
         {
             context.StartPointReached = true;
             SaveCompletedPath(currentPath, context, currentDepth, reachedEntryPoint: true);
@@ -180,10 +183,13 @@ IPdbSymbolResolver pdbResolver
                 {
                     CallingMethodFqn = callingMethod.ToDisplayString(),
                     SourceLocation = GetCallSiteLocation(caller),
-                    CallExpression = GetCallExpression(caller)
+                    CallExpression = GetCallExpression(caller),
                 },
                 MatchesStackTrace = MatchesStackTrace(callingMethod, context.StackTraceHints),
-                StackTraceConfidence = FuzzyStackTraceMatcher.MatchConfidence(callingMethod, context.StackTraceHints)
+                StackTraceConfidence = FuzzyStackTraceMatcher.MatchConfidence(
+                    callingMethod,
+                    context.StackTraceHints
+                ),
             };
 
             // Create new path with this frame added
@@ -191,20 +197,20 @@ IPdbSymbolResolver pdbResolver
 
             // Recursively trace this caller
             await BuildCallPathsAsync(
-            callingMethod,
-            newPath,
-            context,
-            currentDepth + 1,
-            cancellationToken
+                callingMethod,
+                newPath,
+                context,
+                currentDepth + 1,
+                cancellationToken
             );
         }
     }
 
     private void SaveCompletedPath(
-    List<CallFrame> frames,
-    BacktraceContext context,
-    int depth,
-    bool reachedEntryPoint
+        List<CallFrame> frames,
+        BacktraceContext context,
+        int depth,
+        bool reachedEntryPoint
     )
     {
         if (context.CompletedPaths.Count >= context.MaxPaths)
@@ -222,18 +228,20 @@ IPdbSymbolResolver pdbResolver
             reversedFrames[i] = reversedFrames[i] with { FrameNumber = i };
         }
 
-        context.CompletedPaths.Add(new CallPath
-        {
-            PathId = context.CompletedPaths.Count + 1,
-            Frames = reversedFrames,
-            ReachedEntryPoint = reachedEntryPoint,
-            Confidence = 0.5 // Will be calculated later
-        });
+        context.CompletedPaths.Add(
+            new CallPath
+            {
+                PathId = context.CompletedPaths.Count + 1,
+                Frames = reversedFrames,
+                ReachedEntryPoint = reachedEntryPoint,
+                Confidence = 0.5, // Will be calculated later
+            }
+        );
     }
 
     private async Task<List<CachedCallerInfo>> FindCallersAsync(
-    IMethodSymbol method,
-    CancellationToken cancellationToken
+        IMethodSymbol method,
+        CancellationToken cancellationToken
     )
     {
         if (!_solutionManager.IsSolutionLoaded || _solutionManager.CurrentSolution == null)
@@ -245,7 +253,11 @@ IPdbSymbolResolver pdbResolver
         var solutionHash = ComputeSolutionHash();
 
         // Try FULL cache first (includes Location data) - 5-10x faster
-        var cachedCallersFull = await _callGraphCache.GetCallersFullAsync(methodFqn, solutionHash, cancellationToken);
+        var cachedCallersFull = await _callGraphCache.GetCallersFullAsync(
+            methodFqn,
+            solutionHash,
+            cancellationToken
+        );
         if (cachedCallersFull != null)
         {
             // Cache HIT - convert SerializableCallerInfo to CachedCallerInfo
@@ -255,8 +267,8 @@ IPdbSymbolResolver pdbResolver
             {
                 // Resolve calling symbol from FQN
                 var callingSymbol = await _solutionManager.FindRoslynSymbolAsync(
-                serializable.CallingSymbolFqn,
-                cancellationToken
+                    serializable.CallingSymbolFqn,
+                    cancellationToken
                 );
 
                 if (callingSymbol != null)
@@ -270,18 +282,21 @@ IPdbSymbolResolver pdbResolver
 
         // Cache MISS - call expensive SymbolFinder
         var callers = await SymbolFinder.FindCallersAsync(
-        method,
-        _solutionManager.CurrentSolution,
-        cancellationToken
+            method,
+            _solutionManager.CurrentSolution,
+            cancellationToken
         );
 
         var callersList = callers.ToList();
 
         // Store FULL caller info in cache (including Locations)
-        var serializableCallers = callersList
-        .Select(CallerInfoConverter.ToSerializable)
-        .ToList();
-        await _callGraphCache.SetCallersFullAsync(methodFqn, serializableCallers, solutionHash, cancellationToken);
+        var serializableCallers = callersList.Select(CallerInfoConverter.ToSerializable).ToList();
+        await _callGraphCache.SetCallersFullAsync(
+            methodFqn,
+            serializableCallers,
+            solutionHash,
+            cancellationToken
+        );
 
         // Wrap SymbolCallerInfo in CachedCallerInfo for unified interface
         return callersList.Select(c => new CachedCallerInfo(c)).ToList();
@@ -314,8 +329,9 @@ IPdbSymbolResolver pdbResolver
         }
 
         var syntaxTree = syntaxRefs[0].SyntaxTree;
-        return _solutionManager.CurrentSolution.Projects
-        .Any(p => p.Documents.Any(d => d.FilePath == syntaxTree.FilePath));
+        return _solutionManager.CurrentSolution.Projects.Any(p =>
+            p.Documents.Any(d => d.FilePath == syntaxTree.FilePath)
+        );
     }
 
     private void RankPathsByConfidence(List<CallPath> paths, List<string>? stackTraceHints)
@@ -331,8 +347,9 @@ IPdbSymbolResolver pdbResolver
                 // Prefer paths that reach entry point
                 var entryPointScore = path.ReachedEntryPoint ? 1.0 : 0.7;
 
-                path.GetType().GetProperty(nameof(CallPath.Confidence))!
-                .SetValue(path, depthScore * entryPointScore);
+                path.GetType()
+                    .GetProperty(nameof(CallPath.Confidence))!
+                    .SetValue(path, depthScore * entryPointScore);
             }
         }
         else
@@ -341,15 +358,15 @@ IPdbSymbolResolver pdbResolver
             foreach (var path in paths)
             {
                 // Average fuzzy confidence across all frames
-                var avgConfidence = path.Frames.Count > 0
-                ? path.Frames.Average(f => f.StackTraceConfidence)
-                : 0.0;
+                var avgConfidence =
+                    path.Frames.Count > 0 ? path.Frames.Average(f => f.StackTraceConfidence) : 0.0;
 
                 // Bonus for frames with high confidence (>0.8)
                 var highConfidenceFrames = path.Frames.Count(f => f.StackTraceConfidence > 0.8);
-                var highConfidenceBonus = highConfidenceFrames > 0
-                ? 0.1 * Math.Min(1.0, highConfidenceFrames / 3.0)
-                : 0.0;
+                var highConfidenceBonus =
+                    highConfidenceFrames > 0
+                        ? 0.1 * Math.Min(1.0, highConfidenceFrames / 3.0)
+                        : 0.0;
 
                 // Entry point bonus
                 var entryPointScore = path.ReachedEntryPoint ? 1.0 : 0.85;
@@ -357,10 +374,12 @@ IPdbSymbolResolver pdbResolver
                 // Depth penalty (prefer shorter paths)
                 var depthPenalty = 1.0 / (1.0 + path.Depth * 0.05);
 
-                var finalConfidence = (avgConfidence + highConfidenceBonus) * entryPointScore * depthPenalty;
+                var finalConfidence =
+                    (avgConfidence + highConfidenceBonus) * entryPointScore * depthPenalty;
 
-                path.GetType().GetProperty(nameof(CallPath.Confidence))!
-                .SetValue(path, Math.Clamp(finalConfidence, 0.0, 1.0));
+                path.GetType()
+                    .GetProperty(nameof(CallPath.Confidence))!
+                    .SetValue(path, Math.Clamp(finalConfidence, 0.0, 1.0));
             }
         }
 
@@ -380,24 +399,26 @@ IPdbSymbolResolver pdbResolver
         var namespaceName = method.ContainingNamespace?.ToDisplayString();
 
         return stackTraceHints.Any(hint =>
-        hint.Contains(methodName, StringComparison.OrdinalIgnoreCase) ||
-        (typeName != null && hint.Contains(typeName, StringComparison.OrdinalIgnoreCase)) ||
-        (namespaceName != null && hint.Contains(namespaceName, StringComparison.OrdinalIgnoreCase))
+            hint.Contains(methodName, StringComparison.OrdinalIgnoreCase)
+            || (typeName != null && hint.Contains(typeName, StringComparison.OrdinalIgnoreCase))
+            || (
+                namespaceName != null
+                && hint.Contains(namespaceName, StringComparison.OrdinalIgnoreCase)
+            )
         );
     }
 
     private List<VariableInfo> GetMethodParameters(IMethodSymbol method)
     {
-        return method.Parameters.Select(
-        p =>
-        new VariableInfo
-        {
-            Name = p.Name,
-            Type = p.Type.ToDisplayString(),
-            Operation = "parameter",
-            Scope = "parameter"
-        }
-        ).ToList();
+        return method
+            .Parameters.Select(p => new VariableInfo
+            {
+                Name = p.Name,
+                Type = p.Type.ToDisplayString(),
+                Operation = "parameter",
+                Scope = "parameter",
+            })
+            .ToList();
     }
 
     private string? GetSourceLocation(ISymbol symbol)
@@ -439,8 +460,8 @@ IPdbSymbolResolver pdbResolver
     }
 
     private async Task<IMethodSymbol?> FindMethodSymbolAsync(
-    string fqn,
-    CancellationToken cancellationToken
+        string fqn,
+        CancellationToken cancellationToken
     )
     {
         var symbol = await _solutionManager.FindRoslynSymbolAsync(fqn, cancellationToken);

@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Models;
 
@@ -35,16 +34,19 @@ public class SymbolCacheManager
     private string GetCacheFilePath(string solutionPath)
     {
         var solutionHash = ComputeFileHash(solutionPath);
-        var fileName = $"{Path.GetFileNameWithoutExtension(solutionPath)}_{solutionHash}{CacheFileExtension}";
+        var fileName =
+            $"{Path.GetFileNameWithoutExtension(solutionPath)}_{solutionHash}{CacheFileExtension}";
         return Path.Combine(_cacheDirectory, fileName);
     }
 
     /// <summary>
     /// Try to load cached symbol index for a solution
     /// </summary>
-    public async Task<(bool success, List<SerializableSymbolEntry>? entries, SymbolCacheMetadata? metadata)> TryLoadCacheAsync(
-    Solution solution,
-    CancellationToken cancellationToken)
+    public async Task<(
+        bool success,
+        List<SerializableSymbolEntry>? entries,
+        SymbolCacheMetadata? metadata
+    )> TryLoadCacheAsync(Solution solution, CancellationToken cancellationToken)
     {
         try
         {
@@ -76,8 +78,11 @@ public class SymbolCacheManager
             // Validate cache version
             if (cacheData.Metadata.Version != CacheFormatVersion)
             {
-                _logger.LogWarning("Cache version mismatch: expected {Expected}, got {Actual}. Cache invalidated.",
-                CacheFormatVersion, cacheData.Metadata.Version);
+                _logger.LogWarning(
+                    "Cache version mismatch: expected {Expected}, got {Actual}. Cache invalidated.",
+                    CacheFormatVersion,
+                    cacheData.Metadata.Version
+                );
                 return (false, null, null);
             }
 
@@ -88,7 +93,10 @@ public class SymbolCacheManager
                 return (false, null, null);
             }
 
-            _logger.LogInformation("Successfully loaded {Count} symbols from cache", cacheData.Symbols.Count);
+            _logger.LogInformation(
+                "Successfully loaded {Count} symbols from cache",
+                cacheData.Symbols.Count
+            );
             return (true, cacheData.Symbols, cacheData.Metadata);
         }
         catch (Exception ex)
@@ -102,9 +110,10 @@ public class SymbolCacheManager
     /// Save symbol index to cache
     /// </summary>
     public async Task SaveCacheAsync(
-    Solution solution,
-    List<SymbolIndexEntry> entries,
-    CancellationToken cancellationToken)
+        Solution solution,
+        List<SymbolIndexEntry> entries,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -116,21 +125,32 @@ public class SymbolCacheManager
 
             var cacheFilePath = GetCacheFilePath(solution.FilePath);
 
-            _logger.LogInformation("Saving {Count} symbols to cache at {Path}...", entries.Count, cacheFilePath);
+            _logger.LogInformation(
+                "Saving {Count} symbols to cache at {Path}...",
+                entries.Count,
+                cacheFilePath
+            );
 
             var metadata = await BuildMetadataAsync(solution, entries.Count, cancellationToken);
-            var serializableEntries = await ConvertToSerializableAsync(solution, entries, cancellationToken);
+            var serializableEntries = await ConvertToSerializableAsync(
+                solution,
+                entries,
+                cancellationToken
+            );
 
             var cacheData = new SymbolCacheData
             {
                 Metadata = metadata,
-                Symbols = serializableEntries
+                Symbols = serializableEntries,
             };
 
-            var json = JsonSerializer.Serialize(cacheData, new JsonSerializerOptions
-            {
-                WriteIndented = false // Compact format for faster I/O
-            });
+            var json = JsonSerializer.Serialize(
+                cacheData,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = false, // Compact format for faster I/O
+                }
+            );
 
             await File.WriteAllTextAsync(cacheFilePath, json, cancellationToken);
 
@@ -146,9 +166,10 @@ public class SymbolCacheManager
     /// Convert SymbolIndexEntry list to serializable format
     /// </summary>
     private async Task<List<SerializableSymbolEntry>> ConvertToSerializableAsync(
-    Solution solution,
-    List<SymbolIndexEntry> entries,
-    CancellationToken cancellationToken)
+        Solution solution,
+        List<SymbolIndexEntry> entries,
+        CancellationToken cancellationToken
+    )
     {
         var serializableEntries = new List<SerializableSymbolEntry>(entries.Count);
 
@@ -168,11 +189,18 @@ public class SymbolCacheManager
 
             // Try to find which project this symbol belongs to
             var projectName = FindProjectForSymbol(entry.Symbol, solution);
-            var assemblyName = projectName != null && projectAssemblyMap.TryGetValue(projectName, out var asm)
-            ? asm
-            : entry.Symbol.ContainingAssembly?.Name ?? "Unknown";
+            var assemblyName =
+                projectName != null && projectAssemblyMap.TryGetValue(projectName, out var asm)
+                    ? asm
+                    : entry.Symbol.ContainingAssembly?.Name ?? "Unknown";
 
-            serializableEntries.Add(SerializableSymbolEntry.FromIndexEntry(entry, projectName ?? "Unknown", assemblyName));
+            serializableEntries.Add(
+                SerializableSymbolEntry.FromIndexEntry(
+                    entry,
+                    projectName ?? "Unknown",
+                    assemblyName
+                )
+            );
         }
 
         return await Task.FromResult(serializableEntries);
@@ -196,9 +224,10 @@ public class SymbolCacheManager
     /// Build cache metadata for current solution
     /// </summary>
     private async Task<SymbolCacheMetadata> BuildMetadataAsync(
-    Solution solution,
-    int symbolCount,
-    CancellationToken cancellationToken)
+        Solution solution,
+        int symbolCount,
+        CancellationToken cancellationToken
+    )
     {
         var metadata = new SymbolCacheMetadata
         {
@@ -206,7 +235,7 @@ public class SymbolCacheManager
             Created = DateTimeOffset.UtcNow,
             SolutionPath = solution.FilePath!,
             SolutionHash = ComputeFileHash(solution.FilePath!),
-            SymbolCount = symbolCount
+            SymbolCount = symbolCount,
         };
 
         // Build project metadata
@@ -223,7 +252,7 @@ public class SymbolCacheManager
                 Path = project.FilePath,
                 Hash = ComputeFileHash(project.FilePath),
                 AssemblyName = project.AssemblyName ?? project.Name,
-                LastWriteTime = File.GetLastWriteTimeUtc(project.FilePath)
+                LastWriteTime = File.GetLastWriteTimeUtc(project.FilePath),
             };
 
             metadata.Projects.Add(projectInfo);
@@ -236,9 +265,10 @@ public class SymbolCacheManager
     /// Validate that solution hasn't changed since cache was created
     /// </summary>
     private async Task<bool> ValidateSolutionAsync(
-    Solution solution,
-    SymbolCacheMetadata metadata,
-    CancellationToken cancellationToken)
+        Solution solution,
+        SymbolCacheMetadata metadata,
+        CancellationToken cancellationToken
+    )
     {
         // Check solution hash
         if (string.IsNullOrEmpty(solution.FilePath))
@@ -254,8 +284,11 @@ public class SymbolCacheManager
         // Check project count
         if (solution.Projects.Count() != metadata.Projects.Count)
         {
-            _logger.LogDebug("Project count mismatch: expected {Expected}, got {Actual}",
-            metadata.Projects.Count, solution.Projects.Count());
+            _logger.LogDebug(
+                "Project count mismatch: expected {Expected}, got {Actual}",
+                metadata.Projects.Count,
+                solution.Projects.Count()
+            );
             return false;
         }
 
@@ -278,7 +311,10 @@ public class SymbolCacheManager
             var currentLastWrite = File.GetLastWriteTimeUtc(project.FilePath);
             if (currentLastWrite != cachedProject.LastWriteTime)
             {
-                _logger.LogDebug("Project {ProjectName} file modified (timestamp changed)", project.Name);
+                _logger.LogDebug(
+                    "Project {ProjectName} file modified (timestamp changed)",
+                    project.Name
+                );
                 return false;
             }
 

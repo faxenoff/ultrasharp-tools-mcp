@@ -35,12 +35,12 @@ public sealed record SemanticConflict
 /// </summary>
 public enum ConflictType
 {
-    LogicConflict,      // Разная логика в одном методе
-    APIConflict,        // Несовместимые изменения сигнатуры
-    NamingConflict,     // Разные переименования
-    MovementConflict,   // Перемещение в разные места
+    LogicConflict, // Разная логика в одном методе
+    APIConflict, // Несовместимые изменения сигнатуры
+    NamingConflict, // Разные переименования
+    MovementConflict, // Перемещение в разные места
     StructuralConflict, // Несовместимые структурные изменения
-    ContentConflict     // Общий content conflict
+    ContentConflict, // Общий content conflict
 }
 
 /// <summary>
@@ -48,10 +48,10 @@ public enum ConflictType
 /// </summary>
 public enum ConflictSeverity
 {
-    Low,        // Легко разрешить
-    Medium,     // Требует внимания
-    High,       // Критический конфликт
-    Critical    // Невозможно auto-resolve
+    Low, // Легко разрешить
+    Medium, // Требует внимания
+    High, // Критический конфликт
+    Critical, // Невозможно auto-resolve
 }
 
 /// <summary>
@@ -80,10 +80,10 @@ public sealed record ConflictResolution
 /// </summary>
 public enum ResolutionType
 {
-    UseA,               // Использовать версию A
-    UseB,               // Использовать версию B
-    CombineBoth,        // Объединить обе версии
-    ManualMerge,        // Ручной мердж
-    UseBase,            // Вернуться к base версии
-    CreateBoth          // Создать обе версии (если возможно)
+    UseA, // Использовать версию A
+    UseB, // Использовать версию B
+    CombineBoth, // Объединить обе версии
+    ManualMerge, // Ручной мердж
+    UseBase, // Вернуться к base версии
+    CreateBoth, // Создать обе версии (если возможно)
 }

@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.ObjectPool;
 
 namespace UltrasharpTools.Tools.Infrastructure;
@@ -23,24 +21,24 @@ public sealed class ObjectPoolProvider
         var provider = new DefaultObjectPoolProvider();
 
         // StringBuilder pool: для code generation, formatting
-        _stringBuilderPool = provider.Create(new PooledStringBuilderPolicy(
-            initialCapacity: 1024,
-            maxCapacity: 16 * 1024));
+        _stringBuilderPool = provider.Create(
+            new PooledStringBuilderPolicy(initialCapacity: 1024, maxCapacity: 16 * 1024)
+        );
 
         // List<ISymbol> pool: для symbol search results
-        _symbolListPool = provider.Create(new PooledSymbolListPolicy(
-            initialCapacity: 128,
-            maxCapacity: 2048));
+        _symbolListPool = provider.Create(
+            new PooledSymbolListPolicy(initialCapacity: 128, maxCapacity: 2048)
+        );
 
         // List<string> pool: для FQN lists, path lists
-        _stringListPool = provider.Create(new PooledStringListPolicy(
-            initialCapacity: 64,
-            maxCapacity: 1024));
+        _stringListPool = provider.Create(
+            new PooledStringListPolicy(initialCapacity: 64, maxCapacity: 1024)
+        );
 
         // Byte array pool: для file I/O, HTTP buffers
-        _bufferPool = provider.Create(new PooledByteArrayPolicy(
-            bufferSize: 4096,
-            maxBuffersPerBucket: 50));
+        _bufferPool = provider.Create(
+            new PooledByteArrayPolicy(bufferSize: 4096, maxBuffersPerBucket: 50)
+        );
     }
 
     public static ObjectPoolProvider Instance

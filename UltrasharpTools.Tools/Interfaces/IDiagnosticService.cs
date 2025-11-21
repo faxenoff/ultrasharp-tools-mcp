@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Interfaces;
 
 /// <summary>
@@ -17,11 +15,11 @@ public interface IDiagnosticService
     /// <param name="cancellationToken">Токен отмены</param>
     /// <returns>Результат анализа с диагностиками</returns>
     Task<DiagnosticAnalysisResult> AnalyzeAsync(
-    string solutionPath,
-    DiagnosticSeverity severityFilter,
-    int skip,
-    int take,
-    CancellationToken cancellationToken = default
+        string solutionPath,
+        DiagnosticSeverity severityFilter,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default
     );
 }
 

@@ -48,12 +48,13 @@ public class VectorStoreSettings
     /// </summary>
     public string Engine { get; set; } = "auto";
 
-    public AutoSelectionSettings AutoSelection { get; set; } = new()
-    {
-        Small = "sqlite-vec",
-        Medium = "sqlite-vec",
-        Large = "vectorlite"
-    };
+    public AutoSelectionSettings AutoSelection { get; set; } =
+        new()
+        {
+            Small = "sqlite-vec",
+            Medium = "sqlite-vec",
+            Large = "vectorlite",
+        };
 }
 
 public class AutoSelectionSettings

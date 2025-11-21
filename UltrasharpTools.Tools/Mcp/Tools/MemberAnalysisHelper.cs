@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Mcp.Tools
 {
     public static class MemberAnalysisHelper
@@ -13,9 +11,9 @@ namespace UltrasharpTools.Tools.Mcp.Tools
             IComplexityAnalysisService complexityAnalysisService,
             ISemanticSimilarityService semanticSimilarityService,
             ILogger logger,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
-
             if (addedSymbol == null)
             {
                 logger.LogWarning("Cannot analyze null symbol");
@@ -25,14 +23,24 @@ namespace UltrasharpTools.Tools.Mcp.Tools
             var results = new List<string>();
 
             // Get complexity recommendations
-            var complexityResults = await AnalyzeComplexityAsync(addedSymbol, complexityAnalysisService, logger, cancellationToken);
+            var complexityResults = await AnalyzeComplexityAsync(
+                addedSymbol,
+                complexityAnalysisService,
+                logger,
+                cancellationToken
+            );
             if (!string.IsNullOrEmpty(complexityResults))
             {
                 results.Add(complexityResults);
             }
 
             // Check for similar members
-            var similarityResults = await AnalyzeSimilarityAsync(addedSymbol, semanticSimilarityService, logger, cancellationToken);
+            var similarityResults = await AnalyzeSimilarityAsync(
+                addedSymbol,
+                semanticSimilarityService,
+                logger,
+                cancellationToken
+            );
             if (!string.IsNullOrEmpty(similarityResults))
             {
                 results.Add(similarityResults);
@@ -50,9 +58,9 @@ namespace UltrasharpTools.Tools.Mcp.Tools
             ISymbol symbol,
             IComplexityAnalysisService complexityAnalysisService,
             ILogger logger,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
-
             var recommendations = new List<string>();
             var metrics = new Dictionary<string, object>();
 
@@ -60,11 +68,22 @@ namespace UltrasharpTools.Tools.Mcp.Tools
             {
                 if (symbol is IMethodSymbol methodSymbol)
                 {
-                    await complexityAnalysisService.AnalyzeMethodAsync(methodSymbol, metrics, recommendations, cancellationToken);
+                    await complexityAnalysisService.AnalyzeMethodAsync(
+                        methodSymbol,
+                        metrics,
+                        recommendations,
+                        cancellationToken
+                    );
                 }
                 else if (symbol is INamedTypeSymbol typeSymbol)
                 {
-                    await complexityAnalysisService.AnalyzeTypeAsync(typeSymbol, metrics, recommendations, false, cancellationToken);
+                    await complexityAnalysisService.AnalyzeTypeAsync(
+                        typeSymbol,
+                        metrics,
+                        recommendations,
+                        false,
+                        cancellationToken
+                    );
                 }
                 else
                 {
@@ -81,8 +100,12 @@ namespace UltrasharpTools.Tools.Mcp.Tools
             }
             catch (System.Exception ex)
             {
-                logger.LogError(ex, "Error analyzing complexity for {SymbolType} {SymbolName}",
-                    symbol.GetType().Name, symbol.ToDisplayString());
+                logger.LogError(
+                    ex,
+                    "Error analyzing complexity for {SymbolType} {SymbolName}",
+                    symbol.GetType().Name,
+                    symbol.ToDisplayString()
+                );
                 return string.Empty;
             }
         }
@@ -91,24 +114,32 @@ namespace UltrasharpTools.Tools.Mcp.Tools
             ISymbol symbol,
             ISemanticSimilarityService semanticSimilarityService,
             ILogger logger,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
-
             const double similarityThreshold = 0.85;
 
             try
             {
                 if (symbol is IMethodSymbol methodSymbol)
                 {
-                    var similarMethods = await semanticSimilarityService.FindSimilarMethodsAsync(similarityThreshold, cancellationToken);
+                    var similarMethods = await semanticSimilarityService.FindSimilarMethodsAsync(
+                        similarityThreshold,
+                        cancellationToken
+                    );
 
                     var matchingGroup = similarMethods.FirstOrDefault(group =>
-                        group.SimilarMethods.Any(m => m.FullyQualifiedMethodName == methodSymbol.ToDisplayString()));
+                        group.SimilarMethods.Any(m =>
+                            m.FullyQualifiedMethodName == methodSymbol.ToDisplayString()
+                        )
+                    );
 
                     if (matchingGroup != null)
                     {
-                        var similarMethod = matchingGroup.SimilarMethods
-                            .Where(m => m.FullyQualifiedMethodName != methodSymbol.ToDisplayString())
+                        var similarMethod = matchingGroup
+                            .SimilarMethods.Where(m =>
+                                m.FullyQualifiedMethodName != methodSymbol.ToDisplayString()
+                            )
                             .OrderByDescending(m => m.MethodName)
                             .FirstOrDefault();
 
@@ -120,15 +151,23 @@ namespace UltrasharpTools.Tools.Mcp.Tools
                 }
                 else if (symbol is INamedTypeSymbol typeSymbol)
                 {
-                    var similarClasses = await semanticSimilarityService.FindSimilarClassesAsync(similarityThreshold, cancellationToken);
+                    var similarClasses = await semanticSimilarityService.FindSimilarClassesAsync(
+                        similarityThreshold,
+                        cancellationToken
+                    );
 
                     var matchingGroup = similarClasses.FirstOrDefault(group =>
-                        group.SimilarClasses.Any(c => c.FullyQualifiedClassName == typeSymbol.ToDisplayString()));
+                        group.SimilarClasses.Any(c =>
+                            c.FullyQualifiedClassName == typeSymbol.ToDisplayString()
+                        )
+                    );
 
                     if (matchingGroup != null)
                     {
-                        var similarClass = matchingGroup.SimilarClasses
-                            .Where(c => c.FullyQualifiedClassName != typeSymbol.ToDisplayString())
+                        var similarClass = matchingGroup
+                            .SimilarClasses.Where(c =>
+                                c.FullyQualifiedClassName != typeSymbol.ToDisplayString()
+                            )
                             .OrderByDescending(c => c.ClassName)
                             .FirstOrDefault();
 
@@ -143,8 +182,12 @@ namespace UltrasharpTools.Tools.Mcp.Tools
             }
             catch (System.Exception ex)
             {
-                logger.LogError(ex, "Error analyzing similarity for {SymbolType} {SymbolName}",
-                    symbol.GetType().Name, symbol.ToDisplayString());
+                logger.LogError(
+                    ex,
+                    "Error analyzing similarity for {SymbolType} {SymbolName}",
+                    symbol.GetType().Name,
+                    symbol.ToDisplayString()
+                );
                 return string.Empty;
             }
         }

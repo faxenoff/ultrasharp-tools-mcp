@@ -1,6 +1,5 @@
-
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Options;
 using UltrasharpTools.Tools.Semantic.Embedding.Providers;
 using UltrasharpTools.Tools.Semantic.GPU;
 
@@ -22,7 +21,8 @@ public sealed class EmbeddingProviderFactory
         ILogger<EmbeddingProviderFactory> logger,
         IGPUDetectionService gpuDetection,
         IHttpClientFactory httpClientFactory,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory
+    )
     {
         _options = options.Value;
         _logger = logger;
@@ -52,8 +52,11 @@ public sealed class EmbeddingProviderFactory
             providerType = gpuInfo.RecommendedProvider;
 
             _logger.LogInformation("[EmbeddingFactory] GPU Info: {GPU}", gpuInfo);
-            _logger.LogInformation("[EmbeddingFactory] Auto-selected provider: {Provider} ({Tokens} tokens)",
-                providerType, gpuInfo.MaxContextTokens);
+            _logger.LogInformation(
+                "[EmbeddingFactory] Auto-selected provider: {Provider} ({Tokens} tokens)",
+                providerType,
+                gpuInfo.MaxContextTokens
+            );
         }
 
         // Create provider
@@ -62,19 +65,27 @@ public sealed class EmbeddingProviderFactory
             "tei" => CreateTEIProvider(),
             "ollama" => CreateOllamaProvider(),
             "memory" => CreateMemoryProvider(),
-            _ => throw new InvalidOperationException($"Unknown embedding provider: {providerType}")
+            _ => throw new InvalidOperationException($"Unknown embedding provider: {providerType}"),
         };
 
         // Initialize provider
         try
         {
             await provider.InitializeAsync(cancellationToken);
-            _logger.LogInformation("[EmbeddingFactory] Provider initialized: {Name} ({Tokens} tokens, dimension: {Dim})",
-                provider.Name, provider.MaxContextTokens, provider.Dimension);
+            _logger.LogInformation(
+                "[EmbeddingFactory] Provider initialized: {Name} ({Tokens} tokens, dimension: {Dim})",
+                provider.Name,
+                provider.MaxContextTokens,
+                provider.Dimension
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[EmbeddingFactory] Provider initialization failed: {Provider}", providerType);
+            _logger.LogError(
+                ex,
+                "[EmbeddingFactory] Provider initialization failed: {Provider}",
+                providerType
+            );
 
             // Fallback to memory provider
             if (providerType != "memory")
@@ -93,12 +104,20 @@ public sealed class EmbeddingProviderFactory
 
     private IEmbeddingProvider CreateTEIProvider()
     {
-        return new TEIProvider(_options.TEI, _loggerFactory.CreateLogger<TEIProvider>(), _httpClientFactory);
+        return new TEIProvider(
+            _options.TEI,
+            _loggerFactory.CreateLogger<TEIProvider>(),
+            _httpClientFactory
+        );
     }
 
     private IEmbeddingProvider CreateOllamaProvider()
     {
-        return new OllamaProvider(_options.Ollama, _loggerFactory.CreateLogger<OllamaProvider>(), _httpClientFactory);
+        return new OllamaProvider(
+            _options.Ollama,
+            _loggerFactory.CreateLogger<OllamaProvider>(),
+            _httpClientFactory
+        );
     }
 
     private IEmbeddingProvider CreateMemoryProvider()

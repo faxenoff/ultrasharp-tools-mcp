@@ -15,33 +15,36 @@ public sealed class ToolRouter : IToolRouter
     // Semantic tools - всегда требуют Overlord (векторный поиск + embedding + cross-project)
     private static readonly HashSet<string> SemanticTools = new(StringComparer.OrdinalIgnoreCase)
     {
-        "find_duplicates",      // Cross-project duplicate search (query-based)
-        "semantic_search",      // Cross-project semantic search
-        "semantic_diff",        // Semantic similarity comparison
-        "reindex_changed_files" // Vector store indexing
+        "find_duplicates", // Cross-project duplicate search (query-based)
+        "semantic_search", // Cross-project semantic search
+        "semantic_diff", // Semantic similarity comparison
+        "reindex_changed_files", // Vector store indexing
     };
 
     // Hybrid tools - решение зависит от параметров
     private static readonly HashSet<string> HybridTools = new(StringComparer.OrdinalIgnoreCase)
     {
-        "pattern_search",       // mode="semantic" → Overlord
-        "analyze_complexity",   // scope="project" → Overlord
-        "trace_execution",      // large methods → Overlord
-        "trace_backwards",      // cross-file → Overlord
-        "export_call_graph"     // project-wide → Overlord
+        "pattern_search", // mode="semantic" → Overlord
+        "analyze_complexity", // scope="project" → Overlord
+        "trace_execution", // large methods → Overlord
+        "trace_backwards", // cross-file → Overlord
+        "export_call_graph", // project-wide → Overlord
     };
 
     // Ресурсоёмкие tools - лучше на сервере
-    private static readonly HashSet<string> ResourceIntensiveTools = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> ResourceIntensiveTools = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
-        "analyze_path_feasibility",  // Z3 solver
-        "analyze_logs"               // большие файлы
+        "analyze_path_feasibility", // Z3 solver
+        "analyze_logs", // большие файлы
     };
 
     public ToolRouter(
         ILogger<ToolRouter> logger,
         IServerBridgeService? serverBridge = null,
-        bool isHybridMode = false)
+        bool isHybridMode = false
+    )
     {
         _logger = logger;
         _serverBridge = serverBridge;
@@ -50,7 +53,8 @@ public sealed class ToolRouter : IToolRouter
 
     public ToolRoutingDecision DetermineRouting(
         string toolName,
-        Dictionary<string, object>? arguments = null)
+        Dictionary<string, object>? arguments = null
+    )
     {
         // 1. Если не hybrid mode - всё локально
         if (!_isHybridMode || _serverBridge == null)
@@ -69,7 +73,10 @@ public sealed class ToolRouter : IToolRouter
         // 3. Resource-intensive tools → Overlord с fallback
         if (ResourceIntensiveTools.Contains(toolName))
         {
-            _logger.LogDebug("Resource-intensive tool {ToolName}: routing to OVERLORD with fallback", toolName);
+            _logger.LogDebug(
+                "Resource-intensive tool {ToolName}: routing to OVERLORD with fallback",
+                toolName
+            );
             return ToolRoutingDecision.OverlordWithFallback;
         }
 
@@ -80,7 +87,8 @@ public sealed class ToolRouter : IToolRouter
             _logger.LogDebug(
                 "Hybrid tool {ToolName}: routing to {Decision} based on arguments",
                 toolName,
-                decision);
+                decision
+            );
             return decision;
         }
 
@@ -115,7 +123,8 @@ public sealed class ToolRouter : IToolRouter
     /// </summary>
     private ToolRoutingDecision AnalyzeHybridTool(
         string toolName,
-        Dictionary<string, object> arguments)
+        Dictionary<string, object> arguments
+    )
     {
         switch (toolName.ToLowerInvariant())
         {

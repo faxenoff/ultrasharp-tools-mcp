@@ -25,7 +25,8 @@ public sealed class NotificationClientService : INotificationClientService, IDis
     public NotificationClientService(
         ILogger<NotificationClientService> logger,
         HttpClient httpClient,
-        AgentConfig config)
+        AgentConfig config
+    )
     {
         _logger = logger;
         _httpClient = httpClient;
@@ -40,41 +41,48 @@ public sealed class NotificationClientService : INotificationClientService, IDis
         }
 
         _connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var url = $"{_config.ServerUrl}/api/agent/notifications?project={Uri.EscapeDataString(_config.ProjectName)}";
+        var url =
+            $"{_config.ServerUrl}/api/agent/notifications?project={Uri.EscapeDataString(_config.ProjectName)}";
 
         _logger.LogInformation("Connecting to SSE: {Url}", url);
 
-        _ = Task.Run(async () =>
-        {
-            try
+        _ = Task.Run(
+            async () =>
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                using var response = await _httpClient.SendAsync(
-                    request,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    _connectionCts.Token);
+                try
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                    using var response = await _httpClient.SendAsync(
+                        request,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        _connectionCts.Token
+                    );
 
-                response.EnsureSuccessStatusCode();
-                _isConnected = true;
+                    response.EnsureSuccessStatusCode();
+                    _isConnected = true;
 
-                await using var stream = await response.Content.ReadAsStreamAsync(_connectionCts.Token);
-                using var reader = new StreamReader(stream);
+                    await using var stream = await response.Content.ReadAsStreamAsync(
+                        _connectionCts.Token
+                    );
+                    using var reader = new StreamReader(stream);
 
-                await ReadEventsAsync(reader, _connectionCts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogDebug("SSE connection cancelled");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "SSE connection error");
-            }
-            finally
-            {
-                _isConnected = false;
-            }
-        }, _connectionCts.Token);
+                    await ReadEventsAsync(reader, _connectionCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogDebug("SSE connection cancelled");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "SSE connection error");
+                }
+                finally
+                {
+                    _isConnected = false;
+                }
+            },
+            _connectionCts.Token
+        );
 
         await Task.Delay(500, cancellationToken);
     }
@@ -93,7 +101,8 @@ public sealed class NotificationClientService : INotificationClientService, IDis
         while (!cancellationToken.IsCancellationRequested)
         {
             var line = await reader.ReadLineAsync(cancellationToken);
-            if (line == null) break;
+            if (line == null)
+                break;
 
             if (string.IsNullOrWhiteSpace(line))
             {
@@ -125,16 +134,19 @@ public sealed class NotificationClientService : INotificationClientService, IDis
                     var dupData = JsonSerializer.Deserialize<DupNotification>(data);
                     if (dupData != null)
                     {
-                        DuplicateDetected?.Invoke(this, new DuplicateDetectedEventArgs
-                        {
-                            Message = dupData.Message,
-                            Similarity = dupData.Similarity,
-                            Location = dupData.Location,
-                            DuplicateProject = dupData.DuplicateProject,
-                            DuplicateFile = dupData.DuplicateFile,
-                            DuplicateLine = dupData.DuplicateLine,
-                            CodeSnippet = dupData.CodeSnippet
-                        });
+                        DuplicateDetected?.Invoke(
+                            this,
+                            new DuplicateDetectedEventArgs
+                            {
+                                Message = dupData.Message,
+                                Similarity = dupData.Similarity,
+                                Location = dupData.Location,
+                                DuplicateProject = dupData.DuplicateProject,
+                                DuplicateFile = dupData.DuplicateFile,
+                                DuplicateLine = dupData.DuplicateLine,
+                                CodeSnippet = dupData.CodeSnippet,
+                            }
+                        );
                     }
                     break;
 
@@ -142,13 +154,16 @@ public sealed class NotificationClientService : INotificationClientService, IDis
                     var conflictData = JsonSerializer.Deserialize<ConflictNotification>(data);
                     if (conflictData != null)
                     {
-                        ConflictAlert?.Invoke(this, new ConflictAlertEventArgs
-                        {
-                            Message = conflictData.Message,
-                            File = conflictData.File,
-                            ConflictType = conflictData.ConflictType,
-                            ConflictingAuthor = conflictData.ConflictingAuthor
-                        });
+                        ConflictAlert?.Invoke(
+                            this,
+                            new ConflictAlertEventArgs
+                            {
+                                Message = conflictData.Message,
+                                File = conflictData.File,
+                                ConflictType = conflictData.ConflictType,
+                                ConflictingAuthor = conflictData.ConflictingAuthor,
+                            }
+                        );
                     }
                     break;
 
@@ -156,12 +171,15 @@ public sealed class NotificationClientService : INotificationClientService, IDis
                     var activityData = JsonSerializer.Deserialize<TeamActivityNotification>(data);
                     if (activityData != null)
                     {
-                        TeamActivity?.Invoke(this, new TeamActivityEventArgs
-                        {
-                            Message = activityData.Message,
-                            Author = activityData.Author,
-                            ActivityType = activityData.ActivityType
-                        });
+                        TeamActivity?.Invoke(
+                            this,
+                            new TeamActivityEventArgs
+                            {
+                                Message = activityData.Message,
+                                Author = activityData.Author,
+                                ActivityType = activityData.ActivityType,
+                            }
+                        );
                     }
                     break;
 
@@ -169,14 +187,17 @@ public sealed class NotificationClientService : INotificationClientService, IDis
                     var reuseData = JsonSerializer.Deserialize<CodeReuseNotification>(data);
                     if (reuseData != null)
                     {
-                        CodeReuseRecommendation?.Invoke(this, new CodeReuseRecommendationEventArgs
-                        {
-                            Message = reuseData.Message,
-                            SourceProject = reuseData.SourceProject,
-                            SourceFile = reuseData.SourceFile,
-                            Similarity = reuseData.Similarity,
-                            Description = reuseData.Description
-                        });
+                        CodeReuseRecommendation?.Invoke(
+                            this,
+                            new CodeReuseRecommendationEventArgs
+                            {
+                                Message = reuseData.Message,
+                                SourceProject = reuseData.SourceProject,
+                                SourceFile = reuseData.SourceFile,
+                                Similarity = reuseData.Similarity,
+                                Description = reuseData.Description,
+                            }
+                        );
                     }
                     break;
             }

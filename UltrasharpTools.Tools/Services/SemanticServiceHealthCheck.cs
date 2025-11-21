@@ -1,8 +1,7 @@
-
 using System.Diagnostics;
 using System.Net.Http;
-using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Config;
+using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -14,22 +13,32 @@ public class SemanticServiceHealthCheck
     private readonly HttpClient _httpClient;
     private readonly ILogger<SemanticServiceHealthCheck>? _logger;
 
-    public SemanticServiceHealthCheck(IHttpClientFactory? httpClientFactory = null, ILogger<SemanticServiceHealthCheck>? logger = null)
+    public SemanticServiceHealthCheck(
+        IHttpClientFactory? httpClientFactory = null,
+        ILogger<SemanticServiceHealthCheck>? logger = null
+    )
     {
-        _httpClient = httpClientFactory?.CreateClient() ?? new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        _httpClient =
+            httpClientFactory?.CreateClient()
+            ?? new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _logger = logger;
     }
 
     /// <summary>
     /// Quick check if semantic service is available (fast, no auto-start)
     /// </summary>
-    public async Task<bool> QuickCheckAsync(SemanticEmbeddingConfig config, CancellationToken cancellationToken = default)
+    public async Task<bool> QuickCheckAsync(
+        SemanticEmbeddingConfig config,
+        CancellationToken cancellationToken = default
+    )
     {
         // CRITICAL DEBUG: Hardcoded path logging FIRST
         try
         {
-            File.AppendAllText(@"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync ENTRY\n");
+            File.AppendAllText(
+                @"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync ENTRY\n"
+            );
         }
         catch { }
 
@@ -38,24 +47,34 @@ public class SemanticServiceHealthCheck
         // Debug logging with details
         try
         {
-            File.AppendAllText(@"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync: platform={platform}, endpoint={config.Embedding.Tei?.Endpoint ?? "null"}\n");
+            File.AppendAllText(
+                @"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync: platform={platform}, endpoint={config.Embedding.Tei?.Endpoint ?? "null"}\n"
+            );
         }
         catch { }
 
         var result = platform switch
         {
-            "tei" => await CheckTeiHealthAsync(config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080", cancellationToken),
-            "ollama" => await CheckOllamaHealthAsync(config.Embedding.Ollama?.Endpoint ?? "http://127.0.0.1:11434", cancellationToken),
+            "tei" => await CheckTeiHealthAsync(
+                config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080",
+                cancellationToken
+            ),
+            "ollama" => await CheckOllamaHealthAsync(
+                config.Embedding.Ollama?.Endpoint ?? "http://127.0.0.1:11434",
+                cancellationToken
+            ),
             "memory" => true,
-            _ => false
+            _ => false,
         };
 
         // Log result
         try
         {
-            File.AppendAllText(@"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync EXIT: result={result}\n");
+            File.AppendAllText(
+                @"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - QuickCheckAsync EXIT: result={result}\n"
+            );
         }
         catch { }
 
@@ -65,7 +84,10 @@ public class SemanticServiceHealthCheck
     /// <summary>
     /// Check if semantic service is available and try to start if not
     /// </summary>
-    public async Task<HealthCheckResult> CheckAndStartAsync(SemanticEmbeddingConfig config, CancellationToken cancellationToken = default)
+    public async Task<HealthCheckResult> CheckAndStartAsync(
+        SemanticEmbeddingConfig config,
+        CancellationToken cancellationToken = default
+    )
     {
         var platform = config.Embedding.Platform.ToLowerInvariant();
 
@@ -73,12 +95,25 @@ public class SemanticServiceHealthCheck
         {
             "tei" => await CheckAndStartTeiAsync(config, cancellationToken),
             "ollama" => await CheckAndStartOllamaAsync(config, cancellationToken),
-            "memory" => new HealthCheckResult { IsAvailable = true, Platform = "memory", Message = "In-memory embeddings enabled" },
-            _ => new HealthCheckResult { IsAvailable = false, Platform = platform, Message = $"Unknown platform: {platform}" }
+            "memory" => new HealthCheckResult
+            {
+                IsAvailable = true,
+                Platform = "memory",
+                Message = "In-memory embeddings enabled",
+            },
+            _ => new HealthCheckResult
+            {
+                IsAvailable = false,
+                Platform = platform,
+                Message = $"Unknown platform: {platform}",
+            },
         };
     }
 
-    private async Task<HealthCheckResult> CheckAndStartTeiAsync(SemanticEmbeddingConfig config, CancellationToken cancellationToken)
+    private async Task<HealthCheckResult> CheckAndStartTeiAsync(
+        SemanticEmbeddingConfig config,
+        CancellationToken cancellationToken
+    )
     {
         var endpoint = config.Embedding.Tei.Endpoint;
         var architecture = config.Embedding.Architecture ?? "cpu";
@@ -95,7 +130,7 @@ public class SemanticServiceHealthCheck
                 IsAvailable = true,
                 Platform = "tei",
                 Endpoint = endpoint,
-                Message = "TEI server is running"
+                Message = "TEI server is running",
             };
         }
 
@@ -112,7 +147,7 @@ public class SemanticServiceHealthCheck
                 IsAvailable = true,
                 Platform = "tei",
                 Endpoint = endpoint,
-                Message = "TEI server auto-started"
+                Message = "TEI server auto-started",
             };
         }
 
@@ -122,11 +157,15 @@ public class SemanticServiceHealthCheck
             IsAvailable = false,
             Platform = "tei",
             Endpoint = endpoint,
-            Message = "TEI server not available and auto-start failed. Please run: .\\Config\\Scripts\\setup-tei.ps1"
+            Message =
+                "TEI server not available and auto-start failed. Please run: .\\Config\\Scripts\\setup-tei.ps1",
         };
     }
 
-    private async Task<HealthCheckResult> CheckAndStartOllamaAsync(SemanticEmbeddingConfig config, CancellationToken cancellationToken)
+    private async Task<HealthCheckResult> CheckAndStartOllamaAsync(
+        SemanticEmbeddingConfig config,
+        CancellationToken cancellationToken
+    )
     {
         var endpoint = config.Embedding.Ollama.Endpoint;
         var model = config.Embedding.Ollama.SelectedModel;
@@ -142,7 +181,10 @@ public class SemanticServiceHealthCheck
             var hasModel = await CheckOllamaModelAsync(endpoint, model, cancellationToken);
             if (!hasModel)
             {
-                _logger?.LogWarning("[Semantic] Model {Model} not found, attempting pull...", model);
+                _logger?.LogWarning(
+                    "[Semantic] Model {Model} not found, attempting pull...",
+                    model
+                );
                 var pulled = await PullOllamaModelAsync(model, cancellationToken);
                 if (!pulled)
                 {
@@ -151,7 +193,8 @@ public class SemanticServiceHealthCheck
                         IsAvailable = false,
                         Platform = "ollama",
                         Endpoint = endpoint,
-                        Message = $"Ollama running but model '{model}' not available. Run: ollama pull {model}"
+                        Message =
+                            $"Ollama running but model '{model}' not available. Run: ollama pull {model}",
                     };
                 }
             }
@@ -161,7 +204,7 @@ public class SemanticServiceHealthCheck
                 IsAvailable = true,
                 Platform = "ollama",
                 Endpoint = endpoint,
-                Message = "Ollama server is running with model loaded"
+                Message = "Ollama server is running with model loaded",
             };
         }
 
@@ -182,7 +225,7 @@ public class SemanticServiceHealthCheck
                 IsAvailable = true,
                 Platform = "ollama",
                 Endpoint = endpoint,
-                Message = "Ollama server auto-started"
+                Message = "Ollama server auto-started",
             };
         }
 
@@ -192,37 +235,73 @@ public class SemanticServiceHealthCheck
             IsAvailable = false,
             Platform = "ollama",
             Endpoint = endpoint,
-            Message = "Ollama not available and auto-start failed. Install from: https://ollama.ai"
+            Message = "Ollama not available and auto-start failed. Install from: https://ollama.ai",
         };
     }
 
-    private async Task<bool> CheckTeiHealthAsync(string endpoint, CancellationToken cancellationToken)
+    private async Task<bool> CheckTeiHealthAsync(
+        string endpoint,
+        CancellationToken cancellationToken
+    )
     {
         const string LOG = @"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log";
 
-        try { File.AppendAllText(LOG, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync ENTRY\n"); } catch { }
+        try
+        {
+            File.AppendAllText(
+                LOG,
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync ENTRY\n"
+            );
+        }
+        catch { }
 
         try
         {
             // TEI uses /info endpoint for health checks, not /health
             var healthUrl = $"{endpoint.TrimEnd('/')}/info";
 
-            try { File.AppendAllText(LOG, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync START: URL={healthUrl}, Timeout={_httpClient.Timeout.TotalSeconds}s\n"); } catch { }
+            try
+            {
+                File.AppendAllText(
+                    LOG,
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync START: URL={healthUrl}, Timeout={_httpClient.Timeout.TotalSeconds}s\n"
+                );
+            }
+            catch { }
 
             var response = await _httpClient.GetAsync(healthUrl, cancellationToken);
 
-            try { File.AppendAllText(LOG, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync RESPONSE: StatusCode={response.StatusCode}, Success={response.IsSuccessStatusCode}\n"); } catch { }
+            try
+            {
+                File.AppendAllText(
+                    LOG,
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync RESPONSE: StatusCode={response.StatusCode}, Success={response.IsSuccessStatusCode}\n"
+                );
+            }
+            catch { }
 
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            try { File.AppendAllText(LOG, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync EXCEPTION: {ex.GetType().Name}: {ex.Message}\n"); } catch { }
+            try
+            {
+                File.AppendAllText(
+                    LOG,
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - CheckTeiHealthAsync EXCEPTION: {ex.GetType().Name}: {ex.Message}\n"
+                );
+            }
+            catch { }
             return false;
         }
     }
 
-    private async Task<bool> StartTeiAsync(string endpoint, string architecture, string model, CancellationToken cancellationToken)
+    private async Task<bool> StartTeiAsync(
+        string endpoint,
+        string architecture,
+        string model,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -246,11 +325,12 @@ public class SemanticServiceHealthCheck
             var image = architecture.ToLowerInvariant() switch
             {
                 "cpu" => "ghcr.io/huggingface/text-embeddings-inference:cpu-1.5",
-                _ => $"ghcr.io/huggingface/text-embeddings-inference:{architecture}-1.5"
+                _ => $"ghcr.io/huggingface/text-embeddings-inference:{architecture}-1.5",
             };
 
             // Start TEI container
-            var dockerArgs = $"run -d --name ultrasharp-tei -p {port}:80 -v $HOME/.cache/huggingface:/data {image} --model-id {model}";
+            var dockerArgs =
+                $"run -d --name ultrasharp-tei -p {port}:80 -v $HOME/.cache/huggingface:/data {image} --model-id {model}";
 
             _logger?.LogInformation("[Semantic] Starting TEI container: {Args}", dockerArgs);
 
@@ -283,11 +363,17 @@ public class SemanticServiceHealthCheck
         }
     }
 
-    private async Task<bool> CheckOllamaHealthAsync(string endpoint, CancellationToken cancellationToken)
+    private async Task<bool> CheckOllamaHealthAsync(
+        string endpoint,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{endpoint.TrimEnd('/')}/api/tags", cancellationToken);
+            var response = await _httpClient.GetAsync(
+                $"{endpoint.TrimEnd('/')}/api/tags",
+                cancellationToken
+            );
             return response.IsSuccessStatusCode;
         }
         catch
@@ -296,12 +382,20 @@ public class SemanticServiceHealthCheck
         }
     }
 
-    private async Task<bool> CheckOllamaModelAsync(string endpoint, string model, CancellationToken cancellationToken)
+    private async Task<bool> CheckOllamaModelAsync(
+        string endpoint,
+        string model,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{endpoint.TrimEnd('/')}/api/tags", cancellationToken);
-            if (!response.IsSuccessStatusCode) return false;
+            var response = await _httpClient.GetAsync(
+                $"{endpoint.TrimEnd('/')}/api/tags",
+                cancellationToken
+            );
+            if (!response.IsSuccessStatusCode)
+                return false;
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
             return content.Contains(model.Split(':')[0]); // Match base model name
@@ -334,8 +428,8 @@ public class SemanticServiceHealthCheck
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                }
+                    RedirectStandardError = true,
+                },
             };
 
             process.Start();
@@ -358,7 +452,12 @@ public class SemanticServiceHealthCheck
         {
             _logger?.LogInformation("[Semantic] Pulling Ollama model: {Model}", model);
 
-            var (success, output) = await RunProcessAsync("ollama", $"pull {model}", cancellationToken, timeoutSeconds: 300);
+            var (success, output) = await RunProcessAsync(
+                "ollama",
+                $"pull {model}",
+                cancellationToken,
+                timeoutSeconds: 300
+            );
 
             if (success)
             {
@@ -378,7 +477,12 @@ public class SemanticServiceHealthCheck
         }
     }
 
-    private async Task<(bool success, string output)> RunProcessAsync(string fileName, string arguments, CancellationToken cancellationToken, int timeoutSeconds = 30)
+    private async Task<(bool success, string output)> RunProcessAsync(
+        string fileName,
+        string arguments,
+        CancellationToken cancellationToken,
+        int timeoutSeconds = 30
+    )
     {
         try
         {
@@ -391,8 +495,8 @@ public class SemanticServiceHealthCheck
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                }
+                    RedirectStandardError = true,
+                },
             };
 
             process.Start();

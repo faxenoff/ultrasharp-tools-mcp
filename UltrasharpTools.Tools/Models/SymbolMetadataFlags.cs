@@ -103,8 +103,13 @@ public static class SymbolMetadataFlagsExtensions
     /// </summary>
     public static SymbolMetadataFlags GetAccessibility(this SymbolMetadataFlags flags)
     {
-        return flags & (SymbolMetadataFlags.Public | SymbolMetadataFlags.Private |
-                       SymbolMetadataFlags.Internal | SymbolMetadataFlags.Protected);
+        return flags
+            & (
+                SymbolMetadataFlags.Public
+                | SymbolMetadataFlags.Private
+                | SymbolMetadataFlags.Internal
+                | SymbolMetadataFlags.Protected
+            );
     }
 
     /// <summary>
@@ -112,9 +117,14 @@ public static class SymbolMetadataFlagsExtensions
     /// </summary>
     public static SymbolMetadataFlags GetTypeKind(this SymbolMetadataFlags flags)
     {
-        return flags & (SymbolMetadataFlags.IsClass | SymbolMetadataFlags.IsInterface |
-                       SymbolMetadataFlags.IsStruct | SymbolMetadataFlags.IsEnum |
-                       SymbolMetadataFlags.IsDelegate);
+        return flags
+            & (
+                SymbolMetadataFlags.IsClass
+                | SymbolMetadataFlags.IsInterface
+                | SymbolMetadataFlags.IsStruct
+                | SymbolMetadataFlags.IsEnum
+                | SymbolMetadataFlags.IsDelegate
+            );
     }
 
     /// <summary>
@@ -122,8 +132,14 @@ public static class SymbolMetadataFlagsExtensions
     /// </summary>
     public static SymbolMetadataFlags GetMemberKind(this SymbolMetadataFlags flags)
     {
-        return flags & (SymbolMetadataFlags.IsMethod | SymbolMetadataFlags.IsProperty |
-                       SymbolMetadataFlags.IsField | SymbolMetadataFlags.IsEvent |
-                       SymbolMetadataFlags.IsConstructor | SymbolMetadataFlags.IsOperator);
+        return flags
+            & (
+                SymbolMetadataFlags.IsMethod
+                | SymbolMetadataFlags.IsProperty
+                | SymbolMetadataFlags.IsField
+                | SymbolMetadataFlags.IsEvent
+                | SymbolMetadataFlags.IsConstructor
+                | SymbolMetadataFlags.IsOperator
+            );
     }
 }

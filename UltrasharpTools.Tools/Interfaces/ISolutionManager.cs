@@ -1,4 +1,3 @@
-
 using UltrasharpTools.Tools.Layered;
 
 namespace UltrasharpTools.Tools.Interfaces;
@@ -27,15 +26,33 @@ public interface ISolutionManager : IDisposable
     Task<bool> TryAutoLoadSolutionAsync(CancellationToken cancellationToken);
     void UnloadSolution();
 
-    Task<ISymbol?> FindRoslynSymbolAsync(string fullyQualifiedName, CancellationToken cancellationToken);
-    Task<INamedTypeSymbol?> FindRoslynNamedTypeSymbolAsync(string fullyQualifiedTypeName, CancellationToken cancellationToken);
-    Task<Type?> FindReflectionTypeAsync(string fullyQualifiedTypeName, CancellationToken cancellationToken);
-    Task<IEnumerable<Type>> SearchReflectionTypesAsync(string regexPattern, CancellationToken cancellationToken);
+    Task<ISymbol?> FindRoslynSymbolAsync(
+        string fullyQualifiedName,
+        CancellationToken cancellationToken
+    );
+    Task<INamedTypeSymbol?> FindRoslynNamedTypeSymbolAsync(
+        string fullyQualifiedTypeName,
+        CancellationToken cancellationToken
+    );
+    Task<Type?> FindReflectionTypeAsync(
+        string fullyQualifiedTypeName,
+        CancellationToken cancellationToken
+    );
+    Task<IEnumerable<Type>> SearchReflectionTypesAsync(
+        string regexPattern,
+        CancellationToken cancellationToken
+    );
 
     IEnumerable<Project> GetProjects();
     Project? GetProjectByName(string projectName);
-    ValueTask<SemanticModel?> GetSemanticModelAsync(DocumentId documentId, CancellationToken cancellationToken);
-    ValueTask<Compilation?> GetCompilationAsync(ProjectId projectId, CancellationToken cancellationToken);
+    ValueTask<SemanticModel?> GetSemanticModelAsync(
+        DocumentId documentId,
+        CancellationToken cancellationToken
+    );
+    ValueTask<Compilation?> GetCompilationAsync(
+        ProjectId projectId,
+        CancellationToken cancellationToken
+    );
     Task ReloadSolutionFromDiskAsync(CancellationToken cancellationToken);
     void RefreshCurrentSolution();
 }

@@ -1,4 +1,3 @@
-
 using Microsoft.CodeAnalysis.CodeActions;
 
 namespace UltrasharpTools.Tools.Services;
@@ -7,9 +6,9 @@ namespace UltrasharpTools.Tools.Services;
 /// Сервис для применения автоматических исправлений кода
 /// </summary>
 public class CodeFixService(
-ILogger<CodeFixService> logger,
-ISolutionManager solutionManager,
-IGitService gitService
+    ILogger<CodeFixService> logger,
+    ISolutionManager solutionManager,
+    IGitService gitService
 ) : ICodeFixService
 {
     private readonly ILogger<CodeFixService> _logger = logger;
@@ -17,17 +16,17 @@ IGitService gitService
     private readonly IGitService _gitService = gitService;
 
     public async Task<CodeFixResult> ApplyFixesAsync(
-    string solutionPath,
-    string diagnosticId,
-    bool preview,
-    CancellationToken cancellationToken = default
+        string solutionPath,
+        string diagnosticId,
+        bool preview,
+        CancellationToken cancellationToken = default
     )
     {
         _logger.LogInformation(
-        "Starting code fix application for solution: {SolutionPath}, DiagnosticId: {DiagnosticId}, Preview: {Preview}",
-        solutionPath,
-        diagnosticId,
-        preview
+            "Starting code fix application for solution: {SolutionPath}, DiagnosticId: {DiagnosticId}, Preview: {Preview}",
+            solutionPath,
+            diagnosticId,
+            preview
         );
 
         var appliedFixes = new List<string>();
@@ -38,83 +37,100 @@ IGitService gitService
 
         // ✅ OPTIMIZATION: Parallel project processing with Task.WhenAll
         var fixTasks = solution
-        .Projects.Where(p => p.SupportsCompilation)
-        .Select(async project =>
-        {
-            var projectFixes = new List<string>();
-            try
+            .Projects.Where(p => p.SupportsCompilation)
+            .Select(async project =>
             {
-                var compilation = await project.GetCompilationAsync(cancellationToken);
-                if (compilation == null)
-                    return projectFixes;
-
-                var diagnostics = compilation
-        .GetDiagnostics()
-        .Where(d =>
-        !d.IsSuppressed && (diagnosticId == "all" || d.Id == diagnosticId)
-        )
-        .ToList();
-
-                foreach (var diagnostic in diagnostics)
+                var projectFixes = new List<string>();
+                try
                 {
-                    if (diagnostic.Location.SourceTree == null)
-                        continue;
+                    var compilation = await project.GetCompilationAsync(cancellationToken);
+                    if (compilation == null)
+                        return projectFixes;
 
-                    var document = solution.GetDocument(diagnostic.Location.SourceTree);
-                    if (document == null)
-                        continue;
+                    var diagnostics = compilation
+                        .GetDiagnostics()
+                        .Where(d =>
+                            !d.IsSuppressed && (diagnosticId == "all" || d.Id == diagnosticId)
+                        )
+                        .ToList();
 
-                    var actions = await GetCodeActionsAsync(document, diagnostic, cancellationToken);
-
-                    if (actions.Any())
+                    foreach (var diagnostic in diagnostics)
                     {
-                        var lineSpan = diagnostic.Location.GetLineSpan();
-                        var actionDescription =
-                $"Fix '{diagnostic.Id}' at {Path.GetFileName(diagnostic.Location.SourceTree.FilePath)}:{lineSpan.StartLinePosition.Line + 1}";
-                        projectFixes.Add(actionDescription);
+                        if (diagnostic.Location.SourceTree == null)
+                            continue;
 
-                        if (!preview)
+                        var document = solution.GetDocument(diagnostic.Location.SourceTree);
+                        if (document == null)
+                            continue;
+
+                        var actions = await GetCodeActionsAsync(
+                            document,
+                            diagnostic,
+                            cancellationToken
+                        );
+
+                        if (actions.Any())
                         {
-                            try
-                            {
-                                var firstAction = actions.First();
-                                var operations = await firstAction.GetOperationsAsync(cancellationToken);
+                            var lineSpan = diagnostic.Location.GetLineSpan();
+                            var actionDescription =
+                                $"Fix '{diagnostic.Id}' at {Path.GetFileName(diagnostic.Location.SourceTree.FilePath)}:{lineSpan.StartLinePosition.Line + 1}";
+                            projectFixes.Add(actionDescription);
 
-                                // Apply operations to solution
-                                foreach (var operation in operations)
+                            if (!preview)
+                            {
+                                try
                                 {
-                                    if (operation is ApplyChangesOperation applyChangesOp)
+                                    var firstAction = actions.First();
+                                    var operations = await firstAction.GetOperationsAsync(
+                                        cancellationToken
+                                    );
+
+                                    // Apply operations to solution
+                                    foreach (var operation in operations)
                                     {
-                                        // В реальном сценарии нужно применить изменения через workspace
-                                        // Для упрощения пока только логируем
-                                        _logger.LogInformation("Would apply fix: {ActionTitle}", firstAction.Title);
+                                        if (operation is ApplyChangesOperation applyChangesOp)
+                                        {
+                                            // В реальном сценарии нужно применить изменения через workspace
+                                            // Для упрощения пока только логируем
+                                            _logger.LogInformation(
+                                                "Would apply fix: {ActionTitle}",
+                                                firstAction.Title
+                                            );
+                                        }
                                     }
                                 }
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogWarning(ex, "Failed to apply fix for diagnostic: {DiagnosticId}", diagnostic.Id);
+                                catch (Exception ex)
+                                {
+                                    _logger.LogWarning(
+                                        ex,
+                                        "Failed to apply fix for diagnostic: {DiagnosticId}",
+                                        diagnostic.Id
+                                    );
+                                }
                             }
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to process project: {ProjectName}", project.Name);
-            }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to process project: {ProjectName}",
+                        project.Name
+                    );
+                }
 
-            return projectFixes;
-        });
+                return projectFixes;
+            });
 
         // Wait for all projects to be processed in parallel
         var projectFixResults = await Task.WhenAll(fixTasks);
         var fixes = projectFixResults.SelectMany(x => x).ToList();
 
         _logger.LogInformation(
-        "Code fix application complete. Total fixes found: {Count}, Preview: {Preview}",
-        fixes.Count,
-        preview
+            "Code fix application complete. Total fixes found: {Count}, Preview: {Preview}",
+            fixes.Count,
+            preview
         );
 
         // Note: Git commit is not implemented yet because we need to track which files were actually modified
@@ -126,14 +142,14 @@ IGitService gitService
             AppliedFixes = fixes,
             TotalFixableIssues = fixes.Count,
             Errors = errors,
-            WasPreview = preview
+            WasPreview = preview,
         };
     }
 
     private async Task<IEnumerable<CodeAction>> GetCodeActionsAsync(
-    Document document,
-    Diagnostic diagnostic,
-    CancellationToken cancellationToken
+        Document document,
+        Diagnostic diagnostic,
+        CancellationToken cancellationToken
     )
     {
         var actions = new List<CodeAction>();
@@ -145,23 +161,23 @@ IGitService gitService
             if (root != null)
             {
                 var usingDirective =
-                root.FindNode(diagnostic.Location.SourceSpan) as UsingDirectiveSyntax;
+                    root.FindNode(diagnostic.Location.SourceSpan) as UsingDirectiveSyntax;
                 if (usingDirective != null)
                 {
                     actions.Add(
-                    CodeAction.Create(
-                    "Remove unused using",
-                    ct =>
-                    Task.FromResult(
-                    document.WithSyntaxRoot(
-                    root.RemoveNode(
-                    usingDirective,
-                    SyntaxRemoveOptions.KeepNoTrivia
-                    )!
-                    )
-                    ),
-                    "RemoveUnusedUsing"
-                    )
+                        CodeAction.Create(
+                            "Remove unused using",
+                            ct =>
+                                Task.FromResult(
+                                    document.WithSyntaxRoot(
+                                        root.RemoveNode(
+                                            usingDirective,
+                                            SyntaxRemoveOptions.KeepNoTrivia
+                                        )!
+                                    )
+                                ),
+                            "RemoveUnusedUsing"
+                        )
                     );
                 }
             }
@@ -174,23 +190,23 @@ IGitService gitService
             if (root != null)
             {
                 var usingDirective =
-                root.FindNode(diagnostic.Location.SourceSpan) as UsingDirectiveSyntax;
+                    root.FindNode(diagnostic.Location.SourceSpan) as UsingDirectiveSyntax;
                 if (usingDirective != null)
                 {
                     actions.Add(
-                    CodeAction.Create(
-                    "Remove unnecessary using",
-                    ct =>
-                    Task.FromResult(
-                    document.WithSyntaxRoot(
-                    root.RemoveNode(
-                    usingDirective,
-                    SyntaxRemoveOptions.KeepNoTrivia
-                    )!
-                    )
-                    ),
-                    "RemoveUnnecessaryUsing"
-                    )
+                        CodeAction.Create(
+                            "Remove unnecessary using",
+                            ct =>
+                                Task.FromResult(
+                                    document.WithSyntaxRoot(
+                                        root.RemoveNode(
+                                            usingDirective,
+                                            SyntaxRemoveOptions.KeepNoTrivia
+                                        )!
+                                    )
+                                ),
+                            "RemoveUnnecessaryUsing"
+                        )
                     );
                 }
             }

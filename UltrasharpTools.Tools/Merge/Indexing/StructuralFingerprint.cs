@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UltrasharpTools.Tools.Merge.Indexing;
@@ -27,9 +26,8 @@ public sealed class StructuralFingerprint
         try
         {
             // Определить тип контента по расширению
-            var fileExtension = fileName != null
-            ? Path.GetExtension(fileName).ToLowerInvariant()
-            : null;
+            var fileExtension =
+                fileName != null ? Path.GetExtension(fileName).ToLowerInvariant() : null;
 
             string normalizedContent;
 
@@ -60,9 +58,11 @@ public sealed class StructuralFingerprint
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex,
-            "Failed to compute structural hash for {FileName}, falling back to content hash",
-            fileName ?? "<unknown>");
+            _logger.LogWarning(
+                ex,
+                "Failed to compute structural hash for {FileName}, falling back to content hash",
+                fileName ?? "<unknown>"
+            );
 
             // Fallback: простая нормализация
             var fallbackContent = NormalizeGeneric(content);
@@ -84,9 +84,9 @@ public sealed class StructuralFingerprint
 
         // 3. Применяем canonical formatting (минимальный whitespace)
         var formatted = normalizedRoot.NormalizeWhitespace(
-        indentation: "",
-        eol: "\n",
-        elasticTrivia: false
+            indentation: "",
+            eol: "\n",
+            elasticTrivia: false
         );
 
         // 4. Возвращаем normalized текст
@@ -102,16 +102,14 @@ public sealed class StructuralFingerprint
         node = node.WithLeadingTrivia().WithTrailingTrivia();
 
         // Рекурсивно обработать дочерние ноды
-        var newChildren = node.ChildNodes()
-        .Select(RemoveAllTrivia)
-        .ToArray();
+        var newChildren = node.ChildNodes().Select(RemoveAllTrivia).ToArray();
 
         // Заменить дочерние ноды
         if (newChildren.Any())
         {
             node = node.ReplaceNodes(
-            node.ChildNodes(),
-            (original, _) => newChildren[node.ChildNodes().ToList().IndexOf(original)]
+                node.ChildNodes(),
+                (original, _) => newChildren[node.ChildNodes().ToList().IndexOf(original)]
             );
         }
 
@@ -133,7 +131,7 @@ public sealed class StructuralFingerprint
             {
                 WriteIndented = false, // Compact format
                 PropertyNamingPolicy = null, // Сохранить original names
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
             };
 
             var normalized = JsonSerializer.Serialize(doc.RootElement, options);
@@ -161,9 +159,11 @@ public sealed class StructuralFingerprint
 
             // Удалить все whitespace-only text nodes
             var whitespaceNodes = doc.Descendants()
-            .Where(e => e.Nodes().All(n => n is System.Xml.Linq.XText) &&
-            string.IsNullOrWhiteSpace(e.Value))
-            .ToList();
+                .Where(e =>
+                    e.Nodes().All(n => n is System.Xml.Linq.XText)
+                    && string.IsNullOrWhiteSpace(e.Value)
+                )
+                .ToList();
 
             foreach (var node in whitespaceNodes)
             {
@@ -175,7 +175,7 @@ public sealed class StructuralFingerprint
             {
                 Indent = false,
                 NewLineHandling = System.Xml.NewLineHandling.None,
-                OmitXmlDeclaration = true
+                OmitXmlDeclaration = true,
             };
 
             using var stringWriter = new StringWriter();

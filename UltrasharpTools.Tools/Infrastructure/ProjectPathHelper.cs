@@ -25,8 +25,8 @@ public static class ProjectPathHelper
         else
         {
             // Try to find solution or git root from current directory
-            projectRoot = FindProjectRoot(Directory.GetCurrentDirectory())
-                ?? Directory.GetCurrentDirectory();
+            projectRoot =
+                FindProjectRoot(Directory.GetCurrentDirectory()) ?? Directory.GetCurrentDirectory();
         }
 
         var ultrasharpDir = Path.Combine(projectRoot, UltrasharpDirName);
@@ -102,9 +102,13 @@ public static class ProjectPathHelper
             }
 
             // Remember first project directory as fallback, but keep searching up
-            if (fallbackProjectDir == null &&
-                (current.GetFiles("*.csproj").Length > 0 ||
-                 current.GetFiles("package.json").Length > 0))
+            if (
+                fallbackProjectDir == null
+                && (
+                    current.GetFiles("*.csproj").Length > 0
+                    || current.GetFiles("package.json").Length > 0
+                )
+            )
             {
                 fallbackProjectDir = current.FullName;
             }

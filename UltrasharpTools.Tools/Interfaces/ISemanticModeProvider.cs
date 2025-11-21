@@ -23,7 +23,7 @@ public enum SemanticModeSource
     /// <summary>
     /// Доступны оба источника (локальный + Overlord)
     /// </summary>
-    Both = 3
+    Both = 3,
 }
 
 /// <summary>
@@ -118,7 +118,8 @@ public interface ISemanticModeProvider
         float[] queryVector,
         int topK = 10,
         double threshold = 0.7,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Выполняет семантический поиск по естественному языку
@@ -132,5 +133,6 @@ public interface ISemanticModeProvider
         string query,
         int topK = 10,
         double threshold = 0.7,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 }

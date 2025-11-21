@@ -1,6 +1,4 @@
-
 using Microsoft.Data.Sqlite;
-
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Serialization;
 
@@ -44,7 +42,8 @@ public class AnalysisCacheService : IDisposable
     private void InitializeDatabase()
     {
         using var command = _connection.CreateCommand();
-        command.CommandText = @"
+        command.CommandText =
+            @"
 CREATE TABLE IF NOT EXISTS cache_entries (
 cache_key TEXT PRIMARY KEY,
 operation_name TEXT NOT NULL,
@@ -69,7 +68,12 @@ CREATE INDEX IF NOT EXISTS idx_accessed_at ON cache_entries(accessed_at);
     /// <summary>
     /// Try to get cached result for an operation
     /// </summary>
-    public bool TryGetCached<T>(string solutionHash, string operationName, object parameters, out T? result)
+    public bool TryGetCached<T>(
+        string solutionHash,
+        string operationName,
+        object parameters,
+        out T? result
+    )
     {
         result = default;
 
@@ -78,7 +82,8 @@ CREATE INDEX IF NOT EXISTS idx_accessed_at ON cache_entries(accessed_at);
             var cacheKey = ComputeCacheKey(solutionHash, operationName, parameters);
 
             using var command = _connection.CreateCommand();
-            command.CommandText = @"
+            command.CommandText =
+                @"
 SELECT result_data, created_at, ttl_seconds, version
 FROM cache_entries
 WHERE cache_key = @cacheKey
@@ -89,7 +94,11 @@ LIMIT 1;
             using var reader = command.ExecuteReader();
             if (!reader.Read())
             {
-                _logger.LogTrace("Cache miss for {Operation} (key: {Key})", operationName, cacheKey);
+                _logger.LogTrace(
+                    "Cache miss for {Operation} (key: {Key})",
+                    operationName,
+                    cacheKey
+                );
                 return false;
             }
 
@@ -101,8 +110,12 @@ LIMIT 1;
             // Check version
             if (version != CacheVersion)
             {
-                _logger.LogDebug("Cache version mismatch for {Operation}: expected {Expected}, got {Actual}",
-                operationName, CacheVersion, version);
+                _logger.LogDebug(
+                    "Cache version mismatch for {Operation}: expected {Expected}, got {Actual}",
+                    operationName,
+                    CacheVersion,
+                    version
+                );
                 return false;
             }
 
@@ -110,16 +123,20 @@ LIMIT 1;
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             if (now - createdAt > ttlSeconds)
             {
-                _logger.LogDebug("Cache entry expired for {Operation} (age: {Age}s, TTL: {Ttl}s)",
-                operationName, now - createdAt, ttlSeconds);
+                _logger.LogDebug(
+                    "Cache entry expired for {Operation} (age: {Age}s, TTL: {Ttl}s)",
+                    operationName,
+                    now - createdAt,
+                    ttlSeconds
+                );
                 return false;
             }
 
             // Deserialize result - use source-generated context for known types
-            result = JsonSerializer.Deserialize<T>(resultData, new JsonSerializerOptions
-            {
-                TypeInfoResolver = UltrasharpToolsJsonContext.Default
-            });
+            result = JsonSerializer.Deserialize<T>(
+                resultData,
+                new JsonSerializerOptions { TypeInfoResolver = UltrasharpToolsJsonContext.Default }
+            );
 
             // Update accessed_at
             UpdateAccessTime(cacheKey);
@@ -137,19 +154,31 @@ LIMIT 1;
     /// <summary>
     /// Store result in cache
     /// </summary>
-    public void SetCached<T>(string solutionHash, string operationName, object parameters, T result, int ttlSeconds = DefaultTtlSeconds)
+    public void SetCached<T>(
+        string solutionHash,
+        string operationName,
+        object parameters,
+        T result,
+        int ttlSeconds = DefaultTtlSeconds
+    )
     {
         try
         {
             var cacheKey = ComputeCacheKey(solutionHash, operationName, parameters);
             // Use source-generated context for faster serialization
-            var serializerOptions = new JsonSerializerOptions { TypeInfoResolver = UltrasharpToolsJsonContext.Default };
-            var parametersHash = ComputeHash(JsonSerializer.Serialize(parameters, serializerOptions));
+            var serializerOptions = new JsonSerializerOptions
+            {
+                TypeInfoResolver = UltrasharpToolsJsonContext.Default,
+            };
+            var parametersHash = ComputeHash(
+                JsonSerializer.Serialize(parameters, serializerOptions)
+            );
             var resultData = JsonSerializer.Serialize(result, serializerOptions);
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             using var command = _connection.CreateCommand();
-            command.CommandText = @"
+            command.CommandText =
+                @"
 INSERT OR REPLACE INTO cache_entries
 (cache_key, operation_name, solution_hash, parameters_hash, result_data, created_at, accessed_at, ttl_seconds, version)
 VALUES
@@ -168,8 +197,12 @@ VALUES
 
             command.ExecuteNonQuery();
 
-            _logger.LogDebug("Cached result for {Operation} (key: {Key}, size: {Size} bytes)",
-            operationName, cacheKey, resultData.Length);
+            _logger.LogDebug(
+                "Cached result for {Operation} (key: {Key}, size: {Size} bytes)",
+                operationName,
+                cacheKey,
+                resultData.Length
+            );
         }
         catch (Exception ex)
         {
@@ -189,7 +222,11 @@ VALUES
             command.Parameters.AddWithValue("@solutionHash", solutionHash);
 
             var deletedCount = command.ExecuteNonQuery();
-            _logger.LogInformation("Invalidated {Count} cache entries for solution {Hash}", deletedCount, solutionHash);
+            _logger.LogInformation(
+                "Invalidated {Count} cache entries for solution {Hash}",
+                deletedCount,
+                solutionHash
+            );
         }
         catch (Exception ex)
         {
@@ -207,7 +244,8 @@ VALUES
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             using var command = _connection.CreateCommand();
-            command.CommandText = @"
+            command.CommandText =
+                @"
 DELETE FROM cache_entries
 WHERE (created_at + ttl_seconds) < @now;
 ";
@@ -233,7 +271,8 @@ WHERE (created_at + ttl_seconds) < @now;
         try
         {
             using var command = _connection.CreateCommand();
-            command.CommandText = @"
+            command.CommandText =
+                @"
 SELECT
 COUNT(*) as total_entries,
 SUM(LENGTH(result_data)) as total_size,
@@ -250,7 +289,7 @@ FROM cache_entries;
                     TotalEntries = reader.GetInt32(0),
                     TotalSizeBytes = reader.IsDBNull(1) ? 0 : reader.GetInt64(1),
                     UniqueSolutions = reader.GetInt32(2),
-                    UniqueOperations = reader.GetInt32(3)
+                    UniqueOperations = reader.GetInt32(3),
                 };
             }
         }
@@ -288,7 +327,8 @@ FROM cache_entries;
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             using var command = _connection.CreateCommand();
-            command.CommandText = "UPDATE cache_entries SET accessed_at = @now WHERE cache_key = @cacheKey;";
+            command.CommandText =
+                "UPDATE cache_entries SET accessed_at = @now WHERE cache_key = @cacheKey;";
             command.Parameters.AddWithValue("@now", now);
             command.Parameters.AddWithValue("@cacheKey", cacheKey);
             command.ExecuteNonQuery();
@@ -299,13 +339,17 @@ FROM cache_entries;
         }
     }
 
-    private static string ComputeCacheKey(string solutionHash, string operationName, object parameters)
+    private static string ComputeCacheKey(
+        string solutionHash,
+        string operationName,
+        object parameters
+    )
     {
         // Use source-generated context for faster serialization
-        var parametersJson = JsonSerializer.Serialize(parameters, new JsonSerializerOptions
-        {
-            TypeInfoResolver = UltrasharpToolsJsonContext.Default
-        });
+        var parametersJson = JsonSerializer.Serialize(
+            parameters,
+            new JsonSerializerOptions { TypeInfoResolver = UltrasharpToolsJsonContext.Default }
+        );
         var combined = $"{solutionHash}|{operationName}|{parametersJson}";
         return ComputeHash(combined);
     }

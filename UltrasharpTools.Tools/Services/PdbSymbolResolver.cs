@@ -1,5 +1,3 @@
-
-
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Reflection.PortableExecutable;
@@ -29,9 +27,9 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
     /// <param name="lineNumber">Line number from stack trace (if available)</param>
     /// <returns>Sequence point information if found</returns>
     public SequencePointInfo? ResolveSequencePoint(
-    string assemblyPath,
-    string methodName,
-    int? lineNumber = null
+        string assemblyPath,
+        string methodName,
+        int? lineNumber = null
     )
     {
         if (!File.Exists(assemblyPath))
@@ -54,9 +52,9 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
                 // If line number specified, find closest sequence point
                 if (lineNumber.HasValue && method.SequencePoints.Count > 0)
                 {
-                    var closestPoint = method.SequencePoints
-                    .OrderBy(sp => Math.Abs(sp.StartLine - lineNumber.Value))
-                    .FirstOrDefault();
+                    var closestPoint = method
+                        .SequencePoints.OrderBy(sp => Math.Abs(sp.StartLine - lineNumber.Value))
+                        .FirstOrDefault();
 
                     if (closestPoint != null)
                     {
@@ -108,18 +106,21 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
 
     private PdbInfo? GetOrLoadPdb(string assemblyPath)
     {
-        return _pdbCache.GetOrAdd(assemblyPath, path =>
-        {
-            try
+        return _pdbCache.GetOrAdd(
+            assemblyPath,
+            path =>
             {
-                return LoadPdbInfo(path);
+                try
+                {
+                    return LoadPdbInfo(path);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to load PDB for assembly: {Path}", path);
+                    return null;
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to load PDB for assembly: {Path}", path);
-                return null;
-            }
-        });
+        );
     }
 
     private PdbInfo? LoadPdbInfo(string assemblyPath)
@@ -127,15 +128,18 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
         using var peReader = new PEReader(File.OpenRead(assemblyPath));
 
         // Check for embedded PDB first
-        var embeddedPdbEntry = peReader.ReadDebugDirectory()
-        .FirstOrDefault(e => e.Type == DebugDirectoryEntryType.EmbeddedPortablePdb);
+        var embeddedPdbEntry = peReader
+            .ReadDebugDirectory()
+            .FirstOrDefault(e => e.Type == DebugDirectoryEntryType.EmbeddedPortablePdb);
 
         MetadataReaderProvider? pdbReaderProvider = null;
 
         if (embeddedPdbEntry.DataSize > 0)
         {
             // Embedded PDB
-            pdbReaderProvider = peReader.ReadEmbeddedPortablePdbDebugDirectoryData(embeddedPdbEntry);
+            pdbReaderProvider = peReader.ReadEmbeddedPortablePdbDebugDirectoryData(
+                embeddedPdbEntry
+            );
             _logger.LogDebug("Loaded embedded PDB for: {Path}", assemblyPath);
         }
         else
@@ -148,7 +152,9 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
                 return null;
             }
 
-            pdbReaderProvider = MetadataReaderProvider.FromPortablePdbStream(File.OpenRead(pdbPath));
+            pdbReaderProvider = MetadataReaderProvider.FromPortablePdbStream(
+                File.OpenRead(pdbPath)
+            );
             _logger.LogDebug("Loaded external PDB for: {Path}", assemblyPath);
         }
 
@@ -183,15 +189,17 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
                         documentPath = pdbReader.GetString(document.Name);
                     }
 
-                    sequencePoints.Add(new SequencePointInfo
-                    {
-                        StartLine = sequencePoint.StartLine,
-                        EndLine = sequencePoint.EndLine,
-                        StartColumn = sequencePoint.StartColumn,
-                        EndColumn = sequencePoint.EndColumn,
-                        Offset = sequencePoint.Offset,
-                        DocumentPath = documentPath
-                    });
+                    sequencePoints.Add(
+                        new SequencePointInfo
+                        {
+                            StartLine = sequencePoint.StartLine,
+                            EndLine = sequencePoint.EndLine,
+                            StartColumn = sequencePoint.StartColumn,
+                            EndColumn = sequencePoint.EndColumn,
+                            Offset = sequencePoint.Offset,
+                            DocumentPath = documentPath,
+                        }
+                    );
                 }
 
                 if (sequencePoints.Count > 0)
@@ -199,19 +207,17 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
                     // Try to get method name from metadata
                     var methodName = GetMethodName(peReader, methodDebugInfoHandle);
 
-                    methods.Add(new MethodDebugInfo
-                    {
-                        MethodName = methodName,
-                        SequencePoints = sequencePoints
-                    });
+                    methods.Add(
+                        new MethodDebugInfo
+                        {
+                            MethodName = methodName,
+                            SequencePoints = sequencePoints,
+                        }
+                    );
                 }
             }
 
-            return new PdbInfo
-            {
-                AssemblyPath = assemblyPath,
-                Methods = methods
-            };
+            return new PdbInfo { AssemblyPath = assemblyPath, Methods = methods };
         }
     }
 
@@ -254,7 +260,8 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         _pdbCache.Clear();
         _disposed = true;

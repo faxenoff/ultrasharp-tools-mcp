@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
@@ -19,18 +17,21 @@ public sealed class ShellParser
 
     // Regex для bash функций: function_name() { ... } или function function_name { ... }
     private static readonly Regex BashFunctionRegex = new(
-    @"^\s*(function\s+)?(?<name>[\w_-]+)\s*\(\)\s*(\{|$)",
-    RegexOptions.Multiline | RegexOptions.Compiled);
+        @"^\s*(function\s+)?(?<name>[\w_-]+)\s*\(\)\s*(\{|$)",
+        RegexOptions.Multiline | RegexOptions.Compiled
+    );
 
     // Regex для cmd labels: :label_name
     private static readonly Regex CmdLabelRegex = new(
-    @"^\s*:(?<name>[\w_-]+)\s*$",
-    RegexOptions.Multiline | RegexOptions.Compiled);
+        @"^\s*:(?<name>[\w_-]+)\s*$",
+        RegexOptions.Multiline | RegexOptions.Compiled
+    );
 
     public ShellParser(
-    StructuralFingerprint fingerprint,
-    ContentNormalizer normalizer,
-    ILogger<ShellParser>? logger = null)
+        StructuralFingerprint fingerprint,
+        ContentNormalizer normalizer,
+        ILogger<ShellParser>? logger = null
+    )
     {
         _fingerprint = fingerprint;
         _normalizer = normalizer;
@@ -41,8 +42,9 @@ public sealed class ShellParser
     /// Парсить Shell файл и извлечь CodeUnits.
     /// </summary>
     public async Task<List<CodeUnit>> ParseFileAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         // 1. Нормализовать контент
         var normalized = await _normalizer.NormalizeAsync(filePath, ct);
@@ -68,9 +70,10 @@ public sealed class ShellParser
         }
 
         _logger.LogInformation(
-        "Parsed Shell {FilePath}: extracted {Count} units",
-        filePath,
-        units.Count);
+            "Parsed Shell {FilePath}: extracted {Count} units",
+            filePath,
+            units.Count
+        );
 
         return units;
     }
@@ -88,7 +91,7 @@ public sealed class ShellParser
         {
             ".sh" or ".bash" => "Bash",
             ".cmd" or ".bat" => "CMD",
-            _ => "Shell"
+            _ => "Shell",
         };
 
         return new CodeUnit
@@ -113,8 +116,8 @@ public sealed class ShellParser
             {
                 ["FileSize"] = content.Length,
                 ["Extension"] = extension,
-                ["Language"] = language
-            }
+                ["Language"] = language,
+            },
         };
     }
 
@@ -122,10 +125,11 @@ public sealed class ShellParser
     /// Извлечь bash функции.
     /// </summary>
     private void ExtractBashFunctions(
-    string content,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units)
+        string content,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units
+    )
     {
         var lines = content.Split('\n');
         var functionMatches = BashFunctionRegex.Matches(content);
@@ -140,20 +144,25 @@ public sealed class ShellParser
 
                 var functionContent = ExtractLines(lines, functionStart, functionEnd);
                 var functionUnit = CreateFunctionUnit(
-                functionName,
-                functionContent,
-                filePath,
-                parentId,
-                functionStart,
-                functionEnd,
-                "Bash");
+                    functionName,
+                    functionContent,
+                    filePath,
+                    parentId,
+                    functionStart,
+                    functionEnd,
+                    "Bash"
+                );
 
                 units.Add(functionUnit);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to extract bash function at line {Line} in {FilePath}",
-                GetLineNumber(content, match.Index), filePath);
+                _logger.LogWarning(
+                    ex,
+                    "Failed to extract bash function at line {Line} in {FilePath}",
+                    GetLineNumber(content, match.Index),
+                    filePath
+                );
             }
         }
     }
@@ -162,10 +171,11 @@ public sealed class ShellParser
     /// Извлечь CMD labels (псевдо-функции).
     /// </summary>
     private void ExtractCmdLabels(
-    string content,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units)
+        string content,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units
+    )
     {
         var lines = content.Split('\n');
         var labelMatches = CmdLabelRegex.Matches(content);
@@ -189,20 +199,25 @@ public sealed class ShellParser
 
                 var labelContent = ExtractLines(lines, labelStart, labelEnd);
                 var labelUnit = CreateFunctionUnit(
-                labelName,
-                labelContent,
-                filePath,
-                parentId,
-                labelStart,
-                labelEnd,
-                "CMD");
+                    labelName,
+                    labelContent,
+                    filePath,
+                    parentId,
+                    labelStart,
+                    labelEnd,
+                    "CMD"
+                );
 
                 units.Add(labelUnit);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to extract CMD label at line {Line} in {FilePath}",
-                GetLineNumber(content, match.Index), filePath);
+                _logger.LogWarning(
+                    ex,
+                    "Failed to extract CMD label at line {Line} in {FilePath}",
+                    GetLineNumber(content, match.Index),
+                    filePath
+                );
             }
         }
     }
@@ -211,13 +226,14 @@ public sealed class ShellParser
     /// Создать Function/Label CodeUnit.
     /// </summary>
     private CodeUnit CreateFunctionUnit(
-    string name,
-    string content,
-    string filePath,
-    string parentId,
-    int startLine,
-    int endLine,
-    string language)
+        string name,
+        string content,
+        string filePath,
+        string parentId,
+        int startLine,
+        int endLine,
+        string language
+    )
     {
         var contentHash = ContentNormalizer.ComputeContentHash(content);
         var structuralHash = _fingerprint.ComputeStructuralHash(content, filePath);
@@ -240,10 +256,7 @@ public sealed class ShellParser
             ChildIds = new HashSet<string>(),
             StartLine = startLine,
             EndLine = endLine,
-            Metadata = new Dictionary<string, object>
-            {
-                ["Language"] = language
-            }
+            Metadata = new Dictionary<string, object> { ["Language"] = language },
         };
     }
 

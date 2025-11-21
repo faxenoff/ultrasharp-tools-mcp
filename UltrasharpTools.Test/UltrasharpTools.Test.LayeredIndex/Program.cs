@@ -32,7 +32,10 @@ class Program
 
         // Load configuration
         var config = TestConfiguration.Load();
-        var serviceProvider = TestServiceProvider.CreateForLayeredIndexTest(config, preset: "Development");
+        var serviceProvider = TestServiceProvider.CreateForLayeredIndexTest(
+            config,
+            preset: "Development"
+        );
         var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
         try
@@ -65,7 +68,10 @@ class Program
 
             // Get current branch
             var gitService = serviceProvider.GetRequiredService<IGitService>();
-            var currentBranch = await gitService.GetCurrentBranchAsync(solutionPath, CancellationToken.None);
+            var currentBranch = await gitService.GetCurrentBranchAsync(
+                solutionPath,
+                CancellationToken.None
+            );
             logger.LogInformation("Current git branch: {Branch}", currentBranch);
 
             // Test symbol search in base layer
@@ -78,10 +84,17 @@ class Program
             );
 
             var resultsList = searchResults.ToList();
-            logger.LogInformation("Found {Count} symbols matching 'Cabinet' in base layer", resultsList.Count);
+            logger.LogInformation(
+                "Found {Count} symbols matching 'Cabinet' in base layer",
+                resultsList.Count
+            );
             foreach (var result in resultsList.Take(5))
             {
-                logger.LogInformation("  - {Symbol} ({Kind})", result.CanonicalFqn, result.Symbol.Kind);
+                logger.LogInformation(
+                    "  - {Symbol} ({Kind})",
+                    result.CanonicalFqn,
+                    result.Symbol.Kind
+                );
             }
 
             // Test GitWorkflowService
@@ -123,9 +136,11 @@ class Program
                     foreach (var file in files)
                     {
                         var fileInfo = new FileInfo(file);
-                        logger.LogInformation("  - {Name}: {Size} KB",
+                        logger.LogInformation(
+                            "  - {Name}: {Size} KB",
                             Path.GetFileName(file),
-                            fileInfo.Length / 1024);
+                            fileInfo.Length / 1024
+                        );
                     }
                 }
             }

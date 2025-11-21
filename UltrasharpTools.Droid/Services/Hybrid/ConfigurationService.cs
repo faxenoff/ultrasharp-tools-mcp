@@ -20,7 +20,7 @@ public sealed class ConfigurationService
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = true,
             ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true
+            AllowTrailingCommas = true,
         };
     }
 
@@ -47,7 +47,8 @@ public sealed class ConfigurationService
                     {
                         _logger.LogInformation(
                             "Loaded routing configuration from {ConfigPath}",
-                            configPath);
+                            configPath
+                        );
                         return config;
                     }
                     else
@@ -55,7 +56,8 @@ public sealed class ConfigurationService
                         _logger.LogWarning(
                             "Invalid configuration in {ConfigPath}: {Error}. Using default.",
                             configPath,
-                            errorMessage);
+                            errorMessage
+                        );
                     }
                 }
             }
@@ -64,14 +66,16 @@ public sealed class ConfigurationService
                 _logger.LogError(
                     ex,
                     "Failed to load configuration from {ConfigPath}. Using default.",
-                    configPath);
+                    configPath
+                );
             }
         }
         else
         {
             _logger.LogInformation(
                 "Configuration file not found at {ConfigPath}. Using default configuration.",
-                configPath);
+                configPath
+            );
         }
 
         // Создаём default конфигурацию
@@ -81,16 +85,15 @@ public sealed class ConfigurationService
         try
         {
             SaveConfig(defaultConfig, configPath);
-            _logger.LogInformation(
-                "Created default configuration at {ConfigPath}",
-                configPath);
+            _logger.LogInformation("Created default configuration at {ConfigPath}", configPath);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(
                 ex,
                 "Failed to save default configuration to {ConfigPath}",
-                configPath);
+                configPath
+            );
         }
 
         return defaultConfig;
@@ -134,9 +137,6 @@ public sealed class ConfigurationService
         }
 
         // По умолчанию - в текущей директории
-        return Path.Combine(
-            Directory.GetCurrentDirectory(),
-            ".ultrasharp",
-            "overlord-config.json");
+        return Path.Combine(Directory.GetCurrentDirectory(), ".ultrasharp", "overlord-config.json");
     }
 }

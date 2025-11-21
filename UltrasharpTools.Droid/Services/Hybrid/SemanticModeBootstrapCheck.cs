@@ -14,7 +14,8 @@ public static class SemanticModeBootstrapCheck
         string? embeddingUrl = null,
         string? overlordUrl = null,
         int timeoutMs = 3000,
-        CancellationToken ct = default)
+        CancellationToken ct = default
+    )
     {
         var hasLocal = await CheckLocalAsync(embeddingUrl, timeoutMs, ct);
         var hasOverlord = await CheckOverlordAsync(overlordUrl, timeoutMs, ct);
@@ -36,11 +37,15 @@ public static class SemanticModeBootstrapCheck
             ModelName = source != SemanticModeSource.None ? "nomic-embed-text" : null,
             VectorDimension = source != SemanticModeSource.None ? 768 : 0,
             LocalEmbeddingUrl = hasLocal ? embeddingUrl : null,
-            OverlordUrl = hasOverlord ? overlordUrl : null
+            OverlordUrl = hasOverlord ? overlordUrl : null,
         };
     }
 
-    private static async Task<bool> CheckLocalAsync(string? url, int timeoutMs, CancellationToken ct)
+    private static async Task<bool> CheckLocalAsync(
+        string? url,
+        int timeoutMs,
+        CancellationToken ct
+    )
     {
         if (string.IsNullOrEmpty(url))
             return false;
@@ -50,7 +55,10 @@ public static class SemanticModeBootstrapCheck
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(timeoutMs);
 
-            using var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(timeoutMs) };
+            using var httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromMilliseconds(timeoutMs),
+            };
             var response = await httpClient.GetAsync($"{url}/health", cts.Token);
             return response.IsSuccessStatusCode;
         }
@@ -60,7 +68,11 @@ public static class SemanticModeBootstrapCheck
         }
     }
 
-    private static async Task<bool> CheckOverlordAsync(string? url, int timeoutMs, CancellationToken ct)
+    private static async Task<bool> CheckOverlordAsync(
+        string? url,
+        int timeoutMs,
+        CancellationToken ct
+    )
     {
         if (string.IsNullOrEmpty(url))
             return false;
@@ -70,7 +82,10 @@ public static class SemanticModeBootstrapCheck
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(timeoutMs);
 
-            using var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(timeoutMs) };
+            using var httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromMilliseconds(timeoutMs),
+            };
             var response = await httpClient.GetAsync($"{url}/api/server/status", cts.Token);
             return response.IsSuccessStatusCode;
         }

@@ -69,9 +69,11 @@ public class IndexSelfTest
                 {
                     var fileInfo = new FileInfo(file);
                     var relativePath = Path.GetRelativePath(ultrasharpDir, file);
-                    logger.LogInformation("  - {File}: {Size} KB",
+                    logger.LogInformation(
+                        "  - {File}: {Size} KB",
                         relativePath,
-                        fileInfo.Length / 1024);
+                        fileInfo.Length / 1024
+                    );
                 }
             }
             else
@@ -86,7 +88,10 @@ public class IndexSelfTest
                 logger.LogInformation("=== Testing symbol search ===");
 
                 var gitService = serviceProvider.GetRequiredService<IGitService>();
-                var currentBranch = await gitService.GetCurrentBranchAsync(solutionPath, CancellationToken.None);
+                var currentBranch = await gitService.GetCurrentBranchAsync(
+                    solutionPath,
+                    CancellationToken.None
+                );
                 logger.LogInformation("Current branch: {Branch}", currentBranch);
 
                 var results = await layeredIndex.FindAsync(
@@ -97,12 +102,17 @@ public class IndexSelfTest
                 );
 
                 var resultsList = results.ToList();
-                logger.LogInformation("Found {Count} symbols matching 'SolutionManager'", resultsList.Count);
+                logger.LogInformation(
+                    "Found {Count} symbols matching 'SolutionManager'",
+                    resultsList.Count
+                );
                 foreach (var result in resultsList.Take(5))
                 {
-                    logger.LogInformation("  - {Symbol} ({Kind})",
+                    logger.LogInformation(
+                        "  - {Symbol} ({Kind})",
                         result.CanonicalFqn,
-                        result.Symbol.Kind);
+                        result.Symbol.Kind
+                    );
                 }
             }
             else
@@ -126,9 +136,11 @@ public class IndexSelfTest
                     foreach (var file in cacheFiles)
                     {
                         var fileInfo = new FileInfo(file);
-                        logger.LogInformation("✅ Symbol cache saved: {File} ({Size} MB)",
+                        logger.LogInformation(
+                            "✅ Symbol cache saved: {File} ({Size} MB)",
                             Path.GetFileName(file),
-                            fileInfo.Length / (1024 * 1024));
+                            fileInfo.Length / (1024 * 1024)
+                        );
                     }
                 }
                 else

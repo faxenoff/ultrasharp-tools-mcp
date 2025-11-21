@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
@@ -17,9 +15,10 @@ public sealed class CSharpParser
     private readonly ContentNormalizer _normalizer;
 
     public CSharpParser(
-    StructuralFingerprint fingerprint,
-    ContentNormalizer normalizer,
-    ILogger<CSharpParser>? logger = null)
+        StructuralFingerprint fingerprint,
+        ContentNormalizer normalizer,
+        ILogger<CSharpParser>? logger = null
+    )
     {
         _fingerprint = fingerprint;
         _normalizer = normalizer;
@@ -30,8 +29,9 @@ public sealed class CSharpParser
     /// Парсить C# файл и извлечь все CodeUnits.
     /// </summary>
     public async Task<List<CodeUnit>> ParseFileAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         // 1. Нормализовать контент
         var normalized = await _normalizer.NormalizeAsync(filePath, ct);
@@ -64,7 +64,9 @@ public sealed class CSharpParser
                     continue;
 
                 // Пропустить типы из вложенных namespaces - они будут обработаны отдельно
-                if (type.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault() != ns)
+                if (
+                    type.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault() != ns
+                )
                     continue;
 
                 ExtractTypeUnits(type, filePath, nsUnit.Id, units);
@@ -73,18 +75,15 @@ public sealed class CSharpParser
 
         // Types без namespace (global namespace)
         var globalTypes = root.DescendantNodes()
-        .OfType<TypeDeclarationSyntax>()
-        .Where(t => t.Parent is CompilationUnitSyntax);
+            .OfType<TypeDeclarationSyntax>()
+            .Where(t => t.Parent is CompilationUnitSyntax);
 
         foreach (var type in globalTypes)
         {
             ExtractTypeUnits(type, filePath, fileUnit.Id, units);
         }
 
-        _logger.LogInformation(
-        "Parsed {FilePath}: extracted {Count} units",
-        filePath,
-        units.Count);
+        _logger.LogInformation("Parsed {FilePath}: extracted {Count} units", filePath, units.Count);
 
         return units;
     }
@@ -118,8 +117,8 @@ public sealed class CSharpParser
             Metadata = new Dictionary<string, object>
             {
                 ["FileSize"] = content.Length,
-                ["Extension"] = Path.GetExtension(filePath)
-            }
+                ["Extension"] = Path.GetExtension(filePath),
+            },
         };
     }
 
@@ -127,9 +126,10 @@ public sealed class CSharpParser
     /// Создать Namespace CodeUnit.
     /// </summary>
     private CodeUnit CreateNamespaceUnit(
-    BaseNamespaceDeclarationSyntax ns,
-    string filePath,
-    string parentId)
+        BaseNamespaceDeclarationSyntax ns,
+        string filePath,
+        string parentId
+    )
     {
         var name = ns.Name.ToString();
         var content = ns.ToFullString();
@@ -156,7 +156,7 @@ public sealed class CSharpParser
             ChildIds = new HashSet<string>(),
             StartLine = span.StartLinePosition.Line + 1,
             EndLine = span.EndLinePosition.Line + 1,
-            Metadata = new Dictionary<string, object>()
+            Metadata = new Dictionary<string, object>(),
         };
     }
 
@@ -164,10 +164,11 @@ public sealed class CSharpParser
     /// Рекурсивно извлечь Type и его члены.
     /// </summary>
     private void ExtractTypeUnits(
-    TypeDeclarationSyntax type,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units)
+        TypeDeclarationSyntax type,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units
+    )
     {
         var typeUnit = CreateTypeUnit(type, filePath, parentId);
         units.Add(typeUnit);
@@ -201,7 +202,7 @@ public sealed class CSharpParser
                     ExtractTypeUnits(nestedType, filePath, typeUnit.Id, units);
                     break;
 
-                    // Другие члены (events, indexers, operators) можно добавить позже
+                // Другие члены (events, indexers, operators) можно добавить позже
             }
         }
     }
@@ -209,10 +210,7 @@ public sealed class CSharpParser
     /// <summary>
     /// Создать Type CodeUnit.
     /// </summary>
-    private CodeUnit CreateTypeUnit(
-    TypeDeclarationSyntax type,
-    string filePath,
-    string parentId)
+    private CodeUnit CreateTypeUnit(TypeDeclarationSyntax type, string filePath, string parentId)
     {
         var typeName = type.Identifier.Text;
         var fqn = BuildFqn(type);
@@ -230,7 +228,7 @@ public sealed class CSharpParser
             InterfaceDeclarationSyntax => "interface",
             StructDeclarationSyntax => "struct",
             RecordDeclarationSyntax => "record",
-            _ => "type"
+            _ => "type",
         };
 
         // Для ID используем строку с именем класса, для StartLine/EndLine - полный span
@@ -260,8 +258,8 @@ public sealed class CSharpParser
                 ["TypeKind"] = typeKind,
                 ["IsAbstract"] = type.Modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword)),
                 ["IsSealed"] = type.Modifiers.Any(m => m.IsKind(SyntaxKind.SealedKeyword)),
-                ["IsStatic"] = type.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))
-            }
+                ["IsStatic"] = type.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)),
+            },
         };
     }
 
@@ -269,9 +267,10 @@ public sealed class CSharpParser
     /// Создать Method CodeUnit.
     /// </summary>
     private CodeUnit CreateMethodUnit(
-    MethodDeclarationSyntax method,
-    string filePath,
-    string parentId)
+        MethodDeclarationSyntax method,
+        string filePath,
+        string parentId
+    )
     {
         var methodName = method.Identifier.Text;
         var fqn = BuildFqn(method);
@@ -290,19 +289,26 @@ public sealed class CSharpParser
         }
 
         // Добавляем параметры в ID чтобы различать перегрузки (включая ref/out/in модификаторы)
-        var paramTypes = string.Join(",", method.ParameterList.Parameters.Select(p =>
-        {
-            // Включаем модификаторы ref/out/in
-            var modifier = "";
-            foreach (var mod in p.Modifiers)
+        var paramTypes = string.Join(
+            ",",
+            method.ParameterList.Parameters.Select(p =>
             {
-                if (mod.IsKind(SyntaxKind.RefKeyword)) modifier = "ref ";
-                else if (mod.IsKind(SyntaxKind.OutKeyword)) modifier = "out ";
-                else if (mod.IsKind(SyntaxKind.InKeyword)) modifier = "in ";
-                else if (mod.IsKind(SyntaxKind.ParamsKeyword)) modifier = "params ";
-            }
-            return modifier + p.Type!.ToString();
-        }));
+                // Включаем модификаторы ref/out/in
+                var modifier = "";
+                foreach (var mod in p.Modifiers)
+                {
+                    if (mod.IsKind(SyntaxKind.RefKeyword))
+                        modifier = "ref ";
+                    else if (mod.IsKind(SyntaxKind.OutKeyword))
+                        modifier = "out ";
+                    else if (mod.IsKind(SyntaxKind.InKeyword))
+                        modifier = "in ";
+                    else if (mod.IsKind(SyntaxKind.ParamsKeyword))
+                        modifier = "params ";
+                }
+                return modifier + p.Type!.ToString();
+            })
+        );
 
         return new CodeUnit
         {
@@ -327,8 +333,8 @@ public sealed class CSharpParser
                 ["ReturnType"] = method.ReturnType.ToString(),
                 ["ParameterCount"] = method.ParameterList.Parameters.Count,
                 ["IsAsync"] = method.Modifiers.Any(m => m.IsKind(SyntaxKind.AsyncKeyword)),
-                ["IsStatic"] = method.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))
-            }
+                ["IsStatic"] = method.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)),
+            },
         };
     }
 
@@ -336,9 +342,10 @@ public sealed class CSharpParser
     /// Создать Property CodeUnit.
     /// </summary>
     private CodeUnit CreatePropertyUnit(
-    PropertyDeclarationSyntax property,
-    string filePath,
-    string parentId)
+        PropertyDeclarationSyntax property,
+        string filePath,
+        string parentId
+    )
     {
         var propName = property.Identifier.Text;
         var fqn = BuildFqn(property);
@@ -369,9 +376,15 @@ public sealed class CSharpParser
             Metadata = new Dictionary<string, object>
             {
                 ["PropertyType"] = property.Type.ToString(),
-                ["HasGetter"] = property.AccessorList?.Accessors.Any(a => a.IsKind(SyntaxKind.GetAccessorDeclaration)) ?? false,
-                ["HasSetter"] = property.AccessorList?.Accessors.Any(a => a.IsKind(SyntaxKind.SetAccessorDeclaration)) ?? false
-            }
+                ["HasGetter"] =
+                    property.AccessorList?.Accessors.Any(a =>
+                        a.IsKind(SyntaxKind.GetAccessorDeclaration)
+                    ) ?? false,
+                ["HasSetter"] =
+                    property.AccessorList?.Accessors.Any(a =>
+                        a.IsKind(SyntaxKind.SetAccessorDeclaration)
+                    ) ?? false,
+            },
         };
     }
 
@@ -379,9 +392,10 @@ public sealed class CSharpParser
     /// Создать Field CodeUnits (может быть несколько в одном declaration).
     /// </summary>
     private List<CodeUnit> CreateFieldUnits(
-    FieldDeclarationSyntax field,
-    string filePath,
-    string parentId)
+        FieldDeclarationSyntax field,
+        string filePath,
+        string parentId
+    )
     {
         var units = new List<CodeUnit>();
         var span = field.GetLocation().GetLineSpan();
@@ -417,8 +431,8 @@ public sealed class CSharpParser
                     ["FieldType"] = field.Declaration.Type.ToString(),
                     ["IsStatic"] = field.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)),
                     ["IsReadonly"] = field.Modifiers.Any(m => m.IsKind(SyntaxKind.ReadOnlyKeyword)),
-                    ["IsConst"] = field.Modifiers.Any(m => m.IsKind(SyntaxKind.ConstKeyword))
-                }
+                    ["IsConst"] = field.Modifiers.Any(m => m.IsKind(SyntaxKind.ConstKeyword)),
+                },
             };
 
             units.Add(unit);
@@ -431,9 +445,10 @@ public sealed class CSharpParser
     /// Создать Constructor CodeUnit.
     /// </summary>
     private CodeUnit CreateConstructorUnit(
-    ConstructorDeclarationSyntax ctor,
-    string filePath,
-    string parentId)
+        ConstructorDeclarationSyntax ctor,
+        string filePath,
+        string parentId
+    )
     {
         var ctorName = ctor.Identifier.Text;
         var fqn = BuildFqn(ctor);
@@ -445,19 +460,26 @@ public sealed class CSharpParser
         var span = ctor.GetLocation().GetLineSpan();
 
         // Добавляем параметры в ID чтобы различать перегрузки (включая ref/out/in модификаторы)
-        var paramTypes = string.Join(",", ctor.ParameterList.Parameters.Select(p =>
-        {
-            // Включаем модификаторы ref/out/in
-            var modifier = "";
-            foreach (var mod in p.Modifiers)
+        var paramTypes = string.Join(
+            ",",
+            ctor.ParameterList.Parameters.Select(p =>
             {
-                if (mod.IsKind(SyntaxKind.RefKeyword)) modifier = "ref ";
-                else if (mod.IsKind(SyntaxKind.OutKeyword)) modifier = "out ";
-                else if (mod.IsKind(SyntaxKind.InKeyword)) modifier = "in ";
-                else if (mod.IsKind(SyntaxKind.ParamsKeyword)) modifier = "params ";
-            }
-            return modifier + p.Type!.ToString();
-        }));
+                // Включаем модификаторы ref/out/in
+                var modifier = "";
+                foreach (var mod in p.Modifiers)
+                {
+                    if (mod.IsKind(SyntaxKind.RefKeyword))
+                        modifier = "ref ";
+                    else if (mod.IsKind(SyntaxKind.OutKeyword))
+                        modifier = "out ";
+                    else if (mod.IsKind(SyntaxKind.InKeyword))
+                        modifier = "in ";
+                    else if (mod.IsKind(SyntaxKind.ParamsKeyword))
+                        modifier = "params ";
+                }
+                return modifier + p.Type!.ToString();
+            })
+        );
 
         return new CodeUnit
         {
@@ -480,8 +502,8 @@ public sealed class CSharpParser
             Metadata = new Dictionary<string, object>
             {
                 ["ParameterCount"] = ctor.ParameterList.Parameters.Count,
-                ["IsStatic"] = ctor.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))
-            }
+                ["IsStatic"] = ctor.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)),
+            },
         };
     }
 
@@ -509,7 +531,10 @@ public sealed class CSharpParser
                 case TypeDeclarationSyntax type:
                     // Для generic типов добавляем arity suffix (например MyType`1)
                     var typeName = type.Identifier.Text;
-                    if (type.TypeParameterList != null && type.TypeParameterList.Parameters.Count > 0)
+                    if (
+                        type.TypeParameterList != null
+                        && type.TypeParameterList.Parameters.Count > 0
+                    )
                     {
                         typeName = $"{typeName}`{type.TypeParameterList.Parameters.Count}";
                     }
@@ -518,17 +543,19 @@ public sealed class CSharpParser
 
                 case MethodDeclarationSyntax method:
                     // Для explicit interface implementation нужно взять полное имя
-                    var methodName = method.ExplicitInterfaceSpecifier != null
-                    ? $"{method.ExplicitInterfaceSpecifier.Name}.{method.Identifier.Text}"
-                    : method.Identifier.Text;
+                    var methodName =
+                        method.ExplicitInterfaceSpecifier != null
+                            ? $"{method.ExplicitInterfaceSpecifier.Name}.{method.Identifier.Text}"
+                            : method.Identifier.Text;
                     parts.Push(methodName);
                     break;
 
                 case PropertyDeclarationSyntax property:
                     // Для explicit interface implementation нужно взять полное имя
-                    var propName = property.ExplicitInterfaceSpecifier != null
-                    ? $"{property.ExplicitInterfaceSpecifier.Name}.{property.Identifier.Text}"
-                    : property.Identifier.Text;
+                    var propName =
+                        property.ExplicitInterfaceSpecifier != null
+                            ? $"{property.ExplicitInterfaceSpecifier.Name}.{property.Identifier.Text}"
+                            : property.Identifier.Text;
                     parts.Push(propName);
                     break;
 
@@ -568,7 +595,10 @@ public sealed class CSharpParser
                 case TypeDeclarationSyntax type:
                     // Для generic типов добавляем arity suffix (например MyType`1)
                     var typeName = type.Identifier.Text;
-                    if (type.TypeParameterList != null && type.TypeParameterList.Parameters.Count > 0)
+                    if (
+                        type.TypeParameterList != null
+                        && type.TypeParameterList.Parameters.Count > 0
+                    )
                     {
                         typeName = $"{typeName}`{type.TypeParameterList.Parameters.Count}";
                     }
@@ -588,8 +618,10 @@ public sealed class CSharpParser
     /// </summary>
     private string BuildMethodSignature(MethodDeclarationSyntax method, string fqn)
     {
-        var parameters = string.Join(", ",
-        method.ParameterList.Parameters.Select(p => $"{p.Type} {p.Identifier}"));
+        var parameters = string.Join(
+            ", ",
+            method.ParameterList.Parameters.Select(p => $"{p.Type} {p.Identifier}")
+        );
 
         return $"{method.ReturnType} {fqn}({parameters})";
     }
@@ -599,8 +631,10 @@ public sealed class CSharpParser
     /// </summary>
     private string BuildConstructorSignature(ConstructorDeclarationSyntax ctor, string fqn)
     {
-        var parameters = string.Join(", ",
-        ctor.ParameterList.Parameters.Select(p => $"{p.Type} {p.Identifier}"));
+        var parameters = string.Join(
+            ", ",
+            ctor.ParameterList.Parameters.Select(p => $"{p.Type} {p.Identifier}")
+        );
 
         return $"{fqn}({parameters})";
     }

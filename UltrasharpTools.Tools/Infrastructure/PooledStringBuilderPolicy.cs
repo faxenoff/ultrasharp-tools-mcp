@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.ObjectPool;
 
 namespace UltrasharpTools.Tools.Infrastructure;

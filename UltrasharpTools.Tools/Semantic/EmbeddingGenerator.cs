@@ -1,9 +1,7 @@
-
 using System.Diagnostics;
-
 using Microsoft.Extensions.Logging.Abstractions;
-using UltrasharpTools.Tools.Semantic.Models;
 using UltrasharpTools.Tools.Semantic.Embedding;
+using UltrasharpTools.Tools.Semantic.Models;
 
 namespace UltrasharpTools.Tools.Semantic;
 
@@ -25,9 +23,10 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
     private long _totalEmbedTimeMs;
 
     public EmbeddingGenerator(
-    IEmbeddingProvider provider,
-    EmbeddingGeneratorConfig? config = null,
-    ILogger<EmbeddingGenerator>? logger = null)
+        IEmbeddingProvider provider,
+        EmbeddingGeneratorConfig? config = null,
+        ILogger<EmbeddingGenerator>? logger = null
+    )
     {
         _provider = provider;
         _config = config ?? EmbeddingGeneratorConfig.Default;
@@ -69,8 +68,10 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
         _cache.Add(cacheKey, vector);
 
         _logger.LogDebug(
-        "Generated embedding for text (length={Length}) in {ElapsedMs}ms",
-        text.Length, sw.ElapsedMilliseconds);
+            "Generated embedding for text (length={Length}) in {ElapsedMs}ms",
+            text.Length,
+            sw.ElapsedMilliseconds
+        );
 
         return vector;
     }
@@ -120,9 +121,11 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
 
         // Генерировать embeddings для uncached текстов
         _logger.LogDebug(
-        "Generating embeddings for {UncachedCount}/{TotalCount} texts (cache hit rate: {HitRate:P1})",
-        uncachedTexts.Count, texts.Length,
-        (double)_cacheHits / _totalRequests);
+            "Generating embeddings for {UncachedCount}/{TotalCount} texts (cache hit rate: {HitRate:P1})",
+            uncachedTexts.Count,
+            texts.Length,
+            (double)_cacheHits / _totalRequests
+        );
 
         var sw = Stopwatch.StartNew();
         var newVectors = await _provider.EmbedBatchAsync(uncachedTexts.ToArray(), ct);
@@ -142,9 +145,11 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
         }
 
         _logger.LogDebug(
-        "Generated {Count} embeddings in {ElapsedMs}ms ({AvgMs:F2}ms/embedding)",
-        uncachedTexts.Count, sw.ElapsedMilliseconds,
-        (double)sw.ElapsedMilliseconds / uncachedTexts.Count);
+            "Generated {Count} embeddings in {ElapsedMs}ms ({AvgMs:F2}ms/embedding)",
+            uncachedTexts.Count,
+            sw.ElapsedMilliseconds,
+            (double)sw.ElapsedMilliseconds / uncachedTexts.Count
+        );
 
         return results;
     }
@@ -178,7 +183,7 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
             CacheCapacity = _config.CacheSize,
             TotalEmbedTimeMs = totalEmbedTimeMs,
             AverageEmbedTimeMs = cacheMisses > 0 ? (double)totalEmbedTimeMs / cacheMisses : 0,
-            ProviderInfo = _provider.Info
+            ProviderInfo = _provider.Info,
         };
     }
 
@@ -253,26 +258,17 @@ public sealed record EmbeddingGeneratorConfig
     /// <summary>
     /// Конфигурация для больших проектов.
     /// </summary>
-    public static EmbeddingGeneratorConfig ForLargeProjects => new()
-    {
-        CacheSize = 50_000
-    };
+    public static EmbeddingGeneratorConfig ForLargeProjects => new() { CacheSize = 50_000 };
 
     /// <summary>
     /// Конфигурация для малых проектов.
     /// </summary>
-    public static EmbeddingGeneratorConfig ForSmallProjects => new()
-    {
-        CacheSize = 5_000
-    };
+    public static EmbeddingGeneratorConfig ForSmallProjects => new() { CacheSize = 5_000 };
 
     /// <summary>
     /// Конфигурация без кэша (для тестирования).
     /// </summary>
-    public static EmbeddingGeneratorConfig NoCache => new()
-    {
-        CacheSize = 0
-    };
+    public static EmbeddingGeneratorConfig NoCache => new() { CacheSize = 0 };
 }
 
 /// <summary>
@@ -294,7 +290,8 @@ public sealed record EmbeddingMetrics
 /// <summary>
 /// Thread-safe LRU (Least Recently Used) cache.
 /// </summary>
-internal sealed class LruCache<TKey, TValue> where TKey : notnull
+internal sealed class LruCache<TKey, TValue>
+    where TKey : notnull
 {
     private readonly int _capacity;
     private readonly ConcurrentDictionary<TKey, LinkedListNode<CacheItem>> _cache;

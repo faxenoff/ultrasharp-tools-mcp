@@ -1,7 +1,4 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
-
 using UltrasharpTools.Tools.Semantic.Models;
 
 namespace UltrasharpTools.Tools.Semantic;
@@ -26,10 +23,11 @@ public sealed class SemanticSearchService : IAsyncDisposable
     public bool IsAvailable => _indexer != null && _solutionManager != null;
 
     public SemanticSearchService(
-    CodeSemanticIndexer indexer,
-    ISolutionManager solutionManager,
-    SemanticSearchServiceConfig? config = null,
-    ILogger<SemanticSearchService>? logger = null)
+        CodeSemanticIndexer indexer,
+        ISolutionManager solutionManager,
+        SemanticSearchServiceConfig? config = null,
+        ILogger<SemanticSearchService>? logger = null
+    )
     {
         _indexer = indexer;
         _solutionManager = solutionManager;
@@ -44,7 +42,9 @@ public sealed class SemanticSearchService : IAsyncDisposable
     {
         if (_solutionManager.CurrentWorkspace?.CurrentSolution == null)
         {
-            throw new InvalidOperationException("No solution loaded. Call LoadSolutionAsync first.");
+            throw new InvalidOperationException(
+                "No solution loaded. Call LoadSolutionAsync first."
+            );
         }
 
         _logger.LogInformation("Starting semantic indexing of current solution");
@@ -66,8 +66,9 @@ public sealed class SemanticSearchService : IAsyncDisposable
             throw new InvalidOperationException("No solution loaded.");
         }
 
-        var project = _solutionManager.CurrentWorkspace.CurrentSolution.Projects
-        .FirstOrDefault(p => p.Name == projectName);
+        var project = _solutionManager.CurrentWorkspace.CurrentSolution.Projects.FirstOrDefault(p =>
+            p.Name == projectName
+        );
 
         if (project == null)
         {
@@ -102,7 +103,8 @@ public sealed class SemanticSearchService : IAsyncDisposable
             foreach (var project in solution.Projects)
             {
                 var document = project.Documents.FirstOrDefault(d =>
-                string.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(d.FilePath, filePath, StringComparison.OrdinalIgnoreCase)
+                );
 
                 if (document != null)
                 {
@@ -128,7 +130,10 @@ public sealed class SemanticSearchService : IAsyncDisposable
             await _indexer.ReindexDocumentAsync(document, compilation, ct);
         }
 
-        _logger.LogInformation("Incremental reindex complete: {Count} files", documentsToReindex.Count);
+        _logger.LogInformation(
+            "Incremental reindex complete: {Count} files",
+            documentsToReindex.Count
+        );
     }
 
     /// <summary>
@@ -150,62 +155,69 @@ public sealed class SemanticSearchService : IAsyncDisposable
     /// Найти методы, похожие на данный код.
     /// </summary>
     public async Task<List<SemanticCodeMatch>> FindSimilarMethodsAsync(
-    string code,
-    int limit = 10,
-    float minSimilarity = 0.7f,
-    CancellationToken ct = default)
+        string code,
+        int limit = 10,
+        float minSimilarity = 0.7f,
+        CancellationToken ct = default
+    )
     {
         EnsureIndexed();
 
         var results = await _indexer.SearchSimilarMethodsAsync(code, limit, minSimilarity, ct);
 
-        return results.Select(r => new SemanticCodeMatch
-        {
-            Id = r.Id,
-            Code = r.Content,
-            Similarity = r.Similarity,
-            Rank = r.Rank,
-            FilePath = ExtractFilePath(r.Metadata),
-            LineNumber = ExtractLineNumber(r.Metadata),
-            FullyQualifiedName = ExtractFqn(r.Metadata),
-            Type = CodeMatchType.Method
-        }).ToList();
+        return results
+            .Select(r => new SemanticCodeMatch
+            {
+                Id = r.Id,
+                Code = r.Content,
+                Similarity = r.Similarity,
+                Rank = r.Rank,
+                FilePath = ExtractFilePath(r.Metadata),
+                LineNumber = ExtractLineNumber(r.Metadata),
+                FullyQualifiedName = ExtractFqn(r.Metadata),
+                Type = CodeMatchType.Method,
+            })
+            .ToList();
     }
 
     /// <summary>
     /// Найти классы, похожие на данный код.
     /// </summary>
     public async Task<List<SemanticCodeMatch>> FindSimilarClassesAsync(
-    string code,
-    int limit = 10,
-    float minSimilarity = 0.7f,
-    CancellationToken ct = default)
+        string code,
+        int limit = 10,
+        float minSimilarity = 0.7f,
+        CancellationToken ct = default
+    )
     {
         EnsureIndexed();
 
         var results = await _indexer.SearchSimilarClassesAsync(code, limit, minSimilarity, ct);
 
-        return results.Select(r => new SemanticCodeMatch
-        {
-            Id = r.Id,
-            Code = r.Content,
-            Similarity = r.Similarity,
-            Rank = r.Rank,
-            FilePath = ExtractFilePath(r.Metadata),
-            LineNumber = ExtractLineNumber(r.Metadata),
-            FullyQualifiedName = ExtractFqn(r.Metadata),
-            Type = CodeMatchType.Class
-        }).ToList();
+        return results
+            .Select(r => new SemanticCodeMatch
+            {
+                Id = r.Id,
+                Code = r.Content,
+                Similarity = r.Similarity,
+                Rank = r.Rank,
+                FilePath = ExtractFilePath(r.Metadata),
+                LineNumber = ExtractLineNumber(r.Metadata),
+                FullyQualifiedName = ExtractFqn(r.Metadata),
+                Type = CodeMatchType.Class,
+            })
+            .ToList();
     }
 
     /// <summary>
     /// Найти любой код (методы + классы), похожий на данный.
     /// </summary>
     public async Task<List<SemanticCodeMatch>> FindSimilarCodeAsync(
-    string code,
-    int limit = 10,
-    float minSimilarity = 0.7f,
-    CancellationToken ct = default)
+        string code,
+        int limit = 10,
+        float minSimilarity = 0.7f,
+        CancellationToken ct = default
+    )
     {
         EnsureIndexed();
 
@@ -218,10 +230,11 @@ public sealed class SemanticSearchService : IAsyncDisposable
         await Task.WhenAll(methodTask, classTask);
 
         // Объединить и отсортировать по similarity
-        var combined = methodTask.Result.Concat(classTask.Result)
-        .OrderByDescending(m => m.Similarity)
-        .Take(limit)
-        .ToList();
+        var combined = methodTask
+            .Result.Concat(classTask.Result)
+            .OrderByDescending(m => m.Similarity)
+            .Take(limit)
+            .ToList();
 
         return combined;
     }
@@ -230,19 +243,20 @@ public sealed class SemanticSearchService : IAsyncDisposable
     /// Найти методы в конкретном файле, похожие на код.
     /// </summary>
     public async Task<List<SemanticCodeMatch>> FindSimilarMethodsInFileAsync(
-    string code,
-    string filePath,
-    int limit = 10,
-    float minSimilarity = 0.7f,
-    CancellationToken ct = default)
+        string code,
+        string filePath,
+        int limit = 10,
+        float minSimilarity = 0.7f,
+        CancellationToken ct = default
+    )
     {
         var allResults = await FindSimilarMethodsAsync(code, limit * 2, minSimilarity, ct);
 
         // Фильтровать по файлу
         return allResults
-        .Where(m => m.FilePath?.Equals(filePath, StringComparison.OrdinalIgnoreCase) == true)
-        .Take(limit)
-        .ToList();
+            .Where(m => m.FilePath?.Equals(filePath, StringComparison.OrdinalIgnoreCase) == true)
+            .Take(limit)
+            .ToList();
     }
 
     /// <summary>
@@ -270,7 +284,8 @@ public sealed class SemanticSearchService : IAsyncDisposable
         if (!_isIndexed)
         {
             throw new InvalidOperationException(
-            "Solution not indexed. Call IndexCurrentSolutionAsync first.");
+                "Solution not indexed. Call IndexCurrentSolutionAsync first."
+            );
         }
     }
 
@@ -282,7 +297,10 @@ public sealed class SemanticSearchService : IAsyncDisposable
         }
 
         // Простой JSON parsing (для production лучше использовать System.Text.Json)
-        var fileMatch = System.Text.RegularExpressions.Regex.Match(metadata, @"""file"":""([^""]*)""");
+        var fileMatch = System.Text.RegularExpressions.Regex.Match(
+            metadata,
+            @"""file"":""([^""]*)"""
+        );
         return fileMatch.Success ? fileMatch.Groups[1].Value : null;
     }
 
@@ -304,7 +322,10 @@ public sealed class SemanticSearchService : IAsyncDisposable
             return null;
         }
 
-        var fqnMatch = System.Text.RegularExpressions.Regex.Match(metadata, @"""fqn"":""([^""]*)""");
+        var fqnMatch = System.Text.RegularExpressions.Regex.Match(
+            metadata,
+            @"""fqn"":""([^""]*)"""
+        );
         return fqnMatch.Success ? fqnMatch.Groups[1].Value : null;
     }
 }
@@ -329,11 +350,8 @@ public sealed record SemanticSearchServiceConfig
     /// <summary>
     /// Конфигурация с автоматической индексацией.
     /// </summary>
-    public static SemanticSearchServiceConfig WithAutoIndex => new()
-    {
-        AutoIndexOnLoad = true,
-        AutoReindexOnChange = true
-    };
+    public static SemanticSearchServiceConfig WithAutoIndex =>
+        new() { AutoIndexOnLoad = true, AutoReindexOnChange = true };
 }
 
 /// <summary>
@@ -357,5 +375,5 @@ public sealed record SemanticCodeMatch
 public enum CodeMatchType
 {
     Method,
-    Class
+    Class,
 }

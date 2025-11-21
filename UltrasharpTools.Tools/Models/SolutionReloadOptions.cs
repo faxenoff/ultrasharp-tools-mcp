@@ -19,5 +19,6 @@ public class SolutionReloadOptions
     /// <summary>
     /// Files to watch for automatic reload (.csproj, .sln by default)
     /// </summary>
-    public string[] WatchedExtensions { get; set; } = new[] { ".csproj", ".sln", ".props", ".targets" };
+    public string[] WatchedExtensions { get; set; } =
+        new[] { ".csproj", ".sln", ".props", ".targets" };
 }

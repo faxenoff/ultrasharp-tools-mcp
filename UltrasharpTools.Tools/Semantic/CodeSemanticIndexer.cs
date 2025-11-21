@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Semantic.Models;
 
@@ -24,7 +22,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         VectorStore vectorStore,
         EmbeddingGenerator embeddingGenerator,
         CodeSemanticIndexerConfig? config = null,
-        ILogger<CodeSemanticIndexer>? logger = null)
+        ILogger<CodeSemanticIndexer>? logger = null
+    )
     {
         _vectorStore = vectorStore;
         _embeddingGenerator = embeddingGenerator;
@@ -35,9 +34,7 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
     /// <summary>
     /// Индексировать весь Solution.
     /// </summary>
-    public async Task IndexSolutionAsync(
-        Solution solution,
-        CancellationToken ct = default)
+    public async Task IndexSolutionAsync(Solution solution, CancellationToken ct = default)
     {
         _logger.LogInformation("Starting solution indexing: {SolutionPath}", solution.FilePath);
 
@@ -51,15 +48,16 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
 
         _logger.LogInformation(
             "Solution indexing complete: {Methods} methods, {Classes} classes, {Documents} documents",
-            _indexedMethods, _indexedClasses, _indexedDocuments);
+            _indexedMethods,
+            _indexedClasses,
+            _indexedDocuments
+        );
     }
 
     /// <summary>
     /// Индексировать один Project.
     /// </summary>
-    public async Task IndexProjectAsync(
-        Project project,
-        CancellationToken ct = default)
+    public async Task IndexProjectAsync(Project project, CancellationToken ct = default)
     {
         _logger.LogInformation("Indexing project: {ProjectName}", project.Name);
 
@@ -70,8 +68,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
             return;
         }
 
-        var documents = project.Documents
-            .Where(d => d.SupportsSyntaxTree && d.FilePath != null)
+        var documents = project
+            .Documents.Where(d => d.SupportsSyntaxTree && d.FilePath != null)
             .ToList();
 
         // Batch processing для оптимизации
@@ -90,7 +88,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
     public async Task IndexDocumentAsync(
         Document document,
         Compilation compilation,
-        CancellationToken ct = default)
+        CancellationToken ct = default
+    )
     {
         var syntaxTree = await document.GetSyntaxTreeAsync(ct);
         if (syntaxTree == null)
@@ -102,13 +101,9 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
 
         // Собрать все методы и классы
-        var methodNodes = root.DescendantNodes()
-            .OfType<MethodDeclarationSyntax>()
-            .ToList();
+        var methodNodes = root.DescendantNodes().OfType<MethodDeclarationSyntax>().ToList();
 
-        var classNodes = root.DescendantNodes()
-            .OfType<ClassDeclarationSyntax>()
-            .ToList();
+        var classNodes = root.DescendantNodes().OfType<ClassDeclarationSyntax>().ToList();
 
         // Генерировать embeddings
         var embeddings = new List<VectorEmbedding>();
@@ -122,7 +117,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
                     methodNode,
                     semanticModel,
                     document,
-                    ct);
+                    ct
+                );
 
                 if (embedding != null)
                 {
@@ -140,7 +136,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
                     classNode,
                     semanticModel,
                     document,
-                    ct);
+                    ct
+                );
 
                 if (embedding != null)
                 {
@@ -160,7 +157,10 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
 
         _logger.LogDebug(
             "Indexed document {DocumentPath}: {MethodCount} methods, {ClassCount} classes",
-            document.FilePath, methodNodes.Count, classNodes.Count);
+            document.FilePath,
+            methodNodes.Count,
+            classNodes.Count
+        );
     }
 
     /// <summary>
@@ -170,7 +170,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
     public async Task ReindexDocumentAsync(
         Document document,
         Compilation compilation,
-        CancellationToken ct = default)
+        CancellationToken ct = default
+    )
     {
         _logger.LogDebug("Reindexing document: {DocumentPath}", document.FilePath);
 
@@ -189,7 +190,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
     public async Task ReindexDocumentsAsync(
         IEnumerable<Document> documents,
         Compilation compilation,
-        CancellationToken ct = default)
+        CancellationToken ct = default
+    )
     {
         var documentList = documents.ToList();
         _logger.LogInformation("Batch reindexing {Count} documents", documentList.Count);
@@ -227,7 +229,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         string code,
         int limit = 10,
         float minSimilarity = 0.7f,
-        CancellationToken ct = default)
+        CancellationToken ct = default
+    )
     {
         // Генерировать embedding для query
         var queryVector = await _embeddingGenerator.EmbedAsync(code, ct);
@@ -245,7 +248,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         string code,
         int limit = 10,
         float minSimilarity = 0.7f,
-        CancellationToken ct = default)
+        CancellationToken ct = default
+    )
     {
         // Генерировать embedding для query
         var queryVector = await _embeddingGenerator.EmbedAsync(code, ct);
@@ -266,7 +270,7 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
             IndexedMethods = Interlocked.Read(ref _indexedMethods),
             IndexedClasses = Interlocked.Read(ref _indexedClasses),
             IndexedDocuments = Interlocked.Read(ref _indexedDocuments),
-            EmbeddingMetrics = _embeddingGenerator.GetMetrics()
+            EmbeddingMetrics = _embeddingGenerator.GetMetrics(),
         };
     }
 
@@ -281,7 +285,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
     private async Task IndexDocumentBatchAsync(
         List<Document> documents,
         Compilation compilation,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         foreach (var document in documents)
         {
@@ -293,7 +298,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         MethodDeclarationSyntax methodNode,
         SemanticModel semanticModel,
         Document document,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var methodSymbol = semanticModel.GetDeclaredSymbol(methodNode);
         if (methodSymbol == null)
@@ -321,7 +327,7 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
             Dimension = vector.Length,
             Metadata = metadata,
             CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Provider = _embeddingGenerator.GetMetrics().ProviderInfo.Name
+            Provider = _embeddingGenerator.GetMetrics().ProviderInfo.Name,
         };
     }
 
@@ -329,7 +335,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         ClassDeclarationSyntax classNode,
         SemanticModel semanticModel,
         Document document,
-        CancellationToken ct)
+        CancellationToken ct
+    )
     {
         var classSymbol = semanticModel.GetDeclaredSymbol(classNode);
         if (classSymbol == null)
@@ -357,7 +364,7 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
             Dimension = vector.Length,
             Metadata = metadata,
             CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            Provider = _embeddingGenerator.GetMetrics().ProviderInfo.Name
+            Provider = _embeddingGenerator.GetMetrics().ProviderInfo.Name,
         };
     }
 
@@ -371,9 +378,12 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         var parts = new List<string>();
 
         // XML doc
-        var trivia = methodNode.GetLeadingTrivia()
-            .Where(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) ||
-                       t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia))
+        var trivia = methodNode
+            .GetLeadingTrivia()
+            .Where(t =>
+                t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
+                || t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)
+            )
             .Select(t => t.ToString())
             .FirstOrDefault();
 
@@ -383,7 +393,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         }
 
         // Signature
-        var signature = $"{methodNode.ReturnType} {methodNode.Identifier}{methodNode.ParameterList}";
+        var signature =
+            $"{methodNode.ReturnType} {methodNode.Identifier}{methodNode.ParameterList}";
         parts.Add(signature);
 
         // Body (если включено)
@@ -405,9 +416,12 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         var parts = new List<string>();
 
         // XML doc
-        var trivia = classNode.GetLeadingTrivia()
-            .Where(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) ||
-                       t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia))
+        var trivia = classNode
+            .GetLeadingTrivia()
+            .Where(t =>
+                t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
+                || t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)
+            )
             .Select(t => t.ToString())
             .FirstOrDefault();
 
@@ -417,7 +431,8 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
         }
 
         // Class signature
-        var signature = $"{classNode.Modifiers} class {classNode.Identifier}{classNode.TypeParameterList}";
+        var signature =
+            $"{classNode.Modifiers} class {classNode.Identifier}{classNode.TypeParameterList}";
         if (classNode.BaseList != null)
         {
             signature += $" {classNode.BaseList}";
@@ -446,19 +461,19 @@ public sealed class CodeSemanticIndexer : IAsyncDisposable
     private static string CreateMethodMetadata(IMethodSymbol methodSymbol, Document document)
     {
         // JSON metadata для фильтрации
-        return $"{{\"type\":\"method\",\"name\":\"{methodSymbol.Name}\"," +
-               $"\"fqn\":\"{methodSymbol.ToDisplayString()}\"," +
-               $"\"file\":\"{document.FilePath}\"," +
-               $"\"line\":{methodSymbol.Locations.FirstOrDefault()?.GetLineSpan().StartLinePosition.Line ?? 0}}}";
+        return $"{{\"type\":\"method\",\"name\":\"{methodSymbol.Name}\","
+            + $"\"fqn\":\"{methodSymbol.ToDisplayString()}\","
+            + $"\"file\":\"{document.FilePath}\","
+            + $"\"line\":{methodSymbol.Locations.FirstOrDefault()?.GetLineSpan().StartLinePosition.Line ?? 0}}}";
     }
 
     private static string CreateClassMetadata(INamedTypeSymbol classSymbol, Document document)
     {
         // JSON metadata для фильтрации
-        return $"{{\"type\":\"class\",\"name\":\"{classSymbol.Name}\"," +
-               $"\"fqn\":\"{classSymbol.ToDisplayString()}\"," +
-               $"\"file\":\"{document.FilePath}\"," +
-               $"\"line\":{classSymbol.Locations.FirstOrDefault()?.GetLineSpan().StartLinePosition.Line ?? 0}}}";
+        return $"{{\"type\":\"class\",\"name\":\"{classSymbol.Name}\","
+            + $"\"fqn\":\"{classSymbol.ToDisplayString()}\","
+            + $"\"file\":\"{document.FilePath}\","
+            + $"\"line\":{classSymbol.Locations.FirstOrDefault()?.GetLineSpan().StartLinePosition.Line ?? 0}}}";
     }
 }
 
@@ -497,22 +512,24 @@ public sealed record CodeSemanticIndexerConfig
     /// <summary>
     /// Конфигурация для быстрой индексации (только signatures).
     /// </summary>
-    public static CodeSemanticIndexerConfig Fast => new()
-    {
-        IncludeMethodBody = false,
-        IncludeClassMembers = false,
-        BatchSize = 20
-    };
+    public static CodeSemanticIndexerConfig Fast =>
+        new()
+        {
+            IncludeMethodBody = false,
+            IncludeClassMembers = false,
+            BatchSize = 20,
+        };
 
     /// <summary>
     /// Конфигурация для детальной индексации (включая тела).
     /// </summary>
-    public static CodeSemanticIndexerConfig Detailed => new()
-    {
-        IncludeMethodBody = true,
-        IncludeClassMembers = true,
-        BatchSize = 5
-    };
+    public static CodeSemanticIndexerConfig Detailed =>
+        new()
+        {
+            IncludeMethodBody = true,
+            IncludeClassMembers = true,
+            BatchSize = 5,
+        };
 }
 
 /// <summary>

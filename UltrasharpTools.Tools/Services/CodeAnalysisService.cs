@@ -10,10 +10,13 @@ namespace UltrasharpTools.Tools.Services;
 public class CodeAnalysisService(
     ISolutionManager solutionManager,
     ILogger<CodeAnalysisService> logger,
-    AnalysisCacheService? cacheService = null) : ICodeAnalysisService
+    AnalysisCacheService? cacheService = null
+) : ICodeAnalysisService
 {
-    private readonly ISolutionManager _solutionManager = solutionManager ?? throw new ArgumentNullException(nameof(solutionManager));
-    private readonly ILogger<CodeAnalysisService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly ISolutionManager _solutionManager =
+        solutionManager ?? throw new ArgumentNullException(nameof(solutionManager));
+    private readonly ILogger<CodeAnalysisService> _logger =
+        logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly AnalysisCacheService? _cacheService = cacheService;
 
     private Solution GetCurrentSolutionOrThrow()
@@ -40,21 +43,38 @@ public class CodeAnalysisService(
         return solution.Id.ToString() ?? string.Empty;
     }
 
-    public async Task<IEnumerable<ISymbol>> FindImplementationsAsync(ISymbol symbol, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ISymbol>> FindImplementationsAsync(
+        ISymbol symbol,
+        CancellationToken cancellationToken
+    )
     {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogDebug("Finding implementations for symbol: {SymbolName}", symbol.Name);
-        return await SymbolFinder.FindImplementationsAsync(symbol, solution, cancellationToken: cancellationToken);
+        return await SymbolFinder.FindImplementationsAsync(
+            symbol,
+            solution,
+            cancellationToken: cancellationToken
+        );
     }
 
-    public async Task<IEnumerable<ISymbol>> FindOverridesAsync(ISymbol symbol, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ISymbol>> FindOverridesAsync(
+        ISymbol symbol,
+        CancellationToken cancellationToken
+    )
     {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogDebug("Finding overrides for symbol: {SymbolName}", symbol.Name);
-        return await SymbolFinder.FindOverridesAsync(symbol, solution, cancellationToken: cancellationToken);
+        return await SymbolFinder.FindOverridesAsync(
+            symbol,
+            solution,
+            cancellationToken: cancellationToken
+        );
     }
 
-    public async Task<IEnumerable<ReferencedSymbol>> FindReferencesAsync(ISymbol symbol, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ReferencedSymbol>> FindReferencesAsync(
+        ISymbol symbol,
+        CancellationToken cancellationToken
+    )
     {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogDebug("Finding references for symbol: {SymbolName}", symbol.Name);
@@ -65,10 +85,21 @@ public class CodeAnalysisService(
             var solutionHash = GetSolutionHash();
             var parameters = new { symbolFqn = symbol.ToDisplayString() };
 
-            if (_cacheService.TryGetCached<CachedReferencesResult>(solutionHash, "FindReferences", parameters, out var cachedResult) && cachedResult != null)
+            if (
+                _cacheService.TryGetCached<CachedReferencesResult>(
+                    solutionHash,
+                    "FindReferences",
+                    parameters,
+                    out var cachedResult
+                )
+                && cachedResult != null
+            )
             {
-                _logger.LogDebug("Cache hit for FindReferences: {SymbolName} ({Count} locations)",
-                    symbol.Name, cachedResult.Locations.Count);
+                _logger.LogDebug(
+                    "Cache hit for FindReferences: {SymbolName} ({Count} locations)",
+                    symbol.Name,
+                    cachedResult.Locations.Count
+                );
 
                 // Note: Returning simplified cached result
                 // Full ReferencedSymbol reconstruction would require re-resolving documents
@@ -78,7 +109,11 @@ public class CodeAnalysisService(
         }
 
         // Cache miss - perform actual search
-        var results = await SymbolFinder.FindReferencesAsync(symbol, solution, cancellationToken: cancellationToken);
+        var results = await SymbolFinder.FindReferencesAsync(
+            symbol,
+            solution,
+            cancellationToken: cancellationToken
+        );
 
         // Store in cache if available
         if (_cacheService != null && results != null)
@@ -95,15 +130,17 @@ public class CodeAnalysisService(
                     if (location.Location.IsInSource)
                     {
                         var lineSpan = location.Location.GetLineSpan();
-                        cachedResult.Locations.Add(new CachedReferenceLocation
-                        {
-                            FilePath = location.Document.FilePath ?? "",
-                            StartLine = lineSpan.StartLinePosition.Line,
-                            StartColumn = lineSpan.StartLinePosition.Character,
-                            EndLine = lineSpan.EndLinePosition.Line,
-                            EndColumn = lineSpan.EndLinePosition.Character,
-                            ContainingMemberName = location.Document.Name
-                        });
+                        cachedResult.Locations.Add(
+                            new CachedReferenceLocation
+                            {
+                                FilePath = location.Document.FilePath ?? "",
+                                StartLine = lineSpan.StartLinePosition.Line,
+                                StartColumn = lineSpan.StartLinePosition.Character,
+                                EndLine = lineSpan.EndLinePosition.Line,
+                                EndColumn = lineSpan.EndLinePosition.Character,
+                                ContainingMemberName = location.Document.Name,
+                            }
+                        );
                     }
                 }
             }
@@ -114,41 +151,69 @@ public class CodeAnalysisService(
         return results ?? Enumerable.Empty<ReferencedSymbol>();
     }
 
-    public async Task<IEnumerable<INamedTypeSymbol>> FindDerivedClassesAsync(INamedTypeSymbol typeSymbol, CancellationToken cancellationToken)
+    public async Task<IEnumerable<INamedTypeSymbol>> FindDerivedClassesAsync(
+        INamedTypeSymbol typeSymbol,
+        CancellationToken cancellationToken
+    )
     {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogDebug("Finding derived classes for type: {TypeName}", typeSymbol.Name);
-        return await SymbolFinder.FindDerivedClassesAsync(typeSymbol, solution, cancellationToken: cancellationToken);
+        return await SymbolFinder.FindDerivedClassesAsync(
+            typeSymbol,
+            solution,
+            cancellationToken: cancellationToken
+        );
     }
 
-    public async Task<IEnumerable<INamedTypeSymbol>> FindDerivedInterfacesAsync(INamedTypeSymbol typeSymbol, CancellationToken cancellationToken)
+    public async Task<IEnumerable<INamedTypeSymbol>> FindDerivedInterfacesAsync(
+        INamedTypeSymbol typeSymbol,
+        CancellationToken cancellationToken
+    )
     {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogDebug("Finding derived interfaces for type: {TypeName}", typeSymbol.Name);
-        return await SymbolFinder.FindDerivedInterfacesAsync(typeSymbol, solution, cancellationToken: cancellationToken);
+        return await SymbolFinder.FindDerivedInterfacesAsync(
+            typeSymbol,
+            solution,
+            cancellationToken: cancellationToken
+        );
     }
 
-    public async Task<IEnumerable<SymbolCallerInfo>> FindCallersAsync(ISymbol symbol, CancellationToken cancellationToken)
+    public async Task<IEnumerable<SymbolCallerInfo>> FindCallersAsync(
+        ISymbol symbol,
+        CancellationToken cancellationToken
+    )
     {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogDebug("Finding callers for symbol: {SymbolName}", symbol.Name);
-        return await SymbolFinder.FindCallersAsync(symbol, solution, cancellationToken: cancellationToken);
+        return await SymbolFinder.FindCallersAsync(
+            symbol,
+            solution,
+            cancellationToken: cancellationToken
+        );
     }
 
-    public async Task<IEnumerable<ISymbol>> FindOutgoingCallsAsync(IMethodSymbol methodSymbol, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ISymbol>> FindOutgoingCallsAsync(
+        IMethodSymbol methodSymbol,
+        CancellationToken cancellationToken
+    )
     {
         _logger.LogDebug("Finding outgoing calls for method: {MethodName}", methodSymbol.Name);
         var outgoingCalls = new List<ISymbol>();
         if (!methodSymbol.DeclaringSyntaxReferences.Any())
         {
-            _logger.LogWarning("Method {MethodName} has no declaring syntax references, cannot find outgoing calls.", methodSymbol.Name);
+            _logger.LogWarning(
+                "Method {MethodName} has no declaring syntax references, cannot find outgoing calls.",
+                methodSymbol.Name
+            );
             return outgoingCalls;
         }
 
         var currentSolution = GetCurrentSolutionOrThrow();
         foreach (var syntaxRef in methodSymbol.DeclaringSyntaxReferences)
         {
-            var methodNode = await syntaxRef.GetSyntaxAsync(cancellationToken) as MethodDeclarationSyntax;
+            var methodNode =
+                await syntaxRef.GetSyntaxAsync(cancellationToken) as MethodDeclarationSyntax;
             if (methodNode?.Body == null && methodNode?.ExpressionBody == null)
             {
                 continue;
@@ -157,14 +222,25 @@ public class CodeAnalysisService(
             var document = currentSolution.GetDocument(syntaxRef.SyntaxTree);
             if (document == null)
             {
-                _logger.LogWarning("Could not get document for syntax tree {FilePath} of method {MethodName}", syntaxRef.SyntaxTree.FilePath, methodSymbol.Name);
+                _logger.LogWarning(
+                    "Could not get document for syntax tree {FilePath} of method {MethodName}",
+                    syntaxRef.SyntaxTree.FilePath,
+                    methodSymbol.Name
+                );
                 continue;
             }
-            var semanticModel = await _solutionManager.GetSemanticModelAsync(document.Id, cancellationToken);
+            var semanticModel = await _solutionManager.GetSemanticModelAsync(
+                document.Id,
+                cancellationToken
+            );
 
             if (semanticModel == null)
             {
-                _logger.LogWarning("Could not get semantic model for method {MethodName} in document {DocumentPath}", methodSymbol.Name, document.FilePath);
+                _logger.LogWarning(
+                    "Could not get semantic model for method {MethodName} in document {DocumentPath}",
+                    methodSymbol.Name,
+                    document.FilePath
+                );
                 continue;
             }
 
@@ -174,44 +250,54 @@ public class CodeAnalysisService(
         }
         return outgoingCalls.Distinct(SymbolEqualityComparer.Default).ToList();
     }
-    public static string GetFormattedSignatureAsync(ISymbol symbol, bool includeContainingType = true)
+
+    public static string GetFormattedSignatureAsync(
+        ISymbol symbol,
+        bool includeContainingType = true
+    )
     {
         var fullFormat = new SymbolDisplayFormat(
             globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
-            typeQualificationStyle: includeContainingType ? SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces :
-                SymbolDisplayTypeQualificationStyle.NameOnly,
-            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters | SymbolDisplayGenericsOptions.IncludeVariance,
-            memberOptions: SymbolDisplayMemberOptions.IncludeParameters |
-                SymbolDisplayMemberOptions.IncludeType |
-                SymbolDisplayMemberOptions.IncludeRef |
-                SymbolDisplayMemberOptions.IncludeContainingType,
-            parameterOptions: SymbolDisplayParameterOptions.IncludeType |
-                SymbolDisplayParameterOptions.IncludeName |
-                SymbolDisplayParameterOptions.IncludeParamsRefOut |
-                SymbolDisplayParameterOptions.IncludeDefaultValue,
+            typeQualificationStyle: includeContainingType
+                ? SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces
+                : SymbolDisplayTypeQualificationStyle.NameOnly,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters
+                | SymbolDisplayGenericsOptions.IncludeVariance,
+            memberOptions: SymbolDisplayMemberOptions.IncludeParameters
+                | SymbolDisplayMemberOptions.IncludeType
+                | SymbolDisplayMemberOptions.IncludeRef
+                | SymbolDisplayMemberOptions.IncludeContainingType,
+            parameterOptions: SymbolDisplayParameterOptions.IncludeType
+                | SymbolDisplayParameterOptions.IncludeName
+                | SymbolDisplayParameterOptions.IncludeParamsRefOut
+                | SymbolDisplayParameterOptions.IncludeDefaultValue,
             propertyStyle: SymbolDisplayPropertyStyle.NameOnly,
             localOptions: SymbolDisplayLocalOptions.None,
-            kindOptions: SymbolDisplayKindOptions.IncludeMemberKeyword | SymbolDisplayKindOptions.IncludeNamespaceKeyword | SymbolDisplayKindOptions.IncludeTypeKeyword,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
-                SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
-                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+            kindOptions: SymbolDisplayKindOptions.IncludeMemberKeyword
+                | SymbolDisplayKindOptions.IncludeNamespaceKeyword
+                | SymbolDisplayKindOptions.IncludeTypeKeyword,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+                | SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers
+                | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
+        );
 
         // For parameters and return types, use a format that doesn't qualify types
         var shortFormat = new SymbolDisplayFormat(
             globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
             typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
             genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-            memberOptions: SymbolDisplayMemberOptions.IncludeParameters |
-                SymbolDisplayMemberOptions.IncludeType |
-                SymbolDisplayMemberOptions.IncludeRef,
-            parameterOptions: SymbolDisplayParameterOptions.IncludeType |
-                SymbolDisplayParameterOptions.IncludeName |
-                SymbolDisplayParameterOptions.IncludeParamsRefOut |
-                SymbolDisplayParameterOptions.IncludeDefaultValue,
+            memberOptions: SymbolDisplayMemberOptions.IncludeParameters
+                | SymbolDisplayMemberOptions.IncludeType
+                | SymbolDisplayMemberOptions.IncludeRef,
+            parameterOptions: SymbolDisplayParameterOptions.IncludeType
+                | SymbolDisplayParameterOptions.IncludeName
+                | SymbolDisplayParameterOptions.IncludeParamsRefOut
+                | SymbolDisplayParameterOptions.IncludeDefaultValue,
             propertyStyle: SymbolDisplayPropertyStyle.NameOnly,
             localOptions: SymbolDisplayLocalOptions.None,
-            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
-                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+                | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
+        );
 
         if (symbol is IMethodSymbol methodSymbol)
         {
@@ -219,25 +305,48 @@ public class CodeAnalysisService(
             var methodParts = methodSymbol.ToDisplayParts(fullFormat);
 
             // Find the indices where return type ends and method name begins
-            var returnTypeEndIndex = methodParts.TakeWhile(p => p.Kind != SymbolDisplayPartKind.MethodName).Count();
+            var returnTypeEndIndex = methodParts
+                .TakeWhile(p => p.Kind != SymbolDisplayPartKind.MethodName)
+                .Count();
             var nameStartIndex = returnTypeEndIndex;
-            var nameEndIndex = methodParts.TakeWhile(p => p.Kind != SymbolDisplayPartKind.Punctuation || p.ToString() != "(").Count();
+            var nameEndIndex = methodParts
+                .TakeWhile(p => p.Kind != SymbolDisplayPartKind.Punctuation || p.ToString() != "(")
+                .Count();
 
             // Get the parts we need
-            var modifiers = methodParts.Take(methodParts.TakeWhile(p => p.Kind == SymbolDisplayPartKind.Keyword).Count());
+            var modifiers = methodParts.Take(
+                methodParts.TakeWhile(p => p.Kind == SymbolDisplayPartKind.Keyword).Count()
+            );
             var returnType = methodSymbol.ReturnType.ToDisplayString(shortFormat);
-            var nameAndContainingType = string.Concat(methodParts.Skip(nameStartIndex).Take(nameEndIndex - nameStartIndex));
-            var parameters = string.Join(", ", methodSymbol.Parameters.Select(p => p.ToDisplayString(shortFormat)));
+            var nameAndContainingType = string.Concat(
+                methodParts.Skip(nameStartIndex).Take(nameEndIndex - nameStartIndex)
+            );
+            var parameters = string.Join(
+                ", ",
+                methodSymbol.Parameters.Select(p => p.ToDisplayString(shortFormat))
+            );
 
             // Combine all parts
-            var signature = string.Concat(modifiers) + " " + returnType + " " + nameAndContainingType + "(" + parameters + ")";
+            var signature =
+                string.Concat(modifiers)
+                + " "
+                + returnType
+                + " "
+                + nameAndContainingType
+                + "("
+                + parameters
+                + ")";
             return signature.Replace("  ", " "); // Clean up any double spaces
         }
 
         // For non-method symbols, use the original full format
         return symbol.ToDisplayString(fullFormat);
     }
-    public Task<string?> GetXmlDocumentationAsync(ISymbol symbol, CancellationToken cancellationToken)
+
+    public Task<string?> GetXmlDocumentationAsync(
+        ISymbol symbol,
+        CancellationToken cancellationToken
+    )
     {
         var commentXml = symbol.GetDocumentationCommentXml(cancellationToken: cancellationToken);
         return Task.FromResult(string.IsNullOrEmpty(commentXml) ? null : commentXml);
@@ -281,13 +390,14 @@ public class CodeAnalysisService(
             }
         }
     }
+
     private static void AddReferencedType(
         ITypeSymbol typeSymbol,
         INamedTypeSymbol sourceType,
         HashSet<string> referencedTypes,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-
         // Skip if it's the same as the source type
         if (SymbolEqualityComparer.Default.Equals(typeSymbol, sourceType))
         {
@@ -295,25 +405,30 @@ public class CodeAnalysisService(
         }
 
         // Skip anonymous types, type parameters, and error types
-        if (typeSymbol.IsAnonymousType ||
-            typeSymbol is ITypeParameterSymbol ||
-            typeSymbol.TypeKind == TypeKind.Error)
+        if (
+            typeSymbol.IsAnonymousType
+            || typeSymbol is ITypeParameterSymbol
+            || typeSymbol.TypeKind == TypeKind.Error
+        )
         {
             return;
         }
 
         // Skip primitive types and common framework types
-        if (typeSymbol.SpecialType != SpecialType.None &&
-            typeSymbol.SpecialType != SpecialType.System_Object &&
-            typeSymbol.SpecialType != SpecialType.System_ValueType &&
-            typeSymbol.SpecialType != SpecialType.System_Enum)
+        if (
+            typeSymbol.SpecialType != SpecialType.None
+            && typeSymbol.SpecialType != SpecialType.System_Object
+            && typeSymbol.SpecialType != SpecialType.System_ValueType
+            && typeSymbol.SpecialType != SpecialType.System_Enum
+        )
         {
             return;
         }
 
         // Check if the type is defined in source code (part of the solution)
-        bool isInSolution = typeSymbol.ContainingAssembly != null &&
-                             typeSymbol.ContainingAssembly.Locations.Any(loc => loc.IsInSource);
+        bool isInSolution =
+            typeSymbol.ContainingAssembly != null
+            && typeSymbol.ContainingAssembly.Locations.Any(loc => loc.IsInSource);
 
         // Skip types that are not defined in the solution
         if (!isInSolution)
@@ -334,7 +449,12 @@ public class CodeAnalysisService(
                 {
                     if (typeArg is INamedTypeSymbol namedTypeArg)
                     {
-                        AddReferencedType(namedTypeArg, sourceType, referencedTypes, cancellationToken);
+                        AddReferencedType(
+                            namedTypeArg,
+                            sourceType,
+                            referencedTypes,
+                            cancellationToken
+                        );
                     }
                 }
             }
@@ -342,15 +462,29 @@ public class CodeAnalysisService(
         // Handle array types
         else if (typeSymbol is IArrayTypeSymbol arrayType && arrayType.ElementType != null)
         {
-            AddReferencedType(arrayType.ElementType, sourceType, referencedTypes, cancellationToken);
+            AddReferencedType(
+                arrayType.ElementType,
+                sourceType,
+                referencedTypes,
+                cancellationToken
+            );
         }
         // Handle pointer types
         else if (typeSymbol is IPointerTypeSymbol pointerType && pointerType.PointedAtType != null)
         {
-            AddReferencedType(pointerType.PointedAtType, sourceType, referencedTypes, cancellationToken);
+            AddReferencedType(
+                pointerType.PointedAtType,
+                sourceType,
+                referencedTypes,
+                cancellationToken
+            );
         }
     }
-    public async Task<HashSet<string>> FindReferencedTypesAsync(INamedTypeSymbol typeSymbol, CancellationToken cancellationToken)
+
+    public async Task<HashSet<string>> FindReferencedTypesAsync(
+        INamedTypeSymbol typeSymbol,
+        CancellationToken cancellationToken
+    )
     {
         var solution = GetCurrentSolutionOrThrow();
         var referencedTypes = new HashSet<string>(StringComparer.Ordinal);
@@ -364,10 +498,17 @@ public class CodeAnalysisService(
         try
         {
             // First add the immediate references - base type and interfaces
-            if (typeSymbol.BaseType != null &&
-                typeSymbol.BaseType.SpecialType != SpecialType.System_Object)
+            if (
+                typeSymbol.BaseType != null
+                && typeSymbol.BaseType.SpecialType != SpecialType.System_Object
+            )
             {
-                AddReferencedType(typeSymbol.BaseType, typeSymbol, referencedTypes, cancellationToken);
+                AddReferencedType(
+                    typeSymbol.BaseType,
+                    typeSymbol,
+                    referencedTypes,
+                    cancellationToken
+                );
             }
 
             foreach (var iface in typeSymbol.Interfaces)
@@ -390,26 +531,51 @@ public class CodeAnalysisService(
                 switch (member)
                 {
                     case IFieldSymbol { Type: not null } fieldSymbol:
-                        AddReferencedType(fieldSymbol.Type, typeSymbol, referencedTypes, cancellationToken);
+                        AddReferencedType(
+                            fieldSymbol.Type,
+                            typeSymbol,
+                            referencedTypes,
+                            cancellationToken
+                        );
                         break;
                     case IPropertySymbol { Type: not null } propertySymbol:
-                        AddReferencedType(propertySymbol.Type, typeSymbol, referencedTypes, cancellationToken);
+                        AddReferencedType(
+                            propertySymbol.Type,
+                            typeSymbol,
+                            referencedTypes,
+                            cancellationToken
+                        );
                         break;
                     case IMethodSymbol methodSymbol:
                         if (methodSymbol.ReturnType != null)
                         {
-                            AddReferencedType(methodSymbol.ReturnType, typeSymbol, referencedTypes, cancellationToken);
+                            AddReferencedType(
+                                methodSymbol.ReturnType,
+                                typeSymbol,
+                                referencedTypes,
+                                cancellationToken
+                            );
                         }
                         foreach (var parameter in methodSymbol.Parameters)
                         {
                             if (parameter.Type != null)
                             {
-                                AddReferencedType(parameter.Type, typeSymbol, referencedTypes, cancellationToken);
+                                AddReferencedType(
+                                    parameter.Type,
+                                    typeSymbol,
+                                    referencedTypes,
+                                    cancellationToken
+                                );
                             }
                         }
                         break;
                     case IEventSymbol { Type: not null } eventSymbol:
-                        AddReferencedType(eventSymbol.Type, typeSymbol, referencedTypes, cancellationToken);
+                        AddReferencedType(
+                            eventSymbol.Type,
+                            typeSymbol,
+                            referencedTypes,
+                            cancellationToken
+                        );
                         break;
                 }
 
@@ -419,13 +585,16 @@ public class CodeAnalysisService(
                     foreach (var syntaxRef in member.DeclaringSyntaxReferences)
                     {
                         var memberNode = await syntaxRef.GetSyntaxAsync(cancellationToken);
-                        if (memberNode == null) continue;
+                        if (memberNode == null)
+                            continue;
 
                         var document = solution.GetDocument(syntaxRef.SyntaxTree);
-                        if (document == null) continue;
+                        if (document == null)
+                            continue;
 
                         var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
-                        if (semanticModel == null) continue;
+                        if (semanticModel == null)
+                            continue;
 
                         // Find all symbols referenced within the member implementation
                         var descendantNodes = memberNode.DescendantNodes();
@@ -439,7 +608,8 @@ public class CodeAnalysisService(
 
                             // Get symbol info for expressions, type references, etc.
                             var symbolInfo = semanticModel.GetSymbolInfo(node, cancellationToken);
-                            var referencedSymbol = symbolInfo.Symbol ?? symbolInfo.CandidateSymbols.FirstOrDefault();
+                            var referencedSymbol =
+                                symbolInfo.Symbol ?? symbolInfo.CandidateSymbols.FirstOrDefault();
 
                             if (referencedSymbol != null)
                             {
@@ -447,18 +617,43 @@ public class CodeAnalysisService(
                                 ITypeSymbol? definingType = referencedSymbol switch
                                 {
                                     ITypeSymbol typeRef => typeRef,
-                                    IFieldSymbol fieldRef => ProcessFieldReference(fieldRef, typeSymbol, referencedTypes, cancellationToken),
-                                    IPropertySymbol propertyRef => ProcessPropertyReference(propertyRef, typeSymbol, referencedTypes, cancellationToken),
-                                    IMethodSymbol methodRef => ProcessMethodReference(methodRef, typeSymbol, referencedTypes, cancellationToken),
+                                    IFieldSymbol fieldRef => ProcessFieldReference(
+                                        fieldRef,
+                                        typeSymbol,
+                                        referencedTypes,
+                                        cancellationToken
+                                    ),
+                                    IPropertySymbol propertyRef => ProcessPropertyReference(
+                                        propertyRef,
+                                        typeSymbol,
+                                        referencedTypes,
+                                        cancellationToken
+                                    ),
+                                    IMethodSymbol methodRef => ProcessMethodReference(
+                                        methodRef,
+                                        typeSymbol,
+                                        referencedTypes,
+                                        cancellationToken
+                                    ),
                                     ILocalSymbol localRef => localRef.Type,
                                     IParameterSymbol paramRef => paramRef.Type,
-                                    IEventSymbol eventRef => ProcessEventReference(eventRef, typeSymbol, referencedTypes, cancellationToken),
-                                    _ => null
+                                    IEventSymbol eventRef => ProcessEventReference(
+                                        eventRef,
+                                        typeSymbol,
+                                        referencedTypes,
+                                        cancellationToken
+                                    ),
+                                    _ => null,
                                 };
 
                                 if (definingType != null)
                                 {
-                                    AddReferencedType(definingType, typeSymbol, referencedTypes, cancellationToken);
+                                    AddReferencedType(
+                                        definingType,
+                                        typeSymbol,
+                                        referencedTypes,
+                                        cancellationToken
+                                    );
                                 }
                             }
 
@@ -466,11 +661,27 @@ public class CodeAnalysisService(
                             var typeInfo = semanticModel.GetTypeInfo(node, cancellationToken);
                             if (typeInfo.Type != null)
                             {
-                                AddReferencedType(typeInfo.Type, typeSymbol, referencedTypes, cancellationToken);
+                                AddReferencedType(
+                                    typeInfo.Type,
+                                    typeSymbol,
+                                    referencedTypes,
+                                    cancellationToken
+                                );
                             }
-                            if (typeInfo.ConvertedType != null && !SymbolEqualityComparer.Default.Equals(typeInfo.Type, typeInfo.ConvertedType))
+                            if (
+                                typeInfo.ConvertedType != null
+                                && !SymbolEqualityComparer.Default.Equals(
+                                    typeInfo.Type,
+                                    typeInfo.ConvertedType
+                                )
+                            )
                             {
-                                AddReferencedType(typeInfo.ConvertedType, typeSymbol, referencedTypes, cancellationToken);
+                                AddReferencedType(
+                                    typeInfo.ConvertedType,
+                                    typeSymbol,
+                                    referencedTypes,
+                                    cancellationToken
+                                );
                             }
                         }
                     }
@@ -479,7 +690,11 @@ public class CodeAnalysisService(
         }
         catch (Exception ex) when (!(ex is OperationCanceledException))
         {
-            _logger.LogWarning(ex, "Error finding referenced types for type {TypeName}", typeSymbol.Name);
+            _logger.LogWarning(
+                ex,
+                "Error finding referenced types for type {TypeName}",
+                typeSymbol.Name
+            );
         }
 
         return referencedTypes;
@@ -489,11 +704,17 @@ public class CodeAnalysisService(
         IFieldSymbol fieldRef,
         INamedTypeSymbol typeSymbol,
         HashSet<string> referencedTypes,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (fieldRef.ContainingType != null)
         {
-            AddReferencedType(fieldRef.ContainingType, typeSymbol, referencedTypes, cancellationToken);
+            AddReferencedType(
+                fieldRef.ContainingType,
+                typeSymbol,
+                referencedTypes,
+                cancellationToken
+            );
         }
         return fieldRef.Type;
     }
@@ -502,11 +723,17 @@ public class CodeAnalysisService(
         IPropertySymbol propertyRef,
         INamedTypeSymbol typeSymbol,
         HashSet<string> referencedTypes,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (propertyRef.ContainingType != null)
         {
-            AddReferencedType(propertyRef.ContainingType, typeSymbol, referencedTypes, cancellationToken);
+            AddReferencedType(
+                propertyRef.ContainingType,
+                typeSymbol,
+                referencedTypes,
+                cancellationToken
+            );
         }
         return propertyRef.Type;
     }
@@ -515,11 +742,17 @@ public class CodeAnalysisService(
         IMethodSymbol methodRef,
         INamedTypeSymbol typeSymbol,
         HashSet<string> referencedTypes,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (methodRef.ContainingType != null)
         {
-            AddReferencedType(methodRef.ContainingType, typeSymbol, referencedTypes, cancellationToken);
+            AddReferencedType(
+                methodRef.ContainingType,
+                typeSymbol,
+                referencedTypes,
+                cancellationToken
+            );
         }
         // Add parameter types
         foreach (var param in methodRef.Parameters)
@@ -536,11 +769,17 @@ public class CodeAnalysisService(
         IEventSymbol eventRef,
         INamedTypeSymbol typeSymbol,
         HashSet<string> referencedTypes,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (eventRef.ContainingType != null)
         {
-            AddReferencedType(eventRef.ContainingType, typeSymbol, referencedTypes, cancellationToken);
+            AddReferencedType(
+                eventRef.ContainingType,
+                typeSymbol,
+                referencedTypes,
+                cancellationToken
+            );
         }
         return eventRef.Type;
     }

@@ -23,7 +23,8 @@ public interface IConflictDetectionService
         float[] vectors,
         string? content,
         double duplicateThreshold = 0.85,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Включить/выключить автоматические уведомления о дубликатах

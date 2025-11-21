@@ -1,6 +1,4 @@
-
 using System.Diagnostics;
-
 using UltrasharpTools.Tools.Config;
 
 namespace UltrasharpTools.Tools.Services;
@@ -15,7 +13,8 @@ public class AutoConfigurationService
 
     public AutoConfigurationService(
         ILogger<AutoConfigurationService> logger,
-        EmbeddingServiceHealthChecker healthChecker)
+        EmbeddingServiceHealthChecker healthChecker
+    )
     {
         _logger = logger;
         _healthChecker = healthChecker;
@@ -35,16 +34,14 @@ public class AutoConfigurationService
     /// Auto-detect and configure best embedding platform
     /// </summary>
     public async Task<AutoConfigResult> AutoConfigureAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation("=== Auto-Configuring Embedding Platform ===");
         _logger.LogInformation("Detecting best available platform...");
         _logger.LogInformation("");
 
-        var result = new AutoConfigResult
-        {
-            Config = CreateDefaultConfig()
-        };
+        var result = new AutoConfigResult { Config = CreateDefaultConfig() };
 
         // Step 1: Detect GPU architecture
         var architecture = await DetectGpuArchitectureAsync();
@@ -62,14 +59,16 @@ public class AutoConfigurationService
         // Try Ollama first (most user-friendly)
         var ollamaHealth = await _healthChecker.CheckOllamaHealthAsync(
             "http://localhost:11434",
-            cancellationToken);
+            cancellationToken
+        );
 
         if (ollamaHealth.IsHealthy)
         {
             var hasModel = await _healthChecker.CheckOllamaModelAsync(
                 "http://localhost:11434",
                 "granite-embedding:latest",
-                cancellationToken);
+                cancellationToken
+            );
 
             if (hasModel)
             {
@@ -89,7 +88,8 @@ public class AutoConfigurationService
                 result.Config.Embedding.Platform = "ollama";
                 result.Reason = "Ollama is available but model needs to be installed";
                 result.RequiresSetup = true;
-                result.SetupInstructions = "Install embedding model:\n  ollama pull granite-embedding";
+                result.SetupInstructions =
+                    "Install embedding model:\n  ollama pull granite-embedding";
 
                 _logger.LogWarning("⚠ Ollama: Available but model not installed");
                 _logger.LogInformation("  Selected: Ollama (requires model installation)");
@@ -105,7 +105,8 @@ public class AutoConfigurationService
         // Try TEI
         var teiHealth = await _healthChecker.CheckTeiHealthAsync(
             "http://localhost:8080",
-            cancellationToken);
+            cancellationToken
+        );
 
         if (teiHealth.IsHealthy)
         {
@@ -125,11 +126,12 @@ public class AutoConfigurationService
         }
 
         // Fallback to Memory (requires setup)
-        result.SelectedPlatform = "ollama";  // Still recommend Ollama as best option
+        result.SelectedPlatform = "ollama"; // Still recommend Ollama as best option
         result.Config.Embedding.Platform = "ollama";
         result.Reason = "No embedding platform available - Ollama recommended for easy setup";
         result.RequiresSetup = true;
-        result.SetupInstructions = @"
+        result.SetupInstructions =
+            @"
 Quick Setup (Recommended - Ollama):
   1. Install Ollama: https://ollama.ai
   2. Install embedding model: ollama pull granite-embedding
@@ -166,7 +168,7 @@ Alternative (TEI - High Performance):
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
 
             using var process = Process.Start(startInfo);
@@ -228,21 +230,21 @@ Alternative (TEI - High Performance):
                 Tei = new TeiSettings
                 {
                     Endpoint = "http://localhost:8080",
-                    SelectedModel = "sentence-transformers/all-MiniLM-L6-v2"
+                    SelectedModel = "sentence-transformers/all-MiniLM-L6-v2",
                 },
                 Ollama = new OllamaSettings
                 {
                     Endpoint = "http://localhost:11434",
-                    SelectedModel = "granite-embedding:latest"
+                    SelectedModel = "granite-embedding:latest",
                 },
-                Memory = new MemorySettings()
+                Memory = new MemorySettings(),
             },
             AutoDetection = new AutoDetectionSettings
             {
                 GpuArchitecture = true,
                 Language = true,
-                CodebaseSize = true
-            }
+                CodebaseSize = true,
+            },
         };
     }
 

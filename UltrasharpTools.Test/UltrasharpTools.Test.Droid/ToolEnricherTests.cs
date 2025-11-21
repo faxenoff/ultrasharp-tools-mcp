@@ -26,11 +26,13 @@ public class ToolEnricherTests
 
         _semanticProviderMock
             .Setup(x => x.CheckAvailabilityAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SemanticModeAvailability
-            {
-                IsAvailable = false,
-                Source = SemanticModeSource.None
-            });
+            .ReturnsAsync(
+                new SemanticModeAvailability
+                {
+                    IsAvailable = false,
+                    Source = SemanticModeSource.None,
+                }
+            );
 
         var enricher = new ToolEnricher(_loggerMock.Object, _semanticProviderMock.Object, config);
         var originalResult = new { data = "test" };
@@ -55,11 +57,13 @@ public class ToolEnricherTests
 
         _semanticProviderMock
             .Setup(x => x.CheckAvailabilityAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SemanticModeAvailability
-            {
-                IsAvailable = true,
-                Source = SemanticModeSource.Local
-            });
+            .ReturnsAsync(
+                new SemanticModeAvailability
+                {
+                    IsAvailable = true,
+                    Source = SemanticModeSource.Local,
+                }
+            );
 
         var enricher = new ToolEnricher(_loggerMock.Object, _semanticProviderMock.Object, config);
         var originalResult = new { data = "test" };
@@ -82,11 +86,13 @@ public class ToolEnricherTests
 
         _semanticProviderMock
             .Setup(x => x.CheckAvailabilityAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SemanticModeAvailability
-            {
-                IsAvailable = true,
-                Source = SemanticModeSource.Local
-            });
+            .ReturnsAsync(
+                new SemanticModeAvailability
+                {
+                    IsAvailable = true,
+                    Source = SemanticModeSource.Local,
+                }
+            );
 
         var enricher = new ToolEnricher(_loggerMock.Object, _semanticProviderMock.Object, config);
         var originalResult = new { data = "test" };
@@ -158,38 +164,42 @@ public class ToolEnricherTests
 
         _semanticProviderMock
             .Setup(x => x.CheckAvailabilityAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SemanticModeAvailability
-            {
-                IsAvailable = true,
-                Source = SemanticModeSource.Local
-            });
+            .ReturnsAsync(
+                new SemanticModeAvailability
+                {
+                    IsAvailable = true,
+                    Source = SemanticModeSource.Local,
+                }
+            );
 
         // Simulate slow semantic search that respects cancellation
         _semanticProviderMock
-            .Setup(x => x.SearchByTextAsync(
-                It.IsAny<string>(),
-                It.IsAny<int>(),
-                It.IsAny<double>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(async (string query, int topK, double threshold, CancellationToken ct) =>
-            {
-                try
+            .Setup(x =>
+                x.SearchByTextAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<int>(),
+                    It.IsAny<double>(),
+                    It.IsAny<CancellationToken>()
+                )
+            )
+            .Returns(
+                async (string query, int topK, double threshold, CancellationToken ct) =>
                 {
-                    await Task.Delay(5000, ct); // Simulate slow response
-                    return Array.Empty<SemanticMatch>();
+                    try
+                    {
+                        await Task.Delay(5000, ct); // Simulate slow response
+                        return Array.Empty<SemanticMatch>();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw; // Re-throw to propagate cancellation
+                    }
                 }
-                catch (OperationCanceledException)
-                {
-                    throw; // Re-throw to propagate cancellation
-                }
-            });
+            );
 
         var enricher = new ToolEnricher(_loggerMock.Object, _semanticProviderMock.Object, config);
         var originalResult = new { code = "public class Test { }" };
-        var toolArguments = new Dictionary<string, object>
-        {
-            ["fqn"] = "MyNamespace.MyClass"
-        };
+        var toolArguments = new Dictionary<string, object> { ["fqn"] = "MyNamespace.MyClass" };
 
         // Act
         var result = await enricher.EnrichAsync("view_definition", originalResult, toolArguments);
@@ -211,11 +221,13 @@ public class ToolEnricherTests
 
         _semanticProviderMock
             .Setup(x => x.CheckAvailabilityAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new SemanticModeAvailability
-            {
-                IsAvailable = true,
-                Source = SemanticModeSource.Local
-            });
+            .ReturnsAsync(
+                new SemanticModeAvailability
+                {
+                    IsAvailable = true,
+                    Source = SemanticModeSource.Local,
+                }
+            );
 
         var enricher = new ToolEnricher(_loggerMock.Object, _semanticProviderMock.Object, config);
 
@@ -238,16 +250,30 @@ public class ToolEnricherTests
         var supportedTools = new[]
         {
             // Phase 12.1 - Core
-            "view_definition", "find_references", "overwrite_member", "get_members", "analyze_complexity",
+            "view_definition",
+            "find_references",
+            "overwrite_member",
+            "get_members",
+            "analyze_complexity",
             // Phase 12.2 - Extended
-            "find_all_references", "list_types", "search_symbols", "trace_execution",
-            "analyze_code_style", "get_type_hierarchy", "get_project_structure",
-            "find_usages", "get_diagnostics", "apply_code_fixes"
+            "find_all_references",
+            "list_types",
+            "search_symbols",
+            "trace_execution",
+            "analyze_code_style",
+            "get_type_hierarchy",
+            "get_project_structure",
+            "find_usages",
+            "get_diagnostics",
+            "apply_code_fixes",
         };
 
         foreach (var tool in supportedTools)
         {
-            enricher.SupportsEnrichment(tool).Should().BeTrue($"because {tool} should be supported");
+            enricher
+                .SupportsEnrichment(tool)
+                .Should()
+                .BeTrue($"because {tool} should be supported");
         }
     }
 }

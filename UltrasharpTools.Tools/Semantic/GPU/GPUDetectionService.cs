@@ -55,7 +55,7 @@ public sealed class GPUDetectionService : IGPUDetectionService
                     CudaAvailable = cudaInfo.CudaAvailable,
                     CudaVersion = cudaVersion,
                     CudnnAvailable = cudnnAvailable,
-                    ClockRateMHz = cudaInfo.ClockRateMHz
+                    ClockRateMHz = cudaInfo.ClockRateMHz,
                 };
 
                 _logger.LogInformation("[GPUDetection] CUDA GPU detected: {Info}", info);
@@ -68,7 +68,7 @@ public sealed class GPUDetectionService : IGPUDetectionService
                     Vendor = "unknown",
                     Model = "No GPU detected",
                     MemoryMB = 0,
-                    CudaAvailable = false
+                    CudaAvailable = false,
                 };
             }
 
@@ -109,7 +109,10 @@ public sealed class GPUDetectionService : IGPUDetectionService
             var parts = output.Trim().Split(',');
             if (parts.Length < 3)
             {
-                _logger.LogWarning("[GPUDetection] Unexpected nvidia-smi output format: {Output}", output);
+                _logger.LogWarning(
+                    "[GPUDetection] Unexpected nvidia-smi output format: {Output}",
+                    output
+                );
                 return null;
             }
 
@@ -119,7 +122,10 @@ public sealed class GPUDetectionService : IGPUDetectionService
 
             if (!float.TryParse(computeCapStr, out var computeCap))
             {
-                _logger.LogWarning("[GPUDetection] Failed to parse compute capability: {Value}", computeCapStr);
+                _logger.LogWarning(
+                    "[GPUDetection] Failed to parse compute capability: {Value}",
+                    computeCapStr
+                );
                 computeCap = 0;
             }
 
@@ -135,7 +141,7 @@ public sealed class GPUDetectionService : IGPUDetectionService
                 Model = model,
                 ComputeCapability = computeCap,
                 MemoryMB = memoryMB,
-                CudaAvailable = true
+                CudaAvailable = true,
             };
         }
         catch (Exception ex)
@@ -149,7 +155,8 @@ public sealed class GPUDetectionService : IGPUDetectionService
         string fileName,
         string arguments,
         int timeoutMs,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var process = new Process
         {
@@ -160,8 +167,8 @@ public sealed class GPUDetectionService : IGPUDetectionService
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
-            }
+                CreateNoWindow = true,
+            },
         };
 
         var outputBuilder = new System.Text.StringBuilder();
@@ -195,7 +202,9 @@ public sealed class GPUDetectionService : IGPUDetectionService
 
         if (process.ExitCode != 0)
         {
-            throw new InvalidOperationException($"Process {fileName} exited with code {process.ExitCode}");
+            throw new InvalidOperationException(
+                $"Process {fileName} exited with code {process.ExitCode}"
+            );
         }
 
         return outputBuilder.ToString();
@@ -217,10 +226,16 @@ public sealed class GPUDetectionService : IGPUDetectionService
             );
 
             // Parse: "Cuda compilation tools, release 13.0, V13.0.76"
-            var match = System.Text.RegularExpressions.Regex.Match(nvccOutput, @"release\s+([\d.]+)");
+            var match = System.Text.RegularExpressions.Regex.Match(
+                nvccOutput,
+                @"release\s+([\d.]+)"
+            );
             if (match.Success)
             {
-                _logger.LogDebug("[GPUDetection] CUDA Toolkit version from nvcc: {Version}", match.Groups[1].Value);
+                _logger.LogDebug(
+                    "[GPUDetection] CUDA Toolkit version from nvcc: {Version}",
+                    match.Groups[1].Value
+                );
                 return match.Groups[1].Value;
             }
         }
@@ -242,7 +257,10 @@ public sealed class GPUDetectionService : IGPUDetectionService
             var driverVersion = smiOutput.Trim();
             if (!string.IsNullOrWhiteSpace(driverVersion))
             {
-                _logger.LogDebug("[GPUDetection] CUDA Driver version from nvidia-smi: {Version}", driverVersion);
+                _logger.LogDebug(
+                    "[GPUDetection] CUDA Driver version from nvidia-smi: {Version}",
+                    driverVersion
+                );
                 // Note: This is driver version, not toolkit version, but still useful
                 return $"{driverVersion} (driver)";
             }

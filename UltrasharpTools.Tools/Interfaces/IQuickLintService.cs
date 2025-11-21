@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Interfaces;
 
 /// <summary>

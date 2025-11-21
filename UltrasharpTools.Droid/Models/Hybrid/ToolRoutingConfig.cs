@@ -42,26 +42,27 @@ public sealed class ToolRoutingConfig
     /// Возможные значения: "local", "overlord", "overlord_with_fallback"
     /// </summary>
     [JsonPropertyName("routingRules")]
-    public Dictionary<string, string> RoutingRules { get; set; } = new()
-    {
-        // Semantic tools - всегда Overlord (cross-project vector search)
-        ["semantic_search"] = "overlord",
-        ["semantic_diff"] = "overlord",
-        ["find_duplicates"] = "overlord",
+    public Dictionary<string, string> RoutingRules { get; set; } =
+        new()
+        {
+            // Semantic tools - всегда Overlord (cross-project vector search)
+            ["semantic_search"] = "overlord",
+            ["semantic_diff"] = "overlord",
+            ["find_duplicates"] = "overlord",
 
-        // Batch analysis tools - всегда локально (requires loaded solution + full Roslyn)
-        ["detect_code_clones"] = "local",
+            // Batch analysis tools - всегда локально (requires loaded solution + full Roslyn)
+            ["detect_code_clones"] = "local",
 
-        // Hybrid tools - Overlord с fallback
-        ["pattern_search"] = "overlord_with_fallback",
-        ["analyze_complexity"] = "overlord_with_fallback",
+            // Hybrid tools - Overlord с fallback
+            ["pattern_search"] = "overlord_with_fallback",
+            ["analyze_complexity"] = "overlord_with_fallback",
 
-        // Local tools - всегда локально
-        ["view_definition"] = "local",
-        ["get_members"] = "local",
-        ["load_solution"] = "local",
-        ["load_project"] = "local"
-    };
+            // Local tools - всегда локально
+            ["view_definition"] = "local",
+            ["get_members"] = "local",
+            ["load_solution"] = "local",
+            ["load_project"] = "local",
+        };
 
     /// <summary>
     /// Создаёт конфигурацию по умолчанию

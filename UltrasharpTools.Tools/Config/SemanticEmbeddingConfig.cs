@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Config;
 
 /// <summary>
@@ -31,42 +29,44 @@ public class EmbeddingSettings
 public class TeiSettings
 {
     public string Endpoint { get; set; } = "http://localhost:8080";
-    public List<ModelInfo> Models { get; set; } = new()
-    {
+    public List<ModelInfo> Models { get; set; } =
         new()
         {
-            Id = "sentence-transformers/all-MiniLM-L6-v2",
-            Languages = new() { "english" },
-            VectorSize = 384
-        },
-        new()
-        {
-            Id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-            Languages = new() { "multilingual" },
-            VectorSize = 384
-        }
-    };
+            new()
+            {
+                Id = "sentence-transformers/all-MiniLM-L6-v2",
+                Languages = new() { "english" },
+                VectorSize = 384,
+            },
+            new()
+            {
+                Id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+                Languages = new() { "multilingual" },
+                VectorSize = 384,
+            },
+        };
     public string SelectedModel { get; set; } = "sentence-transformers/all-MiniLM-L6-v2";
 }
 
 public class OllamaSettings
 {
     public string Endpoint { get; set; } = "http://localhost:11434";
-    public List<ModelInfo> Models { get; set; } = new()
-    {
+    public List<ModelInfo> Models { get; set; } =
         new()
         {
-            Id = "granite-embedding:latest",
-            Languages = new() { "english" },
-            VectorSize = 384
-        },
-        new()
-        {
-            Id = "mxbai-embed-large:latest",
-            Languages = new() { "multilingual" },
-            VectorSize = 1024
-        }
-    };
+            new()
+            {
+                Id = "granite-embedding:latest",
+                Languages = new() { "english" },
+                VectorSize = 384,
+            },
+            new()
+            {
+                Id = "mxbai-embed-large:latest",
+                Languages = new() { "multilingual" },
+                VectorSize = 1024,
+            },
+        };
     public string SelectedModel { get; set; } = "granite-embedding:latest";
 }
 

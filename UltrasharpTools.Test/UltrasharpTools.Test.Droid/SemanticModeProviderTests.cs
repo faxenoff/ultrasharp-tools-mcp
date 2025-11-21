@@ -30,7 +30,8 @@ public class SemanticModeProviderTests
             _localEmbeddingMock.Object,
             _serverBridgeMock.Object,
             "http://localhost:3001",
-            config);
+            config
+        );
 
         // Act
         var result = await provider.CheckAvailabilityAsync();
@@ -56,7 +57,8 @@ public class SemanticModeProviderTests
             _localEmbeddingMock.Object,
             null, // No server bridge
             null,
-            config);
+            config
+        );
 
         // Act
         var result = await provider.CheckAvailabilityAsync();
@@ -82,7 +84,8 @@ public class SemanticModeProviderTests
             null, // No local embedding
             _serverBridgeMock.Object,
             "http://localhost:3001",
-            config);
+            config
+        );
 
         // Act
         var result = await provider.CheckAvailabilityAsync();
@@ -114,7 +117,8 @@ public class SemanticModeProviderTests
             _localEmbeddingMock.Object,
             _serverBridgeMock.Object,
             "http://localhost:3001",
-            config);
+            config
+        );
 
         // Act
         var result = await provider.CheckAvailabilityAsync();
@@ -146,7 +150,8 @@ public class SemanticModeProviderTests
             _localEmbeddingMock.Object,
             null,
             null,
-            config);
+            config
+        );
 
         // Act
         var result1 = await provider.CheckAvailabilityAsync();
@@ -160,7 +165,12 @@ public class SemanticModeProviderTests
 
         // First call: 2 times (availability check + vector dimension check)
         // Subsequent calls: 0 times (cached)
-        callCount.Should().Be(2, "because first check needs availability + dimension, then cache prevents subsequent calls");
+        callCount
+            .Should()
+            .Be(
+                2,
+                "because first check needs availability + dimension, then cache prevents subsequent calls"
+            );
     }
 
     [Fact]
@@ -172,18 +182,21 @@ public class SemanticModeProviderTests
 
         _localEmbeddingMock
             .Setup(x => x.GetEmbeddingAsync("test", It.IsAny<CancellationToken>()))
-            .Returns(async (string text, CancellationToken ct) =>
-            {
-                await Task.Delay(5000, ct); // Simulate slow response
-                return new float[] { 0.1f };
-            });
+            .Returns(
+                async (string text, CancellationToken ct) =>
+                {
+                    await Task.Delay(5000, ct); // Simulate slow response
+                    return new float[] { 0.1f };
+                }
+            );
 
         var provider = new SemanticModeProvider(
             _loggerMock.Object,
             _localEmbeddingMock.Object,
             null,
             null,
-            config);
+            config
+        );
 
         // Act
         var result = await provider.CheckAvailabilityAsync();
@@ -203,7 +216,8 @@ public class SemanticModeProviderTests
             _localEmbeddingMock.Object,
             null,
             null,
-            config);
+            config
+        );
 
         // Act
         var result = await provider.GetEmbeddingAsync("test");
@@ -234,7 +248,8 @@ public class SemanticModeProviderTests
             _localEmbeddingMock.Object,
             null,
             null,
-            config);
+            config
+        );
 
         // Act
         var result = await provider.GetEmbeddingAsync("hello");
@@ -267,7 +282,8 @@ public class SemanticModeProviderTests
             _localEmbeddingMock.Object,
             null,
             null,
-            config);
+            config
+        );
 
         // Act
         var result = await provider.SearchByTextAsync("find similar code", 5, 0.7);

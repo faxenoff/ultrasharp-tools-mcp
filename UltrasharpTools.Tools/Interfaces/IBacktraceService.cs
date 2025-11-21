@@ -19,12 +19,12 @@ public interface IBacktraceService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Backtrace result with possible call paths</returns>
     Task<BacktraceResult> BacktraceFromCrashAsync(
-    string crashPointFqn,
-    string? startPointFqn = null,
-    List<string>? stackTraceHints = null,
-    int maxDepth = 15,
-    int maxPaths = 5,
-    bool includeExternalCallers = false,
-    CancellationToken cancellationToken = default
+        string crashPointFqn,
+        string? startPointFqn = null,
+        List<string>? stackTraceHints = null,
+        int maxDepth = 15,
+        int maxPaths = 5,
+        bool includeExternalCallers = false,
+        CancellationToken cancellationToken = default
     );
 }

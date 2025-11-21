@@ -1,5 +1,4 @@
 using Microsoft.Data.Sqlite;
-
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Serialization;
 
@@ -29,7 +28,8 @@ public sealed partial class CallGraphCacheService
         await _dbLock.WaitAsync(cancellationToken);
         try
         {
-            var sql = @"
+            var sql =
+                @"
 SELECT CallersFullJson
 FROM CallGraphFull
 WHERE MethodFqn = @methodFqn AND SolutionHash = @solutionHash
@@ -46,7 +46,10 @@ LIMIT 1
             {
                 var json = reader.GetString(0);
                 // Use source-generated JSON context for 2-3x faster deserialization
-                var callers = JsonSerializer.Deserialize(json, UltrasharpToolsJsonContext.Default.ListSerializableCallerInfo);
+                var callers = JsonSerializer.Deserialize(
+                    json,
+                    UltrasharpToolsJsonContext.Default.ListSerializableCallerInfo
+                );
 
                 Interlocked.Increment(ref _hitCount);
                 _logger.LogDebug("Full cache HIT for method: {Method}", methodFqn);
@@ -82,10 +85,14 @@ LIMIT 1
         try
         {
             // Use source-generated JSON context for 2-5x faster serialization
-            var json = JsonSerializer.Serialize(callers, UltrasharpToolsJsonContext.Default.ListSerializableCallerInfo);
+            var json = JsonSerializer.Serialize(
+                callers,
+                UltrasharpToolsJsonContext.Default.ListSerializableCallerInfo
+            );
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            var sql = @"
+            var sql =
+                @"
 INSERT OR REPLACE INTO CallGraphFull (MethodFqn, SolutionHash, CallersFullJson, Timestamp, FilePath)
 VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
 ";
@@ -100,7 +107,11 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
 
             await cmd.ExecuteNonQueryAsync(cancellationToken);
 
-            _logger.LogDebug("Cached full callers for method: {Method}, count: {Count}", methodFqn, callers.Count);
+            _logger.LogDebug(
+                "Cached full callers for method: {Method}, count: {Count}",
+                methodFqn,
+                callers.Count
+            );
         }
         finally
         {
@@ -119,7 +130,8 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
         await _dbLock.WaitAsync();
         try
         {
-            var checkTableSql = "SELECT name FROM sqlite_master WHERE type='table' AND name='CallGraphFull'";
+            var checkTableSql =
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='CallGraphFull'";
             await using var checkCmd = _connection!.CreateCommand();
             checkCmd.CommandText = checkTableSql;
 
@@ -131,7 +143,8 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
             }
 
             // Create CallGraphFull table
-            var createTableSql = @"
+            var createTableSql =
+                @"
 CREATE TABLE CallGraphFull (
 MethodFqn TEXT NOT NULL,
 SolutionHash TEXT NOT NULL,

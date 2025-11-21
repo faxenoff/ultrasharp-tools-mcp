@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Semantic;
 
@@ -20,7 +19,8 @@ public sealed class LazyVectorStoreInitializer
     public LazyVectorStoreInitializer(
         VectorStore vectorStore,
         VectorStoreConfig config,
-        ILogger<LazyVectorStoreInitializer>? logger = null)
+        ILogger<LazyVectorStoreInitializer>? logger = null
+    )
     {
         _vectorStore = vectorStore;
         _config = config;
@@ -32,7 +32,10 @@ public sealed class LazyVectorStoreInitializer
     /// Safe to call multiple times - initialization happens only once.
     /// </summary>
     /// <param name="solutionPath">Optional solution path for resolving .ultrasharp/ directory</param>
-    public async Task InitializeAsync(string? solutionPath = null, CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(
+        string? solutionPath = null,
+        CancellationToken cancellationToken = default
+    )
     {
         if (_initialized)
         {
@@ -50,13 +53,17 @@ public sealed class LazyVectorStoreInitializer
             // Resolve database path using ProjectPathHelper if not explicitly set
             string connectionString;
 
-            if (!string.IsNullOrEmpty(_config.ConnectionString) && _config.ConnectionString != ":memory:")
+            if (
+                !string.IsNullOrEmpty(_config.ConnectionString)
+                && _config.ConnectionString != ":memory:"
+            )
             {
                 // Explicit path provided - use as-is
                 connectionString = _config.ConnectionString;
                 _logger.LogInformation(
                     "Initializing VectorStore with explicit database path: {Path}",
-                    connectionString);
+                    connectionString
+                );
             }
             else
             {
@@ -72,11 +79,16 @@ public sealed class LazyVectorStoreInitializer
                 _logger.LogInformation(
                     "Initializing VectorStore with auto-resolved path: {Path} (solution: {SolutionPath})",
                     vectorDbPath,
-                    solutionPath ?? "<not specified>");
+                    solutionPath ?? "<not specified>"
+                );
             }
 
             // Initialize VectorStore
-            await _vectorStore.InitializeAsync(connectionString, _config.Dimension, cancellationToken);
+            await _vectorStore.InitializeAsync(
+                connectionString,
+                _config.Dimension,
+                cancellationToken
+            );
 
             _initialized = true;
 
@@ -102,8 +114,9 @@ public sealed class LazyVectorStoreInitializer
         if (!_initialized)
         {
             throw new InvalidOperationException(
-                "VectorStore is not initialized. " +
-                "Call LazyVectorStoreInitializer.InitializeAsync() after loading solution.");
+                "VectorStore is not initialized. "
+                    + "Call LazyVectorStoreInitializer.InitializeAsync() after loading solution."
+            );
         }
     }
 }

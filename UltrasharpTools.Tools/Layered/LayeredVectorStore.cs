@@ -1,10 +1,7 @@
-
-using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
-
 using System.Numerics;
-
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Semantic;
@@ -42,35 +39,43 @@ public class LayeredVectorStore : IAsyncDisposable
     private string _currentSolutionPath = string.Empty;
 
     public LayeredVectorStore(
-    VectorStore baseVectors,
-    EmbeddingGenerator embeddingGenerator,
-    LayeredIndexingOptions options,
-    IGitService? gitService = null,
-    VectorCacheManager? cacheManager = null,
-    ILogger<LayeredVectorStore>? logger = null)
+        VectorStore baseVectors,
+        EmbeddingGenerator embeddingGenerator,
+        LayeredIndexingOptions options,
+        IGitService? gitService = null,
+        VectorCacheManager? cacheManager = null,
+        ILogger<LayeredVectorStore>? logger = null
+    )
     {
         _baseVectors = baseVectors ?? throw new ArgumentNullException(nameof(baseVectors));
-        _embeddingGenerator = embeddingGenerator ?? throw new ArgumentNullException(nameof(embeddingGenerator));
+        _embeddingGenerator =
+            embeddingGenerator ?? throw new ArgumentNullException(nameof(embeddingGenerator));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? NullLogger<LayeredVectorStore>.Instance;
         _cacheManager = cacheManager;
 
         // Initialize LRU cache with eviction callback
-        _branchDeltaCache = new Infrastructure.LruCache<string, VectorDelta>(maxSize: options.MaxBranchDeltas);
+        _branchDeltaCache = new Infrastructure.LruCache<string, VectorDelta>(
+            maxSize: options.MaxBranchDeltas
+        );
         _branchDeltaCache.OnEvict += OnBranchDeltaEvicted;
 
         _logger.LogInformation(
-        "LayeredVectorStore initialized with max {MaxBranches} branch deltas, persistence: {Persistence}, git integration: {GitEnabled}",
-        options.MaxBranchDeltas, cacheManager != null, gitService != null);
+            "LayeredVectorStore initialized with max {MaxBranches} branch deltas, persistence: {Persistence}, git integration: {GitEnabled}",
+            options.MaxBranchDeltas,
+            cacheManager != null,
+            gitService != null
+        );
     }
 
     /// <summary>
     /// Build base vectors from solution (Layer 0).
     /// </summary>
     public async Task BuildFromSolutionAsync(
-    Solution solution,
-    string solutionPath,
-    CancellationToken cancellationToken = default)
+        Solution solution,
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         _currentSolution = solution;
         _currentSolutionPath = solutionPath;
@@ -88,12 +93,13 @@ public class LayeredVectorStore : IAsyncDisposable
     /// Search for similar code across all three layers.
     /// </summary>
     public async Task<List<SimilarityResult>> SearchAsync(
-    string clientId,
-    string branch,
-    string query,
-    int topK,
-    float minSimilarity = 0.0f,
-    CancellationToken cancellationToken = default)
+        string clientId,
+        string branch,
+        string query,
+        int topK,
+        float minSimilarity = 0.0f,
+        CancellationToken cancellationToken = default
+    )
     {
         // Generate query embedding
         var queryEmbedding = await _embeddingGenerator.EmbedAsync(query, cancellationToken);
@@ -104,19 +110,26 @@ public class LayeredVectorStore : IAsyncDisposable
         }
 
         // Layer 0: Search base vectors
-        var baseResults = await _baseVectors.SearchAsync(queryEmbedding, topK, minSimilarity, cancellationToken);
+        var baseResults = await _baseVectors.SearchAsync(
+            queryEmbedding,
+            topK,
+            minSimilarity,
+            cancellationToken
+        );
         _logger.LogDebug("Layer 0 (base) returned {Count} results", baseResults.Count);
 
         // Convert to internal format for delta application (avoid LINQ allocation)
         var vectorResults = new List<VectorSearchResult>(baseResults.Count);
         foreach (var r in baseResults)
         {
-            vectorResults.Add(new VectorSearchResult
-            {
-                SymbolId = r.Id,
-                Embedding = Array.Empty<float>(), // Not needed for scoring, use singleton
-                Score = r.Similarity
-            });
+            vectorResults.Add(
+                new VectorSearchResult
+                {
+                    SymbolId = r.Id,
+                    Embedding = Array.Empty<float>(), // Not needed for scoring, use singleton
+                    Score = r.Similarity,
+                }
+            );
         }
 
         // Layer 1: Apply branch delta (if not main branch)
@@ -126,7 +139,10 @@ public class LayeredVectorStore : IAsyncDisposable
             if (branchDelta != null)
             {
                 vectorResults = ApplyVectorDelta(vectorResults, branchDelta, queryEmbedding, topK);
-                _logger.LogDebug("Layer 1 (branch) applied {Changes} changes", branchDelta.TotalChanges);
+                _logger.LogDebug(
+                    "Layer 1 (branch) applied {Changes} changes",
+                    branchDelta.TotalChanges
+                );
             }
         }
 
@@ -135,7 +151,10 @@ public class LayeredVectorStore : IAsyncDisposable
         if (_workingDeltas.TryGetValue(workingKey, out var workingDelta))
         {
             vectorResults = ApplyVectorDelta(vectorResults, workingDelta, queryEmbedding, topK);
-            _logger.LogDebug("Layer 2 (working) applied {Changes} changes", workingDelta.TotalChanges);
+            _logger.LogDebug(
+                "Layer 2 (working) applied {Changes} changes",
+                workingDelta.TotalChanges
+            );
         }
 
         // Convert back to SimilarityResult format (avoid LINQ allocation)
@@ -143,14 +162,19 @@ public class LayeredVectorStore : IAsyncDisposable
         for (int i = 0; i < vectorResults.Count; i++)
         {
             var r = vectorResults[i];
-            results.Add(new SimilarityResult
-            {
-                Id = r.SymbolId,
-                Content = r.SymbolEntry?.CanonicalFqn ?? string.Empty,
-                Similarity = r.Score,
-                Rank = i + 1,
-                Metadata = r.SymbolEntry != null ? System.Text.Json.JsonSerializer.Serialize(r.SymbolEntry) : null
-            });
+            results.Add(
+                new SimilarityResult
+                {
+                    Id = r.SymbolId,
+                    Content = r.SymbolEntry?.CanonicalFqn ?? string.Empty,
+                    Similarity = r.Score,
+                    Rank = i + 1,
+                    Metadata =
+                        r.SymbolEntry != null
+                            ? System.Text.Json.JsonSerializer.Serialize(r.SymbolEntry)
+                            : null,
+                }
+            );
         }
 
         return results;
@@ -160,20 +184,21 @@ public class LayeredVectorStore : IAsyncDisposable
     /// Update working delta with a new or modified symbol embedding.
     /// </summary>
     public async Task UpdateWorkingDeltaAsync(
-    string clientId,
-    string branch,
-    string symbolId,
-    string code,
-    CancellationToken cancellationToken = default)
+        string clientId,
+        string branch,
+        string symbolId,
+        string code,
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
         {
             var workingKey = GetWorkingDeltaKey(clientId, branch);
-            var delta = _workingDeltas.GetOrAdd(workingKey, _ => new VectorDelta
-            {
-                BranchName = branch
-            });
+            var delta = _workingDeltas.GetOrAdd(
+                workingKey,
+                _ => new VectorDelta { BranchName = branch }
+            );
 
             // Generate embedding for the code
             var embedding = await _embeddingGenerator.EmbedAsync(code, cancellationToken);
@@ -189,12 +214,18 @@ public class LayeredVectorStore : IAsyncDisposable
             if (isNewSymbol)
             {
                 delta.AddedEmbeddings[symbolId] = embedding;
-                _logger.LogDebug("Added embedding for new symbol {SymbolId} in working delta", symbolId);
+                _logger.LogDebug(
+                    "Added embedding for new symbol {SymbolId} in working delta",
+                    symbolId
+                );
             }
             else
             {
                 delta.ModifiedEmbeddings[symbolId] = embedding;
-                _logger.LogDebug("Updated embedding for modified symbol {SymbolId} in working delta", symbolId);
+                _logger.LogDebug(
+                    "Updated embedding for modified symbol {SymbolId} in working delta",
+                    symbolId
+                );
             }
 
             delta.LastModified = DateTimeOffset.UtcNow;
@@ -209,9 +240,10 @@ public class LayeredVectorStore : IAsyncDisposable
     /// Clear working delta for a client.
     /// </summary>
     public async Task ClearWorkingDeltaAsync(
-    string clientId,
-    string branch,
-    CancellationToken cancellationToken = default)
+        string clientId,
+        string branch,
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
@@ -220,8 +252,11 @@ public class LayeredVectorStore : IAsyncDisposable
             if (_workingDeltas.TryRemove(workingKey, out var removed))
             {
                 _logger.LogInformation(
-                "Cleared working delta for client {ClientId}, branch {Branch} ({Changes} changes)",
-                clientId, branch, removed.TotalChanges);
+                    "Cleared working delta for client {ClientId}, branch {Branch} ({Changes} changes)",
+                    clientId,
+                    branch,
+                    removed.TotalChanges
+                );
             }
         }
         finally
@@ -234,10 +269,11 @@ public class LayeredVectorStore : IAsyncDisposable
     /// Promote working delta to branch delta (after git commit).
     /// </summary>
     public async Task PromoteWorkingToBranchAsync(
-    string clientId,
-    string branch,
-    string newCommitSha,
-    CancellationToken cancellationToken = default)
+        string clientId,
+        string branch,
+        string newCommitSha,
+        CancellationToken cancellationToken = default
+    )
     {
         await _updateLock.WaitAsync(cancellationToken);
         try
@@ -245,8 +281,11 @@ public class LayeredVectorStore : IAsyncDisposable
             var workingKey = GetWorkingDeltaKey(clientId, branch);
             if (!_workingDeltas.TryRemove(workingKey, out var workingDelta))
             {
-                _logger.LogWarning("No working delta to promote for client {ClientId}, branch {Branch}",
-                clientId, branch);
+                _logger.LogWarning(
+                    "No working delta to promote for client {ClientId}, branch {Branch}",
+                    clientId,
+                    branch
+                );
                 return;
             }
 
@@ -254,11 +293,7 @@ public class LayeredVectorStore : IAsyncDisposable
             var branchDelta = await GetOrLoadBranchDeltaAsync(branch, cancellationToken);
             if (branchDelta == null)
             {
-                branchDelta = new VectorDelta
-                {
-                    BranchName = branch,
-                    BaseCommitSha = newCommitSha
-                };
+                branchDelta = new VectorDelta { BranchName = branch, BaseCommitSha = newCommitSha };
             }
 
             // Merge working delta into branch delta
@@ -276,8 +311,10 @@ public class LayeredVectorStore : IAsyncDisposable
             }
 
             _logger.LogInformation(
-            "Promoted working delta to branch delta: {Branch} ({Changes} changes)",
-            branch, workingDelta.TotalChanges);
+                "Promoted working delta to branch delta: {Branch} ({Changes} changes)",
+                branch,
+                workingDelta.TotalChanges
+            );
         }
         finally
         {
@@ -289,8 +326,9 @@ public class LayeredVectorStore : IAsyncDisposable
     /// Ensure branch delta is loaded (from storage or git diff).
     /// </summary>
     public async Task EnsureBranchDeltaAsync(
-    string branch,
-    CancellationToken cancellationToken = default)
+        string branch,
+        CancellationToken cancellationToken = default
+    )
     {
         if (branch == "main" || branch == "master")
             return; // Main branch doesn't have delta
@@ -301,8 +339,9 @@ public class LayeredVectorStore : IAsyncDisposable
     // Private helpers
 
     private async Task<VectorDelta?> GetOrLoadBranchDeltaAsync(
-    string branch,
-    CancellationToken cancellationToken)
+        string branch,
+        CancellationToken cancellationToken
+    )
     {
         // Check in-memory cache
         if (_branchDeltaCache.TryGet(branch, out var cached))
@@ -318,7 +357,10 @@ public class LayeredVectorStore : IAsyncDisposable
             delta = await _cacheManager.LoadVectorDeltaAsync(branch, cancellationToken);
             if (delta != null)
             {
-                _logger.LogInformation("Loaded vector delta from persistent storage: {Branch}", branch);
+                _logger.LogInformation(
+                    "Loaded vector delta from persistent storage: {Branch}",
+                    branch
+                );
             }
         }
 
@@ -329,7 +371,7 @@ public class LayeredVectorStore : IAsyncDisposable
             delta = new VectorDelta
             {
                 BranchName = branch,
-                BaseCommitSha = string.Empty // Will be updated by git integration
+                BaseCommitSha = string.Empty, // Will be updated by git integration
             };
 
             if (_cacheManager != null)
@@ -381,10 +423,11 @@ public class LayeredVectorStore : IAsyncDisposable
     /// Modifies results in-place and uses List.Sort instead of LINQ for better performance.
     /// </summary>
     private List<VectorSearchResult> ApplyVectorDelta(
-    List<VectorSearchResult> baseResults,
-    VectorDelta delta,
-    float[] queryEmbedding,
-    int topK)
+        List<VectorSearchResult> baseResults,
+        VectorDelta delta,
+        float[] queryEmbedding,
+        int topK
+    )
     {
         // Pre-allocate list with estimated capacity to avoid resizing
         int estimatedCapacity = baseResults.Count + delta.AddedEmbeddings.Count;
@@ -409,12 +452,14 @@ public class LayeredVectorStore : IAsyncDisposable
         foreach (var (symbolId, embedding) in delta.AddedEmbeddings)
         {
             var score = CalculateCosineSimilarity(queryEmbedding, embedding);
-            filtered.Add(new VectorSearchResult
-            {
-                SymbolId = symbolId,
-                Embedding = embedding,
-                Score = score
-            });
+            filtered.Add(
+                new VectorSearchResult
+                {
+                    SymbolId = symbolId,
+                    Embedding = embedding,
+                    Score = score,
+                }
+            );
         }
 
         // Sort in-place (descending by score) - faster than LINQ OrderByDescending
@@ -493,15 +538,16 @@ public class LayeredVectorStore : IAsyncDisposable
     }
 
     private static string GetWorkingDeltaKey(string clientId, string branch) =>
-    $"{clientId}::{branch}";
+        $"{clientId}::{branch}";
 
     public async ValueTask DisposeAsync()
     {
         // Save all branch deltas before disposal
         if (_cacheManager != null)
         {
-            var saveTasks = _branchDeltas.Values
-            .Select(delta => _cacheManager.SaveVectorDeltaAsync(delta, CancellationToken.None));
+            var saveTasks = _branchDeltas.Values.Select(delta =>
+                _cacheManager.SaveVectorDeltaAsync(delta, CancellationToken.None)
+            );
             await Task.WhenAll(saveTasks);
         }
 

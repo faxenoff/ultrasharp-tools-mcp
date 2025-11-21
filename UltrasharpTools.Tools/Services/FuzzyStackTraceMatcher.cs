@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Services;
 
 /// <summary>
@@ -36,14 +34,20 @@ public static class FuzzyStackTraceMatcher
             }
 
             // Type + method name exact match
-            if (typeName != null && hint.Contains($"{typeName}.{methodName}", StringComparison.OrdinalIgnoreCase))
+            if (
+                typeName != null
+                && hint.Contains($"{typeName}.{methodName}", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 bestScore = Math.Max(bestScore, 0.95);
                 continue;
             }
 
             // Namespace partial match
-            if (namespaceName != null && hint.Contains(namespaceName, StringComparison.OrdinalIgnoreCase))
+            if (
+                namespaceName != null
+                && hint.Contains(namespaceName, StringComparison.OrdinalIgnoreCase)
+            )
             {
                 bestScore = Math.Max(bestScore, 0.7);
             }
@@ -122,8 +126,14 @@ public static class FuzzyStackTraceMatcher
         target = target.ToLowerInvariant();
 
         // Split by dots and match segments
-        var hintSegments = hint.Split(new[] { '.', ',', '<', '>', ' ', '(', ')' }, StringSplitOptions.RemoveEmptyEntries);
-        var targetSegments = target.Split(new[] { '.', '<', '>' }, StringSplitOptions.RemoveEmptyEntries);
+        var hintSegments = hint.Split(
+            new[] { '.', ',', '<', '>', ' ', '(', ')' },
+            StringSplitOptions.RemoveEmptyEntries
+        );
+        var targetSegments = target.Split(
+            new[] { '.', '<', '>' },
+            StringSplitOptions.RemoveEmptyEntries
+        );
 
         int matchedSegments = 0;
         foreach (var targetSeg in targetSegments)
@@ -193,8 +203,8 @@ public static class FuzzyStackTraceMatcher
                 int cost = (target[j - 1] == source[i - 1]) ? 0 : 1;
 
                 matrix[i, j] = Math.Min(
-                Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
-                matrix[i - 1, j - 1] + cost
+                    Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
+                    matrix[i - 1, j - 1] + cost
                 );
             }
         }

@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UltrasharpTools.Tools.Layered;
@@ -17,29 +16,33 @@ public class DeltaCompactionService
     private readonly int _compactionThreshold;
 
     public DeltaCompactionService(
-    ILayeredIndex layeredSymbolIndex,
-    IGitService gitService,
-    LayeredVectorStore? layeredVectorStore = null,
-    int compactionThreshold = 1000,
-    ILogger<DeltaCompactionService>? logger = null)
+        ILayeredIndex layeredSymbolIndex,
+        IGitService gitService,
+        LayeredVectorStore? layeredVectorStore = null,
+        int compactionThreshold = 1000,
+        ILogger<DeltaCompactionService>? logger = null
+    )
     {
-        _layeredSymbolIndex = layeredSymbolIndex ?? throw new ArgumentNullException(nameof(layeredSymbolIndex));
+        _layeredSymbolIndex =
+            layeredSymbolIndex ?? throw new ArgumentNullException(nameof(layeredSymbolIndex));
         _gitService = gitService ?? throw new ArgumentNullException(nameof(gitService));
         _layeredVectorStore = layeredVectorStore;
         _compactionThreshold = compactionThreshold;
         _logger = logger ?? NullLogger<DeltaCompactionService>.Instance;
 
         _logger.LogInformation(
-        "DeltaCompactionService initialized with threshold: {Threshold}",
-        _compactionThreshold);
+            "DeltaCompactionService initialized with threshold: {Threshold}",
+            _compactionThreshold
+        );
     }
 
     /// <summary>
     /// Analyzes a branch delta and determines if compaction is needed.
     /// </summary>
     public async Task<bool> NeedsCompactionAsync(
-    string branch,
-    CancellationToken cancellationToken = default)
+        string branch,
+        CancellationToken cancellationToken = default
+    )
     {
         // Get branch delta info
         var delta = await GetBranchDeltaAsync(branch, cancellationToken);
@@ -54,8 +57,11 @@ public class DeltaCompactionService
         if (needsCompaction)
         {
             _logger.LogWarning(
-            "Branch {Branch} has {TotalChanges} changes, exceeding threshold {Threshold}. Compaction recommended.",
-            branch, totalChanges, _compactionThreshold);
+                "Branch {Branch} has {TotalChanges} changes, exceeding threshold {Threshold}. Compaction recommended.",
+                branch,
+                totalChanges,
+                _compactionThreshold
+            );
         }
 
         return needsCompaction;
@@ -66,13 +72,16 @@ public class DeltaCompactionService
     /// This reduces accumulated changes and optimizes memory usage.
     /// </summary>
     public async Task CompactBranchDeltaAsync(
-    string branch,
-    string baseBranch = "main",
-    CancellationToken cancellationToken = default)
+        string branch,
+        string baseBranch = "main",
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation(
-        "Compacting branch delta: {Branch} (base: {BaseBranch})",
-        branch, baseBranch);
+            "Compacting branch delta: {Branch} (base: {BaseBranch})",
+            branch,
+            baseBranch
+        );
 
         var startTime = DateTimeOffset.UtcNow;
 
@@ -95,14 +104,21 @@ public class DeltaCompactionService
         var elapsed = DateTimeOffset.UtcNow - startTime;
 
         _logger.LogInformation(
-        "Branch delta compacted: {Branch}. Changes: {OldCount} → {NewCount}. Time: {Elapsed}ms",
-        branch, oldTotalChanges, newTotalChanges, elapsed.TotalMilliseconds);
+            "Branch delta compacted: {Branch}. Changes: {OldCount} → {NewCount}. Time: {Elapsed}ms",
+            branch,
+            oldTotalChanges,
+            newTotalChanges,
+            elapsed.TotalMilliseconds
+        );
     }
 
     /// <summary>
     /// Analyzes all branch deltas and compacts those exceeding threshold.
     /// </summary>
-    public async Task CompactAllLargeDeltasAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task CompactAllLargeDeltasAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation("Analyzing all branch deltas for compaction...");
 
@@ -134,16 +150,19 @@ public class DeltaCompactionService
         }
 
         _logger.LogInformation(
-        "Compaction completed. Compacted {Count} branch deltas out of {Total} branches.",
-        compactedCount, branches.Count);
+            "Compaction completed. Compacted {Count} branch deltas out of {Total} branches.",
+            compactedCount,
+            branches.Count
+        );
     }
 
     /// <summary>
     /// Gets branch delta statistics for analysis.
     /// </summary>
     private async Task<BranchDeltaInfo?> GetBranchDeltaAsync(
-    string branch,
-    CancellationToken cancellationToken)
+        string branch,
+        CancellationToken cancellationToken
+    )
     {
         // Note: This is a simplified implementation
         // In real scenario, would need API on ILayeredIndex to query delta stats

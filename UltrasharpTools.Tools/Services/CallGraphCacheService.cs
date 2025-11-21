@@ -1,10 +1,8 @@
+using System.Security.Cryptography;
 using Microsoft.Data.Sqlite;
-
 using UltrasharpTools.Tools.Infrastructure;
-
 using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Serialization;
-using System.Security.Cryptography;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -46,7 +44,8 @@ public sealed partial class CallGraphCacheService : ICallGraphCacheService, IDis
             await _connection.OpenAsync();
 
             // Create schema
-            var createTableSql = @"
+            var createTableSql =
+                @"
 CREATE TABLE IF NOT EXISTS CallGraph (
 MethodFqn TEXT NOT NULL,
 SolutionHash TEXT NOT NULL,
@@ -82,15 +81,16 @@ Value TEXT NOT NULL
     }
 
     public async Task<List<string>?> GetCallersAsync(
-    string methodFqn,
-    string solutionHash,
-    CancellationToken cancellationToken = default
+        string methodFqn,
+        string solutionHash,
+        CancellationToken cancellationToken = default
     )
     {
         await _dbLock.WaitAsync(cancellationToken);
         try
         {
-            var sql = @"
+            var sql =
+                @"
 SELECT CallersFqnJson
 FROM CallGraph
 WHERE MethodFqn = @methodFqn AND SolutionHash = @solutionHash
@@ -107,7 +107,10 @@ LIMIT 1
             {
                 var json = reader.GetString(0);
                 // Use source-generated JSON context for 2-3x faster deserialization
-                var callers = JsonSerializer.Deserialize(json, UltrasharpToolsJsonContext.Default.ListString);
+                var callers = JsonSerializer.Deserialize(
+                    json,
+                    UltrasharpToolsJsonContext.Default.ListString
+                );
 
                 Interlocked.Increment(ref _hitCount);
                 _logger.LogDebug("Cache HIT for method: {Method}", methodFqn);
@@ -127,20 +130,24 @@ LIMIT 1
     }
 
     public async Task SetCallersAsync(
-    string methodFqn,
-    List<string> callerFqns,
-    string solutionHash,
-    CancellationToken cancellationToken = default
+        string methodFqn,
+        List<string> callerFqns,
+        string solutionHash,
+        CancellationToken cancellationToken = default
     )
     {
         await _dbLock.WaitAsync(cancellationToken);
         try
         {
             // Use source-generated JSON context for 2-5x faster serialization
-            var json = JsonSerializer.Serialize(callerFqns, UltrasharpToolsJsonContext.Default.ListString);
+            var json = JsonSerializer.Serialize(
+                callerFqns,
+                UltrasharpToolsJsonContext.Default.ListString
+            );
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            var sql = @"
+            var sql =
+                @"
 INSERT OR REPLACE INTO CallGraph (MethodFqn, SolutionHash, CallersFqnJson, Timestamp, FilePath)
 VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
 ";
@@ -155,7 +162,11 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
 
             await cmd.ExecuteNonQueryAsync(cancellationToken);
 
-            _logger.LogDebug("Cached callers for method: {Method}, count: {Count}", methodFqn, callerFqns.Count);
+            _logger.LogDebug(
+                "Cached callers for method: {Method}, count: {Count}",
+                methodFqn,
+                callerFqns.Count
+            );
         }
         finally
         {
@@ -164,8 +175,8 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
     }
 
     public async Task InvalidateByFilesAsync(
-    List<string> modifiedFilePaths,
-    CancellationToken cancellationToken = default
+        List<string> modifiedFilePaths,
+        CancellationToken cancellationToken = default
     )
     {
         if (modifiedFilePaths == null || modifiedFilePaths.Count == 0)
@@ -178,8 +189,10 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
         {
             // For now, invalidate by file path
             // In future, could be smarter by tracking method -> file mapping
-            var sql = "DELETE FROM CallGraph WHERE FilePath IN (" +
-            string.Join(",", modifiedFilePaths.Select((_, i) => $"@path{i}")) + ")";
+            var sql =
+                "DELETE FROM CallGraph WHERE FilePath IN ("
+                + string.Join(",", modifiedFilePaths.Select((_, i) => $"@path{i}"))
+                + ")";
 
             await using var cmd = _connection!.CreateCommand();
             cmd.CommandText = sql;
@@ -207,7 +220,10 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
             cmd.CommandText = sql;
 
             var deleted = await cmd.ExecuteNonQueryAsync(cancellationToken);
-            _logger.LogInformation("Invalidated entire call graph cache ({Count} entries)", deleted);
+            _logger.LogInformation(
+                "Invalidated entire call graph cache ({Count} entries)",
+                deleted
+            );
 
             // Reset stats
             _hitCount = 0;
@@ -219,12 +235,15 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
         }
     }
 
-    public async Task<CallGraphCacheStats> GetStatsAsync(CancellationToken cancellationToken = default)
+    public async Task<CallGraphCacheStats> GetStatsAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         await _dbLock.WaitAsync(cancellationToken);
         try
         {
-            var sql = @"
+            var sql =
+                @"
 SELECT
 COUNT(*) as TotalEntries,
 MIN(Timestamp) as OldestTimestamp,
@@ -239,8 +258,12 @@ FROM CallGraph
             if (await reader.ReadAsync(cancellationToken))
             {
                 var totalEntries = reader.GetInt32(0);
-                var oldestTimestamp = reader.IsDBNull(1) ? (DateTime?)null : DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(1)).DateTime;
-                var newestTimestamp = reader.IsDBNull(2) ? (DateTime?)null : DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(2)).DateTime;
+                var oldestTimestamp = reader.IsDBNull(1)
+                    ? (DateTime?)null
+                    : DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(1)).DateTime;
+                var newestTimestamp = reader.IsDBNull(2)
+                    ? (DateTime?)null
+                    : DateTimeOffset.FromUnixTimeSeconds(reader.GetInt64(2)).DateTime;
 
                 // Get file size
                 var fileInfo = new FileInfo(_cacheDbPath);
@@ -253,7 +276,7 @@ FROM CallGraph
                     MissCount = _missCount,
                     CacheSizeBytes = cacheSize,
                     OldestEntryTimestamp = oldestTimestamp,
-                    NewestEntryTimestamp = newestTimestamp
+                    NewestEntryTimestamp = newestTimestamp,
                 };
             }
 
@@ -295,7 +318,8 @@ FROM CallGraph
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         _dbLock.Wait();
         try

@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-
 using Microsoft.Extensions.Http;
 using UltrasharpTools.Tools.Semantic.Models;
 
@@ -21,17 +20,22 @@ public sealed class TEIProvider : IEmbeddingProvider
     public int MaxContextTokens => 8192;
     public int? Dimension => _dimension;
 
-    public ProviderInfo Info => new()
-    {
-        Name = "tei",
-        Model = _options.Model,
-        Dimension = _dimension ?? 0,
-        MaxTokens = 8192,
-        IsLocal = true,
-        Version = "1.0"
-    };
+    public ProviderInfo Info =>
+        new()
+        {
+            Name = "tei",
+            Model = _options.Model,
+            Dimension = _dimension ?? 0,
+            MaxTokens = 8192,
+            IsLocal = true,
+            Version = "1.0",
+        };
 
-    public TEIProvider(TEIOptions options, ILogger<TEIProvider> logger, IHttpClientFactory httpClientFactory)
+    public TEIProvider(
+        TEIOptions options,
+        ILogger<TEIProvider> logger,
+        IHttpClientFactory httpClientFactory
+    )
     {
         _options = options;
         _logger = logger;
@@ -64,11 +68,17 @@ public sealed class TEIProvider : IEmbeddingProvider
         catch (Exception ex)
         {
             _logger.LogError(ex, "[TEI] Initialization failed");
-            throw new InvalidOperationException("TEI provider initialization failed. Is Docker container running?", ex);
+            throw new InvalidOperationException(
+                "TEI provider initialization failed. Is Docker container running?",
+                ex
+            );
         }
     }
 
-    public async Task<float[]> EmbedAsync(string text, CancellationToken cancellationToken = default)
+    public async Task<float[]> EmbedAsync(
+        string text,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -91,7 +101,10 @@ public sealed class TEIProvider : IEmbeddingProvider
         }
     }
 
-    public async Task<float[][]> EmbedBatchAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+    public async Task<float[][]> EmbedBatchAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken cancellationToken = default
+    )
     {
         // TEI supports batch embedding
         try
@@ -103,7 +116,9 @@ public sealed class TEIProvider : IEmbeddingProvider
             var embeddings = await response.Content.ReadFromJsonAsync<float[][]>(cancellationToken);
             if (embeddings == null || embeddings.Length != texts.Count)
             {
-                throw new InvalidOperationException($"TEI batch response mismatch: expected {texts.Count}, got {embeddings?.Length ?? 0}");
+                throw new InvalidOperationException(
+                    $"TEI batch response mismatch: expected {texts.Count}, got {embeddings?.Length ?? 0}"
+                );
             }
 
             return embeddings;
@@ -158,7 +173,10 @@ public sealed class TEIProvider : IEmbeddingProvider
     {
         try
         {
-            _logger.LogInformation("[TEI] Starting Docker container: {Container}", _options.ContainerName);
+            _logger.LogInformation(
+                "[TEI] Starting Docker container: {Container}",
+                _options.ContainerName
+            );
 
             using var process = new System.Diagnostics.Process
             {
@@ -169,8 +187,8 @@ public sealed class TEIProvider : IEmbeddingProvider
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
-                    CreateNoWindow = true
-                }
+                    CreateNoWindow = true,
+                },
             };
 
             process.Start();

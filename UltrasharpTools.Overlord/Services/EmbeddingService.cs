@@ -19,7 +19,8 @@ public sealed class EmbeddingService : IEmbeddingService
         HttpClient httpClient,
         ILogger<EmbeddingService> logger,
         string embeddingUrl,
-        string embeddingModel = "nomic-embed-text")
+        string embeddingModel = "nomic-embed-text"
+    )
     {
         _httpClient = httpClient;
         _logger = logger;
@@ -28,13 +29,14 @@ public sealed class EmbeddingService : IEmbeddingService
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
+            WriteIndented = false,
         };
     }
 
     public async Task<float[]?> GetEmbeddingAsync(
         string text,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -57,7 +59,11 @@ public sealed class EmbeddingService : IEmbeddingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get embedding for text (length: {Length})", text.Length);
+            _logger.LogError(
+                ex,
+                "Failed to get embedding for text (length: {Length})",
+                text.Length
+            );
             return null;
         }
     }
@@ -67,9 +73,7 @@ public sealed class EmbeddingService : IEmbeddingService
         try
         {
             var isOllama = _embeddingUrl.Contains("11434") || _embeddingUrl.Contains("ollama");
-            var healthUrl = isOllama
-                ? $"{_embeddingUrl}/api/tags"
-                : $"{_embeddingUrl}/health";
+            var healthUrl = isOllama ? $"{_embeddingUrl}/api/tags" : $"{_embeddingUrl}/health";
 
             var response = await _httpClient.GetAsync(healthUrl, cancellationToken);
             var isAvailable = response.IsSuccessStatusCode;
@@ -87,22 +91,25 @@ public sealed class EmbeddingService : IEmbeddingService
 
     private async Task<float[]?> GetEmbeddingFromOllamaAsync(
         string text,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var url = $"{_embeddingUrl}/api/embeddings";
 
-        var request = new
-        {
-            model = _embeddingModel,
-            prompt = text
-        };
+        var request = new { model = _embeddingModel, prompt = text };
 
-        var response = await _httpClient.PostAsJsonAsync(url, request, _jsonOptions, cancellationToken);
+        var response = await _httpClient.PostAsJsonAsync(
+            url,
+            request,
+            _jsonOptions,
+            cancellationToken
+        );
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<OllamaEmbeddingResponse>(
             _jsonOptions,
-            cancellationToken);
+            cancellationToken
+        );
 
         if (result?.Embedding == null || result.Embedding.Length == 0)
         {
@@ -113,28 +120,33 @@ public sealed class EmbeddingService : IEmbeddingService
         _logger.LogDebug(
             "Generated embedding via Ollama (model: {Model}): {Dimensions} dimensions",
             _embeddingModel,
-            result.Embedding.Length);
+            result.Embedding.Length
+        );
 
         return result.Embedding;
     }
 
     private async Task<float[]?> GetEmbeddingFromTeiAsync(
         string text,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var url = $"{_embeddingUrl}/embed";
 
-        var request = new
-        {
-            inputs = text
-        };
+        var request = new { inputs = text };
 
-        var response = await _httpClient.PostAsJsonAsync(url, request, _jsonOptions, cancellationToken);
+        var response = await _httpClient.PostAsJsonAsync(
+            url,
+            request,
+            _jsonOptions,
+            cancellationToken
+        );
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<float[][]>(
             _jsonOptions,
-            cancellationToken);
+            cancellationToken
+        );
 
         if (result == null || result.Length == 0 || result[0].Length == 0)
         {
@@ -142,9 +154,7 @@ public sealed class EmbeddingService : IEmbeddingService
             return null;
         }
 
-        _logger.LogDebug(
-            "Generated embedding via TEI: {Dimensions} dimensions",
-            result[0].Length);
+        _logger.LogDebug("Generated embedding via TEI: {Dimensions} dimensions", result[0].Length);
 
         return result[0];
     }

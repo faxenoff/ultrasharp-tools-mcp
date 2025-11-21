@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
@@ -17,9 +15,10 @@ public sealed class JsonParser
     private readonly ContentNormalizer _normalizer;
 
     public JsonParser(
-    StructuralFingerprint fingerprint,
-    ContentNormalizer normalizer,
-    ILogger<JsonParser>? logger = null)
+        StructuralFingerprint fingerprint,
+        ContentNormalizer normalizer,
+        ILogger<JsonParser>? logger = null
+    )
     {
         _fingerprint = fingerprint;
         _normalizer = normalizer;
@@ -30,8 +29,9 @@ public sealed class JsonParser
     /// Парсить JSON файл и извлечь CodeUnits.
     /// </summary>
     public async Task<List<CodeUnit>> ParseFileAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         // 1. Нормализовать контент
         var normalized = await _normalizer.NormalizeAsync(filePath, ct);
@@ -53,9 +53,10 @@ public sealed class JsonParser
         ExtractJsonElement(root, rootPath, filePath, fileUnit.Id, units, lineNumber: 1);
 
         _logger.LogInformation(
-        "Parsed JSON {FilePath}: extracted {Count} units",
-        filePath,
-        units.Count);
+            "Parsed JSON {FilePath}: extracted {Count} units",
+            filePath,
+            units.Count
+        );
 
         return units;
     }
@@ -89,8 +90,8 @@ public sealed class JsonParser
             Metadata = new Dictionary<string, object>
             {
                 ["FileSize"] = content.Length,
-                ["Extension"] = ".json"
-            }
+                ["Extension"] = ".json",
+            },
         };
     }
 
@@ -98,12 +99,13 @@ public sealed class JsonParser
     /// Рекурсивно извлечь JSON элементы.
     /// </summary>
     private void ExtractJsonElement(
-    JsonElement element,
-    string path,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units,
-    int lineNumber)
+        JsonElement element,
+        string path,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units,
+        int lineNumber
+    )
     {
         switch (element.ValueKind)
         {
@@ -115,7 +117,7 @@ public sealed class JsonParser
                 ExtractJsonArray(element, path, filePath, parentId, units, lineNumber);
                 break;
 
-                // Primitive values не создаем отдельными units
+            // Primitive values не создаем отдельными units
         }
     }
 
@@ -123,12 +125,13 @@ public sealed class JsonParser
     /// Извлечь JSON Object.
     /// </summary>
     private void ExtractJsonObject(
-    JsonElement obj,
-    string path,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units,
-    int lineNumber)
+        JsonElement obj,
+        string path,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units,
+        int lineNumber
+    )
     {
         var content = obj.GetRawText();
         var contentHash = ContentNormalizer.ComputeContentHash(content);
@@ -154,8 +157,8 @@ public sealed class JsonParser
             EndLine = lineNumber + CountLines(content),
             Metadata = new Dictionary<string, object>
             {
-                ["PropertyCount"] = obj.EnumerateObject().Count()
-            }
+                ["PropertyCount"] = obj.EnumerateObject().Count(),
+            },
         };
 
         units.Add(objUnit);
@@ -189,20 +192,14 @@ public sealed class JsonParser
                 EndLine = currentLine + CountLines(propContent),
                 Metadata = new Dictionary<string, object>
                 {
-                    ["ValueKind"] = property.Value.ValueKind.ToString()
-                }
+                    ["ValueKind"] = property.Value.ValueKind.ToString(),
+                },
             };
 
             units.Add(propUnit);
 
             // Рекурсивно обработать значение
-            ExtractJsonElement(
-            property.Value,
-            propPath,
-            filePath,
-            propUnit.Id,
-            units,
-            currentLine);
+            ExtractJsonElement(property.Value, propPath, filePath, propUnit.Id, units, currentLine);
 
             currentLine += CountLines(propContent);
         }
@@ -212,12 +209,13 @@ public sealed class JsonParser
     /// Извлечь JSON Array.
     /// </summary>
     private void ExtractJsonArray(
-    JsonElement array,
-    string path,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units,
-    int lineNumber)
+        JsonElement array,
+        string path,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units,
+        int lineNumber
+    )
     {
         var content = array.GetRawText();
         var contentHash = ContentNormalizer.ComputeContentHash(content);
@@ -241,10 +239,7 @@ public sealed class JsonParser
             ChildIds = new HashSet<string>(),
             StartLine = lineNumber,
             EndLine = lineNumber + CountLines(content),
-            Metadata = new Dictionary<string, object>
-            {
-                ["Length"] = array.GetArrayLength()
-            }
+            Metadata = new Dictionary<string, object> { ["Length"] = array.GetArrayLength() },
         };
 
         units.Add(arrayUnit);
@@ -254,17 +249,10 @@ public sealed class JsonParser
         int index = 0;
         foreach (var item in array.EnumerateArray())
         {
-            if (item.ValueKind == JsonValueKind.Object ||
-            item.ValueKind == JsonValueKind.Array)
+            if (item.ValueKind == JsonValueKind.Object || item.ValueKind == JsonValueKind.Array)
             {
                 var itemPath = $"{path}[{index}]";
-                ExtractJsonElement(
-                item,
-                itemPath,
-                filePath,
-                arrayUnit.Id,
-                units,
-                currentLine);
+                ExtractJsonElement(item, itemPath, filePath, arrayUnit.Id, units, currentLine);
             }
 
             currentLine += CountLines(item.GetRawText());

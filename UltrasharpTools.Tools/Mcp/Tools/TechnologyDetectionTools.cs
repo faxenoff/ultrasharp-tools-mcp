@@ -1,8 +1,5 @@
-
-
-using ModelContextProtocol;
 using System.Xml.Linq;
-
+using ModelContextProtocol;
 using UltrasharpTools.Tools.Mcp;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
@@ -19,187 +16,234 @@ public static partial class TechnologyDetectionTools
     /// <summary>
     /// Detect technology stack: frameworks, languages, dependencies, and build tools.
     /// </summary>
-    [McpServerTool(Name = "detect_technology_stack", Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false)]
-    [Description("Detect frameworks, languages, dependencies, and build tools used in the solution. " +
-                 "Analyzes .NET versions, NuGet packages, project types, and build configuration. " +
-                 "Useful for understanding unfamiliar projects and providing context to AI.")]
+    [McpServerTool(
+        Name = "detect_technology_stack",
+        Idempotent = true,
+        ReadOnly = true,
+        Destructive = false,
+        OpenWorld = false
+    )]
+    [Description(
+        "Detect frameworks, languages, dependencies, and build tools used in the solution. "
+            + "Analyzes .NET versions, NuGet packages, project types, and build configuration. "
+            + "Useful for understanding unfamiliar projects and providing context to AI."
+    )]
     public static async Task<object> DetectTechnologyStack(
         ISolutionManager solutionManager,
         ILogger<TechnologyDetectionToolsLogCategory> logger,
-
         [Description("Include detailed package versions (default: true)")]
-        bool includeVersions = true,
-
-        [Description("Group packages by category (default: true)")]
-        bool categorizePackages = true,
-
-        CancellationToken cancellationToken = default)
+            bool includeVersions = true,
+        [Description("Group packages by category (default: true)")] bool categorizePackages = true,
+        CancellationToken cancellationToken = default
+    )
     {
-        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () =>
-        {
-            await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(solutionManager, logger, nameof(DetectTechnologyStack), cancellationToken);
-
-            logger.LogInformation("Detecting technology stack for solution");
-
-            var solution = solutionManager.CurrentWorkspace!.CurrentSolution;
-            var solutionPath = solution.FilePath;
-
-            // 1. Languages
-            var languages = solution.Projects
-                .GroupBy(p => p.Language)
-                .Select(g => new
-                {
-                    name = g.Key,
-                    projectCount = g.Count(),
-                    projects = g.Select(p => p.Name).ToList()
-                })
-                .OrderByDescending(l => l.projectCount)
-                .ToList();
-
-            // 2. Target Frameworks
-            var frameworks = new List<object>();
-            var projectInfos = new List<object>();
-
-            foreach (var project in solution.Projects)
+        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
+            async () =>
             {
-                var projectFilePath = project.FilePath;
-                if (string.IsNullOrEmpty(projectFilePath) || !File.Exists(projectFilePath))
-                    continue;
+                await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(
+                    solutionManager,
+                    logger,
+                    nameof(DetectTechnologyStack),
+                    cancellationToken
+                );
 
-                try
-                {
-                    var csprojDoc = await LoadProjectFileAsync(projectFilePath, cancellationToken);
-                    var targetFramework = GetTargetFramework(csprojDoc);
-                    var outputType = GetOutputType(csprojDoc);
-                    var nullable = GetNullableContext(csprojDoc);
-                    var langVersion = GetLanguageVersion(csprojDoc);
+                logger.LogInformation("Detecting technology stack for solution");
 
-                    projectInfos.Add(new
-                    {
-                        name = project.Name,
-                        language = project.Language,
-                        targetFramework,
-                        outputType,
-                        nullable,
-                        languageVersion = langVersion,
-                        filePath = projectFilePath
-                    });
+                var solution = solutionManager.CurrentWorkspace!.CurrentSolution;
+                var solutionPath = solution.FilePath;
 
-                    if (!string.IsNullOrEmpty(targetFramework))
-                    {
-                        frameworks.Add(new { framework = targetFramework, project = project.Name });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to parse project file: {ProjectPath}", projectFilePath);
-                }
-            }
-
-            var frameworkSummary = frameworks
-                .GroupBy(f => ((dynamic)f).framework)
-                .Select(g => new
-                {
-                    framework = g.Key,
-                    count = g.Count(),
-                    projects = g.Select(f => ((dynamic)f).project).ToList()
-                })
-                .OrderByDescending(f => f.count)
-                .ToList();
-
-            // 3. Dependencies (NuGet packages)
-            var allPackages = new List<PackageReference>();
-
-            foreach (var project in solution.Projects)
-            {
-                var projectFilePath = project.FilePath;
-                if (string.IsNullOrEmpty(projectFilePath) || !File.Exists(projectFilePath))
-                    continue;
-
-                try
-                {
-                    var csprojDoc = await LoadProjectFileAsync(projectFilePath, cancellationToken);
-                    var projectPackages = GetPackageReferences(csprojDoc, project.Name);
-                    allPackages.AddRange(projectPackages);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to extract packages from: {ProjectPath}", projectFilePath);
-                }
-            }
-
-            // Group packages
-            var packageSummary = allPackages
-                .GroupBy(p => p.Name)
-                .Select(g => new
-                {
-                    name = g.Key,
-                    versions = includeVersions ? g.Select(p => p.Version).Distinct().ToList() : null,
-                    usedInProjects = g.Select(p => p.ProjectName).Distinct().ToList(),
-                    category = categorizePackages ? CategorizePackage(g.Key) : null
-                })
-                .OrderBy(p => p.name)
-                .ToList();
-
-            var packagesByCategory = categorizePackages
-                ? packageSummary
-                    .GroupBy(p => p.category ?? "Other")
+                // 1. Languages
+                var languages = solution
+                    .Projects.GroupBy(p => p.Language)
                     .Select(g => new
                     {
-                        category = g.Key,
+                        name = g.Key,
+                        projectCount = g.Count(),
+                        projects = g.Select(p => p.Name).ToList(),
+                    })
+                    .OrderByDescending(l => l.projectCount)
+                    .ToList();
+
+                // 2. Target Frameworks
+                var frameworks = new List<object>();
+                var projectInfos = new List<object>();
+
+                foreach (var project in solution.Projects)
+                {
+                    var projectFilePath = project.FilePath;
+                    if (string.IsNullOrEmpty(projectFilePath) || !File.Exists(projectFilePath))
+                        continue;
+
+                    try
+                    {
+                        var csprojDoc = await LoadProjectFileAsync(
+                            projectFilePath,
+                            cancellationToken
+                        );
+                        var targetFramework = GetTargetFramework(csprojDoc);
+                        var outputType = GetOutputType(csprojDoc);
+                        var nullable = GetNullableContext(csprojDoc);
+                        var langVersion = GetLanguageVersion(csprojDoc);
+
+                        projectInfos.Add(
+                            new
+                            {
+                                name = project.Name,
+                                language = project.Language,
+                                targetFramework,
+                                outputType,
+                                nullable,
+                                languageVersion = langVersion,
+                                filePath = projectFilePath,
+                            }
+                        );
+
+                        if (!string.IsNullOrEmpty(targetFramework))
+                        {
+                            frameworks.Add(
+                                new { framework = targetFramework, project = project.Name }
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(
+                            ex,
+                            "Failed to parse project file: {ProjectPath}",
+                            projectFilePath
+                        );
+                    }
+                }
+
+                var frameworkSummary = frameworks
+                    .GroupBy(f => ((dynamic)f).framework)
+                    .Select(g => new
+                    {
+                        framework = g.Key,
                         count = g.Count(),
-                        packages = g.Select(p => new
+                        projects = g.Select(f => ((dynamic)f).project).ToList(),
+                    })
+                    .OrderByDescending(f => f.count)
+                    .ToList();
+
+                // 3. Dependencies (NuGet packages)
+                var allPackages = new List<PackageReference>();
+
+                foreach (var project in solution.Projects)
+                {
+                    var projectFilePath = project.FilePath;
+                    if (string.IsNullOrEmpty(projectFilePath) || !File.Exists(projectFilePath))
+                        continue;
+
+                    try
+                    {
+                        var csprojDoc = await LoadProjectFileAsync(
+                            projectFilePath,
+                            cancellationToken
+                        );
+                        var projectPackages = GetPackageReferences(csprojDoc, project.Name);
+                        allPackages.AddRange(projectPackages);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(
+                            ex,
+                            "Failed to extract packages from: {ProjectPath}",
+                            projectFilePath
+                        );
+                    }
+                }
+
+                // Group packages
+                var packageSummary = allPackages
+                    .GroupBy(p => p.Name)
+                    .Select(g => new
+                    {
+                        name = g.Key,
+                        versions = includeVersions
+                            ? g.Select(p => p.Version).Distinct().ToList()
+                            : null,
+                        usedInProjects = g.Select(p => p.ProjectName).Distinct().ToList(),
+                        category = categorizePackages ? CategorizePackage(g.Key) : null,
+                    })
+                    .OrderBy(p => p.name)
+                    .ToList();
+
+                var packagesByCategory = categorizePackages
+                    ? packageSummary
+                        .GroupBy(p => p.category ?? "Other")
+                        .Select(g => new
+                        {
+                            category = g.Key,
+                            count = g.Count(),
+                            packages = g.Select(p => new
+                                {
+                                    p.name,
+                                    p.versions,
+                                    projectCount = p.usedInProjects.Count,
+                                })
+                                .ToList(),
+                        })
+                        .OrderByDescending(c => c.count)
+                        .ToList()
+                    : null;
+
+                // 4. Build Tools
+                var buildTools = DetectBuildTools(solutionPath);
+
+                // 5. Solution Statistics
+                var stats = new
+                {
+                    totalProjects = solution.Projects.Count(),
+                    totalDocuments = solution.Projects.Sum(p => p.Documents.Count()),
+                    totalPackages = packageSummary.Count,
+                    uniqueFrameworks = frameworkSummary.Count,
+                    languages = languages.Count,
+                };
+
+                // Prepare packages based on includeVersions flag
+                object packages = includeVersions
+                    ? packageSummary
+                    : packageSummary
+                        .Select(p => new
                         {
                             p.name,
-                            p.versions,
-                            projectCount = p.usedInProjects.Count
-                        }).ToList()
-                    })
-                    .OrderByDescending(c => c.count)
-                    .ToList()
-                : null;
+                            p.usedInProjects,
+                            p.category,
+                        })
+                        .ToList();
 
-            // 4. Build Tools
-            var buildTools = DetectBuildTools(solutionPath);
-
-            // 5. Solution Statistics
-            var stats = new
-            {
-                totalProjects = solution.Projects.Count(),
-                totalDocuments = solution.Projects.Sum(p => p.Documents.Count()),
-                totalPackages = packageSummary.Count,
-                uniqueFrameworks = frameworkSummary.Count,
-                languages = languages.Count
-            };
-
-            // Prepare packages based on includeVersions flag
-            object packages = includeVersions
-                ? packageSummary
-                : packageSummary.Select(p => new { p.name, p.usedInProjects, p.category }).ToList();
-
-            return ToolHelpers.ToJson(new
-            {
-                solutionPath,
-                statistics = stats,
-                languages,
-                frameworks = frameworkSummary,
-                projects = projectInfos,
-                dependencies = new
-                {
-                    totalPackages = packageSummary.Count,
-                    packages,
-                    byCategory = packagesByCategory
-                },
-                buildTools,
-                detectedAt = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
-            });
-
-        }, logger, nameof(DetectTechnologyStack), cancellationToken);
+                return ToolHelpers.ToJson(
+                    new
+                    {
+                        solutionPath,
+                        statistics = stats,
+                        languages,
+                        frameworks = frameworkSummary,
+                        projects = projectInfos,
+                        dependencies = new
+                        {
+                            totalPackages = packageSummary.Count,
+                            packages,
+                            byCategory = packagesByCategory,
+                        },
+                        buildTools,
+                        detectedAt = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    }
+                );
+            },
+            logger,
+            nameof(DetectTechnologyStack),
+            cancellationToken
+        );
     }
 
     // ==================== Helper Methods ====================
 
-    private static async Task<XDocument> LoadProjectFileAsync(string projectPath, CancellationToken cancellationToken)
+    private static async Task<XDocument> LoadProjectFileAsync(
+        string projectPath,
+        CancellationToken cancellationToken
+    )
     {
         var content = await File.ReadAllTextAsync(projectPath, cancellationToken);
         return XDocument.Parse(content);
@@ -232,14 +276,19 @@ public static partial class TechnologyDetectionTools
         return csprojDoc.Descendants("LangVersion").FirstOrDefault()?.Value;
     }
 
-    private static List<PackageReference> GetPackageReferences(XDocument csprojDoc, string projectName)
+    private static List<PackageReference> GetPackageReferences(
+        XDocument csprojDoc,
+        string projectName
+    )
     {
-        return csprojDoc.Descendants("PackageReference")
+        return csprojDoc
+            .Descendants("PackageReference")
             .Select(pr => new PackageReference
             {
                 Name = pr.Attribute("Include")?.Value ?? "",
-                Version = pr.Attribute("Version")?.Value ?? pr.Element("Version")?.Value ?? "unknown",
-                ProjectName = projectName
+                Version =
+                    pr.Attribute("Version")?.Value ?? pr.Element("Version")?.Value ?? "unknown",
+                ProjectName = projectName,
             })
             .Where(pr => !string.IsNullOrEmpty(pr.Name))
             .ToList();
@@ -295,7 +344,9 @@ public static partial class TechnologyDetectionTools
         {
             detected = tools,
             primary,
-            solutionFormat = Path.GetExtension(solutionPath)?.ToLowerInvariant() == ".sln" ? "Visual Studio Solution" : "Unknown"
+            solutionFormat = Path.GetExtension(solutionPath)?.ToLowerInvariant() == ".sln"
+                ? "Visual Studio Solution"
+                : "Unknown",
         };
     }
 
@@ -304,8 +355,14 @@ public static partial class TechnologyDetectionTools
         var lower = packageName.ToLowerInvariant();
 
         // Testing
-        if (lower.Contains("test") || lower.Contains("xunit") || lower.Contains("nunit") ||
-            lower.Contains("mstest") || lower.Contains("moq") || lower.Contains("fluent"))
+        if (
+            lower.Contains("test")
+            || lower.Contains("xunit")
+            || lower.Contains("nunit")
+            || lower.Contains("mstest")
+            || lower.Contains("moq")
+            || lower.Contains("fluent")
+        )
             return "Testing";
 
         // Logging
@@ -313,13 +370,24 @@ public static partial class TechnologyDetectionTools
             return "Logging";
 
         // ASP.NET / Web
-        if (lower.Contains("aspnet") || lower.Contains("mvc") || lower.Contains("razor") ||
-            lower.Contains("blazor") || lower.Contains("signalr"))
+        if (
+            lower.Contains("aspnet")
+            || lower.Contains("mvc")
+            || lower.Contains("razor")
+            || lower.Contains("blazor")
+            || lower.Contains("signalr")
+        )
             return "Web/ASP.NET";
 
         // Database / ORM
-        if (lower.Contains("entity") || lower.Contains("dapper") || lower.Contains("npgsql") ||
-            lower.Contains("mysql") || lower.Contains("sqlite") || lower.Contains("mongodb"))
+        if (
+            lower.Contains("entity")
+            || lower.Contains("dapper")
+            || lower.Contains("npgsql")
+            || lower.Contains("mysql")
+            || lower.Contains("sqlite")
+            || lower.Contains("mongodb")
+        )
             return "Database/ORM";
 
         // JSON / Serialization
@@ -327,7 +395,12 @@ public static partial class TechnologyDetectionTools
             return "Serialization";
 
         // HTTP / API
-        if (lower.Contains("http") || lower.Contains("rest") || lower.Contains("api") || lower.Contains("swagger"))
+        if (
+            lower.Contains("http")
+            || lower.Contains("rest")
+            || lower.Contains("api")
+            || lower.Contains("swagger")
+        )
             return "HTTP/API";
 
         // DI / IoC
@@ -339,7 +412,11 @@ public static partial class TechnologyDetectionTools
             return "Microsoft.Extensions";
 
         // Code Analysis
-        if (lower.Contains("analyzer") || lower.Contains("roslyn") || lower.Contains("codeanalysis"))
+        if (
+            lower.Contains("analyzer")
+            || lower.Contains("roslyn")
+            || lower.Contains("codeanalysis")
+        )
             return "Code Analysis";
 
         // ML / AI

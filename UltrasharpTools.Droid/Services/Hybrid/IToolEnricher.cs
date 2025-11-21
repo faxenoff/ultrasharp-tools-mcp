@@ -110,7 +110,8 @@ public interface IToolEnricher
         string toolName,
         object originalResult,
         Dictionary<string, object>? toolArguments = null,
-        CancellationToken ct = default);
+        CancellationToken ct = default
+    );
 
     /// <summary>
     /// Проверяет, поддерживает ли инструмент семантическое обогащение
@@ -142,5 +143,6 @@ public interface IEnrichmentStrategy
         object originalResult,
         Dictionary<string, object>? arguments,
         ISemanticModeProvider semanticProvider,
-        CancellationToken ct);
+        CancellationToken ct
+    );
 }

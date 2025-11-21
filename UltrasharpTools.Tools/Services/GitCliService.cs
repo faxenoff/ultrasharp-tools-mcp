@@ -1,5 +1,4 @@
 using System.Diagnostics;
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -8,14 +7,19 @@ namespace UltrasharpTools.Tools.Services;
 /// Git service implementation using direct git CLI calls instead of LibGit2Sharp.
 /// Saves ~3-4 MB by removing native dependencies and improves cross-platform compatibility.
 /// </summary>
-public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions = null) : IGitService
+public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions = null)
+    : IGitService
 {
-    private readonly ILogger<GitCliService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly ILogger<GitCliService> _logger =
+        logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly GitOptions _gitOptions = gitOptions ?? new GitOptions();
     private const string SharpToolsBranchPrefix = "sharptools/";
     private const string SharpToolsUndoBranchPrefix = "sharptools/undo/";
 
-    public async Task<bool> IsRepositoryAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<bool> IsRepositoryAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -25,7 +29,12 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 return false;
             }
 
-            var result = await RunGitCommandAsync(solutionDirectory, cancellationToken, "rev-parse", "--git-dir");
+            var result = await RunGitCommandAsync(
+                solutionDirectory,
+                cancellationToken,
+                "rev-parse",
+                "--git-dir"
+            );
             return result.Success;
         }
         catch (Exception ex)
@@ -35,7 +44,10 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
     }
 
-    public async Task<bool> IsOnSharpToolsBranchAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<bool> IsOnSharpToolsBranchAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -45,17 +57,28 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 return false;
             }
 
-            var result = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", "--show-current");
+            var result = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                "--show-current"
+            );
             if (!result.Success)
             {
                 return false;
             }
 
             var currentBranch = result.Output.Trim();
-            var isOnSharpToolsBranch = currentBranch.StartsWith(SharpToolsBranchPrefix, StringComparison.OrdinalIgnoreCase);
+            var isOnSharpToolsBranch = currentBranch.StartsWith(
+                SharpToolsBranchPrefix,
+                StringComparison.OrdinalIgnoreCase
+            );
 
-            _logger.LogDebug("Current branch: {BranchName}, IsSharpToolsBranch: {IsSharpToolsBranch}",
-                currentBranch, isOnSharpToolsBranch);
+            _logger.LogDebug(
+                "Current branch: {BranchName}, IsSharpToolsBranch: {IsSharpToolsBranch}",
+                currentBranch,
+                isOnSharpToolsBranch
+            );
 
             return isOnSharpToolsBranch;
         }
@@ -66,14 +89,20 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
     }
 
-    public async Task EnsureSharpToolsBranchAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task EnsureSharpToolsBranchAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning("No Git repository found for solution at {SolutionPath}", solutionPath);
+                _logger.LogWarning(
+                    "No Git repository found for solution at {SolutionPath}",
+                    solutionPath
+                );
                 return;
             }
 
@@ -81,11 +110,21 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var branchName = $"{SharpToolsBranchPrefix}{timestamp}";
 
             // Check if we're already on a sharptools branch
-            var currentBranchResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", "--show-current");
+            var currentBranchResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                "--show-current"
+            );
             if (currentBranchResult.Success)
             {
                 var currentBranch = currentBranchResult.Output.Trim();
-                if (currentBranch.StartsWith(SharpToolsBranchPrefix, StringComparison.OrdinalIgnoreCase))
+                if (
+                    currentBranch.StartsWith(
+                        SharpToolsBranchPrefix,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
                 {
                     _logger.LogDebug("Already on SharpTools branch: {BranchName}", currentBranch);
                     return;
@@ -93,18 +132,37 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             }
 
             // Create and checkout the new branch
-            var createResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "checkout", "-b", branchName);
+            var createResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "checkout",
+                "-b",
+                branchName
+            );
             if (!createResult.Success)
             {
-                _logger.LogError("Failed to create and checkout branch {BranchName}: {Error}", branchName, createResult.Error);
-                throw new InvalidOperationException($"Failed to create git branch: {createResult.Error}");
+                _logger.LogError(
+                    "Failed to create and checkout branch {BranchName}: {Error}",
+                    branchName,
+                    createResult.Error
+                );
+                throw new InvalidOperationException(
+                    $"Failed to create git branch: {createResult.Error}"
+                );
             }
 
-            _logger.LogInformation("Created and switched to SharpTools branch: {BranchName}", branchName);
+            _logger.LogInformation(
+                "Created and switched to SharpTools branch: {BranchName}",
+                branchName
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error ensuring SharpTools branch for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error ensuring SharpTools branch for solution at {SolutionPath}",
+                solutionPath
+            );
             throw;
         }
 
@@ -113,7 +171,12 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         {
             try
             {
-                await CleanupOldBranchesAsync(solutionPath, _gitOptions.RetentionCount, _gitOptions.RetentionDays, cancellationToken);
+                await CleanupOldBranchesAsync(
+                    solutionPath,
+                    _gitOptions.RetentionCount,
+                    _gitOptions.RetentionDays,
+                    cancellationToken
+                );
             }
             catch (Exception ex)
             {
@@ -122,15 +185,22 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
     }
 
-    public async Task CommitChangesAsync(string solutionPath, IEnumerable<string> changedFilePaths,
-        string commitMessage, CancellationToken cancellationToken = default)
+    public async Task CommitChangesAsync(
+        string solutionPath,
+        IEnumerable<string> changedFilePaths,
+        string commitMessage,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning("No Git repository found for solution at {SolutionPath}", solutionPath);
+                _logger.LogWarning(
+                    "No Git repository found for solution at {SolutionPath}",
+                    solutionPath
+                );
                 return;
             }
 
@@ -144,7 +214,12 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                     var relativePath = Path.GetRelativePath(repositoryPath, filePath);
 
                     // Stage the file
-                    var stageResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "add", relativePath);
+                    var stageResult = await RunGitCommandAsync(
+                        repositoryPath,
+                        cancellationToken,
+                        "add",
+                        relativePath
+                    );
                     if (stageResult.Success)
                     {
                         stagedFiles.Add(relativePath);
@@ -152,12 +227,20 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to stage file {FilePath}: {Error}", filePath, stageResult.Error);
+                        _logger.LogWarning(
+                            "Failed to stage file {FilePath}: {Error}",
+                            filePath,
+                            stageResult.Error
+                        );
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning("Failed to stage file {FilePath}: {Error}", filePath, ex.Message);
+                    _logger.LogWarning(
+                        "Failed to stage file {FilePath}: {Error}",
+                        filePath,
+                        ex.Message
+                    );
                 }
             }
 
@@ -168,28 +251,52 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             }
 
             // Create commit
-            var commitResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "commit", "-m", commitMessage);
+            var commitResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "commit",
+                "-m",
+                commitMessage
+            );
             if (!commitResult.Success)
             {
                 _logger.LogError("Failed to create commit: {Error}", commitResult.Error);
-                throw new InvalidOperationException($"Failed to create git commit: {commitResult.Error}");
+                throw new InvalidOperationException(
+                    $"Failed to create git commit: {commitResult.Error}"
+                );
             }
 
             // Get commit SHA
-            var shaResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "rev-parse", "HEAD");
+            var shaResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "rev-parse",
+                "HEAD"
+            );
             var commitSha = shaResult.Success ? shaResult.Output.Trim()[..8] : "unknown";
 
-            _logger.LogInformation("Created commit {CommitSha} with {FileCount} files: {CommitMessage}",
-                commitSha, stagedFiles.Count, commitMessage);
+            _logger.LogInformation(
+                "Created commit {CommitSha} with {FileCount} files: {CommitMessage}",
+                commitSha,
+                stagedFiles.Count,
+                commitMessage
+            );
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error committing changes for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error committing changes for solution at {SolutionPath}",
+                solutionPath
+            );
             throw;
         }
     }
 
-    private async Task<string?> GetRepositoryPathAsync(string solutionPath, CancellationToken cancellationToken)
+    private async Task<string?> GetRepositoryPathAsync(
+        string solutionPath,
+        CancellationToken cancellationToken
+    )
     {
         var solutionDirectory = Path.GetDirectoryName(solutionPath);
         if (string.IsNullOrEmpty(solutionDirectory))
@@ -198,7 +305,12 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
 
         // Find git directory
-        var result = await RunGitCommandAsync(solutionDirectory, cancellationToken, "rev-parse", "--show-toplevel");
+        var result = await RunGitCommandAsync(
+            solutionDirectory,
+            cancellationToken,
+            "rev-parse",
+            "--show-toplevel"
+        );
         if (!result.Success)
         {
             return null;
@@ -207,14 +319,20 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         return result.Output.Trim();
     }
 
-    public async Task<string> CreateUndoBranchAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<string> CreateUndoBranchAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning("No Git repository found for solution at {SolutionPath}", solutionPath);
+                _logger.LogWarning(
+                    "No Git repository found for solution at {SolutionPath}",
+                    solutionPath
+                );
                 return string.Empty;
             }
 
@@ -222,46 +340,84 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var branchName = $"{SharpToolsUndoBranchPrefix}{timestamp}";
 
             // Create a new branch at the current commit, but don't checkout
-            var createResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", branchName);
+            var createResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                branchName
+            );
             if (!createResult.Success)
             {
-                _logger.LogError("Failed to create undo branch {BranchName}: {Error}", branchName, createResult.Error);
+                _logger.LogError(
+                    "Failed to create undo branch {BranchName}: {Error}",
+                    branchName,
+                    createResult.Error
+                );
                 return string.Empty;
             }
 
             // Get current commit SHA
-            var shaResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "rev-parse", "HEAD");
+            var shaResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "rev-parse",
+                "HEAD"
+            );
             var commitSha = shaResult.Success ? shaResult.Output.Trim()[..8] : "unknown";
 
-            _logger.LogInformation("Created undo branch: {BranchName} at commit {CommitSha}",
-                branchName, commitSha);
+            _logger.LogInformation(
+                "Created undo branch: {BranchName} at commit {CommitSha}",
+                branchName,
+                commitSha
+            );
 
             return branchName;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating undo branch for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error creating undo branch for solution at {SolutionPath}",
+                solutionPath
+            );
             return string.Empty;
         }
     }
 
-    public async Task<string> GetDiffAsync(string solutionPath, string oldCommitSha, string newCommitSha, CancellationToken cancellationToken = default)
+    public async Task<string> GetDiffAsync(
+        string solutionPath,
+        string oldCommitSha,
+        string newCommitSha,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning("No Git repository found for solution at {SolutionPath}", solutionPath);
+                _logger.LogWarning(
+                    "No Git repository found for solution at {SolutionPath}",
+                    solutionPath
+                );
                 return string.Empty;
             }
 
             // Get diff between commits
-            var diffResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "diff", $"{oldCommitSha}..{newCommitSha}");
+            var diffResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "diff",
+                $"{oldCommitSha}..{newCommitSha}"
+            );
             if (!diffResult.Success)
             {
-                _logger.LogWarning("Could not get diff between {OldSha} and {NewSha}: {Error}",
-                    oldCommitSha?[..8] ?? "null", newCommitSha?[..8] ?? "null", diffResult.Error);
+                _logger.LogWarning(
+                    "Could not get diff between {OldSha} and {NewSha}: {Error}",
+                    oldCommitSha?[..8] ?? "null",
+                    newCommitSha?[..8] ?? "null",
+                    diffResult.Error
+                );
                 return string.Empty;
             }
 
@@ -274,19 +430,30 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
     }
 
-    public async Task<(bool success, string diff)> RevertLastCommitAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<(bool success, string diff)> RevertLastCommitAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning("No Git repository found for solution at {SolutionPath}", solutionPath);
+                _logger.LogWarning(
+                    "No Git repository found for solution at {SolutionPath}",
+                    solutionPath
+                );
                 return (false, string.Empty);
             }
 
             // Get current branch
-            var branchResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", "--show-current");
+            var branchResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                "--show-current"
+            );
             if (!branchResult.Success)
             {
                 return (false, string.Empty);
@@ -295,15 +462,33 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var currentBranch = branchResult.Output.Trim();
 
             // Ensure we're on a sharptools branch
-            if (!currentBranch.StartsWith(SharpToolsBranchPrefix, StringComparison.OrdinalIgnoreCase))
+            if (
+                !currentBranch.StartsWith(
+                    SharpToolsBranchPrefix,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
-                _logger.LogWarning("Not on a SharpTools branch, cannot revert. Current branch: {BranchName}", currentBranch);
+                _logger.LogWarning(
+                    "Not on a SharpTools branch, cannot revert. Current branch: {BranchName}",
+                    currentBranch
+                );
                 return (false, string.Empty);
             }
 
             // Get current commit and parent
-            var currentShaResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "rev-parse", "HEAD");
-            var parentShaResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "rev-parse", "HEAD~1");
+            var currentShaResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "rev-parse",
+                "HEAD"
+            );
+            var parentShaResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "rev-parse",
+                "HEAD~1"
+            );
 
             if (!currentShaResult.Success || !parentShaResult.Success)
             {
@@ -314,8 +499,11 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var currentCommitSha = currentShaResult.Output.Trim();
             var parentCommitSha = parentShaResult.Output.Trim();
 
-            _logger.LogInformation("Reverting from commit {CurrentSha} to parent {ParentSha}",
-                currentCommitSha[..8], parentCommitSha[..8]);
+            _logger.LogInformation(
+                "Reverting from commit {CurrentSha} to parent {ParentSha}",
+                currentCommitSha[..8],
+                parentCommitSha[..8]
+            );
 
             // First, create an undo branch at the current commit
             var undoBranchName = await CreateUndoBranchAsync(solutionPath, cancellationToken);
@@ -325,17 +513,31 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             }
 
             // Get the diff before we reset
-            var diff = await GetDiffAsync(solutionPath, parentCommitSha, currentCommitSha, cancellationToken);
+            var diff = await GetDiffAsync(
+                solutionPath,
+                parentCommitSha,
+                currentCommitSha,
+                cancellationToken
+            );
 
             // Reset to the parent commit (hard reset)
-            var resetResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "reset", "--hard", "HEAD~1");
+            var resetResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "reset",
+                "--hard",
+                "HEAD~1"
+            );
             if (!resetResult.Success)
             {
                 _logger.LogError("Failed to reset to parent commit: {Error}", resetResult.Error);
                 return (false, $"Error: {resetResult.Error}");
             }
 
-            _logger.LogInformation("Successfully reverted to commit {CommitSha}", parentCommitSha[..8]);
+            _logger.LogInformation(
+                "Successfully reverted to commit {CommitSha}",
+                parentCommitSha[..8]
+            );
 
             var resultMessage = !string.IsNullOrEmpty(undoBranchName)
                 ? $"The changes have been preserved in branch '{undoBranchName}' for future reference."
@@ -345,24 +547,39 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reverting last commit for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error reverting last commit for solution at {SolutionPath}",
+                solutionPath
+            );
             return (false, $"Error: {ex.Message}");
         }
     }
 
-    public async Task<string> GetBranchOriginCommitAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<string> GetBranchOriginCommitAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning("No Git repository found for solution at {SolutionPath}", solutionPath);
+                _logger.LogWarning(
+                    "No Git repository found for solution at {SolutionPath}",
+                    solutionPath
+                );
                 return string.Empty;
             }
 
             // Get current branch
-            var branchResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", "--show-current");
+            var branchResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                "--show-current"
+            );
             if (!branchResult.Success)
             {
                 return string.Empty;
@@ -371,15 +588,27 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var currentBranch = branchResult.Output.Trim();
 
             // Ensure we're on a sharptools branch
-            if (!currentBranch.StartsWith(SharpToolsBranchPrefix, StringComparison.OrdinalIgnoreCase))
+            if (
+                !currentBranch.StartsWith(
+                    SharpToolsBranchPrefix,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
                 _logger.LogDebug("Not on a SharpTools branch: {BranchName}", currentBranch);
                 return string.Empty;
             }
 
             // Get the first commit of this branch (using reflog)
-            var reflogResult = await RunGitCommandAsync(repositoryPath, cancellationToken,
-                "reflog", "show", currentBranch, "--pretty=%H", "--");
+            var reflogResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "reflog",
+                "show",
+                currentBranch,
+                "--pretty=%H",
+                "--"
+            );
 
             if (!reflogResult.Success || string.IsNullOrEmpty(reflogResult.Output))
             {
@@ -390,19 +619,29 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var lines = reflogResult.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var originCommitSha = lines[^1].Trim();
 
-            _logger.LogDebug("Origin commit for branch {BranchName}: {CommitSha}",
-                currentBranch, originCommitSha[..8]);
+            _logger.LogDebug(
+                "Origin commit for branch {BranchName}: {CommitSha}",
+                currentBranch,
+                originCommitSha[..8]
+            );
 
             return originCommitSha;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting branch origin commit for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error getting branch origin commit for solution at {SolutionPath}",
+                solutionPath
+            );
             return string.Empty;
         }
     }
 
-    public async Task<string> GetCurrentBranchAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<string> GetCurrentBranchAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -412,17 +651,29 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 return string.Empty;
             }
 
-            var result = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", "--show-current");
+            var result = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                "--show-current"
+            );
             return result.Success ? result.Output.Trim() : string.Empty;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting current branch for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error getting current branch for solution at {SolutionPath}",
+                solutionPath
+            );
             return string.Empty;
         }
     }
 
-    public async Task<string> GetCurrentCommitShaAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<string> GetCurrentCommitShaAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -432,17 +683,31 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 return string.Empty;
             }
 
-            var result = await RunGitCommandAsync(repositoryPath, cancellationToken, "rev-parse", "HEAD");
+            var result = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "rev-parse",
+                "HEAD"
+            );
             return result.Success ? result.Output.Trim() : string.Empty;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting current commit SHA for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error getting current commit SHA for solution at {SolutionPath}",
+                solutionPath
+            );
             return string.Empty;
         }
     }
 
-    public async Task<string?> GetMergeBaseCommitAsync(string solutionPath, string branch1, string branch2, CancellationToken cancellationToken = default)
+    public async Task<string?> GetMergeBaseCommitAsync(
+        string solutionPath,
+        string branch1,
+        string branch2,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {
@@ -452,17 +717,33 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 return null;
             }
 
-            var result = await RunGitCommandAsync(repositoryPath, cancellationToken, "merge-base", branch1, branch2);
+            var result = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "merge-base",
+                branch1,
+                branch2
+            );
             return result.Success ? result.Output.Trim() : null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting merge base for branches {Branch1} and {Branch2}", branch1, branch2);
+            _logger.LogError(
+                ex,
+                "Error getting merge base for branches {Branch1} and {Branch2}",
+                branch1,
+                branch2
+            );
             return null;
         }
     }
 
-    public async Task<List<(string FilePath, string ChangeType)>> GetChangedFilesAsync(string solutionPath, string fromCommitSha, string toCommitSha, CancellationToken cancellationToken = default)
+    public async Task<List<(string FilePath, string ChangeType)>> GetChangedFilesAsync(
+        string solutionPath,
+        string fromCommitSha,
+        string toCommitSha,
+        CancellationToken cancellationToken = default
+    )
     {
         var changedFiles = new List<(string FilePath, string ChangeType)>();
 
@@ -475,8 +756,13 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             }
 
             // Get changed files with status
-            var result = await RunGitCommandAsync(repositoryPath, cancellationToken,
-                "diff", "--name-status", $"{fromCommitSha}..{toCommitSha}");
+            var result = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "diff",
+                "--name-status",
+                $"{fromCommitSha}..{toCommitSha}"
+            );
 
             if (!result.Success)
             {
@@ -499,7 +785,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                         "M" => "Modified",
                         "D" => "Deleted",
                         "R" => "Renamed",
-                        _ => status
+                        _ => status,
                     };
 
                     changedFiles.Add((filePath, changeType));
@@ -508,13 +794,21 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting changed files between {From} and {To}", fromCommitSha, toCommitSha);
+            _logger.LogError(
+                ex,
+                "Error getting changed files between {From} and {To}",
+                fromCommitSha,
+                toCommitSha
+            );
         }
 
         return changedFiles;
     }
 
-    public async Task<List<string>> GetAllBranchesAsync(string solutionPath, CancellationToken cancellationToken = default)
+    public async Task<List<string>> GetAllBranchesAsync(
+        string solutionPath,
+        CancellationToken cancellationToken = default
+    )
     {
         var branches = new List<string>();
 
@@ -527,28 +821,42 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             }
 
             // Get all local and remote branches
-            var result = await RunGitCommandAsync(repositoryPath, cancellationToken,
-                "branch", "-a", "--format=%(refname:short)");
+            var result = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                "-a",
+                "--format=%(refname:short)"
+            );
 
             if (!result.Success)
             {
                 return branches;
             }
 
-            branches = result.Output
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            branches = result
+                .Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
                 .Select(b => b.Trim())
                 .ToList();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting all branches for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error getting all branches for solution at {SolutionPath}",
+                solutionPath
+            );
         }
 
         return branches;
     }
 
-    public async Task<List<string>> CleanupOldBranchesAsync(string solutionPath, int? retentionCount = null, int? retentionDays = null, CancellationToken cancellationToken = default)
+    public async Task<List<string>> CleanupOldBranchesAsync(
+        string solutionPath,
+        int? retentionCount = null,
+        int? retentionDays = null,
+        CancellationToken cancellationToken = default
+    )
     {
         var deletedBranches = new List<string>();
 
@@ -557,23 +865,40 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogDebug("No Git repository found for solution at {SolutionPath}, skipping cleanup", solutionPath);
+                _logger.LogDebug(
+                    "No Git repository found for solution at {SolutionPath}, skipping cleanup",
+                    solutionPath
+                );
                 return deletedBranches;
             }
 
             // Get current branch
-            var currentBranchResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", "--show-current");
-            var currentBranch = currentBranchResult.Success ? currentBranchResult.Output.Trim() : string.Empty;
+            var currentBranchResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                "--show-current"
+            );
+            var currentBranch = currentBranchResult.Success
+                ? currentBranchResult.Output.Trim()
+                : string.Empty;
 
             // Get all sharptools branches
-            var branchesResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", "--list", $"{SharpToolsBranchPrefix}*", "--format=%(refname:short)|%(committerdate:iso8601)");
+            var branchesResult = await RunGitCommandAsync(
+                repositoryPath,
+                cancellationToken,
+                "branch",
+                "--list",
+                $"{SharpToolsBranchPrefix}*",
+                "--format=%(refname:short)|%(committerdate:iso8601)"
+            );
             if (!branchesResult.Success)
             {
                 return deletedBranches;
             }
 
-            var branches = branchesResult.Output
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            var branches = branchesResult
+                .Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
                 .Select(line =>
                 {
                     var parts = line.Split('|');
@@ -607,32 +932,53 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
 
                 // Check retention days
                 var age = DateTimeOffset.Now - branchDate;
-                var shouldDeleteByAge = effectiveRetentionDays > 0 && age.TotalDays > effectiveRetentionDays;
+                var shouldDeleteByAge =
+                    effectiveRetentionDays > 0 && age.TotalDays > effectiveRetentionDays;
 
                 if (shouldDeleteByCount || shouldDeleteByAge)
                 {
-                    var deleteResult = await RunGitCommandAsync(repositoryPath, cancellationToken, "branch", "-D", branchName);
+                    var deleteResult = await RunGitCommandAsync(
+                        repositoryPath,
+                        cancellationToken,
+                        "branch",
+                        "-D",
+                        branchName
+                    );
                     if (deleteResult.Success)
                     {
                         deletedBranches.Add(branchName);
-                        _logger.LogInformation("Deleted old SharpTools branch: {BranchName} (age: {AgeDays:F1} days)",
-                            branchName, age.TotalDays);
+                        _logger.LogInformation(
+                            "Deleted old SharpTools branch: {BranchName} (age: {AgeDays:F1} days)",
+                            branchName,
+                            age.TotalDays
+                        );
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to delete branch {BranchName}: {Error}", branchName, deleteResult.Error);
+                        _logger.LogWarning(
+                            "Failed to delete branch {BranchName}: {Error}",
+                            branchName,
+                            deleteResult.Error
+                        );
                     }
                 }
             }
 
             if (deletedBranches.Count > 0)
             {
-                _logger.LogInformation("Cleanup complete: deleted {Count} old branches", deletedBranches.Count);
+                _logger.LogInformation(
+                    "Cleanup complete: deleted {Count} old branches",
+                    deletedBranches.Count
+                );
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error cleaning up old branches for solution at {SolutionPath}", solutionPath);
+            _logger.LogError(
+                ex,
+                "Error cleaning up old branches for solution at {SolutionPath}",
+                solutionPath
+            );
         }
 
         return deletedBranches;
@@ -645,7 +991,8 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
     private async Task<(bool Success, string Output, string Error)> RunGitCommandAsync(
         string workingDirectory,
         CancellationToken cancellationToken,
-        params string[] arguments)
+        params string[] arguments
+    )
     {
         try
         {
@@ -656,7 +1003,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
 
             foreach (var arg in arguments)
@@ -698,7 +1045,11 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error running git command: {Arguments}", string.Join(" ", arguments));
+            _logger.LogError(
+                ex,
+                "Error running git command: {Arguments}",
+                string.Join(" ", arguments)
+            );
             return (false, string.Empty, ex.Message);
         }
     }

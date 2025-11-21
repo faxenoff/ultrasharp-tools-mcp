@@ -47,11 +47,11 @@ public sealed record MergeAction
 /// </summary>
 public enum MergeActionType
 {
-    Create,         // Создать новый файл
-    Update,         // Обновить существующий
-    Delete,         // Удалить файл
-    Move,           // Переместить файл
-    Rename          // Переименовать файл
+    Create, // Создать новый файл
+    Update, // Обновить существующий
+    Delete, // Удалить файл
+    Move, // Переместить файл
+    Rename, // Переименовать файл
 }
 
 /// <summary>

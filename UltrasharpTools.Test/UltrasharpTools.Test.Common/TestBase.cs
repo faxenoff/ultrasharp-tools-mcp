@@ -66,7 +66,11 @@ public abstract class SemanticMergeTestBase : TestBase
     protected string Provider { get; }
     protected int Dimension { get; }
 
-    protected SemanticMergeTestBase(string provider = "memory", int dimension = 384, string? configPath = null)
+    protected SemanticMergeTestBase(
+        string provider = "memory",
+        int dimension = 384,
+        string? configPath = null
+    )
         : base(configPath)
     {
         Provider = provider;

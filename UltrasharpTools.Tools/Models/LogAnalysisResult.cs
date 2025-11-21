@@ -21,11 +21,11 @@ public sealed class LogAnalysisResult
 public enum LogFormat
 {
     Unknown,
-    ECS,           // Elastic Common Schema (JSON)
-    PlainText,     // Plain text logs
-    Logcat,        // Android Logcat
-    WebServer,     // Apache/Nginx access logs
-    XML            // XML format logs
+    ECS, // Elastic Common Schema (JSON)
+    PlainText, // Plain text logs
+    Logcat, // Android Logcat
+    WebServer, // Apache/Nginx access logs
+    XML, // XML format logs
 }
 
 /// <summary>
@@ -59,7 +59,7 @@ public enum LogLevel
     Warning,
     Error,
     Fatal,
-    Unknown
+    Unknown,
 }
 
 /// <summary>
@@ -84,6 +84,6 @@ public sealed class LogSearchCriteria
 /// </summary>
 public enum LogDetailLevel
 {
-    Brief,   // Time, level, message, stacktrace, url/path only
-    Full     // All fields
+    Brief, // Time, level, message, stacktrace, url/path only
+    Full, // All fields
 }

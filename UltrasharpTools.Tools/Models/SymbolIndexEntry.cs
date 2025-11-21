@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Models;
 
 /// <summary>
@@ -90,9 +88,10 @@ public sealed class SymbolIndexEntry
     /// Format: {DocumentId}:{LineNumber}:{SimpleName} or fallback to CanonicalFqn hash.
     /// Used for tracking symbols across deltas.
     /// </summary>
-    public string SymbolId => DocumentId != null
-        ? $"{DocumentId.Id}:{LineNumber}:{SimpleName}"
-        : $"cached:{CanonicalFqn.GetHashCode():X8}";
+    public string SymbolId =>
+        DocumentId != null
+            ? $"{DocumentId.Id}:{LineNumber}:{SimpleName}"
+            : $"cached:{CanonicalFqn.GetHashCode():X8}";
 
     public override string ToString()
     {
@@ -119,7 +118,8 @@ public static class SymbolIndexEntryBuilder
         string canonicalFqn,
         DocumentId? documentId = null,
         string? filePath = null,
-        int lineNumber = 0)
+        int lineNumber = 0
+    )
     {
         var flags = ExtractFlags(symbol);
         var simpleName = symbol.Name;
@@ -154,7 +154,7 @@ public static class SymbolIndexEntryBuilder
             SimpleNameHashCode = simpleName.GetHashCode(),
             DocumentId = documentId,
             FilePath = filePath,
-            LineNumber = lineNumber
+            LineNumber = lineNumber,
         };
     }
 
@@ -173,8 +173,9 @@ public static class SymbolIndexEntryBuilder
             Accessibility.Private => SymbolMetadataFlags.Private,
             Accessibility.Internal => SymbolMetadataFlags.Internal,
             Accessibility.Protected => SymbolMetadataFlags.Protected,
-            Accessibility.ProtectedOrInternal => SymbolMetadataFlags.Protected | SymbolMetadataFlags.Internal,
-            _ => SymbolMetadataFlags.None
+            Accessibility.ProtectedOrInternal => SymbolMetadataFlags.Protected
+                | SymbolMetadataFlags.Internal,
+            _ => SymbolMetadataFlags.None,
         };
 
         // Symbol kind
@@ -187,7 +188,7 @@ public static class SymbolIndexEntryBuilder
             SymbolKind.Namespace => SymbolMetadataFlags.IsNamespace,
             SymbolKind.Parameter => SymbolMetadataFlags.IsParameter,
             SymbolKind.Local => SymbolMetadataFlags.IsLocal,
-            _ => SymbolMetadataFlags.None
+            _ => SymbolMetadataFlags.None,
         };
 
         // Type kind (if it's a type)
@@ -200,7 +201,7 @@ public static class SymbolIndexEntryBuilder
                 TypeKind.Struct => SymbolMetadataFlags.IsStruct,
                 TypeKind.Enum => SymbolMetadataFlags.IsEnum,
                 TypeKind.Delegate => SymbolMetadataFlags.IsDelegate,
-                _ => SymbolMetadataFlags.None
+                _ => SymbolMetadataFlags.None,
             };
 
             if (namedType.IsGenericType)
@@ -208,12 +209,18 @@ public static class SymbolIndexEntryBuilder
         }
 
         // Modifiers
-        if (symbol.IsStatic) flags |= SymbolMetadataFlags.IsStatic;
-        if (symbol.IsAbstract) flags |= SymbolMetadataFlags.IsAbstract;
-        if (symbol.IsSealed) flags |= SymbolMetadataFlags.IsSealed;
-        if (symbol.IsVirtual) flags |= SymbolMetadataFlags.IsVirtual;
-        if (symbol.IsOverride) flags |= SymbolMetadataFlags.IsOverride;
-        if (symbol.IsExtern) flags |= SymbolMetadataFlags.IsExtern;
+        if (symbol.IsStatic)
+            flags |= SymbolMetadataFlags.IsStatic;
+        if (symbol.IsAbstract)
+            flags |= SymbolMetadataFlags.IsAbstract;
+        if (symbol.IsSealed)
+            flags |= SymbolMetadataFlags.IsSealed;
+        if (symbol.IsVirtual)
+            flags |= SymbolMetadataFlags.IsVirtual;
+        if (symbol.IsOverride)
+            flags |= SymbolMetadataFlags.IsOverride;
+        if (symbol.IsExtern)
+            flags |= SymbolMetadataFlags.IsExtern;
 
         // Special attributes
         if (symbol is IMethodSymbol methodSymbol)
@@ -224,14 +231,20 @@ public static class SymbolIndexEntryBuilder
                 flags |= SymbolMetadataFlags.IsExtension;
             if (methodSymbol.MethodKind == MethodKind.Constructor)
                 flags |= SymbolMetadataFlags.IsConstructor;
-            if (methodSymbol.MethodKind == MethodKind.UserDefinedOperator || methodSymbol.MethodKind == MethodKind.Conversion)
+            if (
+                methodSymbol.MethodKind == MethodKind.UserDefinedOperator
+                || methodSymbol.MethodKind == MethodKind.Conversion
+            )
                 flags |= SymbolMetadataFlags.IsOperator;
             if (methodSymbol.Parameters.Length > 0)
                 flags |= SymbolMetadataFlags.HasParameters;
         }
 
         // Partial types
-        if (symbol is INamedTypeSymbol typeSymbol && typeSymbol.DeclaringSyntaxReferences.Length > 1)
+        if (
+            symbol is INamedTypeSymbol typeSymbol
+            && typeSymbol.DeclaringSyntaxReferences.Length > 1
+        )
             flags |= SymbolMetadataFlags.IsPartial;
 
         // Scope

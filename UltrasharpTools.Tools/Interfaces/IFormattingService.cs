@@ -12,7 +12,11 @@ public interface IFormattingService
     /// <param name="checkOnly">Только проверка без применения изменений</param>
     /// <param name="cancellationToken">Токен отмены</param>
     /// <returns>Результат форматирования с информацией о файлах</returns>
-    Task<FormattingResult> FormatAsync(string path, bool checkOnly, CancellationToken cancellationToken = default);
+    Task<FormattingResult> FormatAsync(
+        string path,
+        bool checkOnly,
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>

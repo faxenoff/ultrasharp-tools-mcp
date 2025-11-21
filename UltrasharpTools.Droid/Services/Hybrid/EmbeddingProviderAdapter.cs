@@ -14,7 +14,10 @@ public sealed class EmbeddingProviderAdapter : IEmbeddingService
         _provider = provider ?? throw new ArgumentNullException(nameof(provider));
     }
 
-    public async Task<float[]?> GetEmbeddingAsync(string text, CancellationToken cancellationToken = default)
+    public async Task<float[]?> GetEmbeddingAsync(
+        string text,
+        CancellationToken cancellationToken = default
+    )
     {
         try
         {

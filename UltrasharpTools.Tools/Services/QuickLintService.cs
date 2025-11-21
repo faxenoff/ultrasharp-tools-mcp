@@ -1,5 +1,3 @@
-
-
 using System.Collections.Immutable;
 
 namespace UltrasharpTools.Tools.Services;
@@ -7,10 +5,8 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Сервис для быстрого линтинга измененных файлов
 /// </summary>
-public class QuickLintService(
-    ILogger<QuickLintService> logger,
-    ISolutionManager solutionManager
-) : IQuickLintService
+public class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager solutionManager)
+    : IQuickLintService
 {
     private readonly ILogger<QuickLintService> _logger = logger;
     private readonly ISolutionManager _solutionManager = solutionManager;
@@ -29,7 +25,7 @@ public class QuickLintService(
             {
                 ErrorCount = 0,
                 WarningCount = 0,
-                TopIssues = []
+                TopIssues = [],
             };
         }
 
@@ -49,22 +45,25 @@ public class QuickLintService(
                 {
                     ErrorCount = 0,
                     WarningCount = 0,
-                    TopIssues = []
+                    TopIssues = [],
                 };
             }
 
             // ✅ OPTIMIZATION: Parallel processing файлов
             var diagnosticsBag = new ConcurrentBag<Diagnostic>();
 
-            var tasks = solution.Projects
-                .Where(p => p.SupportsCompilation)
+            var tasks = solution
+                .Projects.Where(p => p.SupportsCompilation)
                 .Select(async project =>
                 {
                     try
                     {
                         // Фильтруем только измененные документы этого проекта
-                        var relevantDocuments = project.Documents
-                            .Where(d => d.FilePath != null && normalizedPaths.Contains(Path.GetFullPath(d.FilePath)))
+                        var relevantDocuments = project
+                            .Documents.Where(d =>
+                                d.FilePath != null
+                                && normalizedPaths.Contains(Path.GetFullPath(d.FilePath))
+                            )
                             .ToList();
 
                         if (!relevantDocuments.Any())
@@ -75,8 +74,8 @@ public class QuickLintService(
                             return;
 
                         // Получаем analyzers
-                        var analyzers = project.AnalyzerReferences
-                            .SelectMany(r => r.GetAnalyzers(project.Language))
+                        var analyzers = project
+                            .AnalyzerReferences.SelectMany(r => r.GetAnalyzers(project.Language))
                             .ToImmutableArray();
 
                         IEnumerable<Diagnostic> projectDiagnostics;
@@ -87,7 +86,10 @@ public class QuickLintService(
                             {
                                 var compilationWithAnalyzers = compilation.WithAnalyzers(analyzers);
 
-                                projectDiagnostics = await compilationWithAnalyzers.GetAllDiagnosticsAsync(cancellationToken);
+                                projectDiagnostics =
+                                    await compilationWithAnalyzers.GetAllDiagnosticsAsync(
+                                        cancellationToken
+                                    );
                             }
                             catch
                             {
@@ -101,13 +103,17 @@ public class QuickLintService(
                         }
 
                         // Фильтруем только Error и Warning в измененных файлах
-                        var filteredDiagnostics = projectDiagnostics
-                            .Where(d =>
-                                !d.IsSuppressed &&
-                                (d.Severity == DiagnosticSeverity.Error || d.Severity == DiagnosticSeverity.Warning) &&
-                                d.Location.SourceTree?.FilePath != null &&
-                                normalizedPaths.Contains(Path.GetFullPath(d.Location.SourceTree.FilePath))
-                            );
+                        var filteredDiagnostics = projectDiagnostics.Where(d =>
+                            !d.IsSuppressed
+                            && (
+                                d.Severity == DiagnosticSeverity.Error
+                                || d.Severity == DiagnosticSeverity.Warning
+                            )
+                            && d.Location.SourceTree?.FilePath != null
+                            && normalizedPaths.Contains(
+                                Path.GetFullPath(d.Location.SourceTree.FilePath)
+                            )
+                        );
 
                         foreach (var diagnostic in filteredDiagnostics)
                         {
@@ -116,7 +122,11 @@ public class QuickLintService(
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to lint project: {ProjectName}", project.Name);
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to lint project: {ProjectName}",
+                            project.Name
+                        );
                     }
                 });
 
@@ -139,7 +149,7 @@ public class QuickLintService(
                     Severity = d.Severity,
                     Message = d.GetMessage(),
                     FilePath = d.Location.SourceTree?.FilePath ?? "Unknown",
-                    Line = d.Location.GetLineSpan().StartLinePosition.Line + 1
+                    Line = d.Location.GetLineSpan().StartLinePosition.Line + 1,
                 })
                 .ToList();
 
@@ -153,7 +163,7 @@ public class QuickLintService(
             {
                 ErrorCount = errorCount,
                 WarningCount = warningCount,
-                TopIssues = topIssues
+                TopIssues = topIssues,
             };
         }
         catch (Exception ex)
@@ -163,7 +173,7 @@ public class QuickLintService(
             {
                 ErrorCount = 0,
                 WarningCount = 0,
-                TopIssues = []
+                TopIssues = [],
             };
         }
     }

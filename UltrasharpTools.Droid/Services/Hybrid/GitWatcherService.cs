@@ -18,7 +18,8 @@ public sealed class GitWatcherService : BackgroundService
     public GitWatcherService(
         AgentConfig config,
         IServerBridgeService bridge,
-        ILogger<GitWatcherService> logger)
+        ILogger<GitWatcherService> logger
+    )
     {
         _config = config;
         _bridge = bridge;
@@ -29,7 +30,8 @@ public sealed class GitWatcherService : BackgroundService
     {
         _logger.LogInformation(
             "GitWatcherService starting for repository: {Path}",
-            _config.RepositoryPath);
+            _config.RepositoryPath
+        );
 
         // Инициализация текущего состояния
         _currentBranch = GetCurrentBranch();
@@ -38,7 +40,8 @@ public sealed class GitWatcherService : BackgroundService
         _logger.LogInformation(
             "Initial Git state: branch={Branch}, commit={Commit}",
             _currentBranch ?? "unknown",
-            _lastCommitSha ?? "unknown");
+            _lastCommitSha ?? "unknown"
+        );
 
         try
         {
@@ -69,13 +72,14 @@ public sealed class GitWatcherService : BackgroundService
                 _logger.LogInformation(
                     "Branch switched: {OldBranch} -> {NewBranch}",
                     _currentBranch,
-                    newBranch);
+                    newBranch
+                );
 
                 var evt = new BranchSwitchEvent
                 {
                     Project = _config.ProjectName,
                     FromBranch = _currentBranch,
-                    ToBranch = newBranch
+                    ToBranch = newBranch,
                 };
 
                 await _bridge.SendBranchSwitchEventAsync(evt, cancellationToken);
@@ -89,7 +93,8 @@ public sealed class GitWatcherService : BackgroundService
                 _logger.LogInformation(
                     "New commit detected: {OldSha} -> {NewSha}",
                     _lastCommitSha[..7],
-                    newCommitSha[..7]);
+                    newCommitSha[..7]
+                );
 
                 var changedFiles = GetChangedFilesInCommit(newCommitSha);
 
@@ -98,7 +103,7 @@ public sealed class GitWatcherService : BackgroundService
                     Project = _config.ProjectName,
                     Branch = _currentBranch ?? "unknown",
                     CommitSha = newCommitSha,
-                    FilesChanged = changedFiles
+                    FilesChanged = changedFiles,
                 };
 
                 await _bridge.SendGitCommitEventAsync(evt, cancellationToken);
@@ -200,7 +205,7 @@ public sealed class GitWatcherService : BackgroundService
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
 
             using var process = System.Diagnostics.Process.Start(startInfo);
@@ -228,7 +233,11 @@ public sealed class GitWatcherService : BackgroundService
 
             if (files.Length > 0)
             {
-                _logger.LogDebug("Found {FileCount} changed files in commit {CommitSha}", files.Length, commitSha[..7]);
+                _logger.LogDebug(
+                    "Found {FileCount} changed files in commit {CommitSha}",
+                    files.Length,
+                    commitSha[..7]
+                );
             }
 
             return files;

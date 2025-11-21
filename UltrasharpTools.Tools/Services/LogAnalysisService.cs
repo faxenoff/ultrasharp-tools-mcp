@@ -1,7 +1,4 @@
-
-
 using System.Xml.Linq;
-
 using UltrasharpTools.Tools.Models;
 using LogLevel = UltrasharpTools.Tools.Models.LogLevel;
 
@@ -20,10 +17,14 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
     [GeneratedRegex(@"^\{.*\}$")]
     private static partial Regex JsonLineRegex();
 
-    [GeneratedRegex(@"^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEF])\s+(.+?)\s*:\s*(.*)$")]
+    [GeneratedRegex(
+        @"^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEF])\s+(.+?)\s*:\s*(.*)$"
+    )]
     private static partial Regex LogcatRegex();
 
-    [GeneratedRegex(@"^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+-\s+-\s+\[([^\]]+)\]\s+""([A-Z]+)\s+([^\s]+)\s+HTTP/[\d.]+""\s+(\d{3})\s+(\d+)")]
+    [GeneratedRegex(
+        @"^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+-\s+-\s+\[([^\]]+)\]\s+""([A-Z]+)\s+([^\s]+)\s+HTTP/[\d.]+""\s+(\d{3})\s+(\d+)"
+    )]
     private static partial Regex WebServerRegex();
 
     [GeneratedRegex(@"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+\[([^\]]+)\]\s*(.*)$")]
@@ -33,10 +34,10 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
     private static partial Regex ErrorKeywordRegex();
 
     public async Task<LogAnalysisResult> AnalyzeLogFileAsync(
-    string filePath,
-    LogSearchCriteria criteria,
-    LogDetailLevel detailLevel = LogDetailLevel.Brief,
-    CancellationToken cancellationToken = default
+        string filePath,
+        LogSearchCriteria criteria,
+        LogDetailLevel detailLevel = LogDetailLevel.Brief,
+        CancellationToken cancellationToken = default
     )
     {
         if (!File.Exists(filePath))
@@ -50,7 +51,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
                 Skip = criteria.Skip,
                 Take = criteria.Take,
                 HasMore = false,
-                ErrorMessage = $"File not found: {filePath}"
+                ErrorMessage = $"File not found: {filePath}",
             };
         }
 
@@ -81,7 +82,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
                 TotalMatches = allMatches.Count,
                 Skip = skip,
                 Take = take,
-                HasMore = allMatches.Count > skip + take
+                HasMore = allMatches.Count > skip + take,
             };
         }
         catch (Exception ex)
@@ -95,14 +96,14 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
                 Skip = criteria.Skip,
                 Take = criteria.Take,
                 HasMore = false,
-                ErrorMessage = $"Error analyzing log: {ex.Message}"
+                ErrorMessage = $"Error analyzing log: {ex.Message}",
             };
         }
     }
 
     public async Task<LogFormat> DetectLogFormatAsync(
-    string filePath,
-    CancellationToken cancellationToken = default
+        string filePath,
+        CancellationToken cancellationToken = default
     )
     {
         try
@@ -136,8 +137,10 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
                 {
                     var firstJson = lines.First(l => JsonLineRegex().IsMatch(l));
                     var doc = JsonDocument.Parse(firstJson);
-                    if (doc.RootElement.TryGetProperty("@timestamp", out _) ||
-                    doc.RootElement.TryGetProperty("log.level", out _))
+                    if (
+                        doc.RootElement.TryGetProperty("@timestamp", out _)
+                        || doc.RootElement.TryGetProperty("log.level", out _)
+                    )
                     {
                         return LogFormat.ECS;
                     }
@@ -182,10 +185,10 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
     }
 
     private async Task<List<LogEntry>> ParseLogFileAsync(
-    string filePath,
-    LogFormat format,
-    LogSearchCriteria criteria,
-    CancellationToken cancellationToken
+        string filePath,
+        LogFormat format,
+        LogSearchCriteria criteria,
+        CancellationToken cancellationToken
     )
     {
         var matches = new List<LogEntry>();
@@ -196,11 +199,23 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
         if (needsContextLines)
         {
             // Use sliding window approach with limited buffer
-            return await ParseWithContextAsync(filePath, format, criteria, requiredMatches, cancellationToken);
+            return await ParseWithContextAsync(
+                filePath,
+                format,
+                criteria,
+                requiredMatches,
+                cancellationToken
+            );
         }
 
         // Streaming mode: constant memory usage, early exit when we have enough matches
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920);
+        using var stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 81920
+        );
         using var reader = new StreamReader(stream, Encoding.UTF8);
 
         int lineNumber = 0;
@@ -222,7 +237,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
                 LogFormat.Logcat => ParseLogcatLine(line, lineNumber),
                 LogFormat.WebServer => ParseWebServerLine(line, lineNumber),
                 LogFormat.XML => null, // XML parsing requires full document context
-                _ => null
+                _ => null,
             };
 
             if (entry == null)
@@ -253,11 +268,12 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
     /// More memory intensive than streaming mode, but still better than loading entire file.
     /// </summary>
     private async Task<List<LogEntry>> ParseWithContextAsync(
-    string filePath,
-    LogFormat format,
-    LogSearchCriteria criteria,
-    int requiredMatches,
-    CancellationToken cancellationToken)
+        string filePath,
+        LogFormat format,
+        LogSearchCriteria criteria,
+        int requiredMatches,
+        CancellationToken cancellationToken
+    )
     {
         var matches = new List<LogEntry>();
         var matchedLineIndices = new List<(int LineIndex, LogEntry Entry)>();
@@ -266,7 +282,13 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
         int maxContextWindow = Math.Max(criteria.ContextLinesBefore, criteria.ContextLinesAfter);
         var lineBuffer = new Queue<(int LineNumber, string Line)>(maxContextWindow * 2 + 100);
 
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 81920);
+        using var stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 81920
+        );
         using var reader = new StreamReader(stream, Encoding.UTF8);
 
         int lineNumber = 0;
@@ -297,7 +319,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
                 LogFormat.Logcat => ParseLogcatLine(line, lineNumber),
                 LogFormat.WebServer => ParseWebServerLine(line, lineNumber),
                 LogFormat.XML => null,
-                _ => null
+                _ => null,
             };
 
             if (entry == null)
@@ -317,7 +339,12 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             {
                 // Read a few more lines for afterContext of the last match
                 int additionalLines = criteria.ContextLinesAfter;
-                for (int i = 0; i < additionalLines && await reader.ReadLineAsync(cancellationToken) is { } extraLine; i++)
+                for (
+                    int i = 0;
+                    i < additionalLines
+                        && await reader.ReadLineAsync(cancellationToken) is { } extraLine;
+                    i++
+                )
                 {
                     lineBuffer.Enqueue((++lineNumber, extraLine));
                 }
@@ -328,27 +355,39 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
         // Add context lines to matched entries
         foreach (var (matchLineNumber, entry) in matchedLineIndices)
         {
-            var bufferedLines = lineBuffer.Where(x => Math.Abs(x.LineNumber - matchLineNumber) <= Math.Max(criteria.ContextLinesBefore, criteria.ContextLinesAfter))
-            .OrderBy(x => x.LineNumber)
-            .ToList();
+            var bufferedLines = lineBuffer
+                .Where(x =>
+                    Math.Abs(x.LineNumber - matchLineNumber)
+                    <= Math.Max(criteria.ContextLinesBefore, criteria.ContextLinesAfter)
+                )
+                .OrderBy(x => x.LineNumber)
+                .ToList();
 
             var contextBefore = bufferedLines
-            .Where(x => x.LineNumber < matchLineNumber && x.LineNumber >= matchLineNumber - criteria.ContextLinesBefore)
-            .Select(x => x.Line)
-            .Where(l => !string.IsNullOrWhiteSpace(l))
-            .ToList();
+                .Where(x =>
+                    x.LineNumber < matchLineNumber
+                    && x.LineNumber >= matchLineNumber - criteria.ContextLinesBefore
+                )
+                .Select(x => x.Line)
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .ToList();
 
             var contextAfter = bufferedLines
-            .Where(x => x.LineNumber > matchLineNumber && x.LineNumber <= matchLineNumber + criteria.ContextLinesAfter)
-            .Select(x => x.Line)
-            .Where(l => !string.IsNullOrWhiteSpace(l))
-            .ToList();
+                .Where(x =>
+                    x.LineNumber > matchLineNumber
+                    && x.LineNumber <= matchLineNumber + criteria.ContextLinesAfter
+                )
+                .Select(x => x.Line)
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .ToList();
 
-            matches.Add(entry with
-            {
-                ContextBefore = contextBefore.Count > 0 ? contextBefore : null,
-                ContextAfter = contextAfter.Count > 0 ? contextAfter : null
-            });
+            matches.Add(
+                entry with
+                {
+                    ContextBefore = contextBefore.Count > 0 ? contextBefore : null,
+                    ContextAfter = contextAfter.Count > 0 ? contextAfter : null,
+                }
+            );
         }
 
         return matches;
@@ -360,8 +399,8 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
         if (criteria.Keywords?.Count > 0)
         {
             var hasKeyword = criteria.Keywords.Any(k =>
-            entry.Message.Contains(k, StringComparison.OrdinalIgnoreCase) ||
-            (entry.StackTrace?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false)
+                entry.Message.Contains(k, StringComparison.OrdinalIgnoreCase)
+                || (entry.StackTrace?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false)
             );
 
             if (!hasKeyword)
@@ -406,11 +445,11 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
     }
 
     private LogEntry AddContextLines(
-    LogEntry entry,
-    string[] allLines,
-    int currentIndex,
-    int beforeLines,
-    int afterLines
+        LogEntry entry,
+        string[] allLines,
+        int currentIndex,
+        int beforeLines,
+        int afterLines
     )
     {
         var contextBefore = new List<string>();
@@ -426,7 +465,11 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
         }
 
         // Get lines after
-        for (int i = currentIndex + 1; i < Math.Min(allLines.Length, currentIndex + afterLines + 1); i++)
+        for (
+            int i = currentIndex + 1;
+            i < Math.Min(allLines.Length, currentIndex + afterLines + 1);
+            i++
+        )
         {
             if (!string.IsNullOrWhiteSpace(allLines[i]))
             {
@@ -437,7 +480,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
         return entry with
         {
             ContextBefore = contextBefore.Count > 0 ? contextBefore : null,
-            ContextAfter = contextAfter.Count > 0 ? contextAfter : null
+            ContextAfter = contextAfter.Count > 0 ? contextAfter : null,
         };
     }
 
@@ -457,7 +500,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             AdditionalFields = null, // Exclude in brief mode
             ContextBefore = entry.ContextBefore,
             ContextAfter = entry.ContextAfter,
-            RawLine = entry.RawLine
+            RawLine = entry.RawLine,
         };
     }
 
@@ -472,15 +515,23 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             var entry = new LogEntry
             {
                 LineNumber = lineNumber,
-                Timestamp = root.TryGetProperty("@timestamp", out var ts) ? DateTime.Parse(ts.GetString() ?? "") : null,
-                Level = root.TryGetProperty("log.level", out var lvl) ? ParseLogLevel(lvl.GetString() ?? "") : null,
+                Timestamp = root.TryGetProperty("@timestamp", out var ts)
+                    ? DateTime.Parse(ts.GetString() ?? "")
+                    : null,
+                Level = root.TryGetProperty("log.level", out var lvl)
+                    ? ParseLogLevel(lvl.GetString() ?? "")
+                    : null,
                 Message = root.TryGetProperty("message", out var msg) ? msg.GetString() ?? "" : "",
                 Source = root.TryGetProperty("service.name", out var svc) ? svc.GetString() : null,
-                StackTrace = root.TryGetProperty("error.stack_trace", out var st) ? st.GetString() : null,
+                StackTrace = root.TryGetProperty("error.stack_trace", out var st)
+                    ? st.GetString()
+                    : null,
                 Url = root.TryGetProperty("url.full", out var url) ? url.GetString() : null,
                 Path = root.TryGetProperty("url.path", out var path) ? path.GetString() : null,
-                StatusCode = root.TryGetProperty("http.response.status_code", out var status) ? status.GetInt32() : null,
-                RawLine = line
+                StatusCode = root.TryGetProperty("http.response.status_code", out var status)
+                    ? status.GetInt32()
+                    : null,
+                RawLine = line,
             };
 
             // Capture additional fields
@@ -532,7 +583,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             Level = level,
             Message = message,
             StackTrace = stackTrace,
-            RawLine = line
+            RawLine = line,
         };
     }
 
@@ -556,7 +607,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             Level = level,
             Message = message,
             Source = tag,
-            RawLine = line
+            RawLine = line,
         };
     }
 
@@ -574,9 +625,10 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
         var statusCode = int.Parse(match.Groups[5].Value);
 
         var message = $"{method} {path}";
-        var level = statusCode >= 500 ? LogLevel.Error :
-        statusCode >= 400 ? LogLevel.Warning :
-        LogLevel.Info;
+        var level =
+            statusCode >= 500 ? LogLevel.Error
+            : statusCode >= 400 ? LogLevel.Warning
+            : LogLevel.Info;
 
         return new LogEntry
         {
@@ -587,20 +639,20 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             Path = path,
             Url = path,
             StatusCode = statusCode,
-            RawLine = line
+            RawLine = line,
         };
     }
 
     // Helper methods
     private bool IsStandardEcsField(string fieldName)
     {
-        return fieldName.StartsWith("@") ||
-        fieldName.StartsWith("log.") ||
-        fieldName.StartsWith("error.") ||
-        fieldName.StartsWith("http.") ||
-        fieldName.StartsWith("url.") ||
-        fieldName == "message" ||
-        fieldName == "service";
+        return fieldName.StartsWith("@")
+            || fieldName.StartsWith("log.")
+            || fieldName.StartsWith("error.")
+            || fieldName.StartsWith("http.")
+            || fieldName.StartsWith("url.")
+            || fieldName == "message"
+            || fieldName == "service";
     }
 
     private LogLevel? ParseLogLevel(string level)
@@ -613,7 +665,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             "WARN" or "WARNING" or "W" => LogLevel.Warning,
             "ERROR" or "E" or "ERR" => LogLevel.Error,
             "FATAL" or "F" or "CRITICAL" => LogLevel.Fatal,
-            _ => LogLevel.Unknown
+            _ => LogLevel.Unknown,
         };
     }
 
@@ -627,7 +679,7 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             "W" => LogLevel.Warning,
             "E" => LogLevel.Error,
             "F" => LogLevel.Fatal,
-            _ => LogLevel.Unknown
+            _ => LogLevel.Unknown,
         };
     }
 
@@ -666,7 +718,8 @@ public sealed partial class LogAnalysisService : ILogAnalysisService
             var colonIndex = timestamp.IndexOf(':');
             if (colonIndex >= 0)
             {
-                timestamp = timestamp.Substring(0, colonIndex) + " " + timestamp.Substring(colonIndex + 1);
+                timestamp =
+                    timestamp.Substring(0, colonIndex) + " " + timestamp.Substring(colonIndex + 1);
             }
             return DateTime.Parse(timestamp);
         }

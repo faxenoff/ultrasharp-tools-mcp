@@ -1,8 +1,7 @@
-using YamlDotNet.RepresentationModel;
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
+using YamlDotNet.RepresentationModel;
 
 namespace UltrasharpTools.Tools.Merge.Parsing;
 
@@ -17,9 +16,10 @@ public sealed class YamlParser
     private readonly ContentNormalizer _normalizer;
 
     public YamlParser(
-    StructuralFingerprint fingerprint,
-    ContentNormalizer normalizer,
-    ILogger<YamlParser>? logger = null)
+        StructuralFingerprint fingerprint,
+        ContentNormalizer normalizer,
+        ILogger<YamlParser>? logger = null
+    )
     {
         _fingerprint = fingerprint;
         _normalizer = normalizer;
@@ -30,8 +30,9 @@ public sealed class YamlParser
     /// Парсить YAML файл и извлечь CodeUnits.
     /// </summary>
     public async Task<List<CodeUnit>> ParseFileAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         // 1. Нормализовать контент
         var normalized = await _normalizer.NormalizeAsync(filePath, ct);
@@ -66,15 +67,23 @@ public sealed class YamlParser
             if (document.RootNode != null)
             {
                 var rootPath = docIndex > 0 ? $"doc[{docIndex}]" : "$";
-                ExtractNode(document.RootNode, rootPath, filePath, fileUnit.Id, units, lineNumber: 1);
+                ExtractNode(
+                    document.RootNode,
+                    rootPath,
+                    filePath,
+                    fileUnit.Id,
+                    units,
+                    lineNumber: 1
+                );
             }
             docIndex++;
         }
 
         _logger.LogInformation(
-        "Parsed YAML {FilePath}: extracted {Count} units",
-        filePath,
-        units.Count);
+            "Parsed YAML {FilePath}: extracted {Count} units",
+            filePath,
+            units.Count
+        );
 
         return units;
     }
@@ -108,8 +117,8 @@ public sealed class YamlParser
             Metadata = new Dictionary<string, object>
             {
                 ["FileSize"] = content.Length,
-                ["Extension"] = Path.GetExtension(filePath)
-            }
+                ["Extension"] = Path.GetExtension(filePath),
+            },
         };
     }
 
@@ -142,8 +151,8 @@ public sealed class YamlParser
             {
                 ["FileSize"] = content.Length,
                 ["Extension"] = Path.GetExtension(filePath),
-                ["ParsingFailed"] = true
-            }
+                ["ParsingFailed"] = true,
+            },
         };
     }
 
@@ -151,12 +160,13 @@ public sealed class YamlParser
     /// Рекурсивно извлечь YAML узел.
     /// </summary>
     private void ExtractNode(
-    YamlNode node,
-    string path,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units,
-    int lineNumber)
+        YamlNode node,
+        string path,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units,
+        int lineNumber
+    )
     {
         switch (node)
         {
@@ -178,12 +188,13 @@ public sealed class YamlParser
     /// Извлечь YAML Mapping (dict/object).
     /// </summary>
     private void ExtractMapping(
-    YamlMappingNode mapping,
-    string path,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units,
-    int lineNumber)
+        YamlMappingNode mapping,
+        string path,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units,
+        int lineNumber
+    )
     {
         var content = mapping.ToString();
         var contentHash = ContentNormalizer.ComputeContentHash(content);
@@ -213,10 +224,7 @@ public sealed class YamlParser
             ChildIds = new HashSet<string>(),
             StartLine = lineNumber,
             EndLine = lineNumber + CountLines(content),
-            Metadata = new Dictionary<string, object>
-            {
-                ["KeyCount"] = mapping.Children.Count
-            }
+            Metadata = new Dictionary<string, object> { ["KeyCount"] = mapping.Children.Count },
         };
 
         units.Add(mappingUnit);
@@ -227,7 +235,8 @@ public sealed class YamlParser
             var keyNode = entry.Key as YamlScalarNode;
             var key = keyNode?.Value ?? "unknown";
             var childPath = $"{path}.{key}";
-            var childLineNumber = entry.Value.Start.Line > 0 ? (int)entry.Value.Start.Line : lineNumber;
+            var childLineNumber =
+                entry.Value.Start.Line > 0 ? (int)entry.Value.Start.Line : lineNumber;
             ExtractNode(entry.Value, childPath, filePath, mappingUnit.Id, units, childLineNumber);
         }
     }
@@ -236,12 +245,13 @@ public sealed class YamlParser
     /// Извлечь YAML Sequence (array).
     /// </summary>
     private void ExtractSequence(
-    YamlSequenceNode sequence,
-    string path,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units,
-    int lineNumber)
+        YamlSequenceNode sequence,
+        string path,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units,
+        int lineNumber
+    )
     {
         var content = sequence.ToString();
         var contentHash = ContentNormalizer.ComputeContentHash(content);
@@ -270,10 +280,7 @@ public sealed class YamlParser
             ChildIds = new HashSet<string>(),
             StartLine = lineNumber,
             EndLine = lineNumber + CountLines(content),
-            Metadata = new Dictionary<string, object>
-            {
-                ["Length"] = sequence.Children.Count
-            }
+            Metadata = new Dictionary<string, object> { ["Length"] = sequence.Children.Count },
         };
 
         units.Add(sequenceUnit);
@@ -293,12 +300,13 @@ public sealed class YamlParser
     /// Извлечь YAML Scalar (простое значение).
     /// </summary>
     private void ExtractScalar(
-    YamlScalarNode scalar,
-    string path,
-    string filePath,
-    string parentId,
-    List<CodeUnit> units,
-    int lineNumber)
+        YamlScalarNode scalar,
+        string path,
+        string filePath,
+        string parentId,
+        List<CodeUnit> units,
+        int lineNumber
+    )
     {
         var content = scalar.Value ?? "";
         var contentHash = ContentNormalizer.ComputeContentHash(content);
@@ -330,8 +338,8 @@ public sealed class YamlParser
             Metadata = new Dictionary<string, object>
             {
                 ["Value"] = content,
-                ["Style"] = scalar.Style.ToString()
-            }
+                ["Style"] = scalar.Style.ToString(),
+            },
         };
 
         units.Add(scalarUnit);

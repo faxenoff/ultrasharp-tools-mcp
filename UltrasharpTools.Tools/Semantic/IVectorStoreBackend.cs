@@ -15,7 +15,11 @@ public interface IVectorStoreBackend : IAsyncDisposable
     /// <param name="connectionString">SQLite connection string (например, "Data Source=:memory:")</param>
     /// <param name="dimension">Размерность векторов (384, 768, и т.д.)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task InitializeAsync(string connectionString, int dimension, CancellationToken cancellationToken = default);
+    Task InitializeAsync(
+        string connectionString,
+        int dimension,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Вставить один vector embedding.
@@ -25,7 +29,10 @@ public interface IVectorStoreBackend : IAsyncDisposable
     /// <summary>
     /// Вставить batch векторов (оптимизировано для производительности).
     /// </summary>
-    Task InsertBatchAsync(IEnumerable<VectorEmbedding> embeddings, CancellationToken cancellationToken = default);
+    Task InsertBatchAsync(
+        IEnumerable<VectorEmbedding> embeddings,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Поиск по similarity (cosine similarity).
@@ -36,10 +43,11 @@ public interface IVectorStoreBackend : IAsyncDisposable
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Список результатов, отсортированных по similarity (desc)</returns>
     Task<List<SimilarityResult>> SearchAsync(
-    float[] queryVector,
-    int limit,
-    float minSimilarity = 0.0f,
-    CancellationToken cancellationToken = default);
+        float[] queryVector,
+        int limit,
+        float minSimilarity = 0.0f,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Получить общее количество векторов в базе.

@@ -23,8 +23,8 @@ public sealed class BackendSelector
     public VectorStoreBackendType SelectBackend(int currentVectorCount)
     {
         return currentVectorCount <= _config.SwitchThreshold
-        ? VectorStoreBackendType.SqliteVec
-        : VectorStoreBackendType.Vectorlite;
+            ? VectorStoreBackendType.SqliteVec
+            : VectorStoreBackendType.Vectorlite;
     }
 
     /// <summary>
@@ -34,18 +34,23 @@ public sealed class BackendSelector
     /// <param name="currentVectorCount">Текущее количество векторов (для Auto режима)</param>
     /// <returns>Экземпляр IVectorStoreBackend</returns>
     public IVectorStoreBackend CreateBackend(
-    VectorStoreBackendType backendType,
-    int currentVectorCount = 0)
+        VectorStoreBackendType backendType,
+        int currentVectorCount = 0
+    )
     {
-        var selectedType = backendType == VectorStoreBackendType.Auto
-        ? SelectBackend(currentVectorCount)
-        : backendType;
+        var selectedType =
+            backendType == VectorStoreBackendType.Auto
+                ? SelectBackend(currentVectorCount)
+                : backendType;
 
         return selectedType switch
         {
             VectorStoreBackendType.SqliteVec => new SqliteVecBackend(),
             VectorStoreBackendType.Vectorlite => new VectorliteBackend(_config.VectorliteConfig),
-            _ => throw new ArgumentException($"Unsupported backend type: {selectedType}", nameof(backendType))
+            _ => throw new ArgumentException(
+                $"Unsupported backend type: {selectedType}",
+                nameof(backendType)
+            ),
         };
     }
 
@@ -72,7 +77,7 @@ public sealed class BackendSelector
         {
             <= 50_000 => VectorliteConfig.ForSmallCodebase, // 10K-50K: M=16, ef=100/50
             <= 200_000 => VectorliteConfig.ForMediumCodebase, // 50K-200K: M=24, ef=150/75
-            _ => VectorliteConfig.ForLargeCodebase // >200K: M=32, ef=200/100
+            _ => VectorliteConfig.ForLargeCodebase, // >200K: M=32, ef=200/100
         };
     }
 
@@ -84,15 +89,15 @@ public sealed class BackendSelector
         return backendType switch
         {
             VectorStoreBackendType.SqliteVec =>
-            "SqliteVec (brute-force SIMD): 100% accuracy, fast indexing, best for <10K vectors",
+                "SqliteVec (brute-force SIMD): 100% accuracy, fast indexing, best for <10K vectors",
 
             VectorStoreBackendType.Vectorlite =>
-            "Vectorlite (HNSW ANN): 99.9%+ recall, 3x-100x faster search, best for >10K vectors",
+                "Vectorlite (HNSW ANN): 99.9%+ recall, 3x-100x faster search, best for >10K vectors",
 
             VectorStoreBackendType.Auto =>
-            $"Auto-select: SqliteVec if ≤{_config.SwitchThreshold:N0} vectors, Vectorlite if >{_config.SwitchThreshold:N0} vectors",
+                $"Auto-select: SqliteVec if ≤{_config.SwitchThreshold:N0} vectors, Vectorlite if >{_config.SwitchThreshold:N0} vectors",
 
-            _ => "Unknown backend"
+            _ => "Unknown backend",
         };
     }
 }
@@ -131,22 +136,24 @@ public sealed record BackendSelectorConfig
     /// <summary>
     /// Конфигурация для корпоративных кодовых баз (большие проекты).
     /// </summary>
-    public static BackendSelectorConfig ForEnterprise => new()
-    {
-        SwitchThreshold = 50_000, // Переключение на 50K векторов
-        VectorliteConfig = VectorliteConfig.ForLargeCodebase,
-        EnableAutoSwitching = true,
-        MinVectorsForHnswIndex = 10_000
-    };
+    public static BackendSelectorConfig ForEnterprise =>
+        new()
+        {
+            SwitchThreshold = 50_000, // Переключение на 50K векторов
+            VectorliteConfig = VectorliteConfig.ForLargeCodebase,
+            EnableAutoSwitching = true,
+            MinVectorsForHnswIndex = 10_000,
+        };
 
     /// <summary>
     /// Конфигурация для небольших проектов.
     /// </summary>
-    public static BackendSelectorConfig ForSmallProjects => new()
-    {
-        SwitchThreshold = 5_000, // Переключение на 5K векторов
-        VectorliteConfig = VectorliteConfig.ForSmallCodebase,
-        EnableAutoSwitching = true,
-        MinVectorsForHnswIndex = 500
-    };
+    public static BackendSelectorConfig ForSmallProjects =>
+        new()
+        {
+            SwitchThreshold = 5_000, // Переключение на 5K векторов
+            VectorliteConfig = VectorliteConfig.ForSmallCodebase,
+            EnableAutoSwitching = true,
+            MinVectorsForHnswIndex = 500,
+        };
 }

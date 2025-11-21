@@ -42,9 +42,10 @@ public sealed class BloomFilter
 
         // Optimal bit count: m = -n*ln(p) / (ln(2)^2)
         // where n = expected elements, p = false positive rate
-        _bitCount = (int)Math.Ceiling(
-            -expectedElements * Math.Log(falsePositiveRate) / Math.Pow(Math.Log(2), 2)
-        );
+        _bitCount = (int)
+            Math.Ceiling(
+                -expectedElements * Math.Log(falsePositiveRate) / Math.Pow(Math.Log(2), 2)
+            );
 
         // Optimal number of hash functions: k = (m/n) * ln(2)
         _hashCount = Math.Max(
@@ -180,7 +181,7 @@ public sealed class BloomFilter
             FillRatio = fillRatio,
             HashFunctionCount = _hashCount,
             EstimatedFalsePositiveRate = estimatedFpr,
-            MemoryBytes = (_bitCount + 7) / 8 // Ceiling division for byte count
+            MemoryBytes = (_bitCount + 7) / 8, // Ceiling division for byte count
         };
     }
 }

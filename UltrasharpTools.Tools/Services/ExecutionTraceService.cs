@@ -1,8 +1,5 @@
-
-
 using Microsoft.CodeAnalysis.FlowAnalysis;
 using Microsoft.CodeAnalysis.Operations;
-
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -12,8 +9,8 @@ namespace UltrasharpTools.Tools.Services;
 /// Enhanced with multiple paths support, async/await tracking, and LINQ expression unwrapping.
 /// </summary>
 public sealed class ExecutionTraceService(
-ISolutionManager solutionManager,
-ICodeAnalysisService codeAnalysisService
+    ISolutionManager solutionManager,
+    ICodeAnalysisService codeAnalysisService
 ) : IExecutionTraceService
 {
     private readonly ISolutionManager _solutionManager = solutionManager;
@@ -35,15 +32,15 @@ ICodeAnalysisService codeAnalysisService
     }
 
     public async Task<ExecutionTrace> TraceExecutionAsync(
-    string entryPointFqn,
-    string? exitPointFqn = null,
-    int maxDepth = 10,
-    bool includeExternalCalls = true,
-    bool traceAllPaths = false,
-    int maxPaths = 10,
-    bool unwrapAsync = true,
-    bool unwrapLinq = false,
-    CancellationToken cancellationToken = default
+        string entryPointFqn,
+        string? exitPointFqn = null,
+        int maxDepth = 10,
+        bool includeExternalCalls = true,
+        bool traceAllPaths = false,
+        int maxPaths = 10,
+        bool unwrapAsync = true,
+        bool unwrapLinq = false,
+        CancellationToken cancellationToken = default
     )
     {
         var context = new TraceContext
@@ -54,7 +51,7 @@ ICodeAnalysisService codeAnalysisService
             TraceAllPaths = traceAllPaths,
             MaxPaths = maxPaths,
             UnwrapAsync = unwrapAsync,
-            UnwrapLinq = unwrapLinq
+            UnwrapLinq = unwrapLinq,
         };
 
         string? errorMessage = null;
@@ -74,7 +71,7 @@ ICodeAnalysisService codeAnalysisService
                     Paths = context.Paths,
                     MaxDepthReached = 0,
                     ExitPointReached = false,
-                    ErrorMessage = $"Entry point method not found: {entryPointFqn}"
+                    ErrorMessage = $"Entry point method not found: {entryPointFqn}",
                 };
             }
 
@@ -87,7 +84,7 @@ ICodeAnalysisService codeAnalysisService
                 Description = $"ENTRY: {entrySymbol.ToDisplayString()}",
                 MethodFqn = entrySymbol.ToDisplayString(),
                 Variables = GetMethodParameters(entrySymbol),
-                SourceLocation = GetSourceLocation(entrySymbol)
+                SourceLocation = GetSourceLocation(entrySymbol),
             };
 
             // Trace method execution
@@ -95,16 +92,29 @@ ICodeAnalysisService codeAnalysisService
             {
                 // Multiple paths mode
                 var initialPath = new List<TraceStep> { entryStep };
-                await TraceMethodAllPathsAsync(entrySymbol, initialPath, context, 0, cancellationToken);
+                await TraceMethodAllPathsAsync(
+                    entrySymbol,
+                    initialPath,
+                    context,
+                    0,
+                    cancellationToken
+                );
 
                 // Legacy single Steps list for backward compatibility
-                legacySteps = context.Paths.FirstOrDefault()?.Steps ?? new List<TraceStep> { entryStep };
+                legacySteps =
+                    context.Paths.FirstOrDefault()?.Steps ?? new List<TraceStep> { entryStep };
             }
             else
             {
                 // Single path mode (legacy)
                 legacySteps.Add(entryStep);
-                await TraceMethodSinglePathAsync(entrySymbol, legacySteps, context, 0, cancellationToken);
+                await TraceMethodSinglePathAsync(
+                    entrySymbol,
+                    legacySteps,
+                    context,
+                    0,
+                    cancellationToken
+                );
             }
         }
         catch (Exception ex)
@@ -120,17 +130,17 @@ ICodeAnalysisService codeAnalysisService
             Paths = traceAllPaths ? context.Paths : null,
             MaxDepthReached = context.MaxDepthReached,
             ExitPointReached = context.ExitPointReached,
-            ErrorMessage = errorMessage
+            ErrorMessage = errorMessage,
         };
     }
 
     // Single path tracing (legacy behavior)
     private async Task TraceMethodSinglePathAsync(
-    IMethodSymbol methodSymbol,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        IMethodSymbol methodSymbol,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
         if (currentDepth > context.MaxDepth || context.ExitPointReached)
@@ -147,15 +157,17 @@ ICodeAnalysisService codeAnalysisService
             // External method (no source available)
             if (context.IncludeExternalCalls)
             {
-                currentSteps.Add(new TraceStep
-                {
-                    StepNumber = ++context.StepCounter,
-                    Type = TraceStepType.ExternalCall,
-                    Depth = currentDepth,
-                    Description = $"EXTERNAL: {methodSymbol.ToDisplayString()}",
-                    MethodFqn = methodSymbol.ToDisplayString(),
-                    SourceLocation = "External library"
-                });
+                currentSteps.Add(
+                    new TraceStep
+                    {
+                        StepNumber = ++context.StepCounter,
+                        Type = TraceStepType.ExternalCall,
+                        Depth = currentDepth,
+                        Description = $"EXTERNAL: {methodSymbol.ToDisplayString()}",
+                        MethodFqn = methodSymbol.ToDisplayString(),
+                        SourceLocation = "External library",
+                    }
+                );
             }
             return;
         }
@@ -180,10 +192,13 @@ ICodeAnalysisService codeAnalysisService
         {
             MethodDeclarationSyntax method => method,
             ConstructorDeclarationSyntax ctor => ctor,
-            _ => null
+            _ => null,
         };
 
-        if (methodBody?.Body == null && methodBody is MethodDeclarationSyntax { ExpressionBody: null })
+        if (
+            methodBody?.Body == null
+            && methodBody is MethodDeclarationSyntax { ExpressionBody: null }
+        )
         {
             return;
         }
@@ -214,24 +229,24 @@ ICodeAnalysisService codeAnalysisService
         // Traverse CFG blocks (single path)
         var visitedBlocks = new HashSet<BasicBlock>();
         await TraverseCfgSinglePathAsync(
-        cfg.Blocks[0],
-        cfg,
-        visitedBlocks,
-        semanticModel,
-        currentSteps,
-        context,
-        currentDepth,
-        cancellationToken
+            cfg.Blocks[0],
+            cfg,
+            visitedBlocks,
+            semanticModel,
+            currentSteps,
+            context,
+            currentDepth,
+            cancellationToken
         );
     }
 
     // Multiple paths tracing (new feature)
     private async Task TraceMethodAllPathsAsync(
-    IMethodSymbol methodSymbol,
-    List<TraceStep> currentPath,
-    TraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        IMethodSymbol methodSymbol,
+        List<TraceStep> currentPath,
+        TraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
         if (currentDepth > context.MaxDepth || context.Paths.Count >= context.MaxPaths)
@@ -251,17 +266,17 @@ ICodeAnalysisService codeAnalysisService
             if (context.IncludeExternalCalls)
             {
                 var newPath = new List<TraceStep>(currentPath)
-{
-new TraceStep
-{
-StepNumber = ++context.StepCounter,
-Type = TraceStepType.ExternalCall,
-Depth = currentDepth,
-Description = $"EXTERNAL: {methodSymbol.ToDisplayString()}",
-MethodFqn = methodSymbol.ToDisplayString(),
-SourceLocation = "External library"
-}
-};
+                {
+                    new TraceStep
+                    {
+                        StepNumber = ++context.StepCounter,
+                        Type = TraceStepType.ExternalCall,
+                        Depth = currentDepth,
+                        Description = $"EXTERNAL: {methodSymbol.ToDisplayString()}",
+                        MethodFqn = methodSymbol.ToDisplayString(),
+                        SourceLocation = "External library",
+                    },
+                };
                 SaveCompletedPath(newPath, context);
             }
             else
@@ -293,10 +308,13 @@ SourceLocation = "External library"
         {
             MethodDeclarationSyntax method => method,
             ConstructorDeclarationSyntax ctor => ctor,
-            _ => null
+            _ => null,
         };
 
-        if (methodBody?.Body == null && methodBody is MethodDeclarationSyntax { ExpressionBody: null })
+        if (
+            methodBody?.Body == null
+            && methodBody is MethodDeclarationSyntax { ExpressionBody: null }
+        )
         {
             SaveCompletedPath(currentPath, context);
             return;
@@ -330,14 +348,14 @@ SourceLocation = "External library"
 
         // Traverse CFG blocks (all paths)
         await TraverseCfgAllPathsAsync(
-        cfg.Blocks[0],
-        cfg,
-        new HashSet<BasicBlock>(),
-        semanticModel,
-        currentPath,
-        context,
-        currentDepth,
-        cancellationToken
+            cfg.Blocks[0],
+            cfg,
+            new HashSet<BasicBlock>(),
+            semanticModel,
+            currentPath,
+            context,
+            currentDepth,
+            cancellationToken
         );
     }
 
@@ -350,38 +368,44 @@ SourceLocation = "External library"
 
         var exitReached = steps.Any(s => s.Type == TraceStepType.Exit);
 
-        context.Paths.Add(new ExecutionPath
-        {
-            PathId = context.Paths.Count + 1,
-            Steps = new List<TraceStep>(steps),
-            ReachedExitPoint = exitReached,
-            PathConditions = ExtractPathConditions(steps)
-        });
+        context.Paths.Add(
+            new ExecutionPath
+            {
+                PathId = context.Paths.Count + 1,
+                Steps = new List<TraceStep>(steps),
+                ReachedExitPoint = exitReached,
+                PathConditions = ExtractPathConditions(steps),
+            }
+        );
     }
 
     private string? ExtractPathConditions(List<TraceStep> steps)
     {
         var conditions = steps
-        .Where(s => s.Type == TraceStepType.Conditional)
-        .Select(s => s.ConditionExpression)
-        .Where(c => !string.IsNullOrEmpty(c))
-        .ToList();
+            .Where(s => s.Type == TraceStepType.Conditional)
+            .Select(s => s.ConditionExpression)
+            .Where(c => !string.IsNullOrEmpty(c))
+            .ToList();
 
         return conditions.Count > 0 ? string.Join(" AND ", conditions) : null;
     }
 
     private async Task TraverseCfgSinglePathAsync(
-    BasicBlock block,
-    ControlFlowGraph cfg,
-    HashSet<BasicBlock> visitedBlocks,
-    SemanticModel semanticModel,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        BasicBlock block,
+        ControlFlowGraph cfg,
+        HashSet<BasicBlock> visitedBlocks,
+        SemanticModel semanticModel,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
-        if (visitedBlocks.Contains(block) || block.Kind == BasicBlockKind.Exit || context.ExitPointReached)
+        if (
+            visitedBlocks.Contains(block)
+            || block.Kind == BasicBlockKind.Exit
+            || context.ExitPointReached
+        )
         {
             return;
         }
@@ -392,12 +416,12 @@ SourceLocation = "External library"
         foreach (var operation in block.Operations)
         {
             await ProcessOperationSinglePathAsync(
-            operation,
-            semanticModel,
-            currentSteps,
-            context,
-            currentDepth,
-            cancellationToken
+                operation,
+                semanticModel,
+                currentSteps,
+                context,
+                currentDepth,
+                cancellationToken
             );
 
             if (context.ExitPointReached)
@@ -409,29 +433,31 @@ SourceLocation = "External library"
         // Process branch condition if exists
         if (block.BranchValue != null)
         {
-            currentSteps.Add(new TraceStep
-            {
-                StepNumber = ++context.StepCounter,
-                Type = TraceStepType.Conditional,
-                Depth = currentDepth,
-                Description = $"BRANCH: {block.BranchValue.Syntax.ToString().Trim()}",
-                ConditionExpression = block.BranchValue.Syntax.ToString().Trim(),
-                SourceLocation = GetSourceLocationFromSyntax(block.BranchValue.Syntax)
-            });
+            currentSteps.Add(
+                new TraceStep
+                {
+                    StepNumber = ++context.StepCounter,
+                    Type = TraceStepType.Conditional,
+                    Depth = currentDepth,
+                    Description = $"BRANCH: {block.BranchValue.Syntax.ToString().Trim()}",
+                    ConditionExpression = block.BranchValue.Syntax.ToString().Trim(),
+                    SourceLocation = GetSourceLocationFromSyntax(block.BranchValue.Syntax),
+                }
+            );
         }
 
         // Follow conditional branches (take first path for simplicity)
         if (block.ConditionalSuccessor?.Destination != null)
         {
             await TraverseCfgSinglePathAsync(
-            block.ConditionalSuccessor.Destination,
-            cfg,
-            visitedBlocks,
-            semanticModel,
-            currentSteps,
-            context,
-            currentDepth,
-            cancellationToken
+                block.ConditionalSuccessor.Destination,
+                cfg,
+                visitedBlocks,
+                semanticModel,
+                currentSteps,
+                context,
+                currentDepth,
+                cancellationToken
             );
         }
 
@@ -439,27 +465,27 @@ SourceLocation = "External library"
         if (block.FallThroughSuccessor?.Destination != null && !context.ExitPointReached)
         {
             await TraverseCfgSinglePathAsync(
-            block.FallThroughSuccessor.Destination,
-            cfg,
-            visitedBlocks,
-            semanticModel,
-            currentSteps,
-            context,
-            currentDepth,
-            cancellationToken
+                block.FallThroughSuccessor.Destination,
+                cfg,
+                visitedBlocks,
+                semanticModel,
+                currentSteps,
+                context,
+                currentDepth,
+                cancellationToken
             );
         }
     }
 
     private async Task TraverseCfgAllPathsAsync(
-    BasicBlock block,
-    ControlFlowGraph cfg,
-    HashSet<BasicBlock> visitedBlocks,
-    SemanticModel semanticModel,
-    List<TraceStep> currentPath,
-    TraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        BasicBlock block,
+        ControlFlowGraph cfg,
+        HashSet<BasicBlock> visitedBlocks,
+        SemanticModel semanticModel,
+        List<TraceStep> currentPath,
+        TraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
         if (block.Kind == BasicBlockKind.Exit || context.Paths.Count >= context.MaxPaths)
@@ -483,12 +509,12 @@ SourceLocation = "External library"
         foreach (var operation in block.Operations)
         {
             await ProcessOperationAllPathsAsync(
-            operation,
-            semanticModel,
-            pathAfterOperations,
-            context,
-            currentDepth,
-            cancellationToken
+                operation,
+                semanticModel,
+                pathAfterOperations,
+                context,
+                currentDepth,
+                cancellationToken
             );
 
             // Check for exit point
@@ -502,15 +528,17 @@ SourceLocation = "External library"
         // Process branch condition if exists
         if (block.BranchValue != null)
         {
-            pathAfterOperations.Add(new TraceStep
-            {
-                StepNumber = ++context.StepCounter,
-                Type = TraceStepType.Conditional,
-                Depth = currentDepth,
-                Description = $"BRANCH: {block.BranchValue.Syntax.ToString().Trim()}",
-                ConditionExpression = block.BranchValue.Syntax.ToString().Trim(),
-                SourceLocation = GetSourceLocationFromSyntax(block.BranchValue.Syntax)
-            });
+            pathAfterOperations.Add(
+                new TraceStep
+                {
+                    StepNumber = ++context.StepCounter,
+                    Type = TraceStepType.Conditional,
+                    Depth = currentDepth,
+                    Description = $"BRANCH: {block.BranchValue.Syntax.ToString().Trim()}",
+                    ConditionExpression = block.BranchValue.Syntax.ToString().Trim(),
+                    SourceLocation = GetSourceLocationFromSyntax(block.BranchValue.Syntax),
+                }
+            );
         }
 
         // Explore both conditional and fallthrough branches
@@ -525,14 +553,14 @@ SourceLocation = "External library"
             if (conditionalDest != null)
             {
                 await TraverseCfgAllPathsAsync(
-                conditionalDest,
-                cfg,
-                newVisitedBlocks,
-                semanticModel,
-                conditionalPath,
-                context,
-                currentDepth,
-                cancellationToken
+                    conditionalDest,
+                    cfg,
+                    newVisitedBlocks,
+                    semanticModel,
+                    conditionalPath,
+                    context,
+                    currentDepth,
+                    cancellationToken
                 );
             }
 
@@ -541,14 +569,14 @@ SourceLocation = "External library"
             if (fallthroughDest != null)
             {
                 await TraverseCfgAllPathsAsync(
-                fallthroughDest,
-                cfg,
-                newVisitedBlocks,
-                semanticModel,
-                fallthroughPath,
-                context,
-                currentDepth,
-                cancellationToken
+                    fallthroughDest,
+                    cfg,
+                    newVisitedBlocks,
+                    semanticModel,
+                    fallthroughPath,
+                    context,
+                    currentDepth,
+                    cancellationToken
                 );
             }
         }
@@ -558,14 +586,14 @@ SourceLocation = "External library"
             if (conditionalDest != null)
             {
                 await TraverseCfgAllPathsAsync(
-                conditionalDest,
-                cfg,
-                newVisitedBlocks,
-                semanticModel,
-                pathAfterOperations,
-                context,
-                currentDepth,
-                cancellationToken
+                    conditionalDest,
+                    cfg,
+                    newVisitedBlocks,
+                    semanticModel,
+                    pathAfterOperations,
+                    context,
+                    currentDepth,
+                    cancellationToken
                 );
             }
         }
@@ -575,14 +603,14 @@ SourceLocation = "External library"
             if (fallthroughDest != null)
             {
                 await TraverseCfgAllPathsAsync(
-                fallthroughDest,
-                cfg,
-                newVisitedBlocks,
-                semanticModel,
-                pathAfterOperations,
-                context,
-                currentDepth,
-                cancellationToken
+                    fallthroughDest,
+                    cfg,
+                    newVisitedBlocks,
+                    semanticModel,
+                    pathAfterOperations,
+                    context,
+                    currentDepth,
+                    cancellationToken
                 );
             }
         }
@@ -594,12 +622,12 @@ SourceLocation = "External library"
     }
 
     private async Task ProcessOperationSinglePathAsync(
-    IOperation operation,
-    SemanticModel semanticModel,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        IOperation operation,
+        SemanticModel semanticModel,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
         switch (operation)
@@ -609,7 +637,13 @@ SourceLocation = "External library"
                 break;
 
             case IInvocationOperation invocation:
-                await ProcessInvocationSinglePathAsync(invocation, currentSteps, context, currentDepth, cancellationToken);
+                await ProcessInvocationSinglePathAsync(
+                    invocation,
+                    currentSteps,
+                    context,
+                    currentDepth,
+                    cancellationToken
+                );
                 break;
 
             case ISimpleAssignmentOperation assignment:
@@ -631,12 +665,12 @@ SourceLocation = "External library"
     }
 
     private async Task ProcessOperationAllPathsAsync(
-    IOperation operation,
-    SemanticModel semanticModel,
-    List<TraceStep> currentPath,
-    TraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        IOperation operation,
+        SemanticModel semanticModel,
+        List<TraceStep> currentPath,
+        TraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
         switch (operation)
@@ -646,7 +680,13 @@ SourceLocation = "External library"
                 break;
 
             case IInvocationOperation invocation:
-                await ProcessInvocationAllPathsAsync(invocation, currentPath, context, currentDepth, cancellationToken);
+                await ProcessInvocationAllPathsAsync(
+                    invocation,
+                    currentPath,
+                    context,
+                    currentDepth,
+                    cancellationToken
+                );
                 break;
 
             case ISimpleAssignmentOperation assignment:
@@ -668,11 +708,11 @@ SourceLocation = "External library"
     }
 
     private async Task ProcessInvocationSinglePathAsync(
-    IInvocationOperation invocation,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        IInvocationOperation invocation,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
         // Check for LINQ operations first
@@ -686,47 +726,61 @@ SourceLocation = "External library"
         var methodFqn = method.ToDisplayString();
 
         // Check if this is the exit point
-        if (context.ExitPointFqn != null && string.Equals(methodFqn, context.ExitPointFqn, StringComparison.OrdinalIgnoreCase))
+        if (
+            context.ExitPointFqn != null
+            && string.Equals(methodFqn, context.ExitPointFqn, StringComparison.OrdinalIgnoreCase)
+        )
         {
-            currentSteps.Add(new TraceStep
-            {
-                StepNumber = ++context.StepCounter,
-                Type = TraceStepType.Exit,
-                Depth = currentDepth,
-                Description = $"EXIT: {methodFqn}",
-                MethodFqn = methodFqn,
-                Variables = GetInvocationArguments(invocation),
-                SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax)
-            });
+            currentSteps.Add(
+                new TraceStep
+                {
+                    StepNumber = ++context.StepCounter,
+                    Type = TraceStepType.Exit,
+                    Depth = currentDepth,
+                    Description = $"EXIT: {methodFqn}",
+                    MethodFqn = methodFqn,
+                    Variables = GetInvocationArguments(invocation),
+                    SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
+                }
+            );
             context.ExitPointReached = true;
             return;
         }
 
         // Add method call step
-        currentSteps.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.MethodCall,
-            Depth = currentDepth,
-            Description = $"CALL: {method.Name}({string.Join(", ", method.Parameters.Select(p => p.Type.Name))})",
-            MethodFqn = methodFqn,
-            Variables = GetInvocationArguments(invocation),
-            SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax)
-        });
+        currentSteps.Add(
+            new TraceStep
+            {
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.MethodCall,
+                Depth = currentDepth,
+                Description =
+                    $"CALL: {method.Name}({string.Join(", ", method.Parameters.Select(p => p.Type.Name))})",
+                MethodFqn = methodFqn,
+                Variables = GetInvocationArguments(invocation),
+                SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
+            }
+        );
 
         // Recursively trace called method
         if (currentDepth < context.MaxDepth)
         {
-            await TraceMethodSinglePathAsync(method, currentSteps, context, currentDepth + 1, cancellationToken);
+            await TraceMethodSinglePathAsync(
+                method,
+                currentSteps,
+                context,
+                currentDepth + 1,
+                cancellationToken
+            );
         }
     }
 
     private async Task ProcessInvocationAllPathsAsync(
-    IInvocationOperation invocation,
-    List<TraceStep> currentPath,
-    TraceContext context,
-    int currentDepth,
-    CancellationToken cancellationToken
+        IInvocationOperation invocation,
+        List<TraceStep> currentPath,
+        TraceContext context,
+        int currentDepth,
+        CancellationToken cancellationToken
     )
     {
         // Check for LINQ operations first
@@ -740,173 +794,193 @@ SourceLocation = "External library"
         var methodFqn = method.ToDisplayString();
 
         // Check if this is the exit point
-        if (context.ExitPointFqn != null && string.Equals(methodFqn, context.ExitPointFqn, StringComparison.OrdinalIgnoreCase))
+        if (
+            context.ExitPointFqn != null
+            && string.Equals(methodFqn, context.ExitPointFqn, StringComparison.OrdinalIgnoreCase)
+        )
         {
-            currentPath.Add(new TraceStep
-            {
-                StepNumber = ++context.StepCounter,
-                Type = TraceStepType.Exit,
-                Depth = currentDepth,
-                Description = $"EXIT: {methodFqn}",
-                MethodFqn = methodFqn,
-                Variables = GetInvocationArguments(invocation),
-                SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax)
-            });
+            currentPath.Add(
+                new TraceStep
+                {
+                    StepNumber = ++context.StepCounter,
+                    Type = TraceStepType.Exit,
+                    Depth = currentDepth,
+                    Description = $"EXIT: {methodFqn}",
+                    MethodFqn = methodFqn,
+                    Variables = GetInvocationArguments(invocation),
+                    SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
+                }
+            );
             return;
         }
 
         // Add method call step
-        currentPath.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.MethodCall,
-            Depth = currentDepth,
-            Description = $"CALL: {method.Name}({string.Join(", ", method.Parameters.Select(p => p.Type.Name))})",
-            MethodFqn = methodFqn,
-            Variables = GetInvocationArguments(invocation),
-            SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax)
-        });
+        currentPath.Add(
+            new TraceStep
+            {
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.MethodCall,
+                Depth = currentDepth,
+                Description =
+                    $"CALL: {method.Name}({string.Join(", ", method.Parameters.Select(p => p.Type.Name))})",
+                MethodFqn = methodFqn,
+                Variables = GetInvocationArguments(invocation),
+                SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
+            }
+        );
 
         // Recursively trace called method
         if (currentDepth < context.MaxDepth)
         {
-            await TraceMethodAllPathsAsync(method, currentPath, context, currentDepth + 1, cancellationToken);
+            await TraceMethodAllPathsAsync(
+                method,
+                currentPath,
+                context,
+                currentDepth + 1,
+                cancellationToken
+            );
         }
     }
 
     private void ProcessAssignment(
-    ISimpleAssignmentOperation assignment,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth
+        ISimpleAssignmentOperation assignment,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth
     )
     {
         var target = assignment.Target;
         var value = assignment.Value;
 
-        currentSteps.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.Assignment,
-            Depth = currentDepth,
-            Description = $"ASSIGN: {target.Syntax} = {value.Syntax.ToString().Trim()}",
-            Variables =
-        [
-        new VariableInfo
-{
-Name = target.Syntax.ToString(),
-Type = target.Type?.ToDisplayString() ?? "unknown",
-Operation = "assigned",
-Scope = DetermineScope(target)
-}
-        ],
-            SourceLocation = GetSourceLocationFromSyntax(assignment.Syntax)
-        });
+        currentSteps.Add(
+            new TraceStep
+            {
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.Assignment,
+                Depth = currentDepth,
+                Description = $"ASSIGN: {target.Syntax} = {value.Syntax.ToString().Trim()}",
+                Variables =
+                [
+                    new VariableInfo
+                    {
+                        Name = target.Syntax.ToString(),
+                        Type = target.Type?.ToDisplayString() ?? "unknown",
+                        Operation = "assigned",
+                        Scope = DetermineScope(target),
+                    },
+                ],
+                SourceLocation = GetSourceLocationFromSyntax(assignment.Syntax),
+            }
+        );
     }
 
     private void ProcessObjectCreation(
-    IObjectCreationOperation objectCreation,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth
+        IObjectCreationOperation objectCreation,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth
     )
     {
         var type = objectCreation.Type?.ToDisplayString() ?? "unknown";
 
-        currentSteps.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.ObjectCreation,
-            Depth = currentDepth,
-            Description = $"NEW: {type}",
-            Variables =
-        [
-        new VariableInfo
-{
-Name = type,
-Type = type,
-Operation = "created",
-Scope = "local"
-}
-        ],
-            SourceLocation = GetSourceLocationFromSyntax(objectCreation.Syntax)
-        });
+        currentSteps.Add(
+            new TraceStep
+            {
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.ObjectCreation,
+                Depth = currentDepth,
+                Description = $"NEW: {type}",
+                Variables =
+                [
+                    new VariableInfo
+                    {
+                        Name = type,
+                        Type = type,
+                        Operation = "created",
+                        Scope = "local",
+                    },
+                ],
+                SourceLocation = GetSourceLocationFromSyntax(objectCreation.Syntax),
+            }
+        );
     }
 
     private void ProcessVariableDeclaration(
-    IVariableDeclaratorOperation variableDeclarator,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth
+        IVariableDeclaratorOperation variableDeclarator,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth
     )
     {
         var variable = variableDeclarator.Symbol;
 
-        currentSteps.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.Assignment,
-            Depth = currentDepth,
-            Description = $"DECLARE: {variable.Type.ToDisplayString()} {variable.Name}",
-            Variables =
-        [
-        new VariableInfo
-{
-Name = variable.Name,
-Type = variable.Type.ToDisplayString(),
-Operation = "declared",
-Scope = "local"
-}
-        ],
-            SourceLocation = GetSourceLocation(variable)
-        });
+        currentSteps.Add(
+            new TraceStep
+            {
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.Assignment,
+                Depth = currentDepth,
+                Description = $"DECLARE: {variable.Type.ToDisplayString()} {variable.Name}",
+                Variables =
+                [
+                    new VariableInfo
+                    {
+                        Name = variable.Name,
+                        Type = variable.Type.ToDisplayString(),
+                        Operation = "declared",
+                        Scope = "local",
+                    },
+                ],
+                SourceLocation = GetSourceLocation(variable),
+            }
+        );
     }
 
     private void ProcessReturn(
-    IReturnOperation returnOp,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth
+        IReturnOperation returnOp,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth
     )
     {
         var returnValue = returnOp.ReturnedValue?.Syntax.ToString().Trim() ?? "void";
 
-        currentSteps.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.Return,
-            Depth = currentDepth,
-            Description = $"RETURN: {returnValue}",
-            SourceLocation = GetSourceLocationFromSyntax(returnOp.Syntax)
-        });
+        currentSteps.Add(
+            new TraceStep
+            {
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.Return,
+                Depth = currentDepth,
+                Description = $"RETURN: {returnValue}",
+                SourceLocation = GetSourceLocationFromSyntax(returnOp.Syntax),
+            }
+        );
     }
 
     private List<VariableInfo> GetMethodParameters(IMethodSymbol method)
     {
-        return method.Parameters.Select(
-        p =>
-        new VariableInfo
-        {
-            Name = p.Name,
-            Type = p.Type.ToDisplayString(),
-            Operation = "parameter",
-            Scope = "parameter"
-        }
-        ).ToList();
+        return method
+            .Parameters.Select(p => new VariableInfo
+            {
+                Name = p.Name,
+                Type = p.Type.ToDisplayString(),
+                Operation = "parameter",
+                Scope = "parameter",
+            })
+            .ToList();
     }
 
     private List<VariableInfo> GetInvocationArguments(IInvocationOperation invocation)
     {
-        return invocation.Arguments.Select(
-        arg =>
-        new VariableInfo
-        {
-            Name = arg.Parameter?.Name ?? "?",
-            Type = arg.Parameter?.Type.ToDisplayString() ?? "unknown",
-            Operation = "passed",
-            Scope = "parameter"
-        }
-        ).ToList();
+        return invocation
+            .Arguments.Select(arg => new VariableInfo
+            {
+                Name = arg.Parameter?.Name ?? "?",
+                Type = arg.Parameter?.Type.ToDisplayString() ?? "unknown",
+                Operation = "passed",
+                Scope = "parameter",
+            })
+            .ToList();
     }
 
     private string DetermineScope(IOperation operation)
@@ -915,7 +989,7 @@ Scope = "local"
         {
             { Parent: IParameterReferenceOperation } => "parameter",
             { Parent: IFieldReferenceOperation } => "field",
-            _ => "local"
+            _ => "local",
         };
     }
 
@@ -944,74 +1018,84 @@ Scope = "local"
     }
 
     private void ProcessLinqQuery(
-    IInvocationOperation invocation,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth
+        IInvocationOperation invocation,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth
     )
     {
         var linqInfo = LinqQueryAnalyzer.GetLinqInfo(invocation);
 
         // Add LINQ query step
-        currentSteps.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.LinqQuery,
-            Depth = currentDepth,
-            Description = $"LINQ: {linqInfo.MethodName}({string.Join(", ", linqInfo.LambdaExpressions.Select(l => l.Expression))})",
-            SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
-            LinqInfo = new LinqQueryInfo
+        currentSteps.Add(
+            new TraceStep
             {
-                QueryExpression = linqInfo.FullExpression,
-                QueryType = linqInfo.QueryType,
-                IsDeferred = linqInfo.IsDeferred,
-                Operations = new List<string> { linqInfo.MethodName }
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.LinqQuery,
+                Depth = currentDepth,
+                Description =
+                    $"LINQ: {linqInfo.MethodName}({string.Join(", ", linqInfo.LambdaExpressions.Select(l => l.Expression))})",
+                SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
+                LinqInfo = new LinqQueryInfo
+                {
+                    QueryExpression = linqInfo.FullExpression,
+                    QueryType = linqInfo.QueryType,
+                    IsDeferred = linqInfo.IsDeferred,
+                    Operations = new List<string> { linqInfo.MethodName },
+                },
             }
-        });
+        );
 
         // Add lambda execution steps
         foreach (var lambda in linqInfo.LambdaExpressions)
         {
-            currentSteps.Add(new TraceStep
-            {
-                StepNumber = ++context.StepCounter,
-                Type = TraceStepType.LambdaCall,
-                Depth = currentDepth + 1,
-                Description = $"LAMBDA: {lambda.Expression}",
-                SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax)
-            });
+            currentSteps.Add(
+                new TraceStep
+                {
+                    StepNumber = ++context.StepCounter,
+                    Type = TraceStepType.LambdaCall,
+                    Depth = currentDepth + 1,
+                    Description = $"LAMBDA: {lambda.Expression}",
+                    SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
+                }
+            );
         }
 
         // Add deferred/immediate execution note
         if (linqInfo.IsDeferred)
         {
-            currentSteps.Add(new TraceStep
-            {
-                StepNumber = ++context.StepCounter,
-                Type = TraceStepType.LinqQuery,
-                Depth = currentDepth,
-                Description = $"DEFERRED: Query not executed yet (returns {linqInfo.QueryType})",
-                SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax)
-            });
+            currentSteps.Add(
+                new TraceStep
+                {
+                    StepNumber = ++context.StepCounter,
+                    Type = TraceStepType.LinqQuery,
+                    Depth = currentDepth,
+                    Description =
+                        $"DEFERRED: Query not executed yet (returns {linqInfo.QueryType})",
+                    SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
+                }
+            );
         }
         else if (linqInfo.IsImmediate)
         {
-            currentSteps.Add(new TraceStep
-            {
-                StepNumber = ++context.StepCounter,
-                Type = TraceStepType.LinqQuery,
-                Depth = currentDepth,
-                Description = $"ENUMERATE: Executing deferred query via {linqInfo.MethodName}",
-                SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax)
-            });
+            currentSteps.Add(
+                new TraceStep
+                {
+                    StepNumber = ++context.StepCounter,
+                    Type = TraceStepType.LinqQuery,
+                    Depth = currentDepth,
+                    Description = $"ENUMERATE: Executing deferred query via {linqInfo.MethodName}",
+                    SourceLocation = GetSourceLocationFromSyntax(invocation.Syntax),
+                }
+            );
         }
     }
 
     private void ProcessAwait(
-    IAwaitOperation awaitOp,
-    List<TraceStep> currentSteps,
-    TraceContext context,
-    int currentDepth
+        IAwaitOperation awaitOp,
+        List<TraceStep> currentSteps,
+        TraceContext context,
+        int currentDepth
     )
     {
         var awaitedExpression = awaitOp.Operation.Syntax.ToString().Trim();
@@ -1040,36 +1124,40 @@ Scope = "local"
         }
 
         // Add await step
-        currentSteps.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.AsyncAwait,
-            Depth = currentDepth,
-            Description = $"AWAIT: {awaitedExpression}",
-            SourceLocation = GetSourceLocationFromSyntax(awaitOp.Syntax),
-            AsyncInfo = new AsyncAwaitInfo
+        currentSteps.Add(
+            new TraceStep
             {
-                AwaitedExpression = awaitedExpression,
-                TaskType = awaitedType,
-                ConfigureAwaitUsed = configureAwaitUsed,
-                ContinueOnCapturedContext = continueOnCapturedContext
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.AsyncAwait,
+                Depth = currentDepth,
+                Description = $"AWAIT: {awaitedExpression}",
+                SourceLocation = GetSourceLocationFromSyntax(awaitOp.Syntax),
+                AsyncInfo = new AsyncAwaitInfo
+                {
+                    AwaitedExpression = awaitedExpression,
+                    TaskType = awaitedType,
+                    ConfigureAwaitUsed = configureAwaitUsed,
+                    ContinueOnCapturedContext = continueOnCapturedContext,
+                },
             }
-        });
+        );
 
         // Add continuation step
-        currentSteps.Add(new TraceStep
-        {
-            StepNumber = ++context.StepCounter,
-            Type = TraceStepType.AsyncContinuation,
-            Depth = currentDepth,
-            Description = $"CONTINUATION: after {awaitedExpression}",
-            SourceLocation = GetSourceLocationFromSyntax(awaitOp.Syntax)
-        });
+        currentSteps.Add(
+            new TraceStep
+            {
+                StepNumber = ++context.StepCounter,
+                Type = TraceStepType.AsyncContinuation,
+                Depth = currentDepth,
+                Description = $"CONTINUATION: after {awaitedExpression}",
+                SourceLocation = GetSourceLocationFromSyntax(awaitOp.Syntax),
+            }
+        );
     }
 
     private async Task<IMethodSymbol?> FindMethodSymbolAsync(
-    string fqn,
-    CancellationToken cancellationToken
+        string fqn,
+        CancellationToken cancellationToken
     )
     {
         var symbol = await _solutionManager.FindRoslynSymbolAsync(fqn, cancellationToken);

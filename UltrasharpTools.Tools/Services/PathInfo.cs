@@ -21,7 +21,7 @@ public readonly record struct PathInfo
     public bool IsWithinSolutionDirectory { get; init; }
 
     /// <summary>
-    /// Whether the path is referenced by a project in the solution 
+    /// Whether the path is referenced by a project in the solution
     /// (either directly or through referenced projects)
     /// </summary>
     public bool IsReferencedBySolution { get; init; }
@@ -49,5 +49,6 @@ public readonly record struct PathInfo
     /// <summary>
     /// Whether the path is safe to write to based on its relationship to the solution
     /// </summary>
-    public bool IsWritable => IsWithinSolutionDirectory && string.IsNullOrEmpty(WriteRestrictionReason);
+    public bool IsWritable =>
+        IsWithinSolutionDirectory && string.IsNullOrEmpty(WriteRestrictionReason);
 }

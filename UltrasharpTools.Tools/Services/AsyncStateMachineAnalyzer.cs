@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Services;
 
 /// <summary>
@@ -20,10 +18,10 @@ public static class AsyncStateMachineAnalyzer
         }
 
         var typeName = namedType.OriginalDefinition.ToDisplayString();
-        return typeName == "System.Threading.Tasks.Task" ||
-        typeName == "System.Threading.Tasks.Task<TResult>" ||
-        typeName == "System.Threading.Tasks.ValueTask" ||
-        typeName == "System.Threading.Tasks.ValueTask<TResult>";
+        return typeName == "System.Threading.Tasks.Task"
+            || typeName == "System.Threading.Tasks.Task<TResult>"
+            || typeName == "System.Threading.Tasks.ValueTask"
+            || typeName == "System.Threading.Tasks.ValueTask<TResult>";
     }
 
     /// <summary>
@@ -32,8 +30,9 @@ public static class AsyncStateMachineAnalyzer
     public static INamedTypeSymbol? GetStateMachineType(IMethodSymbol method)
     {
         // Look for AsyncStateMachineAttribute
-        var attr = method.GetAttributes()
-        .FirstOrDefault(a => a.AttributeClass?.Name == nameof(AsyncStateMachineAttribute));
+        var attr = method
+            .GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.Name == nameof(AsyncStateMachineAttribute));
 
         if (attr?.ConstructorArguments.Length > 0)
         {
@@ -53,10 +52,13 @@ public static class AsyncStateMachineAnalyzer
         }
 
         var expectedPrefix = $"<{method.Name}>d__";
-        var stateMachine = containingType.GetTypeMembers()
-        .FirstOrDefault(t =>
-        t.Name.StartsWith(expectedPrefix, StringComparison.Ordinal) &&
-        t.GetAttributes().Any(a => a.AttributeClass?.Name == nameof(CompilerGeneratedAttribute)));
+        var stateMachine = containingType
+            .GetTypeMembers()
+            .FirstOrDefault(t =>
+                t.Name.StartsWith(expectedPrefix, StringComparison.Ordinal)
+                && t.GetAttributes()
+                    .Any(a => a.AttributeClass?.Name == nameof(CompilerGeneratedAttribute))
+            );
 
         return stateMachine;
     }
@@ -65,15 +67,13 @@ public static class AsyncStateMachineAnalyzer
     /// Extracts information about await expressions in a method.
     /// </summary>
     public static List<AwaitExpressionInfo> GetAwaitExpressions(
-    MethodDeclarationSyntax methodSyntax,
-    SemanticModel semanticModel
+        MethodDeclarationSyntax methodSyntax,
+        SemanticModel semanticModel
     )
     {
         var awaitExpressions = new List<AwaitExpressionInfo>();
 
-        var awaitNodes = methodSyntax.DescendantNodes()
-        .OfType<AwaitExpressionSyntax>()
-        .ToList();
+        var awaitNodes = methodSyntax.DescendantNodes().OfType<AwaitExpressionSyntax>().ToList();
 
         int stateIndex = 0;
         foreach (var awaitNode in awaitNodes)
@@ -88,8 +88,11 @@ public static class AsyncStateMachineAnalyzer
                 State = stateIndex++,
                 Location = awaitNode.GetLocation(),
                 AwaitedType = awaitedType,
-                ConfigureAwaitUsed = IsConfigureAwaitUsed(awaitNode, out bool continueOnCapturedContext),
-                ContinueOnCapturedContext = continueOnCapturedContext
+                ConfigureAwaitUsed = IsConfigureAwaitUsed(
+                    awaitNode,
+                    out bool continueOnCapturedContext
+                ),
+                ContinueOnCapturedContext = continueOnCapturedContext,
             };
 
             awaitExpressions.Add(info);
@@ -101,7 +104,10 @@ public static class AsyncStateMachineAnalyzer
     /// <summary>
     /// Checks if ConfigureAwait is used on an await expression.
     /// </summary>
-    private static bool IsConfigureAwaitUsed(AwaitExpressionSyntax awaitExpr, out bool continueOnCapturedContext)
+    private static bool IsConfigureAwaitUsed(
+        AwaitExpressionSyntax awaitExpr,
+        out bool continueOnCapturedContext
+    )
     {
         continueOnCapturedContext = true; // default
 

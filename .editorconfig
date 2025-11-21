@@ -11,9 +11,14 @@ indent_size = 4
 indent_style = space
 tab_width = 4
 
-# CSharpier formatting rules
+# CSharpier-compatible formatting rules
 max_line_length = 100
-# CSharpier uses its own formatting rules that override most EditorConfig settings
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# CSharpier style preferences
+dotnet_style_prefer_simplified_interpolation = true:suggestion
+dotnet_style_prefer_compound_assignment = true:suggestion
 
 #### .NET Code Actions ####
 

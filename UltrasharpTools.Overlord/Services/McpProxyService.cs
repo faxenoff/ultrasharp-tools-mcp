@@ -30,7 +30,8 @@ public sealed class McpProxyService : IMcpProxyService
         ICodeModificationService modificationService,
         IMultiProjectVectorStoreService vectorStore,
         ISymbolResolutionService symbolResolution,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider
+    )
     {
         _logger = logger;
         _solutionManager = solutionManager;
@@ -45,7 +46,8 @@ public sealed class McpProxyService : IMcpProxyService
         string toolName,
         string argumentsJson,
         string? projectContext = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         _logger.LogInformation("Executing proxied tool: {ToolName}", toolName);
 
@@ -54,18 +56,41 @@ public sealed class McpProxyService : IMcpProxyService
             var result = toolName switch
             {
                 "load_solution" => await ExecuteLoadSolution(argumentsJson, cancellationToken),
-                "find_duplicates" => await ExecuteFindDuplicates(argumentsJson, projectContext, cancellationToken),
+                "find_duplicates" => await ExecuteFindDuplicates(
+                    argumentsJson,
+                    projectContext,
+                    cancellationToken
+                ),
                 "view_definition" => await ExecuteViewDefinition(argumentsJson, cancellationToken),
                 "find_references" => await ExecuteFindReferences(argumentsJson, cancellationToken),
                 "modify_code" => await ExecuteModifyCode(argumentsJson, cancellationToken),
-                "analyze_complexity" => await ExecuteAnalyzeComplexity(argumentsJson, cancellationToken),
+                "analyze_complexity" => await ExecuteAnalyzeComplexity(
+                    argumentsJson,
+                    cancellationToken
+                ),
                 "format_code" => await ExecuteFormatCode(argumentsJson, cancellationToken),
-                "reindex_changed_files" => await ExecuteReindexChangedFiles(argumentsJson, projectContext, cancellationToken),
-                "semantic_search" => await ExecuteSemanticSearch(argumentsJson, projectContext, cancellationToken),
+                "reindex_changed_files" => await ExecuteReindexChangedFiles(
+                    argumentsJson,
+                    projectContext,
+                    cancellationToken
+                ),
+                "semantic_search" => await ExecuteSemanticSearch(
+                    argumentsJson,
+                    projectContext,
+                    cancellationToken
+                ),
                 "semantic_diff" => await ExecuteSemanticDiff(argumentsJson, cancellationToken),
-                "detect_code_clones" => await ExecuteDetectCodeClones(argumentsJson, projectContext, cancellationToken),
-                "pattern_search" => await ExecutePatternSearch(argumentsJson, projectContext, cancellationToken),
-                _ => $"Unknown tool: {toolName}"
+                "detect_code_clones" => await ExecuteDetectCodeClones(
+                    argumentsJson,
+                    projectContext,
+                    cancellationToken
+                ),
+                "pattern_search" => await ExecutePatternSearch(
+                    argumentsJson,
+                    projectContext,
+                    cancellationToken
+                ),
+                _ => $"Unknown tool: {toolName}",
             };
 
             _logger.LogDebug("Tool {ToolName} executed successfully", toolName);
@@ -78,28 +103,57 @@ public sealed class McpProxyService : IMcpProxyService
         }
     }
 
-    public Task<List<ToolInfo>> GetAvailableToolsAsync(CancellationToken cancellationToken = default)
+    public Task<List<ToolInfo>> GetAvailableToolsAsync(
+        CancellationToken cancellationToken = default
+    )
     {
         var tools = new List<ToolInfo>
         {
             new() { Name = "load_solution", Description = "Load a C# solution for analysis" },
-            new() { Name = "find_duplicates", Description = "Find duplicate code across all projects (requires vector)" },
+            new()
+            {
+                Name = "find_duplicates",
+                Description = "Find duplicate code across all projects (requires vector)",
+            },
             new() { Name = "view_definition", Description = "View code definition of a symbol" },
             new() { Name = "find_references", Description = "Find all references to a symbol" },
             new() { Name = "modify_code", Description = "Modify code of a member" },
             new() { Name = "analyze_complexity", Description = "Analyze code complexity" },
             new() { Name = "format_code", Description = "Format code using CSharpier" },
-            new() { Name = "reindex_changed_files", Description = "Reindex changed files in vector store" },
-            new() { Name = "semantic_search", Description = "Search code by natural language query (requires embedding)" },
-            new() { Name = "semantic_diff", Description = "Compare two code fragments semantically" },
-            new() { Name = "detect_code_clones", Description = "Detect code clones across projects" },
-            new() { Name = "pattern_search", Description = "Advanced pattern search with semantic mode" }
+            new()
+            {
+                Name = "reindex_changed_files",
+                Description = "Reindex changed files in vector store",
+            },
+            new()
+            {
+                Name = "semantic_search",
+                Description = "Search code by natural language query (requires embedding)",
+            },
+            new()
+            {
+                Name = "semantic_diff",
+                Description = "Compare two code fragments semantically",
+            },
+            new()
+            {
+                Name = "detect_code_clones",
+                Description = "Detect code clones across projects",
+            },
+            new()
+            {
+                Name = "pattern_search",
+                Description = "Advanced pattern search with semantic mode",
+            },
         };
 
         return Task.FromResult(tools);
     }
 
-    private async Task<string> ExecuteLoadSolution(string argumentsJson, CancellationToken cancellationToken)
+    private async Task<string> ExecuteLoadSolution(
+        string argumentsJson,
+        CancellationToken cancellationToken
+    )
     {
         var args = JsonSerializer.Deserialize<LoadSolutionArgs>(argumentsJson);
         if (args == null || string.IsNullOrEmpty(args.SolutionPath))
@@ -110,18 +164,21 @@ public sealed class McpProxyService : IMcpProxyService
         // Используем SolutionManager напрямую
         await _solutionManager.LoadSolutionAsync(args.SolutionPath, cancellationToken);
 
-        return JsonSerializer.Serialize(new
-        {
-            success = true,
-            solutionPath = args.SolutionPath,
-            message = "Solution loaded successfully on server"
-        });
+        return JsonSerializer.Serialize(
+            new
+            {
+                success = true,
+                solutionPath = args.SolutionPath,
+                message = "Solution loaded successfully on server",
+            }
+        );
     }
 
     private async Task<string> ExecuteFindDuplicates(
         string argumentsJson,
         string? projectContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var args = JsonSerializer.Deserialize<FindDuplicatesArgs>(argumentsJson);
         if (args == null)
@@ -145,31 +202,46 @@ public sealed class McpProxyService : IMcpProxyService
 
             if (embeddingService == null)
             {
-                return JsonSerializer.Serialize(new
-                {
-                    error = "TargetVector required or embedding service must be configured.",
-                    hint = "Either provide pre-computed vector or start Overlord with --embedding-url parameter."
-                });
+                return JsonSerializer.Serialize(
+                    new
+                    {
+                        error = "TargetVector required or embedding service must be configured.",
+                        hint = "Either provide pre-computed vector or start Overlord with --embedding-url parameter.",
+                    }
+                );
             }
 
-            _logger.LogInformation("Computing embedding for TargetCode (length: {Length})", args.TargetCode.Length);
-            var embedding = await embeddingService.GetEmbeddingAsync(args.TargetCode, cancellationToken);
+            _logger.LogInformation(
+                "Computing embedding for TargetCode (length: {Length})",
+                args.TargetCode.Length
+            );
+            var embedding = await embeddingService.GetEmbeddingAsync(
+                args.TargetCode,
+                cancellationToken
+            );
 
             if (embedding == null || embedding.Length == 0)
             {
-                return JsonSerializer.Serialize(new
-                {
-                    error = "Failed to compute embedding for TargetCode",
-                    hint = "Embedding service may be unavailable or returned empty result."
-                });
+                return JsonSerializer.Serialize(
+                    new
+                    {
+                        error = "Failed to compute embedding for TargetCode",
+                        hint = "Embedding service may be unavailable or returned empty result.",
+                    }
+                );
             }
 
             queryVector = embedding;
-            _logger.LogDebug("Computed embedding via EmbeddingService (dimensions: {Dim})", queryVector.Length);
+            _logger.LogDebug(
+                "Computed embedding via EmbeddingService (dimensions: {Dim})",
+                queryVector.Length
+            );
         }
         else
         {
-            return JsonSerializer.Serialize(new { error = "Either TargetCode or TargetVector is required" });
+            return JsonSerializer.Serialize(
+                new { error = "Either TargetCode or TargetVector is required" }
+            );
         }
 
         // Поиск по MultiProjectVectorStore
@@ -180,27 +252,33 @@ public sealed class McpProxyService : IMcpProxyService
             projects: args.Scope == "current_project" && !string.IsNullOrEmpty(projectContext)
                 ? new[] { projectContext }
                 : null,
-            cancellationToken: cancellationToken);
+            cancellationToken: cancellationToken
+        );
 
-        return JsonSerializer.Serialize(new
-        {
-            targetVectorDimension = queryVector.Length,
-            scope = args.Scope,
-            threshold = args.Threshold,
-            matchCount = matches.Count,
-            matches = matches.Select(m => new
+        return JsonSerializer.Serialize(
+            new
             {
-                project = m.Project,
-                branch = m.Branch,
-                file = m.FilePath,
-                line = m.Line,
-                similarity = Math.Round(m.Similarity, 4),
-                code = m.Code?.Length > 200 ? m.Code.Substring(0, 200) + "..." : m.Code
-            })
-        });
+                targetVectorDimension = queryVector.Length,
+                scope = args.Scope,
+                threshold = args.Threshold,
+                matchCount = matches.Count,
+                matches = matches.Select(m => new
+                {
+                    project = m.Project,
+                    branch = m.Branch,
+                    file = m.FilePath,
+                    line = m.Line,
+                    similarity = Math.Round(m.Similarity, 4),
+                    code = m.Code?.Length > 200 ? m.Code.Substring(0, 200) + "..." : m.Code,
+                }),
+            }
+        );
     }
 
-    private async Task<string> ExecuteViewDefinition(string argumentsJson, CancellationToken cancellationToken)
+    private async Task<string> ExecuteViewDefinition(
+        string argumentsJson,
+        CancellationToken cancellationToken
+    )
     {
         var args = JsonSerializer.Deserialize<ViewDefinitionArgs>(argumentsJson);
         if (args == null || string.IsNullOrEmpty(args.Fqn))
@@ -219,11 +297,14 @@ public sealed class McpProxyService : IMcpProxyService
             var symbol = await _symbolResolution.FindSymbolAsync(args.Fqn, cancellationToken);
             if (symbol == null)
             {
-                return JsonSerializer.Serialize(new { error = $"Symbol '{args.Fqn}' not found in loaded solution" });
+                return JsonSerializer.Serialize(
+                    new { error = $"Symbol '{args.Fqn}' not found in loaded solution" }
+                );
             }
 
             // Получаем необходимые сервисы
-            var sourceResolutionService = _serviceProvider.GetRequiredService<ISourceResolutionService>();
+            var sourceResolutionService =
+                _serviceProvider.GetRequiredService<ISourceResolutionService>();
             var logger = _serviceProvider.GetRequiredService<ILogger<AnalysisToolsLogCategory>>();
 
             // Получаем source code символа
@@ -233,26 +314,35 @@ public sealed class McpProxyService : IMcpProxyService
             if (!locations.Any())
             {
                 // Try external source resolution
-                var sourceResult = await sourceResolutionService.ResolveSourceAsync(symbol, cancellationToken);
+                var sourceResult = await sourceResolutionService.ResolveSourceAsync(
+                    symbol,
+                    cancellationToken
+                );
                 if (sourceResult != null)
                 {
-                    return JsonSerializer.Serialize(new
-                    {
-                        fqn = args.Fqn,
-                        filePath = sourceResult.FilePath,
-                        source = sourceResult.Source,
-                        resolutionMethod = sourceResult.ResolutionMethod
-                    });
+                    return JsonSerializer.Serialize(
+                        new
+                        {
+                            fqn = args.Fqn,
+                            filePath = sourceResult.FilePath,
+                            source = sourceResult.Source,
+                            resolutionMethod = sourceResult.ResolutionMethod,
+                        }
+                    );
                 }
 
-                return JsonSerializer.Serialize(new { error = $"No source definition found for '{args.Fqn}'" });
+                return JsonSerializer.Serialize(
+                    new { error = $"No source definition found for '{args.Fqn}'" }
+                );
             }
 
             // Получаем source из первой локации
             var location = locations.First();
             if (location.SourceTree == null)
             {
-                return JsonSerializer.Serialize(new { error = "Symbol location has no source tree" });
+                return JsonSerializer.Serialize(
+                    new { error = "Symbol location has no source tree" }
+                );
             }
 
             // Null-forgiving operator: SourceTree is checked above
@@ -261,7 +351,9 @@ public sealed class McpProxyService : IMcpProxyService
 #pragma warning restore CS8602
             if (document == null)
             {
-                return JsonSerializer.Serialize(new { error = "Could not find document for symbol" });
+                return JsonSerializer.Serialize(
+                    new { error = "Could not find document for symbol" }
+                );
             }
 
             // Document is guaranteed non-null after check above
@@ -274,14 +366,16 @@ public sealed class McpProxyService : IMcpProxyService
             var syntaxNode = syntaxTree.GetRoot(cancellationToken).FindNode(location.SourceSpan);
             var sourceText = syntaxNode.ToFullString();
 
-            return JsonSerializer.Serialize(new
-            {
-                fqn = args.Fqn,
-                filePath = document.FilePath ?? location.SourceTree?.FilePath,
-                source = sourceText,
-                line = location.GetLineSpan().StartLinePosition.Line + 1,
-                resolutionMethod = "Roslyn"
-            });
+            return JsonSerializer.Serialize(
+                new
+                {
+                    fqn = args.Fqn,
+                    filePath = document.FilePath ?? location.SourceTree?.FilePath,
+                    source = sourceText,
+                    line = location.GetLineSpan().StartLinePosition.Line + 1,
+                    resolutionMethod = "Roslyn",
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -290,7 +384,10 @@ public sealed class McpProxyService : IMcpProxyService
         }
     }
 
-    private async Task<string> ExecuteFindReferences(string argumentsJson, CancellationToken cancellationToken)
+    private async Task<string> ExecuteFindReferences(
+        string argumentsJson,
+        CancellationToken cancellationToken
+    )
     {
         var args = JsonSerializer.Deserialize<FindReferencesArgs>(argumentsJson);
         if (args == null || string.IsNullOrEmpty(args.Fqn))
@@ -309,11 +406,16 @@ public sealed class McpProxyService : IMcpProxyService
             var symbol = await _symbolResolution.FindSymbolAsync(args.Fqn, cancellationToken);
             if (symbol == null)
             {
-                return JsonSerializer.Serialize(new { error = $"Symbol '{args.Fqn}' not found in loaded solution" });
+                return JsonSerializer.Serialize(
+                    new { error = $"Symbol '{args.Fqn}' not found in loaded solution" }
+                );
             }
 
             // Находим все ссылки на символ
-            var referencedSymbols = await _analysisService.FindReferencesAsync(symbol, cancellationToken);
+            var referencedSymbols = await _analysisService.FindReferencesAsync(
+                symbol,
+                cancellationToken
+            );
 
             var references = new List<object>();
             foreach (var referencedSymbol in referencedSymbols)
@@ -321,21 +423,25 @@ public sealed class McpProxyService : IMcpProxyService
                 foreach (var location in referencedSymbol.Locations)
                 {
                     var lineSpan = location.Location.GetLineSpan();
-                    references.Add(new
-                    {
-                        filePath = lineSpan.Path,
-                        line = lineSpan.StartLinePosition.Line + 1,
-                        column = lineSpan.StartLinePosition.Character + 1
-                    });
+                    references.Add(
+                        new
+                        {
+                            filePath = lineSpan.Path,
+                            line = lineSpan.StartLinePosition.Line + 1,
+                            column = lineSpan.StartLinePosition.Character + 1,
+                        }
+                    );
                 }
             }
 
-            return JsonSerializer.Serialize(new
-            {
-                fqn = args.Fqn,
-                referenceCount = references.Count,
-                references
-            });
+            return JsonSerializer.Serialize(
+                new
+                {
+                    fqn = args.Fqn,
+                    referenceCount = references.Count,
+                    references,
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -344,12 +450,17 @@ public sealed class McpProxyService : IMcpProxyService
         }
     }
 
-    private async Task<string> ExecuteModifyCode(string argumentsJson, CancellationToken cancellationToken)
+    private async Task<string> ExecuteModifyCode(
+        string argumentsJson,
+        CancellationToken cancellationToken
+    )
     {
         var args = JsonSerializer.Deserialize<ModifyCodeArgs>(argumentsJson);
         if (args == null || string.IsNullOrEmpty(args.Fqn) || string.IsNullOrEmpty(args.NewCode))
         {
-            return JsonSerializer.Serialize(new { error = "Invalid arguments: FQN and NewCode required" });
+            return JsonSerializer.Serialize(
+                new { error = "Invalid arguments: FQN and NewCode required" }
+            );
         }
 
         if (!_symbolResolution.IsSolutionLoaded)
@@ -363,30 +474,40 @@ public sealed class McpProxyService : IMcpProxyService
             var symbol = await _symbolResolution.FindSymbolAsync(args.Fqn, cancellationToken);
             if (symbol == null)
             {
-                return JsonSerializer.Serialize(new { error = $"Symbol '{args.Fqn}' not found in loaded solution" });
+                return JsonSerializer.Serialize(
+                    new { error = $"Symbol '{args.Fqn}' not found in loaded solution" }
+                );
             }
 
             // Получаем syntax node для символа
             if (!symbol.DeclaringSyntaxReferences.Any())
             {
-                return JsonSerializer.Serialize(new { error = $"Symbol '{args.Fqn}' has no declaring syntax references" });
+                return JsonSerializer.Serialize(
+                    new { error = $"Symbol '{args.Fqn}' has no declaring syntax references" }
+                );
             }
 
             var syntaxRef = symbol.DeclaringSyntaxReferences.First();
             var oldNode = await syntaxRef.GetSyntaxAsync(cancellationToken);
 
             // Парсим новый код
-            var newNode = Microsoft.CodeAnalysis.CSharp.SyntaxFactory.ParseMemberDeclaration(args.NewCode);
+            var newNode = Microsoft.CodeAnalysis.CSharp.SyntaxFactory.ParseMemberDeclaration(
+                args.NewCode
+            );
             if (newNode == null)
             {
-                return JsonSerializer.Serialize(new { error = "Failed to parse new code as member declaration" });
+                return JsonSerializer.Serialize(
+                    new { error = "Failed to parse new code as member declaration" }
+                );
             }
 
             // Получаем document
             var location = symbol.Locations.First();
             if (location.SourceTree == null)
             {
-                return JsonSerializer.Serialize(new { error = "Symbol location has no source tree" });
+                return JsonSerializer.Serialize(
+                    new { error = "Symbol location has no source tree" }
+                );
             }
 
             // Null-forgiving operator: SourceTree is checked above
@@ -395,29 +516,39 @@ public sealed class McpProxyService : IMcpProxyService
 #pragma warning restore CS8602
             if (document == null)
             {
-                return JsonSerializer.Serialize(new { error = "Could not find document for symbol" });
+                return JsonSerializer.Serialize(
+                    new { error = "Could not find document for symbol" }
+                );
             }
 
             // Document is guaranteed non-null after check above
             // Выполняем замену
-            var newSolution = await _modificationService.ReplaceNodeAsync(document.Id, oldNode, newNode, cancellationToken);
+            var newSolution = await _modificationService.ReplaceNodeAsync(
+                document.Id,
+                oldNode,
+                newNode,
+                cancellationToken
+            );
 
             // Применяем изменения (simplified - не проходит через Git)
             var lintingResult = await _modificationService.ApplyChangesAsync(
                 newSolution,
                 cancellationToken,
-                $"Modified {symbol.Kind} '{args.Fqn}' via MCP proxy");
+                $"Modified {symbol.Kind} '{args.Fqn}' via MCP proxy"
+            );
 
             var success = lintingResult.After == null || lintingResult.After.ErrorCount == 0;
-            return JsonSerializer.Serialize(new
-            {
-                success,
-                fqn = args.Fqn,
-                message = $"Successfully modified {symbol.Kind} '{args.Fqn}'",
-                changedFiles = lintingResult.ChangedFiles,
-                errors = lintingResult.After?.ErrorCount ?? 0,
-                warnings = lintingResult.After?.WarningCount ?? 0
-            });
+            return JsonSerializer.Serialize(
+                new
+                {
+                    success,
+                    fqn = args.Fqn,
+                    message = $"Successfully modified {symbol.Kind} '{args.Fqn}'",
+                    changedFiles = lintingResult.ChangedFiles,
+                    errors = lintingResult.After?.ErrorCount ?? 0,
+                    warnings = lintingResult.After?.WarningCount ?? 0,
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -426,12 +557,17 @@ public sealed class McpProxyService : IMcpProxyService
         }
     }
 
-    private async Task<string> ExecuteAnalyzeComplexity(string argumentsJson, CancellationToken cancellationToken)
+    private async Task<string> ExecuteAnalyzeComplexity(
+        string argumentsJson,
+        CancellationToken cancellationToken
+    )
     {
         var args = JsonSerializer.Deserialize<AnalyzeComplexityArgs>(argumentsJson);
         if (args == null || string.IsNullOrEmpty(args.Scope) || string.IsNullOrEmpty(args.Target))
         {
-            return JsonSerializer.Serialize(new { error = "Invalid arguments: Scope and Target required" });
+            return JsonSerializer.Serialize(
+                new { error = "Invalid arguments: Scope and Target required" }
+            );
         }
 
         if (!_symbolResolution.IsSolutionLoaded)
@@ -444,11 +580,17 @@ public sealed class McpProxyService : IMcpProxyService
             var scope = args.Scope.ToLower();
             if (!new[] { "method", "class", "project" }.Contains(scope))
             {
-                return JsonSerializer.Serialize(new { error = $"Invalid scope '{args.Scope}'. Must be 'method', 'class', or 'project'." });
+                return JsonSerializer.Serialize(
+                    new
+                    {
+                        error = $"Invalid scope '{args.Scope}'. Must be 'method', 'class', or 'project'.",
+                    }
+                );
             }
 
             // Получаем IComplexityAnalysisService
-            var complexityService = _serviceProvider.GetRequiredService<IComplexityAnalysisService>();
+            var complexityService =
+                _serviceProvider.GetRequiredService<IComplexityAnalysisService>();
 
             var metrics = new Dictionary<string, object>();
             var recommendations = new List<string>();
@@ -456,40 +598,70 @@ public sealed class McpProxyService : IMcpProxyService
             switch (scope)
             {
                 case "method":
-                    var methodSymbol = await _symbolResolution.FindSymbolAsync(args.Target, cancellationToken) as IMethodSymbol;
+                    var methodSymbol =
+                        await _symbolResolution.FindSymbolAsync(args.Target, cancellationToken)
+                        as IMethodSymbol;
                     if (methodSymbol == null)
                     {
-                        return JsonSerializer.Serialize(new { error = $"Target '{args.Target}' is not a method." });
+                        return JsonSerializer.Serialize(
+                            new { error = $"Target '{args.Target}' is not a method." }
+                        );
                     }
-                    await complexityService.AnalyzeMethodAsync(methodSymbol, metrics, recommendations, cancellationToken);
+                    await complexityService.AnalyzeMethodAsync(
+                        methodSymbol,
+                        metrics,
+                        recommendations,
+                        cancellationToken
+                    );
                     break;
 
                 case "class":
-                    var typeSymbol = await _symbolResolution.FindNamedTypeSymbolAsync(args.Target, cancellationToken);
+                    var typeSymbol = await _symbolResolution.FindNamedTypeSymbolAsync(
+                        args.Target,
+                        cancellationToken
+                    );
                     if (typeSymbol == null)
                     {
-                        return JsonSerializer.Serialize(new { error = $"Target '{args.Target}' is not a class or interface." });
+                        return JsonSerializer.Serialize(
+                            new { error = $"Target '{args.Target}' is not a class or interface." }
+                        );
                     }
-                    await complexityService.AnalyzeTypeAsync(typeSymbol, metrics, recommendations, false, cancellationToken);
+                    await complexityService.AnalyzeTypeAsync(
+                        typeSymbol,
+                        metrics,
+                        recommendations,
+                        false,
+                        cancellationToken
+                    );
                     break;
 
                 case "project":
                     var project = _solutionManager.GetProjectByName(args.Target);
                     if (project == null)
                     {
-                        return JsonSerializer.Serialize(new { error = $"Project '{args.Target}' not found." });
+                        return JsonSerializer.Serialize(
+                            new { error = $"Project '{args.Target}' not found." }
+                        );
                     }
-                    await complexityService.AnalyzeProjectAsync(project, metrics, recommendations, false, cancellationToken);
+                    await complexityService.AnalyzeProjectAsync(
+                        project,
+                        metrics,
+                        recommendations,
+                        false,
+                        cancellationToken
+                    );
                     break;
             }
 
-            return JsonSerializer.Serialize(new
-            {
-                scope = args.Scope,
-                target = args.Target,
-                metrics,
-                recommendations = recommendations.Distinct().OrderBy(r => r).ToList()
-            });
+            return JsonSerializer.Serialize(
+                new
+                {
+                    scope = args.Scope,
+                    target = args.Target,
+                    metrics,
+                    recommendations = recommendations.Distinct().OrderBy(r => r).ToList(),
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -498,7 +670,10 @@ public sealed class McpProxyService : IMcpProxyService
         }
     }
 
-    private async Task<string> ExecuteFormatCode(string argumentsJson, CancellationToken cancellationToken)
+    private async Task<string> ExecuteFormatCode(
+        string argumentsJson,
+        CancellationToken cancellationToken
+    )
     {
         var args = JsonSerializer.Deserialize<FormatCodeArgs>(argumentsJson);
         if (args == null || string.IsNullOrEmpty(args.Path))
@@ -511,31 +686,41 @@ public sealed class McpProxyService : IMcpProxyService
             // Проверяем путь
             if (!Path.IsPathFullyQualified(args.Path))
             {
-                return JsonSerializer.Serialize(new { error = $"Path must be absolute: {args.Path}" });
+                return JsonSerializer.Serialize(
+                    new { error = $"Path must be absolute: {args.Path}" }
+                );
             }
 
             if (!File.Exists(args.Path) && !Directory.Exists(args.Path))
             {
-                return JsonSerializer.Serialize(new { error = $"Path does not exist: {args.Path}" });
+                return JsonSerializer.Serialize(
+                    new { error = $"Path does not exist: {args.Path}" }
+                );
             }
 
             // Получаем IFormattingService
             var formattingService = _serviceProvider.GetRequiredService<IFormattingService>();
 
             // Выполняем форматирование
-            var result = await formattingService.FormatAsync(args.Path, args.CheckOnly, cancellationToken);
+            var result = await formattingService.FormatAsync(
+                args.Path,
+                args.CheckOnly,
+                cancellationToken
+            );
 
-            return JsonSerializer.Serialize(new
-            {
-                totalFilesChecked = result.TotalFilesChecked,
-                filesNeedingFormatting = result.FilesNeedingFormatting.Count,
-                filesFormatted = args.CheckOnly ? 0 : result.FilesFormatted.Count,
-                checkOnly = args.CheckOnly,
-                filesNeedingFormattingList = result.FilesNeedingFormatting.Take(50).ToList(),
-                message = args.CheckOnly
-                    ? $"Check completed: {result.FilesNeedingFormatting.Count} files need formatting"
-                    : $"Formatted {result.FilesFormatted.Count} files successfully"
-            });
+            return JsonSerializer.Serialize(
+                new
+                {
+                    totalFilesChecked = result.TotalFilesChecked,
+                    filesNeedingFormatting = result.FilesNeedingFormatting.Count,
+                    filesFormatted = args.CheckOnly ? 0 : result.FilesFormatted.Count,
+                    checkOnly = args.CheckOnly,
+                    filesNeedingFormattingList = result.FilesNeedingFormatting.Take(50).ToList(),
+                    message = args.CheckOnly
+                        ? $"Check completed: {result.FilesNeedingFormatting.Count} files need formatting"
+                        : $"Formatted {result.FilesFormatted.Count} files successfully",
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -547,7 +732,8 @@ public sealed class McpProxyService : IMcpProxyService
     private async Task<string> ExecuteReindexChangedFiles(
         string argumentsJson,
         string? projectContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -565,7 +751,10 @@ public sealed class McpProxyService : IMcpProxyService
 
             _logger.LogInformation(
                 "Reindexing {FileCount} files for {Project}/{Branch}",
-                args.Files.Length, project, branch);
+                args.Files.Length,
+                project,
+                branch
+            );
 
             foreach (var fileData in args.Files)
             {
@@ -585,7 +774,8 @@ public sealed class McpProxyService : IMcpProxyService
                         vectors: fileData.Vector,
                         content: fileData.Content,
                         symbols: fileData.Symbols,
-                        cancellationToken: cancellationToken);
+                        cancellationToken: cancellationToken
+                    );
 
                     successCount++;
                 }
@@ -597,16 +787,18 @@ public sealed class McpProxyService : IMcpProxyService
                 }
             }
 
-            return JsonSerializer.Serialize(new
-            {
-                project,
-                branch,
-                totalFiles = args.Files.Length,
-                successCount,
-                errorCount,
-                errors = errors.Take(10).ToList(),  // Limit errors in response
-                message = $"Reindexed {successCount} of {args.Files.Length} files successfully"
-            });
+            return JsonSerializer.Serialize(
+                new
+                {
+                    project,
+                    branch,
+                    totalFiles = args.Files.Length,
+                    successCount,
+                    errorCount,
+                    errors = errors.Take(10).ToList(), // Limit errors in response
+                    message = $"Reindexed {successCount} of {args.Files.Length} files successfully",
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -618,7 +810,8 @@ public sealed class McpProxyService : IMcpProxyService
     private async Task<string> ExecuteSemanticSearch(
         string argumentsJson,
         string? projectContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -632,24 +825,31 @@ public sealed class McpProxyService : IMcpProxyService
             var embeddingService = _serviceProvider.GetService<IEmbeddingService>();
             if (embeddingService == null)
             {
-                return JsonSerializer.Serialize(new
-                {
-                    error = "Embedding service not configured",
-                    hint = "Start Overlord with --embedding-url parameter to enable semantic search"
-                });
+                return JsonSerializer.Serialize(
+                    new
+                    {
+                        error = "Embedding service not configured",
+                        hint = "Start Overlord with --embedding-url parameter to enable semantic search",
+                    }
+                );
             }
 
             // Векторизуем запрос
             _logger.LogInformation("Computing embedding for query: {Query}", args.Query);
-            var queryVector = await embeddingService.GetEmbeddingAsync(args.Query, cancellationToken);
+            var queryVector = await embeddingService.GetEmbeddingAsync(
+                args.Query,
+                cancellationToken
+            );
 
             if (queryVector == null || queryVector.Length == 0)
             {
-                return JsonSerializer.Serialize(new
-                {
-                    error = "Failed to compute embedding for query",
-                    hint = "Embedding service may be unavailable"
-                });
+                return JsonSerializer.Serialize(
+                    new
+                    {
+                        error = "Failed to compute embedding for query",
+                        hint = "Embedding service may be unavailable",
+                    }
+                );
             }
 
             // Поиск по векторному хранилищу
@@ -660,25 +860,28 @@ public sealed class McpProxyService : IMcpProxyService
                 projects: args.Scope == "current_project" && !string.IsNullOrEmpty(projectContext)
                     ? new[] { projectContext }
                     : null,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken
+            );
 
-            return JsonSerializer.Serialize(new
-            {
-                query = args.Query,
-                scope = args.Scope,
-                topK = args.TopK,
-                minSimilarity = args.MinSimilarity,
-                resultsCount = matches.Count,
-                results = matches.Select(m => new
+            return JsonSerializer.Serialize(
+                new
                 {
-                    project = m.Project,
-                    branch = m.Branch,
-                    file = m.FilePath,
-                    line = m.Line,
-                    similarity = Math.Round(m.Similarity, 4),
-                    code = m.Code?.Length > 200 ? m.Code.Substring(0, 200) + "..." : m.Code
-                })
-            });
+                    query = args.Query,
+                    scope = args.Scope,
+                    topK = args.TopK,
+                    minSimilarity = args.MinSimilarity,
+                    resultsCount = matches.Count,
+                    results = matches.Select(m => new
+                    {
+                        project = m.Project,
+                        branch = m.Branch,
+                        file = m.FilePath,
+                        line = m.Line,
+                        similarity = Math.Round(m.Similarity, 4),
+                        code = m.Code?.Length > 200 ? m.Code.Substring(0, 200) + "..." : m.Code,
+                    }),
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -689,25 +892,34 @@ public sealed class McpProxyService : IMcpProxyService
 
     private async Task<string> ExecuteSemanticDiff(
         string argumentsJson,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
             var args = JsonSerializer.Deserialize<SemanticDiffArgs>(argumentsJson);
-            if (args == null || string.IsNullOrEmpty(args.Code1) || string.IsNullOrEmpty(args.Code2))
+            if (
+                args == null
+                || string.IsNullOrEmpty(args.Code1)
+                || string.IsNullOrEmpty(args.Code2)
+            )
             {
-                return JsonSerializer.Serialize(new { error = "Both Code1 and Code2 are required" });
+                return JsonSerializer.Serialize(
+                    new { error = "Both Code1 and Code2 are required" }
+                );
             }
 
             // Получаем embedding сервис
             var embeddingService = _serviceProvider.GetService<IEmbeddingService>();
             if (embeddingService == null)
             {
-                return JsonSerializer.Serialize(new
-                {
-                    error = "Embedding service not configured",
-                    hint = "Start Overlord with --embedding-url parameter"
-                });
+                return JsonSerializer.Serialize(
+                    new
+                    {
+                        error = "Embedding service not configured",
+                        hint = "Start Overlord with --embedding-url parameter",
+                    }
+                );
             }
 
             // Векторизуем оба фрагмента кода
@@ -728,19 +940,21 @@ public sealed class McpProxyService : IMcpProxyService
             // Вычисляем косинусное сходство
             var similarity = CosineSimilarity(vector1, vector2);
 
-            return JsonSerializer.Serialize(new
-            {
-                code1Length = args.Code1.Length,
-                code2Length = args.Code2.Length,
-                semanticSimilarity = Math.Round(similarity, 4),
-                interpretation = similarity switch
+            return JsonSerializer.Serialize(
+                new
                 {
-                    >= 0.9 => "Very similar (likely same functionality)",
-                    >= 0.7 => "Similar (related functionality)",
-                    >= 0.5 => "Somewhat similar",
-                    _ => "Different"
+                    code1Length = args.Code1.Length,
+                    code2Length = args.Code2.Length,
+                    semanticSimilarity = Math.Round(similarity, 4),
+                    interpretation = similarity switch
+                    {
+                        >= 0.9 => "Very similar (likely same functionality)",
+                        >= 0.7 => "Similar (related functionality)",
+                        >= 0.5 => "Somewhat similar",
+                        _ => "Different",
+                    },
                 }
-            });
+            );
         }
         catch (Exception ex)
         {
@@ -752,7 +966,8 @@ public sealed class McpProxyService : IMcpProxyService
     private async Task<string> ExecuteDetectCodeClones(
         string argumentsJson,
         string? projectContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -768,23 +983,29 @@ public sealed class McpProxyService : IMcpProxyService
             // ToolRouter автоматически перенаправит на LOCAL execution
 
             _logger.LogInformation(
-                "detect_code_clones called on Overlord - this should be routed to LOCAL. " +
-                "minSimilarity={MinSimilarity}, mode={Mode}, membersOnly={MembersOnly}, maxGroups={MaxGroups}",
-                args.MinSimilarity, args.Mode, args.MembersOnly, args.MaxGroups);
+                "detect_code_clones called on Overlord - this should be routed to LOCAL. "
+                    + "minSimilarity={MinSimilarity}, mode={Mode}, membersOnly={MembersOnly}, maxGroups={MaxGroups}",
+                args.MinSimilarity,
+                args.Mode,
+                args.MembersOnly,
+                args.MaxGroups
+            );
 
-            return JsonSerializer.Serialize(new
-            {
-                error = "detect_code_clones requires local execution with loaded solution",
-                toolType = "LOCAL",
-                hint = "This tool performs batch analysis on entire codebase (resource-intensive)",
-                explanation = new
+            return JsonSerializer.Serialize(
+                new
                 {
-                    toolPurpose = "Scan ALL code entities, group similar code, provide refactoring recommendations",
-                    requiresLocal = "Full Roslyn semantic model and SemanticSearchService with indexed solution",
-                    alternative = "Use find_duplicates for targeted duplicate search across projects (works on Overlord)"
-                },
-                recommendation = "Ensure Droid is running in Hybrid mode with loaded solution, ToolRouter will handle routing"
-            });
+                    error = "detect_code_clones requires local execution with loaded solution",
+                    toolType = "LOCAL",
+                    hint = "This tool performs batch analysis on entire codebase (resource-intensive)",
+                    explanation = new
+                    {
+                        toolPurpose = "Scan ALL code entities, group similar code, provide refactoring recommendations",
+                        requiresLocal = "Full Roslyn semantic model and SemanticSearchService with indexed solution",
+                        alternative = "Use find_duplicates for targeted duplicate search across projects (works on Overlord)",
+                    },
+                    recommendation = "Ensure Droid is running in Hybrid mode with loaded solution, ToolRouter will handle routing",
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -796,7 +1017,8 @@ public sealed class McpProxyService : IMcpProxyService
     private async Task<string> ExecutePatternSearch(
         string argumentsJson,
         string? projectContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -815,22 +1037,25 @@ public sealed class McpProxyService : IMcpProxyService
                     Query = args.Pattern,
                     Scope = args.Scope ?? "solution",
                     TopK = args.Limit,
-                    MinSimilarity = 0.7
+                    MinSimilarity = 0.7,
                 };
 
                 return await ExecuteSemanticSearch(
                     JsonSerializer.Serialize(semanticArgs),
                     projectContext,
-                    cancellationToken);
+                    cancellationToken
+                );
             }
 
             // Для entity/content режимов требуется Roslyn
-            return JsonSerializer.Serialize(new
-            {
-                message = "pattern_search in entity/content mode requires local Roslyn access",
-                hint = "Use semantic mode for cross-project pattern search via Overlord",
-                supportedMode = "semantic"
-            });
+            return JsonSerializer.Serialize(
+                new
+                {
+                    message = "pattern_search in entity/content mode requires local Roslyn access",
+                    hint = "Use semantic mode for cross-project pattern search via Overlord",
+                    supportedMode = "semantic",
+                }
+            );
         }
         catch (Exception ex)
         {
@@ -879,7 +1104,7 @@ public sealed class McpProxyService : IMcpProxyService
     private sealed class FindDuplicatesArgs
     {
         public string? TargetCode { get; set; }
-        public float[]? TargetVector { get; set; }  // For hybrid mode: Droid sends pre-computed vector
+        public float[]? TargetVector { get; set; } // For hybrid mode: Droid sends pre-computed vector
         public double Threshold { get; set; } = 0.7;
         public string Scope { get; set; } = "current_project";
         public int Limit { get; set; } = 10;
@@ -903,8 +1128,8 @@ public sealed class McpProxyService : IMcpProxyService
 
     private sealed class AnalyzeComplexityArgs
     {
-        public string? Scope { get; set; }  // "method", "class", or "project"
-        public string? Target { get; set; }  // FQN or project name
+        public string? Scope { get; set; } // "method", "class", or "project"
+        public string? Target { get; set; } // FQN or project name
     }
 
     private sealed class FormatCodeArgs
@@ -953,7 +1178,7 @@ public sealed class McpProxyService : IMcpProxyService
     private sealed class PatternSearchArgs
     {
         public string? Pattern { get; set; }
-        public string? Mode { get; set; } = "semantic";  // entity, content, semantic, hybrid
+        public string? Mode { get; set; } = "semantic"; // entity, content, semantic, hybrid
         public string? Scope { get; set; }
         public int Limit { get; set; } = 10;
     }

@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Infrastructure;
 
 /// <summary>
@@ -7,7 +5,8 @@ namespace UltrasharpTools.Tools.Infrastructure;
 /// </summary>
 /// <typeparam name="TKey">Cache key type</typeparam>
 /// <typeparam name="TValue">Cache value type</typeparam>
-public sealed class LruCache<TKey, TValue> where TKey : notnull
+public sealed class LruCache<TKey, TValue>
+    where TKey : notnull
 {
     private readonly int _maxSize;
     private readonly ConcurrentDictionary<TKey, LinkedListNode<CacheItem>> _dictionary;

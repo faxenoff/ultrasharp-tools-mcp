@@ -1,5 +1,3 @@
-
-
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
@@ -19,18 +17,21 @@ public sealed class PowerShellParser
 
     // Regex для функций: function FunctionName { ... }
     private static readonly Regex FunctionRegex = new(
-    @"^\s*function\s+(?<name>[\w-]+)\s*(\{|$)",
-    RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        @"^\s*function\s+(?<name>[\w-]+)\s*(\{|$)",
+        RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled
+    );
 
     // Regex для param блоков
     private static readonly Regex ParamRegex = new(
-    @"^\s*param\s*\(",
-    RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        @"^\s*param\s*\(",
+        RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled
+    );
 
     public PowerShellParser(
-    StructuralFingerprint fingerprint,
-    ContentNormalizer normalizer,
-    ILogger<PowerShellParser>? logger = null)
+        StructuralFingerprint fingerprint,
+        ContentNormalizer normalizer,
+        ILogger<PowerShellParser>? logger = null
+    )
     {
         _fingerprint = fingerprint;
         _normalizer = normalizer;
@@ -41,8 +42,9 @@ public sealed class PowerShellParser
     /// Парсить PowerShell файл и извлечь CodeUnits.
     /// </summary>
     public async Task<List<CodeUnit>> ParseFileAsync(
-    string filePath,
-    CancellationToken ct = default)
+        string filePath,
+        CancellationToken ct = default
+    )
     {
         // 1. Нормализовать контент
         var normalized = await _normalizer.NormalizeAsync(filePath, ct);
@@ -69,26 +71,32 @@ public sealed class PowerShellParser
 
                 var functionContent = ExtractLines(lines, functionStart, functionEnd);
                 var functionUnit = CreateFunctionUnit(
-                functionName,
-                functionContent,
-                filePath,
-                fileUnit.Id,
-                functionStart,
-                functionEnd);
+                    functionName,
+                    functionContent,
+                    filePath,
+                    fileUnit.Id,
+                    functionStart,
+                    functionEnd
+                );
 
                 units.Add(functionUnit);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to extract function at line {Line} in {FilePath}",
-                GetLineNumber(content, match.Index), filePath);
+                _logger.LogWarning(
+                    ex,
+                    "Failed to extract function at line {Line} in {FilePath}",
+                    GetLineNumber(content, match.Index),
+                    filePath
+                );
             }
         }
 
         _logger.LogInformation(
-        "Parsed PowerShell {FilePath}: extracted {Count} units",
-        filePath,
-        units.Count);
+            "Parsed PowerShell {FilePath}: extracted {Count} units",
+            filePath,
+            units.Count
+        );
 
         return units;
     }
@@ -123,8 +131,8 @@ public sealed class PowerShellParser
             {
                 ["FileSize"] = content.Length,
                 ["Extension"] = ".ps1",
-                ["Language"] = "PowerShell"
-            }
+                ["Language"] = "PowerShell",
+            },
         };
     }
 
@@ -132,12 +140,13 @@ public sealed class PowerShellParser
     /// Создать Function CodeUnit.
     /// </summary>
     private CodeUnit CreateFunctionUnit(
-    string name,
-    string content,
-    string filePath,
-    string parentId,
-    int startLine,
-    int endLine)
+        string name,
+        string content,
+        string filePath,
+        string parentId,
+        int startLine,
+        int endLine
+    )
     {
         var contentHash = ContentNormalizer.ComputeContentHash(content);
         var structuralHash = _fingerprint.ComputeStructuralHash(content, filePath);
@@ -166,8 +175,8 @@ public sealed class PowerShellParser
             Metadata = new Dictionary<string, object>
             {
                 ["ParameterCount"] = parameters.Count,
-                ["Parameters"] = parameters
-            }
+                ["Parameters"] = parameters,
+            },
         };
     }
 
@@ -189,8 +198,10 @@ public sealed class PowerShellParser
 
         for (int i = startIndex; i < content.Length && depth > 0; i++)
         {
-            if (content[i] == '(') depth++;
-            else if (content[i] == ')') depth--;
+            if (content[i] == '(')
+                depth++;
+            else if (content[i] == ')')
+                depth--;
             endIndex = i;
         }
 

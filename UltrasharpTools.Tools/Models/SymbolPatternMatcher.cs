@@ -1,5 +1,3 @@
-
-
 namespace UltrasharpTools.Tools.Models;
 
 /// <summary>
@@ -25,9 +23,8 @@ public class SymbolPatternMatcher
         else if (_patternType == PatternType.Wildcard)
         {
             // Convert wildcard to regex
-            var regexPattern = "^" + Regex.Escape(pattern)
-            .Replace("\\*", ".*")
-            .Replace("\\?", ".") + "$";
+            var regexPattern =
+                "^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
             _regex = new Regex(regexPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
         }
     }
@@ -45,7 +42,7 @@ public class SymbolPatternMatcher
             PatternType.Exact => symbolName.Equals(_pattern, StringComparison.Ordinal),
             PatternType.Wildcard => _regex!.IsMatch(symbolName),
             PatternType.Regex => _regex!.IsMatch(symbolName),
-            _ => false
+            _ => false,
         };
     }
 
@@ -59,7 +56,10 @@ public class SymbolPatternMatcher
             throw new ArgumentException("Symbol name cannot be null or empty", nameof(symbolName));
 
         if (string.IsNullOrEmpty(replacementPattern))
-            throw new ArgumentException("Replacement pattern cannot be null or empty", nameof(replacementPattern));
+            throw new ArgumentException(
+                "Replacement pattern cannot be null or empty",
+                nameof(replacementPattern)
+            );
 
         // For exact match, just return the replacement
         if (_patternType == PatternType.Exact)
@@ -86,7 +86,11 @@ public class SymbolPatternMatcher
     /// Apply wildcard-based replacement.
     /// Handles patterns like "test*" → "nonmod*" for "testItem" → "nonmodItem"
     /// </summary>
-    private static string ApplyWildcardReplacement(string symbolName, string pattern, string replacementPattern)
+    private static string ApplyWildcardReplacement(
+        string symbolName,
+        string pattern,
+        string replacementPattern
+    )
     {
         // Find all wildcard positions in pattern and replacement
         var wildcardPositions = FindWildcardPositions(pattern);
@@ -104,7 +108,8 @@ public class SymbolPatternMatcher
             var indexOf = result.IndexOf(wildcardChar);
             if (indexOf >= 0)
             {
-                result = result.Substring(0, indexOf) + capturedParts[i] + result.Substring(indexOf + 1);
+                result =
+                    result.Substring(0, indexOf) + capturedParts[i] + result.Substring(indexOf + 1);
             }
         }
 
@@ -124,7 +129,11 @@ public class SymbolPatternMatcher
         return positions;
     }
 
-    private static List<string> ExtractWildcardCaptures(string input, string pattern, List<(int Position, WildcardType Type)> wildcardPositions)
+    private static List<string> ExtractWildcardCaptures(
+        string input,
+        string pattern,
+        List<(int Position, WildcardType Type)> wildcardPositions
+    )
     {
         var captures = new List<string>();
 
@@ -176,7 +185,9 @@ public class SymbolPatternMatcher
 
                     if (nextLiteralIndex >= 0)
                     {
-                        captures.Add(input.Substring(captureStart, nextLiteralIndex - captureStart));
+                        captures.Add(
+                            input.Substring(captureStart, nextLiteralIndex - captureStart)
+                        );
                         inputIndex = nextLiteralIndex;
                     }
                     else
@@ -200,9 +211,16 @@ public class SymbolPatternMatcher
     private static PatternType DetectPatternType(string pattern)
     {
         // Check for regex special characters (excluding * and ?)
-        if (pattern.Contains('[') || pattern.Contains('(') || pattern.Contains('^') ||
-        pattern.Contains('$') || pattern.Contains('{') || pattern.Contains('|') ||
-        pattern.Contains('+') || pattern.Contains('.') && pattern.Contains('*'))
+        if (
+            pattern.Contains('[')
+            || pattern.Contains('(')
+            || pattern.Contains('^')
+            || pattern.Contains('$')
+            || pattern.Contains('{')
+            || pattern.Contains('|')
+            || pattern.Contains('+')
+            || pattern.Contains('.') && pattern.Contains('*')
+        )
         {
             return PatternType.Regex;
         }
@@ -220,7 +238,7 @@ public class SymbolPatternMatcher
     private enum WildcardType
     {
         Star,
-        Question
+        Question,
     }
 }
 
@@ -244,5 +262,5 @@ public enum PatternType
     /// <summary>
     /// Regular expression pattern
     /// </summary>
-    Regex
+    Regex,
 }
