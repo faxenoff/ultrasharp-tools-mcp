@@ -2219,14 +2219,23 @@ public static class ModificationTools
                         changedDocuments.AddRange(projectChange.GetChangedDocuments());
                     }
 
-                    // If no code or non-code files were modified, return early
+                    // FIX: Возвращаем info message вместо ошибки при отсутствии изменений
                     if (changedDocuments.Count == 0 && nonCodeFilesModified.Count == 0)
                     {
-                        logger.LogWarning(
-                            "No documents were changed during find and replace operation"
+                        logger.LogInformation(
+                            "No matches found for pattern '{Pattern}' in target '{Target}'",
+                            regexPattern,
+                            target
                         );
-                        throw new McpException(
-                            $"No matches found for pattern '{regexPattern}' in target '{target}', or matches were found but replacement produced identical text. No changes were made."
+                        return JsonSerializer.Serialize(
+                            new
+                            {
+                                success = true,
+                                message = $"No matches found for pattern '{regexPattern}' in target '{target}'. No changes were made.",
+                                matchesFound = 0,
+                                filesChanged = 0
+                            },
+                            new JsonSerializerOptions { WriteIndented = true }
                         );
                     }
 

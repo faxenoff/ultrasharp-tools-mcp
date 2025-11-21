@@ -539,9 +539,13 @@ public class CodeModificationService(
                                 var newDocument = document.WithText(
                                     SourceText.From(newFullText, sourceText.Encoding)
                                 );
+
+                                // OPTIMIZATION: Partial formatting - форматируем только измененный span
+                                var newSpan = new TextSpan(nodeSpan.Start, newSymbolText.Length);
                                 var formattedDocument = await FormatDocumentAsync(
                                     newDocument,
-                                    cancellationToken
+                                    cancellationToken,
+                                    newSpan
                                 );
                                 resultSolution = formattedDocument.Project.Solution;
 
@@ -658,20 +662,68 @@ public class CodeModificationService(
         return resultSolution;
     }
 
+    /// <summary>
+    /// Форматирует документ (базовая версия для интерфейса)
+    /// </summary>
     public async Task<Document> FormatDocumentAsync(
         Document document,
         CancellationToken cancellationToken
     )
     {
+        return await FormatDocumentAsync(document, cancellationToken, null);
+    }
+
+    /// <summary>
+    /// Форматирует документ с умной оптимизацией
+    /// </summary>
+    private async Task<Document> FormatDocumentAsync(
+        Document document,
+        CancellationToken cancellationToken,
+        TextSpan? changedSpan
+    )
+    {
         _logger.LogDebug("Formatting document: {DocumentPath}", document.FilePath);
+
         var formattingOptions = await document.GetOptionsAsync(cancellationToken);
-        var formattedDocument = await Formatter.FormatAsync(
+
+        // OPTIMIZATION 1: Partial formatting - форматируем только измененный span
+        if (changedSpan.HasValue)
+        {
+            _logger.LogDebug(
+                "Partial formatting span [{Start}..{End}] in {DocumentPath}",
+                changedSpan.Value.Start,
+                changedSpan.Value.End,
+                document.FilePath
+            );
+
+            var formattedDocument = await Formatter.FormatAsync(
+                document,
+                changedSpan.Value,
+                formattingOptions,
+                cancellationToken
+            );
+
+            _logger.LogDebug("Document partially formatted: {DocumentPath}", document.FilePath);
+            return formattedDocument;
+        }
+
+        // OPTIMIZATION 2: Smart skip - проверяем нужно ли форматирование
+        var sourceText = await document.GetTextAsync(cancellationToken);
+        if (sourceText.Length < 100) // Очень маленький файл - skip
+        {
+            _logger.LogDebug("Skipping formatting (file too small): {DocumentPath}", document.FilePath);
+            return document;
+        }
+
+        // Full document formatting (fallback)
+        var fullFormattedDocument = await Formatter.FormatAsync(
             document,
             formattingOptions,
             cancellationToken
         );
-        _logger.LogDebug("Document formatted: {DocumentPath}", document.FilePath);
-        return formattedDocument;
+
+        _logger.LogDebug("Document fully formatted: {DocumentPath}", document.FilePath);
+        return fullFormattedDocument;
     }
 
     public async Task<LintingResult> ApplyChangesAsync(
