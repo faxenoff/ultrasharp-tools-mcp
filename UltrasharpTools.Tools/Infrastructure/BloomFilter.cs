@@ -30,16 +30,27 @@ public sealed class BloomFilter
     public BloomFilter(int expectedElements, double falsePositiveRate = 0.01)
     {
         if (expectedElements <= 0)
-            throw new ArgumentException("Expected elements must be positive", nameof(expectedElements));
+            throw new ArgumentException(
+                "Expected elements must be positive",
+                nameof(expectedElements)
+            );
         if (falsePositiveRate <= 0 || falsePositiveRate >= 1)
-            throw new ArgumentException("False positive rate must be between 0 and 1", nameof(falsePositiveRate));
+            throw new ArgumentException(
+                "False positive rate must be between 0 and 1",
+                nameof(falsePositiveRate)
+            );
 
         // Optimal bit count: m = -n*ln(p) / (ln(2)^2)
         // where n = expected elements, p = false positive rate
-        _bitCount = (int)Math.Ceiling(-expectedElements * Math.Log(falsePositiveRate) / Math.Pow(Math.Log(2), 2));
+        _bitCount = (int)Math.Ceiling(
+            -expectedElements * Math.Log(falsePositiveRate) / Math.Pow(Math.Log(2), 2)
+        );
 
         // Optimal number of hash functions: k = (m/n) * ln(2)
-        _hashCount = Math.Max(1, (int)Math.Round(_bitCount / (double)expectedElements * Math.Log(2)));
+        _hashCount = Math.Max(
+            1,
+            (int)Math.Round(_bitCount / (double)expectedElements * Math.Log(2))
+        );
 
         _bits = new BitArray(_bitCount);
     }
