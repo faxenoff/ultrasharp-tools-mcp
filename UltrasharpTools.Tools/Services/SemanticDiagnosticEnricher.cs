@@ -512,7 +512,10 @@ public class SemanticDiagnosticEnricher(
                 foreach (var example in cluster.RepresentativeExamples)
                 {
                     // Находим embedding для snippet
-                    if (embeddingCache.TryGetValue(example.Snippet, out var exampleEmbedding))
+                    if (
+                        example.Snippet != null
+                        && embeddingCache.TryGetValue(example.Snippet, out var exampleEmbedding)
+                    )
                     {
                         example.SimilarityToCentroid = CalculateCosineSimilarity(
                             centroid,

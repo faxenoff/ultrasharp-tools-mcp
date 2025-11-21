@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+using System.IO.Hashing;
 using UltrasharpTools.Tools.Semantic.Models;
 
 namespace UltrasharpTools.Tools.Semantic.Embedding.Providers;
@@ -81,10 +81,10 @@ public sealed class MemoryProvider : IEmbeddingProvider
     {
         var embedding = new float[EmbeddingDimension];
 
-        // Use SHA256 to generate deterministic bytes
-        using var sha256 = SHA256.Create();
+        // Use xxHash128 to generate deterministic bytes (7x faster than SHA256)
+        // Не требует криптостойкости, только детерминированность
         var textBytes = Encoding.UTF8.GetBytes(text);
-        var hashBytes = sha256.ComputeHash(textBytes);
+        var hashBytes = XxHash128.Hash(textBytes);
 
         // Expand hash to fill embedding dimension
         for (int i = 0; i < EmbeddingDimension; i++)

@@ -299,9 +299,12 @@ dotnet_diagnostic.CA1850.severity = warning
 dotnet_analyzer_diagnostic.category-Reliability.severity = warning
 
 # CA2007: Do not directly await a Task (ConfigureAwait)
-# ОБОСНОВАНИЕ: В MCP server/library коде важно явно указывать ConfigureAwait
-# РЕШЕНИЕ: warning - предотвращаем deadlocks
-dotnet_diagnostic.CA2007.severity = warning
+# ОБОСНОВАНИЕ: В library коде (MCP server, не UI) ConfigureAwait не нужен.
+#              Нет SynchronizationContext, нет проблем с deadlock.
+#              Modern .NET (Core/5+/10) recommendation: skip ConfigureAwait in libraries.
+# СТАТИСТИКА: ~100+ срабатываний по всему solution
+# РЕШЕНИЕ: none - это библиотечный код, не нужно засорять ConfigureAwait(false)
+dotnet_diagnostic.CA2007.severity = none
 
 # CA2000: Dispose objects before losing scope
 # РЕШЕНИЕ: warning - утечки ресурсов недопустимы

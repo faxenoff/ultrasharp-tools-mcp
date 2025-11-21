@@ -147,13 +147,11 @@ public static class FileNormalizer
 
     /// <summary>
     /// Вычислить стабильный hash нормализованного контента.
-    /// ВАЖНО: используется для сравнения файлов.
+    /// ВАЖНО: используется для сравнения файлов (не требует криптостойкости).
+    /// Использует xxHash128 (7x быстрее SHA256).
     /// </summary>
     public static string ComputeContentHash(string normalizedContent)
     {
-        using var sha256 = System.Security.Cryptography.SHA256.Create();
-        var bytes = TargetEncoding.GetBytes(normalizedContent);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToHexString(hash);
+        return FastHash.ComputeHash128(normalizedContent);
     }
 }

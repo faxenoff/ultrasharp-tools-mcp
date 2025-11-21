@@ -51,7 +51,9 @@ public static class FileLoggerExtensions
             throw new ArgumentNullException(nameof(options));
         }
 
+#pragma warning disable CA2000 // DI container manages ILoggerProvider lifecycle
         builder.AddProvider(new FileLoggerProvider(options));
+#pragma warning restore CA2000
 
         return builder;
     }

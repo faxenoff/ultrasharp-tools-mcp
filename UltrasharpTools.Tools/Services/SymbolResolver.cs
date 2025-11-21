@@ -207,7 +207,7 @@ public class SymbolResolver
         // Only load compilations as needed, max 2 at a time to avoid memory pressure
         var compilationCache = new ConcurrentDictionary<string, Compilation?>();
         var projectLookup = solution.Projects.ToDictionary(p => p.Name);
-        var compilationLoadSemaphore = new SemaphoreSlim(2, 2); // Max 2 parallel compilation loads
+        using var compilationLoadSemaphore = new SemaphoreSlim(2, 2); // Max 2 parallel compilation loads
         var compilationTimeout = TimeSpan.FromMinutes(5); // Timeout per compilation
 
         async Task<Compilation?> GetOrLoadCompilationAsync(string projectName)

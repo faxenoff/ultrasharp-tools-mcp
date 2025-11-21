@@ -152,9 +152,11 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
                 return null;
             }
 
+#pragma warning disable CA2000 // MetadataReaderProvider owns and disposes the stream
             pdbReaderProvider = MetadataReaderProvider.FromPortablePdbStream(
                 File.OpenRead(pdbPath)
             );
+#pragma warning restore CA2000
             _logger.LogDebug("Loaded external PDB for: {Path}", assemblyPath);
         }
 

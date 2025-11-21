@@ -1,5 +1,5 @@
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging.Abstractions;
+using UltrasharpTools.Tools.Infrastructure;
 
 namespace UltrasharpTools.Tools.Merge.Indexing;
 
@@ -220,14 +220,12 @@ public sealed class StructuralFingerprint
     }
 
     /// <summary>
-    /// Вычислить SHA256 hash строки.
+    /// Вычислить fast hash строки (не требует криптостойкости).
+    /// Использует xxHash128 (7x быстрее SHA256).
     /// </summary>
     private static string ComputeSha256Hash(string content)
     {
-        using var sha256 = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(content);
-        var hash = sha256.ComputeHash(bytes);
-        return Convert.ToHexString(hash);
+        return FastHash.ComputeHash128(content);
     }
 
     /// <summary>
