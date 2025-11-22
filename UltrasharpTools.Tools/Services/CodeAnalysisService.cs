@@ -186,11 +186,54 @@ public class CodeAnalysisService(
     {
         var solution = GetCurrentSolutionOrThrow();
         _logger.LogDebug("Finding callers for symbol: {SymbolName}", symbol.Name);
-        return await SymbolFinder.FindCallersAsync(
+
+        // Try cache if available
+        if (_cacheService != null)
+        {
+            var solutionHash = GetSolutionHash();
+            var parameters = new { symbolFqn = symbol.ToDisplayString() };
+
+            if (
+                _cacheService.TryGetCached<List<SymbolCallerInfo>>(
+                    solutionHash,
+                    "FindCallers",
+                    parameters,
+                    out var cachedResult
+                )
+                && cachedResult != null
+            )
+            {
+                _logger.LogDebug(
+                    "Cache hit for FindCallers: {SymbolName} ({Count} callers)",
+                    symbol.Name,
+                    cachedResult.Count
+                );
+                return cachedResult;
+            }
+        }
+
+        var result = await SymbolFinder.FindCallersAsync(
             symbol,
             solution,
             cancellationToken: cancellationToken
         );
+
+        var resultList = result.ToList();
+
+        // Cache the result
+        if (_cacheService != null)
+        {
+            var solutionHash = GetSolutionHash();
+            var parameters = new { symbolFqn = symbol.ToDisplayString() };
+            _cacheService.SetCached(solutionHash, "FindCallers", parameters, resultList);
+            _logger.LogDebug(
+                "Cached FindCallers result for {SymbolName} ({Count} callers)",
+                symbol.Name,
+                resultList.Count
+            );
+        }
+
+        return resultList;
     }
 
     public async Task<IEnumerable<ISymbol>> FindOutgoingCallsAsync(
@@ -199,6 +242,32 @@ public class CodeAnalysisService(
     )
     {
         _logger.LogDebug("Finding outgoing calls for method: {MethodName}", methodSymbol.Name);
+
+        // Try cache if available
+        if (_cacheService != null)
+        {
+            var solutionHash = GetSolutionHash();
+            var parameters = new { symbolFqn = methodSymbol.ToDisplayString() };
+
+            if (
+                _cacheService.TryGetCached<List<ISymbol>>(
+                    solutionHash,
+                    "FindOutgoingCalls",
+                    parameters,
+                    out var cachedResult
+                )
+                && cachedResult != null
+            )
+            {
+                _logger.LogDebug(
+                    "Cache hit for FindOutgoingCalls: {MethodName} ({Count} calls)",
+                    methodSymbol.Name,
+                    cachedResult.Count
+                );
+                return cachedResult;
+            }
+        }
+
         var outgoingCalls = new List<ISymbol>();
         if (!methodSymbol.DeclaringSyntaxReferences.Any())
         {
@@ -248,7 +317,23 @@ public class CodeAnalysisService(
             walker.Visit(methodNode);
             outgoingCalls.AddRange(walker.CalledSymbols);
         }
-        return outgoingCalls.Distinct(SymbolEqualityComparer.Default).ToList();
+
+        var resultList = outgoingCalls.Distinct(SymbolEqualityComparer.Default).ToList();
+
+        // Cache the result
+        if (_cacheService != null)
+        {
+            var solutionHash = GetSolutionHash();
+            var parameters = new { symbolFqn = methodSymbol.ToDisplayString() };
+            _cacheService.SetCached(solutionHash, "FindOutgoingCalls", parameters, resultList);
+            _logger.LogDebug(
+                "Cached FindOutgoingCalls result for {MethodName} ({Count} calls)",
+                methodSymbol.Name,
+                resultList.Count
+            );
+        }
+
+        return resultList;
     }
 
     public static string GetFormattedSignatureAsync(
@@ -487,13 +572,39 @@ public class CodeAnalysisService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        var referencedTypes = new HashSet<string>(StringComparer.Ordinal);
 
         if (typeSymbol == null)
         {
             _logger.LogWarning("Cannot analyze referenced types: Type symbol is null.");
-            return referencedTypes;
+            return new HashSet<string>(StringComparer.Ordinal);
         }
+
+        // Try cache if available
+        if (_cacheService != null)
+        {
+            var solutionHash = GetSolutionHash();
+            var parameters = new { symbolFqn = typeSymbol.ToDisplayString() };
+
+            if (
+                _cacheService.TryGetCached<HashSet<string>>(
+                    solutionHash,
+                    "FindReferencedTypes",
+                    parameters,
+                    out var cachedResult
+                )
+                && cachedResult != null
+            )
+            {
+                _logger.LogDebug(
+                    "Cache hit for FindReferencedTypes: {TypeName} ({Count} types)",
+                    typeSymbol.Name,
+                    cachedResult.Count
+                );
+                return cachedResult;
+            }
+        }
+
+        var referencedTypes = new HashSet<string>(StringComparer.Ordinal);
 
         try
         {
@@ -694,6 +805,19 @@ public class CodeAnalysisService(
                 ex,
                 "Error finding referenced types for type {TypeName}",
                 typeSymbol.Name
+            );
+        }
+
+        // Cache the result
+        if (_cacheService != null)
+        {
+            var solutionHash = GetSolutionHash();
+            var parameters = new { symbolFqn = typeSymbol.ToDisplayString() };
+            _cacheService.SetCached(solutionHash, "FindReferencedTypes", parameters, referencedTypes);
+            _logger.LogDebug(
+                "Cached FindReferencedTypes result for {TypeName} ({Count} types)",
+                typeSymbol.Name,
+                referencedTypes.Count
             );
         }
 

@@ -296,43 +296,71 @@ internal static class ContextInjectors
 
         try
         {
-            // Get incoming calls (callers)
-            var callerInfos = await codeAnalysisService.FindCallersAsync(
-                methodSymbol,
-                cancellationToken
-            );
-            foreach (var callerInfo in callerInfos)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (callerInfo.CallingSymbol is IMethodSymbol callingMethodSymbol)
-                {
-                    // We still show all callers, since this is important for analysis
-                    string callerFqn = FuzzyFqnLookupService.GetSearchableString(
-                        callingMethodSymbol
-                    );
-                    callers.Add(callerFqn);
-                }
-            }
+            // Create timeout for callers search (5 seconds)
+            using var callersCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            callersCts.CancelAfter(TimeSpan.FromSeconds(5));
 
-            // Get outgoing calls (callees)
-            var outgoingSymbols = await codeAnalysisService.FindOutgoingCallsAsync(
-                methodSymbol,
-                cancellationToken
-            );
-            foreach (var callee in outgoingSymbols)
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (callee is IMethodSymbol calleeMethodSymbol)
+                // Get incoming calls (callers)
+                var callerInfos = await codeAnalysisService.FindCallersAsync(
+                    methodSymbol,
+                    callersCts.Token
+                );
+                foreach (var callerInfo in callerInfos)
                 {
-                    // Only include callees that are defined within the solution
-                    if (IsSymbolInSolution(calleeMethodSymbol))
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (callerInfo.CallingSymbol is IMethodSymbol callingMethodSymbol)
                     {
-                        string calleeFqn = FuzzyFqnLookupService.GetSearchableString(
-                            calleeMethodSymbol
+                        // We still show all callers, since this is important for analysis
+                        string callerFqn = FuzzyFqnLookupService.GetSearchableString(
+                            callingMethodSymbol
                         );
-                        callees.Add(calleeFqn);
+                        callers.Add(callerFqn);
                     }
                 }
+            }
+            catch (OperationCanceledException) when (callersCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(
+                    "FindCallers timed out after 5 seconds for method {MethodName}",
+                    methodSymbol.Name
+                );
+            }
+
+            // Create timeout for callees search (5 seconds)
+            using var calleesCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            calleesCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+            try
+            {
+                // Get outgoing calls (callees)
+                var outgoingSymbols = await codeAnalysisService.FindOutgoingCallsAsync(
+                    methodSymbol,
+                    calleesCts.Token
+                );
+                foreach (var callee in outgoingSymbols)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (callee is IMethodSymbol calleeMethodSymbol)
+                    {
+                        // Only include callees that are defined within the solution
+                        if (IsSymbolInSolution(calleeMethodSymbol))
+                        {
+                            string calleeFqn = FuzzyFqnLookupService.GetSearchableString(
+                                calleeMethodSymbol
+                            );
+                            callees.Add(calleeFqn);
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (calleesCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(
+                    "FindOutgoingCalls timed out after 5 seconds for method {MethodName}",
+                    methodSymbol.Name
+                );
             }
         }
         catch (Exception ex) when (!(ex is OperationCanceledException))
@@ -397,58 +425,86 @@ internal static class ContextInjectors
 
         try
         {
-            // Get referencing types (types that reference this type)
-            var references = await codeAnalysisService.FindReferencesAsync(
-                typeSymbol,
-                cancellationToken
-            );
-            foreach (var reference in references)
+            // Create timeout for references search (5 seconds)
+            using var referencesCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            referencesCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                foreach (var location in reference.Locations)
+                // Get referencing types (types that reference this type)
+                var references = await codeAnalysisService.FindReferencesAsync(
+                    typeSymbol,
+                    referencesCts.Token
+                );
+                foreach (var reference in references)
                 {
-                    if (location.Document == null || location.Location == null)
+                    cancellationToken.ThrowIfCancellationRequested();
+                    foreach (var location in reference.Locations)
                     {
-                        continue;
-                    }
+                        if (location.Document == null || location.Location == null)
+                        {
+                            continue;
+                        }
 
-                    var semanticModel = await location.Document.GetSemanticModelAsync(
-                        cancellationToken
-                    );
-                    if (semanticModel == null)
-                    {
-                        continue;
-                    }
-
-                    var symbol = semanticModel.GetEnclosingSymbol(
-                        location.Location.SourceSpan.Start,
-                        cancellationToken
-                    );
-                    while (symbol != null && !(symbol is INamedTypeSymbol))
-                    {
-                        symbol = symbol.ContainingSymbol;
-                    }
-
-                    if (
-                        symbol is INamedTypeSymbol referencingType
-                        && !SymbolEqualityComparer.Default.Equals(referencingType, typeSymbol)
-                    )
-                    {
-                        // We still include all referencing types, since this is important for analysis
-                        string referencingTypeFqn = FuzzyFqnLookupService.GetSearchableString(
-                            referencingType
+                        var semanticModel = await location.Document.GetSemanticModelAsync(
+                            cancellationToken
                         );
-                        referencingTypes.Add(referencingTypeFqn);
+                        if (semanticModel == null)
+                        {
+                            continue;
+                        }
+
+                        var symbol = semanticModel.GetEnclosingSymbol(
+                            location.Location.SourceSpan.Start,
+                            cancellationToken
+                        );
+                        while (symbol != null && !(symbol is INamedTypeSymbol))
+                        {
+                            symbol = symbol.ContainingSymbol;
+                        }
+
+                        if (
+                            symbol is INamedTypeSymbol referencingType
+                            && !SymbolEqualityComparer.Default.Equals(referencingType, typeSymbol)
+                        )
+                        {
+                            // We still include all referencing types, since this is important for analysis
+                            string referencingTypeFqn = FuzzyFqnLookupService.GetSearchableString(
+                                referencingType
+                            );
+                            referencingTypes.Add(referencingTypeFqn);
+                        }
                     }
                 }
             }
+            catch (OperationCanceledException) when (referencesCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(
+                    "FindReferences timed out after 5 seconds for type {TypeName}",
+                    typeSymbol.Name
+                );
+            }
 
-            // Get referenced types (types this type references in implementations)
-            // This was moved to CodeAnalysisService.FindReferencedTypesAsync
-            referencedTypes = await codeAnalysisService.FindReferencedTypesAsync(
-                typeSymbol,
-                cancellationToken
-            );
+            // Create timeout for referenced types search (5 seconds)
+            using var referencedTypesCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            referencedTypesCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+            try
+            {
+                // Get referenced types (types this type references in implementations)
+                // This was moved to CodeAnalysisService.FindReferencedTypesAsync
+                referencedTypes = await codeAnalysisService.FindReferencedTypesAsync(
+                    typeSymbol,
+                    referencedTypesCts.Token
+                );
+            }
+            catch (OperationCanceledException) when (referencedTypesCts.Token.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(
+                    "FindReferencedTypes timed out after 5 seconds for type {TypeName}",
+                    typeSymbol.Name
+                );
+            }
         }
         catch (Exception ex) when (!(ex is OperationCanceledException))
         {
