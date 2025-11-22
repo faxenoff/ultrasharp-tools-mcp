@@ -38,7 +38,17 @@ public class CallGraphIndexer : IDisposable
     /// Start background indexing of call graph for all methods in the solution.
     /// This populates the cache so subsequent view_definition calls are instant.
     /// </summary>
-    public async Task StartBackgroundIndexingAsync(CancellationToken cancellationToken = default)
+    public Task StartBackgroundIndexingAsync()
+    {
+        return StartBackgroundIndexingAsync(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Start background indexing of call graph for all methods in the solution.
+    /// This populates the cache so subsequent view_definition calls are instant.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel the indexing operation.</param>
+    public async Task StartBackgroundIndexingAsync(CancellationToken cancellationToken)
     {
         await _indexingLock.WaitAsync(cancellationToken);
         try
@@ -216,7 +226,7 @@ public class CallGraphIndexer : IDisposable
     /// <summary>
     /// Visitor to collect all methods from a namespace.
     /// </summary>
-    private class MethodCollectorVisitor : SymbolVisitor
+    private sealed class MethodCollectorVisitor : SymbolVisitor
     {
         public List<IMethodSymbol> Methods { get; } = new();
 

@@ -32,3 +32,7 @@ global using ModelContextProtocol.Protocol;
 global using ModelContextProtocol.Server;
 global using UltrasharpTools.Tools.Interfaces;
 global using UltrasharpTools.Tools.Services;
+
+// Mark assembly as not CLS-compliant since it uses advanced C# features
+// and dependencies that may not be compatible with other CLS languages
+[assembly: CLSCompliant(false)]
