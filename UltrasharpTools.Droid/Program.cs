@@ -930,60 +930,17 @@ public static class Program
             var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger(ApplicationName);
 
-            // Start background solution loading if path is available
+            // Solution will be loaded explicitly via MCP load_solution tool
+            // Background loading removed to prevent duplicate loading and race conditions
             if (!string.IsNullOrEmpty(solutionPath))
             {
-                var solutionPathCopy = solutionPath; // Capture for closure
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        var solutionManager = host.Services.GetRequiredService<ISolutionManager>();
-                        var editorConfigProvider =
-                            host.Services.GetRequiredService<IEditorConfigProvider>();
-
-                        logger.LogInformation(
-                            "Background loading solution: {SolutionPath}",
-                            solutionPathCopy
-                        );
-                        await solutionManager.LoadSolutionAsync(
-                            solutionPathCopy,
-                            CancellationToken.None
-                        );
-
-                        var solutionDir = Path.GetDirectoryName(solutionPathCopy);
-                        if (!string.IsNullOrEmpty(solutionDir))
-                        {
-                            await editorConfigProvider.InitializeAsync(
-                                solutionDir,
-                                CancellationToken.None
-                            );
-                            logger.LogInformation(
-                                "Solution loaded successfully in background: {SolutionPath}",
-                                solutionPathCopy
-                            );
-                        }
-                        else
-                        {
-                            logger.LogWarning(
-                                "Could not determine directory for solution path: {SolutionPath}",
-                                solutionPathCopy
-                            );
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(
-                            ex,
-                            "Error loading solution in background: {SolutionPath}",
-                            solutionPathCopy
-                        );
-                    }
-                });
                 logger.LogInformation(
-                    "Solution loading started in background, MCP server ready to accept requests"
+                    "Solution path provided: {SolutionPath}. Use load_solution MCP tool to load it.",
+                    solutionPath
                 );
             }
+
+            logger.LogInformation("MCP server ready to accept requests");
 
             await host.RunAsync();
             return 0;
