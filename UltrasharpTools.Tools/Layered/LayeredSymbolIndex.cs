@@ -79,20 +79,20 @@ public sealed class LayeredSymbolIndex : ILayeredIndex
     #region Layer 0: Base Index Operations
 
     /// <summary>
-    /// Build base index from solution (Layer 0).
-    /// This is the foundation for all layered operations.
+    /// Initialize layered index with already-built base index (Layer 0).
+    /// Base index should already be built by SolutionManager before calling this.
     /// </summary>
     public async Task BuildFromSolutionAsync(
         Solution solution,
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation("Building base index (Layer 0) from solution...");
-        await _baseIndex.BuildFromSolutionAsync(solution, cancellationToken);
-        _logger.LogInformation(
-            "Base index built with {SymbolCount} symbols",
-            _baseIndex.TotalSymbols
-        );
+        _logger.LogInformation("Initializing layered index (base index already built with {SymbolCount} symbols)...", _baseIndex.TotalSymbols);
+
+        // Base index is already built by SolutionManager - don't rebuild it!
+        // await _baseIndex.BuildFromSolutionAsync(solution, cancellationToken); // ❌ REMOVED - causes double loading
+
+        await Task.CompletedTask; // Keep method async for consistency
 
         // Store solution for delta computation
         _currentSolution = solution;
