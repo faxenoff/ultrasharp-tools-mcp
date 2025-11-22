@@ -208,11 +208,12 @@ public class SymbolResolver
         var compilationCache = new ConcurrentDictionary<string, Compilation?>();
         var projectLookup = solution.Projects.ToDictionary(p => p.Name);
         using var compilationLoadSemaphore = new SemaphoreSlim(2, 2); // Max 2 parallel compilation loads
+        var perProjectLocks = new ConcurrentDictionary<string, SemaphoreSlim>(); // Per-project locks to prevent duplicate loads
         var compilationTimeout = TimeSpan.FromMinutes(5); // Timeout per compilation
 
         async Task<Compilation?> GetOrLoadCompilationAsync(string projectName)
         {
-            // Check cache first
+            // Check cache first (fast path)
             if (compilationCache.TryGetValue(projectName, out var cached))
                 return cached;
 
@@ -224,47 +225,59 @@ public class SymbolResolver
                 return null;
             }
 
-            await compilationLoadSemaphore.WaitAsync(cancellationToken);
+            // Get or create per-project lock to prevent duplicate loading of same project
+            var projectLock = perProjectLocks.GetOrAdd(projectName, _ => new SemaphoreSlim(1, 1));
+
+            await projectLock.WaitAsync(cancellationToken);
             try
             {
-                // Double-check after acquiring semaphore
+                // Double-check after acquiring project-specific lock
                 if (compilationCache.TryGetValue(projectName, out var cached2))
                     return cached2;
 
-                _logger.LogDebug("Loading compilation for project {ProjectName}...", projectName);
-
-                // Load with timeout to prevent infinite hangs
-                using var timeoutCts = new CancellationTokenSource(compilationTimeout);
-                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken,
-                    timeoutCts.Token
-                );
-
+                // Now acquire global semaphore for actual loading (limits total parallel loads)
+                await compilationLoadSemaphore.WaitAsync(cancellationToken);
                 try
                 {
-                    var compilation = await project.GetCompilationAsync(linkedCts.Token);
-                    compilationCache[projectName] = compilation;
-                    _logger.LogDebug(
-                        "Loaded compilation for {ProjectName} ({TypeCount} types)",
-                        projectName,
-                        compilation?.GlobalNamespace.GetTypeMembers().Length ?? 0
+                    _logger.LogDebug("Loading compilation for project {ProjectName}...", projectName);
+
+                    // Load with timeout to prevent infinite hangs
+                    using var timeoutCts = new CancellationTokenSource(compilationTimeout);
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                        cancellationToken,
+                        timeoutCts.Token
                     );
-                    return compilation;
+
+                    try
+                    {
+                        var compilation = await project.GetCompilationAsync(linkedCts.Token);
+                        compilationCache[projectName] = compilation;
+                        _logger.LogDebug(
+                            "Loaded compilation for {ProjectName} ({TypeCount} types)",
+                            projectName,
+                            compilation?.GlobalNamespace.GetTypeMembers().Length ?? 0
+                        );
+                        return compilation;
+                    }
+                    catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                    {
+                        _logger.LogError(
+                            "Compilation loading for {ProjectName} timed out after {Timeout}",
+                            projectName,
+                            compilationTimeout
+                        );
+                        compilationCache[projectName] = null;
+                        return null;
+                    }
                 }
-                catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+                finally
                 {
-                    _logger.LogError(
-                        "Compilation loading for {ProjectName} timed out after {Timeout}",
-                        projectName,
-                        compilationTimeout
-                    );
-                    compilationCache[projectName] = null;
-                    return null;
+                    compilationLoadSemaphore.Release();
                 }
             }
             finally
             {
-                compilationLoadSemaphore.Release();
+                projectLock.Release();
             }
         }
 
