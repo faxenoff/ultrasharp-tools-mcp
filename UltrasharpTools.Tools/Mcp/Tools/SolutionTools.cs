@@ -50,8 +50,8 @@ public static class SolutionTools
     )]
     [Description(LoadSolutionDescriptionText)]
     public static async Task<object> LoadSolution(
+        ILoadingOrchestrator loadingOrchestrator,
         ISolutionManager solutionManager,
-        IEditorConfigProvider editorConfigProvider,
         ILogger<SolutionToolsLogCategory> logger,
         [Description("The absolute file path to the .sln solution file.")] string solutionPath,
         CancellationToken cancellationToken
@@ -89,23 +89,12 @@ public static class SolutionTools
                     throw new McpException($"File at path '{solutionPath}' is not a .sln file.");
                 }
 
-                try
-                {
-                    await solutionManager.LoadSolutionAsync(solutionPath, cancellationToken);
-                }
-                catch (Exception ex)
-                    when (!(ex is McpException || ex is OperationCanceledException))
-                {
-                    logger.LogError(ex, "Failed to load solution at {SolutionPath}", solutionPath);
-                    throw new McpException($"Failed to load solution: {ex.Message}");
-                }
-
-                // Get solution directory and initialize editor config
+                // Get solution directory for validation
                 var solutionDir = Path.GetDirectoryName(solutionPath);
                 if (string.IsNullOrEmpty(solutionDir))
                 {
                     logger.LogWarning(
-                        ".editorconfig provider could not determine solution directory from path: {SolutionPath}",
+                        "Could not determine solution directory from path: {SolutionPath}",
                         solutionPath
                     );
                     throw new McpException(
@@ -143,26 +132,37 @@ public static class SolutionTools
                     );
                 }
 
-                try
+                // Use LoadingOrchestrator to coordinate loading
+                // This prevents duplicate loading if background loading is in progress
+                logger.LogInformation(
+                    "Requesting solution loading through orchestrator: {SolutionPath}",
+                    solutionPath
+                );
+
+                var result = await loadingOrchestrator.RequestLoadingAsync(
+                    solutionPath,
+                    LoadingSource.McpTool,
+                    cancellationToken
+                );
+
+                if (!result.Success)
                 {
-                    await editorConfigProvider.InitializeAsync(solutionDir, cancellationToken);
-                }
-                catch (Exception ex)
-                    when (!(ex is McpException || ex is OperationCanceledException))
-                {
-                    // Log but don't fail - editor config is helpful but not critical
-                    logger.LogWarning(
-                        ex,
-                        "Failed to initialize .editorconfig from {SolutionDir}",
-                        solutionDir
+                    logger.LogError(
+                        "Failed to load solution: {SolutionPath} - {ErrorMessage}",
+                        solutionPath,
+                        result.ErrorMessage
                     );
-                    // Continue execution, don't throw
+                    throw new McpException(
+                        $"Failed to load solution: {result.ErrorMessage}"
+                    );
                 }
 
-                var projectCount = solutionManager.GetProjects().Count();
-                var successMessage =
-                    $"Solution '{Path.GetFileName(solutionPath)}' loaded successfully with {projectCount} project(s). Caches and .editorconfig initialized.";
-                logger.LogInformation(successMessage);
+                logger.LogInformation(
+                    "Solution loaded successfully via orchestrator: {SolutionPath} with {ProjectCount} projects from {Source}",
+                    result.SolutionPath,
+                    result.ProjectCount,
+                    result.Source
+                );
 
                 try
                 {
@@ -180,7 +180,7 @@ public static class SolutionTools
                         new
                         {
                             solutionName = Path.GetFileName(solutionPath),
-                            projectCount,
+                            projectCount = result.ProjectCount,
                             status = "Solution loaded successfully, but project structure retrieval failed.",
                         }
                     );

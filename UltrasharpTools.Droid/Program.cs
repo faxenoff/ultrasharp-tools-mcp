@@ -930,17 +930,61 @@ public static class Program
             var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger(ApplicationName);
 
-            // Solution will be loaded explicitly via MCP load_solution tool
-            // Background loading removed to prevent duplicate loading and race conditions
+            // Start background solution loading through LoadingOrchestrator
+            // Orchestrator prevents duplicate loading if MCP load_solution is called
             if (!string.IsNullOrEmpty(solutionPath))
             {
+                var loadingOrchestrator =
+                    host.Services.GetRequiredService<ILoadingOrchestrator>();
+
                 logger.LogInformation(
-                    "Solution path provided: {SolutionPath}. Use load_solution MCP tool to load it.",
+                    "Starting background solution loading: {SolutionPath}",
                     solutionPath
                 );
-            }
 
-            logger.LogInformation("MCP server ready to accept requests");
+                // Fire and forget - loading happens in background
+                // If MCP load_solution is called, it will attach to this operation
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var result = await loadingOrchestrator.RequestLoadingAsync(
+                            solutionPath,
+                            LoadingSource.BackgroundStartup,
+                            CancellationToken.None
+                        );
+
+                        if (result.Success)
+                        {
+                            logger.LogInformation(
+                                "Background loading completed: {SolutionPath} with {ProjectCount} projects",
+                                result.SolutionPath,
+                                result.ProjectCount
+                            );
+                        }
+                        else
+                        {
+                            logger.LogError(
+                                "Background loading failed: {SolutionPath} - {ErrorMessage}",
+                                result.SolutionPath,
+                                result.ErrorMessage
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Background loading threw exception: {SolutionPath}", solutionPath);
+                    }
+                });
+
+                logger.LogInformation(
+                    "Background loading started. MCP server ready to accept requests."
+                );
+            }
+            else
+            {
+                logger.LogInformation("MCP server ready to accept requests");
+            }
 
             await host.RunAsync();
             return 0;

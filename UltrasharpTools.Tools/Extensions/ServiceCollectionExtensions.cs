@@ -73,6 +73,7 @@ public static class ServiceCollectionExtensions
         }
         services.AddSingleton<ICodeModificationService, CodeModificationService>();
         services.AddSingleton<IEditorConfigProvider, EditorConfigProvider>();
+        services.AddSingleton<ILoadingOrchestrator, LoadingOrchestrator>();
         services.AddSingleton<IDocumentOperationsService, DocumentOperationsService>();
         services.AddSingleton<IComplexityAnalysisService, ComplexityAnalysisService>();
         services.AddSingleton<ISemanticSimilarityService, SemanticSimilarityService>();
