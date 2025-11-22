@@ -209,14 +209,54 @@ public class SymbolResolver
         Action<int, int>? progressCallback = null
     )
     {
+        // CRITICAL FIX: Filter out symbols from unknown/missing projects BEFORE processing
+        // This prevents spam of 32K+ warnings and unnecessary parallel processing
+        var projectLookup = solution.Projects.ToDictionary(p => p.Name);
+        var invalidEntries = entries.Where(e =>
+            string.IsNullOrEmpty(e.ProjectName) ||
+            e.ProjectName == "Unknown" ||
+            !projectLookup.ContainsKey(e.ProjectName)
+        ).ToList();
+
+        if (invalidEntries.Count > 0)
+        {
+            var unknownProjects = invalidEntries
+                .GroupBy(e => e.ProjectName ?? "null")
+                .OrderByDescending(g => g.Count())
+                .Take(5)
+                .Select(g => $"{g.Key} ({g.Count()} symbols)")
+                .ToList();
+
+            _logger.LogWarning(
+                "Skipping {InvalidCount} symbols from {ProjectCount} invalid/missing projects: {Projects}",
+                invalidEntries.Count,
+                invalidEntries.Select(e => e.ProjectName).Distinct().Count(),
+                string.Join(", ", unknownProjects)
+            );
+        }
+
+        // Filter to only valid entries
+        var validEntries = entries.Where(e =>
+            !string.IsNullOrEmpty(e.ProjectName) &&
+            e.ProjectName != "Unknown" &&
+            projectLookup.ContainsKey(e.ProjectName)
+        ).ToList();
+
+        if (validEntries.Count == 0)
+        {
+            _logger.LogWarning("No valid symbols to resolve after filtering");
+            return new List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>();
+        }
+
         // OPTIMIZATION 1: Analyze which projects are actually needed
-        var neededProjects = entries
+        var neededProjects = validEntries
             .Select(e => e.ProjectName)
             .Distinct()
             .ToHashSet();
 
         _logger.LogInformation(
-            "Symbol resolution: {TotalSymbols} symbols from {NeededProjects}/{TotalProjects} projects",
+            "Symbol resolution: {ValidSymbols}/{TotalSymbols} symbols from {NeededProjects}/{TotalProjects} projects",
+            validEntries.Count,
             entries.Count,
             neededProjects.Count,
             solution.Projects.Count()
@@ -225,7 +265,6 @@ public class SymbolResolver
         // OPTIMIZATION 2: Lazy compilation loading with concurrency control
         var compilationCache = new ConcurrentDictionary<string, Compilation?>();
         var typeCacheDict = new ConcurrentDictionary<string, FrozenDictionary<string, INamedTypeSymbol>>();
-        var projectLookup = solution.Projects.ToDictionary(p => p.Name);
         using var compilationLoadSemaphore = new SemaphoreSlim(2, 2); // Max 2 parallel compilation loads
         var perProjectLocks = new ConcurrentDictionary<string, SemaphoreSlim>(); // Per-project locks
         var compilationTimeout = TimeSpan.FromMinutes(5);
@@ -316,7 +355,7 @@ public class SymbolResolver
         }
 
         // OPTIMIZATION 3: Pre-warm cache for top 2 projects
-        var topProjects = entries
+        var topProjects = validEntries
             .GroupBy(e => e.ProjectName)
             .OrderByDescending(g => g.Count())
             .Take(2)
@@ -329,13 +368,13 @@ public class SymbolResolver
         // OPTIMIZATION 5: Parallel.ForEach for aggressive CPU utilization
         var results = new ConcurrentBag<(SerializableSymbolEntry Entry, ISymbol? Symbol)>();
         var processedCount = 0;
-        var totalCount = entries.Count;
+        var totalCount = validEntries.Count;
         var batchSize = 4096; // ⚡ Increased from 256
 
         var batches = new List<List<SerializableSymbolEntry>>();
-        for (int i = 0; i < entries.Count; i += batchSize)
+        for (int i = 0; i < validEntries.Count; i += batchSize)
         {
-            batches.Add(entries.Skip(i).Take(batchSize).ToList());
+            batches.Add(validEntries.Skip(i).Take(batchSize).ToList());
         }
 
         _logger.LogInformation(
