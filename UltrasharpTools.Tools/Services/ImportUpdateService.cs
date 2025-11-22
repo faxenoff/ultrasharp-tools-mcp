@@ -85,7 +85,7 @@ public class ImportUpdateService
             filePath
         );
 
-        return requiredNamespaces.OrderBy(ns => ns).ToList();
+        return [.. requiredNamespaces.Order()];
     }
 
     /// <summary>
@@ -163,10 +163,12 @@ public class ImportUpdateService
         }
 
         // Create new using directives
-        var newUsings = new List<string>();
-        newUsings.AddRange(originalUsings.Except(usingsToRemove));
-        newUsings.AddRange(usingsToAdd);
-        newUsings = newUsings.Distinct().OrderBy(u => u).ToList();
+        var newUsings = originalUsings
+            .Except(usingsToRemove)
+            .Concat(usingsToAdd)
+            .Distinct()
+            .Order()
+            .ToList();
 
         // Update the file
         var newRoot = root.WithUsings(

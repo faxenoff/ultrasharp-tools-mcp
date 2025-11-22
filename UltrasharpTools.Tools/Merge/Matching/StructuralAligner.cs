@@ -88,6 +88,8 @@ public sealed class StructuralAligner
         var reorderings = new List<Reordering>();
 
         // Построить mapping children A -> B
+        // Note: ChildIds is IReadOnlySet, but we need List for index operations below
+        // ToList() is necessary here (not redundant) to enable indexing
         var childMapping = new Dictionary<string, string>();
         var childrenA = unitA.ChildIds.ToList();
         var childrenB = unitB.ChildIds.ToList();

@@ -79,7 +79,7 @@ public class VectorDelta
         }
 
         // Re-sort by score and take topK
-        return merged.OrderByDescending(r => r.Score).Take(topK).ToList();
+        return [.. merged.OrderByDescending(r => r.Score).Take(topK)];
     }
 
     /// <summary>

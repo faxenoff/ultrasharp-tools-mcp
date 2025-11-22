@@ -102,7 +102,7 @@ public sealed class VersionManager
         var backupSnapshots = await ListBackupSnapshotsAsync(limit, cancellationToken);
         snapshots.AddRange(backupSnapshots);
 
-        return snapshots.OrderByDescending(s => s.CreatedAt).Take(limit).ToList();
+        return [.. snapshots.OrderByDescending(s => s.CreatedAt).Take(limit)];
     }
 
     /// <summary>
