@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
@@ -6,6 +7,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Resolves ISymbol instances from FQNs and cached metadata
 /// Used for restoring symbols from persistent cache
+/// OPTIMIZED: Uses Type Dictionary Cache for O(1) lookups instead of O(n)
 /// </summary>
 public class SymbolResolver
 {
@@ -17,9 +19,79 @@ public class SymbolResolver
     }
 
     /// <summary>
-    /// Find type by FQN in compilation
+    /// Build Type Dictionary Cache for O(1) type lookups
+    /// This is the CRITICAL optimization: instead of 462K O(n) calls to GetTypeByMetadataName,
+    /// we scan the namespace tree ONCE and cache all types in a FrozenDictionary
     /// </summary>
-    private INamedTypeSymbol? FindType(Compilation compilation, string typeFqn)
+    private FrozenDictionary<string, INamedTypeSymbol> BuildTypeCache(Compilation compilation, string projectName)
+    {
+        _logger.LogDebug("Building type cache for {ProjectName}...", projectName);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        var typeDict = new Dictionary<string, INamedTypeSymbol>(capacity: 10000);
+
+        void VisitNamespace(INamespaceSymbol ns)
+        {
+            // Visit all types in this namespace
+            foreach (var type in ns.GetTypeMembers())
+            {
+                VisitType(type);
+            }
+
+            // Recurse into child namespaces
+            foreach (var childNs in ns.GetNamespaceMembers())
+            {
+                VisitNamespace(childNs);
+            }
+        }
+
+        void VisitType(INamedTypeSymbol type)
+        {
+            // Add this type to cache
+            var fqn = type.ToDisplayString(Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat)
+                .Replace("global::", "");
+
+            // Store both with and without generic arity for flexibility
+            typeDict[fqn] = type;
+
+            // Also store metadata name for GetTypeByMetadataName compatibility
+            var metadataName = type.MetadataName;
+            if (!string.IsNullOrEmpty(metadataName))
+            {
+                // Store with full namespace
+                var fullMetadataName = type.ContainingNamespace?.ToDisplayString() + "." + metadataName;
+                typeDict[fullMetadataName] = type;
+            }
+
+            // Visit nested types recursively
+            foreach (var nestedType in type.GetTypeMembers())
+            {
+                VisitType(nestedType);
+            }
+        }
+
+        // Start traversal from global namespace
+        VisitNamespace(compilation.GlobalNamespace);
+
+        sw.Stop();
+        _logger.LogDebug(
+            "Built type cache for {ProjectName}: {TypeCount} types in {ElapsedMs}ms",
+            projectName,
+            typeDict.Count,
+            sw.ElapsedMilliseconds
+        );
+
+        // Convert to FrozenDictionary for optimal read performance (20-30% faster lookups)
+        return typeDict.ToFrozenDictionary();
+    }
+
+    /// <summary>
+    /// Find type by FQN using Type Cache (O(1) instead of O(n))
+    /// </summary>
+    private INamedTypeSymbol? FindType(
+        FrozenDictionary<string, INamedTypeSymbol> typeCache,
+        string typeFqn
+    )
     {
         // Remove generic arity markers (e.g., MyType`1 -> MyType)
         var cleanTypeName = typeFqn;
@@ -29,68 +101,13 @@ public class SymbolResolver
             cleanTypeName = typeFqn.Substring(0, arityIndex);
         }
 
-        // Try exact match first
-        var symbol = compilation.GetTypeByMetadataName(cleanTypeName);
-        if (symbol != null)
+        // O(1) lookup in FrozenDictionary ⚡
+        if (typeCache.TryGetValue(cleanTypeName, out var symbol))
             return symbol;
 
-        // Fallback: search in all types
-        // This handles nested types and edge cases
-        return FindTypeInNamespaces(compilation.GlobalNamespace, typeFqn);
-    }
-
-    /// <summary>
-    /// Recursively search for type in namespace hierarchy
-    /// </summary>
-    private INamedTypeSymbol? FindTypeInNamespaces(INamespaceSymbol namespaceSymbol, string typeFqn)
-    {
-        // Check types in this namespace
-        foreach (var type in namespaceSymbol.GetTypeMembers())
-        {
-            var typeFqnCandidate = type.ToDisplayString(
-                    Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat
-                )
-                .Replace("global::", "");
-
-            if (typeFqnCandidate == typeFqn)
-                return type;
-
-            // Check nested types
-            var nestedType = FindNestedType(type, typeFqn);
-            if (nestedType != null)
-                return nestedType;
-        }
-
-        // Recurse into child namespaces
-        foreach (var childNamespace in namespaceSymbol.GetNamespaceMembers())
-        {
-            var found = FindTypeInNamespaces(childNamespace, typeFqn);
-            if (found != null)
-                return found;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Search for nested type
-    /// </summary>
-    private INamedTypeSymbol? FindNestedType(INamedTypeSymbol type, string typeFqn)
-    {
-        foreach (var nestedType in type.GetTypeMembers())
-        {
-            var nestedFqn = nestedType
-                .ToDisplayString(Microsoft.CodeAnalysis.SymbolDisplayFormat.FullyQualifiedFormat)
-                .Replace("global::", "");
-
-            if (nestedFqn == typeFqn)
-                return nestedType;
-
-            // Recurse deeper
-            var deeperNested = FindNestedType(nestedType, typeFqn);
-            if (deeperNested != null)
-                return deeperNested;
-        }
+        // Try original name
+        if (typeCache.TryGetValue(typeFqn, out symbol))
+            return symbol;
 
         return null;
     }
@@ -180,8 +197,10 @@ public class SymbolResolver
     }
 
     /// <summary>
-    /// Batch resolve symbols for better performance
-    /// Uses lazy compilation loading - only loads projects that are actually needed
+    /// Batch resolve symbols with AGGRESSIVE OPTIMIZATIONS
+    /// - Type Dictionary Cache: O(1) lookups instead of O(n)
+    /// - Batch size 4096: reduced overhead
+    /// - Parallel.ForEach: uses all CPU cores
     /// </summary>
     public async Task<List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>> ResolveSymbolsAsync(
         List<SerializableSymbolEntry> entries,
@@ -204,44 +223,49 @@ public class SymbolResolver
         );
 
         // OPTIMIZATION 2: Lazy compilation loading with concurrency control
-        // Only load compilations as needed, max 2 at a time to avoid memory pressure
         var compilationCache = new ConcurrentDictionary<string, Compilation?>();
+        var typeCacheDict = new ConcurrentDictionary<string, FrozenDictionary<string, INamedTypeSymbol>>();
         var projectLookup = solution.Projects.ToDictionary(p => p.Name);
         using var compilationLoadSemaphore = new SemaphoreSlim(2, 2); // Max 2 parallel compilation loads
-        var perProjectLocks = new ConcurrentDictionary<string, SemaphoreSlim>(); // Per-project locks to prevent duplicate loads
-        var compilationTimeout = TimeSpan.FromMinutes(5); // Timeout per compilation
+        var perProjectLocks = new ConcurrentDictionary<string, SemaphoreSlim>(); // Per-project locks
+        var compilationTimeout = TimeSpan.FromMinutes(5);
 
-        async Task<Compilation?> GetOrLoadCompilationAsync(string projectName)
+        async Task<(Compilation?, FrozenDictionary<string, INamedTypeSymbol>?)> GetOrLoadCompilationWithCacheAsync(string projectName)
         {
             // Check cache first (fast path)
-            if (compilationCache.TryGetValue(projectName, out var cached))
-                return cached;
+            if (compilationCache.TryGetValue(projectName, out var cachedCompilation) &&
+                typeCacheDict.TryGetValue(projectName, out var cachedTypeCache))
+            {
+                return (cachedCompilation, cachedTypeCache);
+            }
 
             // Not in cache - need to load
             if (!projectLookup.TryGetValue(projectName, out var project))
             {
                 _logger.LogWarning("Project {ProjectName} not found in solution", projectName);
                 compilationCache[projectName] = null;
-                return null;
+                return (null, null);
             }
 
-            // Get or create per-project lock to prevent duplicate loading of same project
+            // Get or create per-project lock
             var projectLock = perProjectLocks.GetOrAdd(projectName, _ => new SemaphoreSlim(1, 1));
 
             await projectLock.WaitAsync(cancellationToken);
             try
             {
                 // Double-check after acquiring project-specific lock
-                if (compilationCache.TryGetValue(projectName, out var cached2))
-                    return cached2;
+                if (compilationCache.TryGetValue(projectName, out var cached2) &&
+                    typeCacheDict.TryGetValue(projectName, out var cachedTypeCache2))
+                {
+                    return (cached2, cachedTypeCache2);
+                }
 
-                // Now acquire global semaphore for actual loading (limits total parallel loads)
+                // Acquire global semaphore for actual loading
                 await compilationLoadSemaphore.WaitAsync(cancellationToken);
                 try
                 {
                     _logger.LogDebug("Loading compilation for project {ProjectName}...", projectName);
 
-                    // Load with timeout to prevent infinite hangs
                     using var timeoutCts = new CancellationTokenSource(compilationTimeout);
                     using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                         cancellationToken,
@@ -252,12 +276,22 @@ public class SymbolResolver
                     {
                         var compilation = await project.GetCompilationAsync(linkedCts.Token);
                         compilationCache[projectName] = compilation;
+
                         _logger.LogDebug(
                             "Loaded compilation for {ProjectName} ({TypeCount} types)",
                             projectName,
                             compilation?.GlobalNamespace.GetTypeMembers().Length ?? 0
                         );
-                        return compilation;
+
+                        // CRITICAL OPTIMIZATION: Build Type Dictionary Cache
+                        FrozenDictionary<string, INamedTypeSymbol>? typeCache = null;
+                        if (compilation != null)
+                        {
+                            typeCache = BuildTypeCache(compilation, projectName);
+                            typeCacheDict[projectName] = typeCache;
+                        }
+
+                        return (compilation, typeCache);
                     }
                     catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
                     {
@@ -267,7 +301,7 @@ public class SymbolResolver
                             compilationTimeout
                         );
                         compilationCache[projectName] = null;
-                        return null;
+                        return (null, null);
                     }
                 }
                 finally
@@ -281,8 +315,7 @@ public class SymbolResolver
             }
         }
 
-        // OPTIMIZATION 3: Pre-warm cache for frequently used projects
-        // Load top 2 most-needed projects in background while processing starts
+        // OPTIMIZATION 3: Pre-warm cache for top 2 projects
         var topProjects = entries
             .GroupBy(e => e.ProjectName)
             .OrderByDescending(g => g.Count())
@@ -290,111 +323,126 @@ public class SymbolResolver
             .Select(g => g.Key)
             .ToList();
 
-        var preloadTasks = topProjects.Select(p => GetOrLoadCompilationAsync(p)).ToList();
+        var preloadTasks = topProjects.Select(p => GetOrLoadCompilationWithCacheAsync(p)).ToList();
 
-        // Process symbols in parallel batches (256 at a time to avoid overwhelming the system)
-        var results = new List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>(entries.Count);
-        var resultsLock = new object();
+        // OPTIMIZATION 4: Increased batch size from 256 to 4096
+        // OPTIMIZATION 5: Parallel.ForEach for aggressive CPU utilization
+        var results = new ConcurrentBag<(SerializableSymbolEntry Entry, ISymbol? Symbol)>();
         var processedCount = 0;
         var totalCount = entries.Count;
-        var batchSize = 256;
+        var batchSize = 4096; // ⚡ Increased from 256
 
+        var batches = new List<List<SerializableSymbolEntry>>();
         for (int i = 0; i < entries.Count; i += batchSize)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var batch = entries.Skip(i).Take(batchSize).ToList();
-
-            var batchResults = await Task.WhenAll(
-                batch.Select(async entry =>
-                {
-                    // Lazy load compilation only when needed
-                    var compilation = await GetOrLoadCompilationAsync(entry.ProjectName);
-
-                    var symbol = await TryResolveSymbolWithCachedCompilationAsync(
-                        entry,
-                        compilation,
-                        cancellationToken
-                    );
-
-                    // Thread-safe progress reporting
-                    var current = Interlocked.Increment(ref processedCount);
-                    if (progressCallback != null && current % 1000 == 0) // Report every 1000 symbols
-                    {
-                        progressCallback(current, totalCount);
-                    }
-
-                    return (entry, symbol);
-                })
-            );
-
-            lock (resultsLock)
-            {
-                results.AddRange(batchResults);
-            }
+            batches.Add(entries.Skip(i).Take(batchSize).ToList());
         }
+
+        _logger.LogInformation(
+            "Processing {TotalSymbols} symbols in {BatchCount} batches of {BatchSize}",
+            totalCount,
+            batches.Count,
+            batchSize
+        );
+
+        // Use all CPU cores for maximum throughput
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount, // ⚡ Use ALL cores
+            CancellationToken = cancellationToken
+        };
+
+        await Parallel.ForEachAsync(batches, parallelOptions, async (batch, ct) =>
+        {
+            foreach (var entry in batch)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                // Lazy load compilation + type cache
+                var (compilation, typeCache) = await GetOrLoadCompilationWithCacheAsync(entry.ProjectName);
+
+                var symbol = TryResolveSymbolWithTypeCache(
+                    entry,
+                    compilation,
+                    typeCache,
+                    ct
+                );
+
+                results.Add((entry, symbol));
+
+                // Thread-safe progress reporting
+                var current = Interlocked.Increment(ref processedCount);
+                if (progressCallback != null && current % 5000 == 0) // Report every 5000 symbols
+                {
+                    progressCallback(current, totalCount);
+                }
+            }
+        });
 
         // Final progress report
         progressCallback?.Invoke(processedCount, totalCount);
+
+        var resultList = results.ToList();
 
         _logger.LogInformation(
             "Symbol resolution complete: {Loaded}/{Needed} projects loaded, {Resolved}/{Total} symbols resolved",
             compilationCache.Count(c => c.Value != null),
             neededProjects.Count,
-            results.Count(r => r.Symbol != null),
+            resultList.Count(r => r.Symbol != null),
             totalCount
         );
 
-        return results;
+        return resultList;
     }
 
     /// <summary>
-    /// Try to resolve ISymbol from SerializableSymbolEntry using a cached compilation
+    /// Resolve symbol using Type Cache (O(1) lookup)
     /// </summary>
-    private Task<ISymbol?> TryResolveSymbolWithCachedCompilationAsync(
+    private ISymbol? TryResolveSymbolWithTypeCache(
         SerializableSymbolEntry entry,
         Compilation? compilation,
+        FrozenDictionary<string, INamedTypeSymbol>? typeCache,
         CancellationToken cancellationToken
     )
     {
         try
         {
-            if (compilation == null)
+            if (compilation == null || typeCache == null)
             {
                 _logger.LogTrace(
-                    "Compilation not available for project {ProjectName}",
+                    "Compilation or type cache not available for project {ProjectName}",
                     entry.ProjectName
                 );
-                return Task.FromResult<ISymbol?>(null);
+                return null;
             }
 
-            // Parse FQN to extract type and member information
+            // Parse FQN
             var symbolInfo = ParseFqn(entry.CanonicalFqn);
 
-            // Try to find the symbol
+            // Find symbol
             ISymbol? symbol = null;
 
             if (symbolInfo.MemberName == null)
             {
-                // It's a type
-                symbol = FindType(compilation, symbolInfo.TypeFqn);
+                // It's a type - O(1) lookup ⚡
+                symbol = FindType(typeCache, symbolInfo.TypeFqn);
             }
             else
             {
-                // It's a member (method, property, field, etc.)
-                var containingType = FindType(compilation, symbolInfo.TypeFqn);
+                // It's a member - O(1) type lookup + O(1) member lookup
+                var containingType = FindType(typeCache, symbolInfo.TypeFqn);
                 if (containingType != null)
                 {
                     symbol = FindMember(containingType, symbolInfo.MemberName, entry.Flags);
                 }
             }
 
-            return Task.FromResult(symbol);
+            return symbol;
         }
         catch (Exception ex)
         {
             _logger.LogTrace(ex, "Error resolving symbol {FQN}", entry.CanonicalFqn);
-            return Task.FromResult<ISymbol?>(null);
+            return null;
         }
     }
 }
