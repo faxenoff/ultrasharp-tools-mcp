@@ -634,6 +634,7 @@ public static class SolutionTools
         ISolutionManager solutionManager,
         ILogger<SolutionToolsLogCategory> logger,
         ICodeAnalysisService codeAnalysisService,
+        CallGraphIndexer callGraphIndexer,
         string projectName,
         CancellationToken cancellationToken
     )
@@ -923,9 +924,19 @@ public static class SolutionTools
                             }
                         }
 
-                        return $"<typeTree note=\"Use {ToolHelpers.SharpToolPrefix}{nameof(AnalysisTools.GetMembers)} for more detailed information about specific types.\">"
+                        var result = $"<typeTree note=\"Use {ToolHelpers.SharpToolPrefix}{nameof(AnalysisTools.GetMembers)} for more detailed information about specific types.\">"
                             + output
                             + "\n</typeTree>";
+
+                        // Start background call graph indexing (fire-and-forget)
+                        // Use CancellationToken.None so indexing continues even if the tool request is cancelled
+                        logger.LogInformation(
+                            "Starting background call graph indexing for project {ProjectName}",
+                            project.Name
+                        );
+                        _ = callGraphIndexer.StartBackgroundIndexingAsync(CancellationToken.None);
+
+                        return result;
                     }
                     finally
                     {

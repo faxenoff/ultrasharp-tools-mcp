@@ -373,30 +373,33 @@ internal static class ContextInjectors
             return $"Error creating call graph: {ex.Message}";
         }
 
-        // Format results in XML format
-        var random = new Random();
+        // Format results in XML format with pagination
+        const int defaultPageSize = 200; // Show first 200 by default (covers 99% of methods, background indexing caches the rest)
         var result = ObjectPoolProvider.Instance.GetStringBuilder();
         try
         {
             result.AppendLine("<callers>");
-            var randomizedCallers = callers.OrderBy(_ => random.Next()).Take(20);
-            foreach (var caller in randomizedCallers)
+            // Sort deterministically for cache consistency
+            var sortedCallers = callers.Order().ToList();
+            foreach (var caller in sortedCallers.Take(defaultPageSize))
             {
                 result.AppendLine(caller);
             }
-            if (callers.Count > 20)
+            if (callers.Count > defaultPageSize)
             {
-                result.AppendLine($"<!-- {callers.Count - 20} more callers not shown -->");
+                result.AppendLine($"<!-- {callers.Count - defaultPageSize} more callers available. Total: {callers.Count} callers. Use view_call_graph tool with pagination for full list. -->");
             }
             result.AppendLine("</callers>");
+
             result.AppendLine("<callees>");
-            foreach (var callee in callees.OrderBy(_ => random.Next()).Take(20))
+            var sortedCallees = callees.Order().ToList();
+            foreach (var callee in sortedCallees.Take(defaultPageSize))
             {
                 result.AppendLine(callee);
             }
-            if (callees.Count > 20)
+            if (callees.Count > defaultPageSize)
             {
-                result.AppendLine($"<!-- {callees.Count - 20} more callees not shown -->");
+                result.AppendLine($"<!-- {callees.Count - defaultPageSize} more callees available. Total: {callees.Count} callees. Use view_call_graph tool with pagination for full list. -->");
             }
             result.AppendLine("</callees>");
 
@@ -516,32 +519,36 @@ internal static class ContextInjectors
             return $"Error creating type reference context: {ex.Message}";
         }
 
-        // Format results in XML format
-        var random = new Random();
+        // Format results in XML format with pagination
+        const int defaultPageSize = 200; // Show first 200 by default (covers 99% of methods, background indexing caches the rest)
         var result = ObjectPoolProvider.Instance.GetStringBuilder();
         try
         {
             result.AppendLine("<referencingTypes>");
-            foreach (var referencingType in referencingTypes.OrderBy(t => random.Next()).Take(20))
+            // Sort deterministically for cache consistency
+            var sortedReferencingTypes = referencingTypes.Order().ToList();
+            foreach (var referencingType in sortedReferencingTypes.Take(defaultPageSize))
             {
                 result.AppendLine(referencingType);
             }
-            if (referencingTypes.Count > 20)
+            if (referencingTypes.Count > defaultPageSize)
             {
                 result.AppendLine(
-                    $"<!-- {referencingTypes.Count - 20} more referencing types not shown -->"
+                    $"<!-- {referencingTypes.Count - defaultPageSize} more referencing types available. Total: {referencingTypes.Count} types. -->"
                 );
             }
             result.AppendLine("</referencingTypes>");
+
             result.AppendLine("<referencedTypes>");
-            foreach (var referencedType in referencedTypes.OrderBy(t => random.Next()).Take(20))
+            var sortedReferencedTypes = referencedTypes.Order().ToList();
+            foreach (var referencedType in sortedReferencedTypes.Take(defaultPageSize))
             {
                 result.AppendLine(referencedType);
             }
-            if (referencedTypes.Count > 20)
+            if (referencedTypes.Count > defaultPageSize)
             {
                 result.AppendLine(
-                    $"<!-- {referencedTypes.Count - 20} more referenced types not shown -->"
+                    $"<!-- {referencedTypes.Count - defaultPageSize} more referenced types available. Total: {referencedTypes.Count} types. -->"
                 );
             }
             result.AppendLine("</referencedTypes>");

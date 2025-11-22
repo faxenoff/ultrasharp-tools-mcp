@@ -60,6 +60,15 @@ public static class ServiceCollectionExtensions
             return new CodeAnalysisService(solutionManager, logger, cacheService);
         });
 
+        // Register CallGraphIndexer for background call graph indexing
+        services.AddSingleton<CallGraphIndexer>(sp =>
+        {
+            var codeAnalysisService = sp.GetRequiredService<ICodeAnalysisService>();
+            var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var logger = sp.GetRequiredService<ILogger<CallGraphIndexer>>();
+            return new CallGraphIndexer(codeAnalysisService, solutionManager, logger);
+        });
+
         // Register GitOptions
         services.AddSingleton(gitOptions ?? new GitOptions());
 
