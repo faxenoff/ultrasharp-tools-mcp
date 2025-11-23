@@ -1,5 +1,6 @@
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Mcp;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -69,7 +70,7 @@ public static partial class FileOperationTools
                 );
 
                 // Parse the file
-                var sourceText = await File.ReadAllTextAsync(filePath, cancellationToken);
+                var sourceText = await OptimizedFileIO.ReadAllTextAsync(filePath, null, cancellationToken);
                 var syntaxTree = CSharpSyntaxTree.ParseText(
                     sourceText,
                     cancellationToken: cancellationToken
@@ -215,7 +216,7 @@ public static partial class FileOperationTools
 
                     // Write formatted code
                     var formattedCode = newRoot.NormalizeWhitespace().ToFullString();
-                    await File.WriteAllTextAsync(newFilePath, formattedCode, cancellationToken);
+                    await OptimizedFileIO.WriteAllTextAsync(newFilePath, formattedCode, null, cancellationToken);
                     createdFiles.Add(newFilePath);
 
                     logger.LogInformation("Created file: {NewFile}", newFilePath);
@@ -393,7 +394,7 @@ public static partial class FileOperationTools
                 var roots = new List<CompilationUnitSyntax>();
                 foreach (var file in filePaths)
                 {
-                    var sourceText = await File.ReadAllTextAsync(file, cancellationToken);
+                    var sourceText = await OptimizedFileIO.ReadAllTextAsync(file, null, cancellationToken);
                     var syntaxTree = CSharpSyntaxTree.ParseText(
                         sourceText,
                         cancellationToken: cancellationToken
@@ -494,7 +495,7 @@ public static partial class FileOperationTools
                 }
 
                 // Write the combined file
-                await File.WriteAllTextAsync(targetFilePath, combinedCode, cancellationToken);
+                await OptimizedFileIO.WriteAllTextAsync(targetFilePath, combinedCode, null, cancellationToken);
                 logger.LogInformation("Created combined file: {TargetFile}", targetFilePath);
 
                 // Optimize imports in synthesized file if requested

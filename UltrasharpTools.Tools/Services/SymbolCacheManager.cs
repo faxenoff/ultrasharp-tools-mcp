@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Models;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -66,7 +67,7 @@ public class SymbolCacheManager
 
             _logger.LogInformation("Loading symbol cache from {Path}...", cacheFilePath);
 
-            var json = await File.ReadAllTextAsync(cacheFilePath, cancellationToken);
+            var json = await OptimizedFileIO.ReadAllTextAsync(cacheFilePath, null, cancellationToken);
             var cacheData = JsonSerializer.Deserialize<SymbolCacheData>(json);
 
             if (cacheData == null)
@@ -152,7 +153,7 @@ public class SymbolCacheManager
                 }
             );
 
-            await File.WriteAllTextAsync(cacheFilePath, json, cancellationToken);
+            await OptimizedFileIO.WriteAllTextAsync(cacheFilePath, json, null, cancellationToken);
 
             _logger.LogInformation("Successfully saved symbol cache ({Size} bytes)", json.Length);
         }

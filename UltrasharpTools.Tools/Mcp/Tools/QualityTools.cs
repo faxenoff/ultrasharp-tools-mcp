@@ -1,6 +1,7 @@
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Models;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -685,9 +686,10 @@ public static partial class QualityTools
 
                                     // Write back to file
                                     var text = newRoot.ToFullString();
-                                    await File.WriteAllTextAsync(
+                                    await OptimizedFileIO.WriteAllTextAsync(
                                         document.FilePath!,
                                         text,
+                                        null,
                                         cancellationToken
                                     );
 

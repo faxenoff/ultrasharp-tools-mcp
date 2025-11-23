@@ -1,0 +1,1236 @@
+// Validating benchmarks:
+// ***** BenchmarkRunner: Start   *****
+// ***** Found 12 benchmark(s) in total *****
+// ***** Building 1 exe(s) in Parallel: Start   *****
+// start dotnet  restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1/" /p:OutDir="D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0/" /p:OutputPath="D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0/" /p:PublishDir="D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\publish/" in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1
+// command took 0.79 sec and exited with 0
+// start dotnet  build -c Release --no-restore --nodeReuse:false /p:UseSharedCompilation=false /p:Deterministic=true /p:Optimize=true /p:ArtifactsPath="D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1/" /p:OutDir="D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0/" /p:OutputPath="D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0/" /p:PublishDir="D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\publish/" --output "D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0/" in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1
+// command took 8.46 sec and exited with 0
+// ***** Done, took 00:00:09 (9.32 sec)   *****
+// Found 12 benchmarks:
+//   RealWorldFileOperationsBenchmarks.'File.* - Read+Process+Write (10 files)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'OptimizedFileIO - Read+Process+Write (10 files)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Large Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Large Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'File.WriteAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'OptimizedFileIO.WriteAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'File.WriteAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+//   RealWorldFileOperationsBenchmarks.'OptimizedFileIO.WriteAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'File.* - Read+Process+Write (10 files)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 3408 4488 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Baseline_ReadProcessWrite --job ShortRun --benchmarkId 0 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 82100.00 ns, 82.1000 us/op
+WorkloadJitting  1: 1 op, 18796100.00 ns, 18.7961 ms/op
+
+OverheadJitting  2: 16 op, 129100.00 ns, 8.0688 us/op
+WorkloadJitting  2: 16 op, 267160100.00 ns, 16.6975 ms/op
+
+WorkloadPilot    1: 16 op, 256854100.00 ns, 16.0534 ms/op
+WorkloadPilot    2: 32 op, 517226100.00 ns, 16.1633 ms/op
+
+OverheadWarmup   1: 32 op, 1700.00 ns, 53.1250 ns/op
+OverheadWarmup   2: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadWarmup   3: 32 op, 700.00 ns, 21.8750 ns/op
+OverheadWarmup   4: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadWarmup   5: 32 op, 600.00 ns, 18.7500 ns/op
+OverheadWarmup   6: 32 op, 400.00 ns, 12.5000 ns/op
+
+OverheadActual   1: 32 op, 600.00 ns, 18.7500 ns/op
+OverheadActual   2: 32 op, 700.00 ns, 21.8750 ns/op
+OverheadActual   3: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual   4: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual   5: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual   6: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual   7: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual   8: 32 op, 300.00 ns, 9.3750 ns/op
+OverheadActual   9: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  10: 32 op, 600.00 ns, 18.7500 ns/op
+OverheadActual  11: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  12: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  13: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  14: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  15: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  16: 32 op, 600.00 ns, 18.7500 ns/op
+OverheadActual  17: 32 op, 600.00 ns, 18.7500 ns/op
+OverheadActual  18: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual  19: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  20: 32 op, 200.00 ns, 6.2500 ns/op
+
+WorkloadWarmup   1: 32 op, 517838300.00 ns, 16.1824 ms/op
+WorkloadWarmup   2: 32 op, 526960200.00 ns, 16.4675 ms/op
+WorkloadWarmup   3: 32 op, 529160300.00 ns, 16.5363 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 32 op, 526808500.00 ns, 16.4628 ms/op
+WorkloadActual   2: 32 op, 530286600.00 ns, 16.5715 ms/op
+WorkloadActual   3: 32 op, 532538200.00 ns, 16.6418 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 32 op, 526808000.00 ns, 16.4628 ms/op
+WorkloadResult   2: 32 op, 530286100.00 ns, 16.5714 ms/op
+WorkloadResult   3: 32 op, 532537700.00 ns, 16.6418 ms/op
+// GC:  3 3 3 69399472 32
+// Threading:  7486 0 32
+
+// AfterAll
+// Benchmark Process 57860 has exited with code 0.
+
+Mean = 16.559 ms, StdErr = 0.052 ms (0.31%), N = 3, StdDev = 0.090 ms
+Min = 16.463 ms, Q1 = 16.517 ms, Median = 16.571 ms, Q3 = 16.607 ms, Max = 16.642 ms
+IQR = 0.090 ms, LowerFence = 16.383 ms, UpperFence = 16.741 ms
+ConfidenceInterval = [14.913 ms; 18.204 ms] (CI 99.9%), Margin = 1.646 ms (9.94% of Mean)
+Skewness = -0.14, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 11 (91.7 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'OptimizedFileIO - Read+Process+Write (10 files)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 648 652 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Optimized_ReadProcessWrite --job ShortRun --benchmarkId 1 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 86400.00 ns, 86.4000 us/op
+WorkloadJitting  1: 1 op, 15031900.00 ns, 15.0319 ms/op
+
+OverheadJitting  2: 16 op, 156000.00 ns, 9.7500 us/op
+WorkloadJitting  2: 16 op, 299829900.00 ns, 18.7394 ms/op
+
+WorkloadPilot    1: 16 op, 307107500.00 ns, 19.1942 ms/op
+WorkloadPilot    2: 32 op, 618687100.00 ns, 19.3340 ms/op
+
+OverheadWarmup   1: 32 op, 1200.00 ns, 37.5000 ns/op
+OverheadWarmup   2: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadWarmup   3: 32 op, 600.00 ns, 18.7500 ns/op
+OverheadWarmup   4: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadWarmup   5: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadWarmup   6: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadWarmup   7: 32 op, 500.00 ns, 15.6250 ns/op
+
+OverheadActual   1: 32 op, 700.00 ns, 21.8750 ns/op
+OverheadActual   2: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual   3: 32 op, 800.00 ns, 25.0000 ns/op
+OverheadActual   4: 32 op, 300.00 ns, 9.3750 ns/op
+OverheadActual   5: 32 op, 300.00 ns, 9.3750 ns/op
+OverheadActual   6: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual   7: 32 op, 100.00 ns, 3.1250 ns/op
+OverheadActual   8: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual   9: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  10: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  11: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  12: 32 op, 100.00 ns, 3.1250 ns/op
+OverheadActual  13: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  14: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  15: 32 op, 700.00 ns, 21.8750 ns/op
+OverheadActual  16: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  17: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual  18: 32 op, 300.00 ns, 9.3750 ns/op
+OverheadActual  19: 32 op, 300.00 ns, 9.3750 ns/op
+OverheadActual  20: 32 op, 200.00 ns, 6.2500 ns/op
+
+WorkloadWarmup   1: 32 op, 599202800.00 ns, 18.7251 ms/op
+WorkloadWarmup   2: 32 op, 619026400.00 ns, 19.3446 ms/op
+WorkloadWarmup   3: 32 op, 624692000.00 ns, 19.5216 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 32 op, 611178700.00 ns, 19.0993 ms/op
+WorkloadActual   2: 32 op, 662265800.00 ns, 20.6958 ms/op
+WorkloadActual   3: 32 op, 654373200.00 ns, 20.4492 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 32 op, 611178400.00 ns, 19.0993 ms/op
+WorkloadResult   2: 32 op, 662265500.00 ns, 20.6958 ms/op
+WorkloadResult   3: 32 op, 654372900.00 ns, 20.4492 ms/op
+// GC:  3 3 3 69406584 32
+// Threading:  7487 0 32
+
+// AfterAll
+// Benchmark Process 42120 has exited with code 0.
+
+Mean = 20.081 ms, StdErr = 0.496 ms (2.47%), N = 3, StdDev = 0.859 ms
+Min = 19.099 ms, Q1 = 19.774 ms, Median = 20.449 ms, Q3 = 20.572 ms, Max = 20.696 ms
+IQR = 0.798 ms, LowerFence = 18.577 ms, UpperFence = 21.770 ms
+ConfidenceInterval = [4.402 ms; 35.760 ms] (CI 99.9%), Margin = 15.679 ms (78.08% of Mean)
+Skewness = -0.35, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 10 (83.3 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Large Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 4944 4948 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Baseline_ReadLargeFiles --job ShortRun --benchmarkId 2 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 72200.00 ns, 72.2000 us/op
+WorkloadJitting  1: 1 op, 650500.00 ns, 650.5000 us/op
+
+OverheadJitting  2: 16 op, 125500.00 ns, 7.8438 us/op
+WorkloadJitting  2: 16 op, 136700.00 ns, 8.5438 us/op
+
+WorkloadPilot    1: 16 op, 3800.00 ns, 237.5000 ns/op
+WorkloadPilot    2: 32 op, 3500.00 ns, 109.3750 ns/op
+WorkloadPilot    3: 64 op, 12200.00 ns, 190.6250 ns/op
+WorkloadPilot    4: 128 op, 18000.00 ns, 140.6250 ns/op
+WorkloadPilot    5: 256 op, 27300.00 ns, 106.6406 ns/op
+WorkloadPilot    6: 512 op, 45100.00 ns, 88.0859 ns/op
+WorkloadPilot    7: 1024 op, 92500.00 ns, 90.3320 ns/op
+WorkloadPilot    8: 2048 op, 180400.00 ns, 88.0859 ns/op
+WorkloadPilot    9: 4096 op, 321100.00 ns, 78.3936 ns/op
+WorkloadPilot   10: 8192 op, 721800.00 ns, 88.1104 ns/op
+WorkloadPilot   11: 16384 op, 1326700.00 ns, 80.9753 ns/op
+WorkloadPilot   12: 32768 op, 2478300.00 ns, 75.6317 ns/op
+WorkloadPilot   13: 65536 op, 4967700.00 ns, 75.8011 ns/op
+WorkloadPilot   14: 131072 op, 9133700.00 ns, 69.6846 ns/op
+WorkloadPilot   15: 262144 op, 17391000.00 ns, 66.3414 ns/op
+WorkloadPilot   16: 524288 op, 30139400.00 ns, 57.4863 ns/op
+WorkloadPilot   17: 1048576 op, 55844000.00 ns, 53.2570 ns/op
+WorkloadPilot   18: 2097152 op, 87330400.00 ns, 41.6424 ns/op
+WorkloadPilot   19: 4194304 op, 52371500.00 ns, 12.4863 ns/op
+WorkloadPilot   20: 8388608 op, 105331400.00 ns, 12.5565 ns/op
+WorkloadPilot   21: 16777216 op, 203210800.00 ns, 12.1123 ns/op
+WorkloadPilot   22: 33554432 op, 410692300.00 ns, 12.2396 ns/op
+WorkloadPilot   23: 67108864 op, 804458300.00 ns, 11.9874 ns/op
+
+OverheadWarmup   1: 67108864 op, 88199500.00 ns, 1.3143 ns/op
+OverheadWarmup   2: 67108864 op, 88620600.00 ns, 1.3205 ns/op
+OverheadWarmup   3: 67108864 op, 67586600.00 ns, 1.0071 ns/op
+OverheadWarmup   4: 67108864 op, 52696400.00 ns, 0.7852 ns/op
+OverheadWarmup   5: 67108864 op, 52686700.00 ns, 0.7851 ns/op
+OverheadWarmup   6: 67108864 op, 52690500.00 ns, 0.7851 ns/op
+OverheadWarmup   7: 67108864 op, 52686700.00 ns, 0.7851 ns/op
+
+OverheadActual   1: 67108864 op, 52741000.00 ns, 0.7859 ns/op
+OverheadActual   2: 67108864 op, 52747200.00 ns, 0.7860 ns/op
+OverheadActual   3: 67108864 op, 52694100.00 ns, 0.7852 ns/op
+OverheadActual   4: 67108864 op, 53045300.00 ns, 0.7904 ns/op
+OverheadActual   5: 67108864 op, 52836400.00 ns, 0.7873 ns/op
+OverheadActual   6: 67108864 op, 52737000.00 ns, 0.7858 ns/op
+OverheadActual   7: 67108864 op, 52723100.00 ns, 0.7856 ns/op
+OverheadActual   8: 67108864 op, 52652700.00 ns, 0.7846 ns/op
+OverheadActual   9: 67108864 op, 52717100.00 ns, 0.7855 ns/op
+OverheadActual  10: 67108864 op, 52718300.00 ns, 0.7856 ns/op
+OverheadActual  11: 67108864 op, 52780500.00 ns, 0.7865 ns/op
+OverheadActual  12: 67108864 op, 52794200.00 ns, 0.7867 ns/op
+OverheadActual  13: 67108864 op, 52730200.00 ns, 0.7857 ns/op
+OverheadActual  14: 67108864 op, 52669500.00 ns, 0.7848 ns/op
+OverheadActual  15: 67108864 op, 52967900.00 ns, 0.7893 ns/op
+
+WorkloadWarmup   1: 67108864 op, 816903700.00 ns, 12.1728 ns/op
+WorkloadWarmup   2: 67108864 op, 846004700.00 ns, 12.6065 ns/op
+WorkloadWarmup   3: 67108864 op, 838919900.00 ns, 12.5009 ns/op
+
+// BeforeActualRun
+WorkloadActual   1: 67108864 op, 835553800.00 ns, 12.4507 ns/op
+WorkloadActual   2: 67108864 op, 839191100.00 ns, 12.5049 ns/op
+WorkloadActual   3: 67108864 op, 850113000.00 ns, 12.6677 ns/op
+
+// AfterActualRun
+WorkloadResult   1: 67108864 op, 782816800.00 ns, 11.6649 ns/op
+WorkloadResult   2: 67108864 op, 786454100.00 ns, 11.7191 ns/op
+WorkloadResult   3: 67108864 op, 797376000.00 ns, 11.8818 ns/op
+// GC:  285 0 0 5368709120 67108864
+// Threading:  0 0 67108864
+
+// AfterAll
+// Benchmark Process 47132 has exited with code 0.
+
+Mean = 11.755 ns, StdErr = 0.065 ns (0.55%), N = 3, StdDev = 0.113 ns
+Min = 11.665 ns, Q1 = 11.692 ns, Median = 11.719 ns, Q3 = 11.800 ns, Max = 11.882 ns
+IQR = 0.108 ns, LowerFence = 11.529 ns, UpperFence = 11.963 ns
+ConfidenceInterval = [9.695 ns; 13.815 ns] (CI 99.9%), Margin = 2.060 ns (17.52% of Mean)
+Skewness = 0.29, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 9 (75.0 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 1m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Large Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 656 4904 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Optimized_ReadLargeFiles --job ShortRun --benchmarkId 3 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 71600.00 ns, 71.6000 us/op
+WorkloadJitting  1: 1 op, 1083700.00 ns, 1.0837 ms/op
+
+OverheadJitting  2: 16 op, 102000.00 ns, 6.3750 us/op
+WorkloadJitting  2: 16 op, 159700.00 ns, 9.9813 us/op
+
+WorkloadPilot    1: 16 op, 4200.00 ns, 262.5000 ns/op
+WorkloadPilot    2: 32 op, 3600.00 ns, 112.5000 ns/op
+WorkloadPilot    3: 64 op, 9300.00 ns, 145.3125 ns/op
+WorkloadPilot    4: 128 op, 13300.00 ns, 103.9063 ns/op
+WorkloadPilot    5: 256 op, 28200.00 ns, 110.1563 ns/op
+WorkloadPilot    6: 512 op, 41900.00 ns, 81.8359 ns/op
+WorkloadPilot    7: 1024 op, 94000.00 ns, 91.7969 ns/op
+WorkloadPilot    8: 2048 op, 179300.00 ns, 87.5488 ns/op
+WorkloadPilot    9: 4096 op, 315800.00 ns, 77.0996 ns/op
+WorkloadPilot   10: 8192 op, 734800.00 ns, 89.6973 ns/op
+WorkloadPilot   11: 16384 op, 1374400.00 ns, 83.8867 ns/op
+WorkloadPilot   12: 32768 op, 2512300.00 ns, 76.6693 ns/op
+WorkloadPilot   13: 65536 op, 5025000.00 ns, 76.6754 ns/op
+WorkloadPilot   14: 131072 op, 9623200.00 ns, 73.4192 ns/op
+WorkloadPilot   15: 262144 op, 18327800.00 ns, 69.9150 ns/op
+WorkloadPilot   16: 524288 op, 30742200.00 ns, 58.6361 ns/op
+WorkloadPilot   17: 1048576 op, 56702000.00 ns, 54.0752 ns/op
+WorkloadPilot   18: 2097152 op, 88883700.00 ns, 42.3831 ns/op
+WorkloadPilot   19: 4194304 op, 45801000.00 ns, 10.9198 ns/op
+WorkloadPilot   20: 8388608 op, 100428600.00 ns, 11.9720 ns/op
+WorkloadPilot   21: 16777216 op, 192448200.00 ns, 11.4708 ns/op
+WorkloadPilot   22: 33554432 op, 386755300.00 ns, 11.5262 ns/op
+WorkloadPilot   23: 67108864 op, 776601800.00 ns, 11.5723 ns/op
+
+OverheadWarmup   1: 67108864 op, 87645600.00 ns, 1.3060 ns/op
+OverheadWarmup   2: 67108864 op, 87494500.00 ns, 1.3038 ns/op
+OverheadWarmup   3: 67108864 op, 68628300.00 ns, 1.0226 ns/op
+OverheadWarmup   4: 67108864 op, 52655900.00 ns, 0.7846 ns/op
+OverheadWarmup   5: 67108864 op, 52651100.00 ns, 0.7846 ns/op
+OverheadWarmup   6: 67108864 op, 52671100.00 ns, 0.7849 ns/op
+OverheadWarmup   7: 67108864 op, 52898300.00 ns, 0.7882 ns/op
+OverheadWarmup   8: 67108864 op, 52647200.00 ns, 0.7845 ns/op
+OverheadWarmup   9: 67108864 op, 52898100.00 ns, 0.7882 ns/op
+OverheadWarmup  10: 67108864 op, 52668000.00 ns, 0.7848 ns/op
+
+OverheadActual   1: 67108864 op, 52700700.00 ns, 0.7853 ns/op
+OverheadActual   2: 67108864 op, 52685600.00 ns, 0.7851 ns/op
+OverheadActual   3: 67108864 op, 52653300.00 ns, 0.7846 ns/op
+OverheadActual   4: 67108864 op, 52774500.00 ns, 0.7864 ns/op
+OverheadActual   5: 67108864 op, 52775000.00 ns, 0.7864 ns/op
+OverheadActual   6: 67108864 op, 52652300.00 ns, 0.7846 ns/op
+OverheadActual   7: 67108864 op, 53519100.00 ns, 0.7975 ns/op
+OverheadActual   8: 67108864 op, 52747700.00 ns, 0.7860 ns/op
+OverheadActual   9: 67108864 op, 52682300.00 ns, 0.7850 ns/op
+OverheadActual  10: 67108864 op, 52796000.00 ns, 0.7867 ns/op
+OverheadActual  11: 67108864 op, 52721800.00 ns, 0.7856 ns/op
+OverheadActual  12: 67108864 op, 52759600.00 ns, 0.7862 ns/op
+OverheadActual  13: 67108864 op, 52731300.00 ns, 0.7858 ns/op
+OverheadActual  14: 67108864 op, 52700900.00 ns, 0.7853 ns/op
+OverheadActual  15: 67108864 op, 52745400.00 ns, 0.7860 ns/op
+
+WorkloadWarmup   1: 67108864 op, 773674600.00 ns, 11.5286 ns/op
+WorkloadWarmup   2: 67108864 op, 764265100.00 ns, 11.3884 ns/op
+WorkloadWarmup   3: 67108864 op, 764789900.00 ns, 11.3963 ns/op
+
+// BeforeActualRun
+WorkloadActual   1: 67108864 op, 758815700.00 ns, 11.3072 ns/op
+WorkloadActual   2: 67108864 op, 753082500.00 ns, 11.2218 ns/op
+WorkloadActual   3: 67108864 op, 766305900.00 ns, 11.4188 ns/op
+
+// AfterActualRun
+WorkloadResult   1: 67108864 op, 706084400.00 ns, 10.5215 ns/op
+WorkloadResult   2: 67108864 op, 700351200.00 ns, 10.4360 ns/op
+WorkloadResult   3: 67108864 op, 713574600.00 ns, 10.6331 ns/op
+// GC:  285 0 0 5368709120 67108864
+// Threading:  0 0 67108864
+
+// AfterAll
+// Benchmark Process 48372 has exited with code 0.
+
+Mean = 10.530 ns, StdErr = 0.057 ns (0.54%), N = 3, StdDev = 0.099 ns
+Min = 10.436 ns, Q1 = 10.479 ns, Median = 10.521 ns, Q3 = 10.577 ns, Max = 10.633 ns
+IQR = 0.099 ns, LowerFence = 10.331 ns, UpperFence = 10.725 ns
+ConfidenceInterval = [8.728 ns; 12.333 ns] (CI 99.9%), Margin = 1.803 ns (17.12% of Mean)
+Skewness = 0.09, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 8 (66.7 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 3428 4960 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Baseline_ReadMediumFiles --job ShortRun --benchmarkId 4 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 86700.00 ns, 86.7000 us/op
+WorkloadJitting  1: 1 op, 5871500.00 ns, 5.8715 ms/op
+
+OverheadJitting  2: 16 op, 101700.00 ns, 6.3563 us/op
+WorkloadJitting  2: 16 op, 23042900.00 ns, 1.4402 ms/op
+
+WorkloadPilot    1: 16 op, 24865900.00 ns, 1.5541 ms/op
+WorkloadPilot    2: 32 op, 42504300.00 ns, 1.3283 ms/op
+WorkloadPilot    3: 64 op, 77191100.00 ns, 1.2061 ms/op
+WorkloadPilot    4: 128 op, 169095300.00 ns, 1.3211 ms/op
+WorkloadPilot    5: 256 op, 342250400.00 ns, 1.3369 ms/op
+WorkloadPilot    6: 512 op, 713235000.00 ns, 1.3930 ms/op
+
+OverheadWarmup   1: 512 op, 2100.00 ns, 4.1016 ns/op
+OverheadWarmup   2: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadWarmup   3: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadWarmup   4: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadWarmup   5: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadWarmup   6: 512 op, 1000.00 ns, 1.9531 ns/op
+
+OverheadActual   1: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual   2: 512 op, 1100.00 ns, 2.1484 ns/op
+OverheadActual   3: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual   4: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual   5: 512 op, 900.00 ns, 1.7578 ns/op
+OverheadActual   6: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual   7: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual   8: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual   9: 512 op, 700.00 ns, 1.3672 ns/op
+OverheadActual  10: 512 op, 1100.00 ns, 2.1484 ns/op
+OverheadActual  11: 512 op, 1100.00 ns, 2.1484 ns/op
+OverheadActual  12: 512 op, 900.00 ns, 1.7578 ns/op
+OverheadActual  13: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual  14: 512 op, 2000.00 ns, 3.9063 ns/op
+OverheadActual  15: 512 op, 1100.00 ns, 2.1484 ns/op
+OverheadActual  16: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual  17: 512 op, 1100.00 ns, 2.1484 ns/op
+OverheadActual  18: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual  19: 512 op, 1100.00 ns, 2.1484 ns/op
+OverheadActual  20: 512 op, 1100.00 ns, 2.1484 ns/op
+
+WorkloadWarmup   1: 512 op, 616918400.00 ns, 1.2049 ms/op
+WorkloadWarmup   2: 512 op, 584240200.00 ns, 1.1411 ms/op
+WorkloadWarmup   3: 512 op, 562939400.00 ns, 1.0995 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 512 op, 571391900.00 ns, 1.1160 ms/op
+WorkloadActual   2: 512 op, 561397900.00 ns, 1.0965 ms/op
+WorkloadActual   3: 512 op, 551337400.00 ns, 1.0768 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 512 op, 571390900.00 ns, 1.1160 ms/op
+WorkloadResult   2: 512 op, 561396900.00 ns, 1.0965 ms/op
+WorkloadResult   3: 512 op, 551336400.00 ns, 1.0768 ms/op
+// GC:  39 19 19 599487712 512
+// Threading:  83961 0 512
+
+// AfterAll
+// Benchmark Process 21192 has exited with code 0.
+
+Mean = 1.096 ms, StdErr = 0.011 ms (1.03%), N = 3, StdDev = 0.020 ms
+Min = 1.077 ms, Q1 = 1.087 ms, Median = 1.096 ms, Q3 = 1.106 ms, Max = 1.116 ms
+IQR = 0.020 ms, LowerFence = 1.057 ms, UpperFence = 1.136 ms
+ConfidenceInterval = [0.739 ms; 1.454 ms] (CI 99.9%), Margin = 0.357 ms (32.59% of Mean)
+Skewness = -0, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 7 (58.3 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 3220 4928 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Optimized_ReadMediumFiles --job ShortRun --benchmarkId 5 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 70900.00 ns, 70.9000 us/op
+WorkloadJitting  1: 1 op, 6682100.00 ns, 6.6821 ms/op
+
+OverheadJitting  2: 16 op, 132000.00 ns, 8.2500 us/op
+WorkloadJitting  2: 16 op, 24322600.00 ns, 1.5202 ms/op
+
+WorkloadPilot    1: 16 op, 24250400.00 ns, 1.5157 ms/op
+WorkloadPilot    2: 32 op, 39008800.00 ns, 1.2190 ms/op
+WorkloadPilot    3: 64 op, 76197300.00 ns, 1.1906 ms/op
+WorkloadPilot    4: 128 op, 165172100.00 ns, 1.2904 ms/op
+WorkloadPilot    5: 256 op, 326162100.00 ns, 1.2741 ms/op
+WorkloadPilot    6: 512 op, 635091000.00 ns, 1.2404 ms/op
+
+OverheadWarmup   1: 512 op, 2500.00 ns, 4.8828 ns/op
+OverheadWarmup   2: 512 op, 900.00 ns, 1.7578 ns/op
+OverheadWarmup   3: 512 op, 700.00 ns, 1.3672 ns/op
+OverheadWarmup   4: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadWarmup   5: 512 op, 700.00 ns, 1.3672 ns/op
+OverheadWarmup   6: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadWarmup   7: 512 op, 900.00 ns, 1.7578 ns/op
+
+OverheadActual   1: 512 op, 1200.00 ns, 2.3438 ns/op
+OverheadActual   2: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual   3: 512 op, 900.00 ns, 1.7578 ns/op
+OverheadActual   4: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual   5: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual   6: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual   7: 512 op, 1600.00 ns, 3.1250 ns/op
+OverheadActual   8: 512 op, 1600.00 ns, 3.1250 ns/op
+OverheadActual   9: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual  10: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual  11: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual  12: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual  13: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual  14: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual  15: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual  16: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual  17: 512 op, 800.00 ns, 1.5625 ns/op
+OverheadActual  18: 512 op, 1000.00 ns, 1.9531 ns/op
+OverheadActual  19: 512 op, 900.00 ns, 1.7578 ns/op
+OverheadActual  20: 512 op, 800.00 ns, 1.5625 ns/op
+
+WorkloadWarmup   1: 512 op, 665060200.00 ns, 1.2989 ms/op
+WorkloadWarmup   2: 512 op, 575959700.00 ns, 1.1249 ms/op
+WorkloadWarmup   3: 512 op, 576766800.00 ns, 1.1265 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 512 op, 579328000.00 ns, 1.1315 ms/op
+WorkloadActual   2: 512 op, 636131500.00 ns, 1.2424 ms/op
+WorkloadActual   3: 512 op, 739887300.00 ns, 1.4451 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 512 op, 579327100.00 ns, 1.1315 ms/op
+WorkloadResult   2: 512 op, 636130600.00 ns, 1.2424 ms/op
+WorkloadResult   3: 512 op, 739886400.00 ns, 1.4451 ms/op
+// GC:  39 19 19 599496408 512
+// Threading:  83962 0 512
+
+// AfterAll
+// Benchmark Process 59700 has exited with code 0.
+
+Mean = 1.273 ms, StdErr = 0.092 ms (7.21%), N = 3, StdDev = 0.159 ms
+Min = 1.131 ms, Q1 = 1.187 ms, Median = 1.242 ms, Q3 = 1.344 ms, Max = 1.445 ms
+IQR = 0.157 ms, LowerFence = 0.952 ms, UpperFence = 1.579 ms
+ConfidenceInterval = [-1.628 ms; 4.174 ms] (CI 99.9%), Margin = 2.901 ms (227.89% of Mean)
+Skewness = 0.19, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 6 (50.0 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 3224 4044 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Baseline_ReadSmallFiles --job ShortRun --benchmarkId 6 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 71000.00 ns, 71.0000 us/op
+WorkloadJitting  1: 1 op, 5681000.00 ns, 5.6810 ms/op
+
+OverheadJitting  2: 16 op, 121700.00 ns, 7.6063 us/op
+WorkloadJitting  2: 16 op, 8219200.00 ns, 513.7000 us/op
+
+WorkloadPilot    1: 16 op, 7290600.00 ns, 455.6625 us/op
+WorkloadPilot    2: 32 op, 13707400.00 ns, 428.3563 us/op
+WorkloadPilot    3: 64 op, 30552900.00 ns, 477.3891 us/op
+WorkloadPilot    4: 128 op, 67771300.00 ns, 529.4633 us/op
+WorkloadPilot    5: 256 op, 148006400.00 ns, 578.1500 us/op
+WorkloadPilot    6: 512 op, 235391800.00 ns, 459.7496 us/op
+WorkloadPilot    7: 1024 op, 456807200.00 ns, 446.1008 us/op
+WorkloadPilot    8: 2048 op, 966298000.00 ns, 471.8252 us/op
+
+OverheadWarmup   1: 2048 op, 4600.00 ns, 2.2461 ns/op
+OverheadWarmup   2: 2048 op, 2800.00 ns, 1.3672 ns/op
+OverheadWarmup   3: 2048 op, 2700.00 ns, 1.3184 ns/op
+OverheadWarmup   4: 2048 op, 3600.00 ns, 1.7578 ns/op
+OverheadWarmup   5: 2048 op, 2500.00 ns, 1.2207 ns/op
+OverheadWarmup   6: 2048 op, 2500.00 ns, 1.2207 ns/op
+OverheadWarmup   7: 2048 op, 3700.00 ns, 1.8066 ns/op
+
+OverheadActual   1: 2048 op, 3900.00 ns, 1.9043 ns/op
+OverheadActual   2: 2048 op, 3100.00 ns, 1.5137 ns/op
+OverheadActual   3: 2048 op, 3200.00 ns, 1.5625 ns/op
+OverheadActual   4: 2048 op, 2600.00 ns, 1.2695 ns/op
+OverheadActual   5: 2048 op, 2800.00 ns, 1.3672 ns/op
+OverheadActual   6: 2048 op, 3100.00 ns, 1.5137 ns/op
+OverheadActual   7: 2048 op, 3700.00 ns, 1.8066 ns/op
+OverheadActual   8: 2048 op, 3100.00 ns, 1.5137 ns/op
+OverheadActual   9: 2048 op, 2900.00 ns, 1.4160 ns/op
+OverheadActual  10: 2048 op, 2900.00 ns, 1.4160 ns/op
+OverheadActual  11: 2048 op, 2600.00 ns, 1.2695 ns/op
+OverheadActual  12: 2048 op, 2900.00 ns, 1.4160 ns/op
+OverheadActual  13: 2048 op, 2700.00 ns, 1.3184 ns/op
+OverheadActual  14: 2048 op, 2800.00 ns, 1.3672 ns/op
+OverheadActual  15: 2048 op, 2600.00 ns, 1.2695 ns/op
+OverheadActual  16: 2048 op, 3100.00 ns, 1.5137 ns/op
+OverheadActual  17: 2048 op, 2900.00 ns, 1.4160 ns/op
+OverheadActual  18: 2048 op, 2700.00 ns, 1.3184 ns/op
+OverheadActual  19: 2048 op, 2700.00 ns, 1.3184 ns/op
+OverheadActual  20: 2048 op, 2800.00 ns, 1.3672 ns/op
+
+WorkloadWarmup   1: 2048 op, 884731700.00 ns, 431.9979 us/op
+WorkloadWarmup   2: 2048 op, 820803600.00 ns, 400.7830 us/op
+WorkloadWarmup   3: 2048 op, 802351600.00 ns, 391.7732 us/op
+
+// BeforeActualRun
+WorkloadActual   1: 2048 op, 786279600.00 ns, 383.9256 us/op
+WorkloadActual   2: 2048 op, 807008400.00 ns, 394.0471 us/op
+WorkloadActual   3: 2048 op, 807969800.00 ns, 394.5165 us/op
+
+// AfterActualRun
+WorkloadResult   1: 2048 op, 786276700.00 ns, 383.9242 us/op
+WorkloadResult   2: 2048 op, 807005500.00 ns, 394.0457 us/op
+WorkloadResult   3: 2048 op, 807966900.00 ns, 394.5151 us/op
+// GC:  16 1 0 297348888 2048
+// Threading:  106493 0 2048
+
+// AfterAll
+// Benchmark Process 28964 has exited with code 0.
+
+Mean = 390.828 μs, StdErr = 3.455 μs (0.88%), N = 3, StdDev = 5.984 μs
+Min = 383.924 μs, Q1 = 388.985 μs, Median = 394.046 μs, Q3 = 394.280 μs, Max = 394.515 μs
+IQR = 5.295 μs, LowerFence = 381.042 μs, UpperFence = 402.224 μs
+ConfidenceInterval = [281.662 μs; 499.994 μs] (CI 99.9%), Margin = 109.166 μs (27.93% of Mean)
+Skewness = -0.38, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 5 (41.7 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 3252 3256 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Optimized_ReadSmallFiles --job ShortRun --benchmarkId 7 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 75700.00 ns, 75.7000 us/op
+WorkloadJitting  1: 1 op, 5221900.00 ns, 5.2219 ms/op
+
+OverheadJitting  2: 16 op, 120200.00 ns, 7.5125 us/op
+WorkloadJitting  2: 16 op, 7603800.00 ns, 475.2375 us/op
+
+WorkloadPilot    1: 16 op, 6898000.00 ns, 431.1250 us/op
+WorkloadPilot    2: 32 op, 13002800.00 ns, 406.3375 us/op
+WorkloadPilot    3: 64 op, 27484100.00 ns, 429.4391 us/op
+WorkloadPilot    4: 128 op, 61791600.00 ns, 482.7469 us/op
+WorkloadPilot    5: 256 op, 110546500.00 ns, 431.8223 us/op
+WorkloadPilot    6: 512 op, 227020700.00 ns, 443.3998 us/op
+WorkloadPilot    7: 1024 op, 462179900.00 ns, 451.3476 us/op
+WorkloadPilot    8: 2048 op, 901454200.00 ns, 440.1632 us/op
+
+OverheadWarmup   1: 2048 op, 4100.00 ns, 2.0020 ns/op
+OverheadWarmup   2: 2048 op, 3200.00 ns, 1.5625 ns/op
+OverheadWarmup   3: 2048 op, 3700.00 ns, 1.8066 ns/op
+OverheadWarmup   4: 2048 op, 3600.00 ns, 1.7578 ns/op
+OverheadWarmup   5: 2048 op, 3700.00 ns, 1.8066 ns/op
+OverheadWarmup   6: 2048 op, 3300.00 ns, 1.6113 ns/op
+
+OverheadActual   1: 2048 op, 2800.00 ns, 1.3672 ns/op
+OverheadActual   2: 2048 op, 3000.00 ns, 1.4648 ns/op
+OverheadActual   3: 2048 op, 3100.00 ns, 1.5137 ns/op
+OverheadActual   4: 2048 op, 2900.00 ns, 1.4160 ns/op
+OverheadActual   5: 2048 op, 2900.00 ns, 1.4160 ns/op
+OverheadActual   6: 2048 op, 3100.00 ns, 1.5137 ns/op
+OverheadActual   7: 2048 op, 2800.00 ns, 1.3672 ns/op
+OverheadActual   8: 2048 op, 3000.00 ns, 1.4648 ns/op
+OverheadActual   9: 2048 op, 3000.00 ns, 1.4648 ns/op
+OverheadActual  10: 2048 op, 2600.00 ns, 1.2695 ns/op
+OverheadActual  11: 2048 op, 2800.00 ns, 1.3672 ns/op
+OverheadActual  12: 2048 op, 5500.00 ns, 2.6855 ns/op
+OverheadActual  13: 2048 op, 3000.00 ns, 1.4648 ns/op
+OverheadActual  14: 2048 op, 2800.00 ns, 1.3672 ns/op
+OverheadActual  15: 2048 op, 2900.00 ns, 1.4160 ns/op
+OverheadActual  16: 2048 op, 3700.00 ns, 1.8066 ns/op
+OverheadActual  17: 2048 op, 3700.00 ns, 1.8066 ns/op
+OverheadActual  18: 2048 op, 2800.00 ns, 1.3672 ns/op
+OverheadActual  19: 2048 op, 3300.00 ns, 1.6113 ns/op
+OverheadActual  20: 2048 op, 2700.00 ns, 1.3184 ns/op
+
+WorkloadWarmup   1: 2048 op, 828985200.00 ns, 404.7779 us/op
+WorkloadWarmup   2: 2048 op, 826178100.00 ns, 403.4073 us/op
+WorkloadWarmup   3: 2048 op, 791329600.00 ns, 386.3914 us/op
+
+// BeforeActualRun
+WorkloadActual   1: 2048 op, 776996900.00 ns, 379.3930 us/op
+WorkloadActual   2: 2048 op, 771417600.00 ns, 376.6688 us/op
+WorkloadActual   3: 2048 op, 780633100.00 ns, 381.1685 us/op
+
+// AfterActualRun
+WorkloadResult   1: 2048 op, 776993950.00 ns, 379.3916 us/op
+WorkloadResult   2: 2048 op, 771414650.00 ns, 376.6673 us/op
+WorkloadResult   3: 2048 op, 780630150.00 ns, 381.1671 us/op
+// GC:  16 1 0 297388368 2048
+// Threading:  106486 0 2048
+
+// AfterAll
+// Benchmark Process 40704 has exited with code 0.
+
+Mean = 379.075 μs, StdErr = 1.309 μs (0.35%), N = 3, StdDev = 2.266 μs
+Min = 376.667 μs, Q1 = 378.029 μs, Median = 379.392 μs, Q3 = 380.279 μs, Max = 381.167 μs
+IQR = 2.250 μs, LowerFence = 374.655 μs, UpperFence = 383.654 μs
+ConfidenceInterval = [337.726 μs; 420.424 μs] (CI 99.9%), Margin = 41.349 μs (10.91% of Mean)
+Skewness = -0.14, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 4 (33.3 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'File.WriteAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 648 4780 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Baseline_WriteMediumFiles --job ShortRun --benchmarkId 8 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 74900.00 ns, 74.9000 us/op
+WorkloadJitting  1: 1 op, 13731200.00 ns, 13.7312 ms/op
+
+OverheadJitting  2: 16 op, 128900.00 ns, 8.0563 us/op
+WorkloadJitting  2: 16 op, 260883300.00 ns, 16.3052 ms/op
+
+WorkloadPilot    1: 16 op, 265267400.00 ns, 16.5792 ms/op
+WorkloadPilot    2: 32 op, 527883900.00 ns, 16.4964 ms/op
+
+OverheadWarmup   1: 32 op, 1400.00 ns, 43.7500 ns/op
+OverheadWarmup   2: 32 op, 300.00 ns, 9.3750 ns/op
+OverheadWarmup   3: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadWarmup   4: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadWarmup   5: 32 op, 100.00 ns, 3.1250 ns/op
+OverheadWarmup   6: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadWarmup   7: 32 op, 300.00 ns, 9.3750 ns/op
+OverheadWarmup   8: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadWarmup   9: 32 op, 400.00 ns, 12.5000 ns/op
+
+OverheadActual   1: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   2: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   3: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   4: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   5: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   6: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual   7: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual   8: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual   9: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  10: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  11: 32 op, 100.00 ns, 3.1250 ns/op
+OverheadActual  12: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual  13: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  14: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  15: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  16: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  17: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  18: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual  19: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  20: 32 op, 200.00 ns, 6.2500 ns/op
+
+WorkloadWarmup   1: 32 op, 525006400.00 ns, 16.4065 ms/op
+WorkloadWarmup   2: 32 op, 544899100.00 ns, 17.0281 ms/op
+WorkloadWarmup   3: 32 op, 534785800.00 ns, 16.7121 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 32 op, 533166500.00 ns, 16.6615 ms/op
+WorkloadActual   2: 32 op, 522027700.00 ns, 16.3134 ms/op
+WorkloadActual   3: 32 op, 527904200.00 ns, 16.4970 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 32 op, 533166300.00 ns, 16.6614 ms/op
+WorkloadResult   2: 32 op, 522027500.00 ns, 16.3134 ms/op
+WorkloadResult   3: 32 op, 527904000.00 ns, 16.4970 ms/op
+// GC:  2 1 1 37752256 32
+// Threading:  7485 2 32
+
+// AfterAll
+// Benchmark Process 54296 has exited with code 0.
+
+Mean = 16.491 ms, StdErr = 0.101 ms (0.61%), N = 3, StdDev = 0.174 ms
+Min = 16.313 ms, Q1 = 16.405 ms, Median = 16.497 ms, Q3 = 16.579 ms, Max = 16.661 ms
+IQR = 0.174 ms, LowerFence = 16.144 ms, UpperFence = 16.840 ms
+ConfidenceInterval = [13.314 ms; 19.667 ms] (CI 99.9%), Margin = 3.177 ms (19.26% of Mean)
+Skewness = -0.04, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 3 (25.0 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'OptimizedFileIO.WriteAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 4912 3816 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Optimized_WriteMediumFiles --job ShortRun --benchmarkId 9 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 75800.00 ns, 75.8000 us/op
+WorkloadJitting  1: 1 op, 15939600.00 ns, 15.9396 ms/op
+
+OverheadJitting  2: 16 op, 258500.00 ns, 16.1563 us/op
+WorkloadJitting  2: 16 op, 291600500.00 ns, 18.2250 ms/op
+
+WorkloadPilot    1: 16 op, 304954700.00 ns, 19.0597 ms/op
+WorkloadPilot    2: 32 op, 626894800.00 ns, 19.5905 ms/op
+
+OverheadWarmup   1: 32 op, 1500.00 ns, 46.8750 ns/op
+OverheadWarmup   2: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadWarmup   3: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadWarmup   4: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadWarmup   5: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadWarmup   6: 32 op, 400.00 ns, 12.5000 ns/op
+
+OverheadActual   1: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   2: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   3: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   4: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual   5: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual   6: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual   7: 32 op, 100.00 ns, 3.1250 ns/op
+OverheadActual   8: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual   9: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  10: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  11: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual  12: 32 op, 500.00 ns, 15.6250 ns/op
+OverheadActual  13: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  14: 32 op, 100.00 ns, 3.1250 ns/op
+OverheadActual  15: 32 op, 100.00 ns, 3.1250 ns/op
+OverheadActual  16: 32 op, 200.00 ns, 6.2500 ns/op
+OverheadActual  17: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  18: 32 op, 300.00 ns, 9.3750 ns/op
+OverheadActual  19: 32 op, 400.00 ns, 12.5000 ns/op
+OverheadActual  20: 32 op, 200.00 ns, 6.2500 ns/op
+
+WorkloadWarmup   1: 32 op, 604724400.00 ns, 18.8976 ms/op
+WorkloadWarmup   2: 32 op, 634921200.00 ns, 19.8413 ms/op
+WorkloadWarmup   3: 32 op, 631084200.00 ns, 19.7214 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 32 op, 629566300.00 ns, 19.6739 ms/op
+WorkloadActual   2: 32 op, 619305900.00 ns, 19.3533 ms/op
+WorkloadActual   3: 32 op, 630772300.00 ns, 19.7116 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 32 op, 629565950.00 ns, 19.6739 ms/op
+WorkloadResult   2: 32 op, 619305550.00 ns, 19.3533 ms/op
+WorkloadResult   3: 32 op, 630771950.00 ns, 19.7116 ms/op
+// GC:  2 1 1 37760840 32
+// Threading:  7488 0 32
+
+// AfterAll
+// Benchmark Process 42380 has exited with code 0.
+
+Mean = 19.580 ms, StdErr = 0.114 ms (0.58%), N = 3, StdDev = 0.197 ms
+Min = 19.353 ms, Q1 = 19.514 ms, Median = 19.674 ms, Q3 = 19.693 ms, Max = 19.712 ms
+IQR = 0.179 ms, LowerFence = 19.245 ms, UpperFence = 19.962 ms
+ConfidenceInterval = [15.987 ms; 23.172 ms] (CI 99.9%), Margin = 3.592 ms (18.35% of Mean)
+Skewness = -0.37, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 2 (16.7 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'File.WriteAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 3168 4928 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Baseline_WriteSmallFiles --job ShortRun --benchmarkId 10 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 80700.00 ns, 80.7000 us/op
+WorkloadJitting  1: 1 op, 7843300.00 ns, 7.8433 ms/op
+
+OverheadJitting  2: 16 op, 112300.00 ns, 7.0188 us/op
+WorkloadJitting  2: 16 op, 34497000.00 ns, 2.1561 ms/op
+
+WorkloadPilot    1: 16 op, 37260300.00 ns, 2.3288 ms/op
+WorkloadPilot    2: 32 op, 95115700.00 ns, 2.9724 ms/op
+WorkloadPilot    3: 64 op, 184178600.00 ns, 2.8778 ms/op
+WorkloadPilot    4: 128 op, 321217700.00 ns, 2.5095 ms/op
+WorkloadPilot    5: 256 op, 602807600.00 ns, 2.3547 ms/op
+
+OverheadWarmup   1: 256 op, 1600.00 ns, 6.2500 ns/op
+OverheadWarmup   2: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadWarmup   3: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadWarmup   4: 256 op, 800.00 ns, 3.1250 ns/op
+OverheadWarmup   5: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadWarmup   6: 256 op, 400.00 ns, 1.5625 ns/op
+OverheadWarmup   7: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadWarmup   8: 256 op, 500.00 ns, 1.9531 ns/op
+
+OverheadActual   1: 256 op, 700.00 ns, 2.7344 ns/op
+OverheadActual   2: 256 op, 900.00 ns, 3.5156 ns/op
+OverheadActual   3: 256 op, 700.00 ns, 2.7344 ns/op
+OverheadActual   4: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual   5: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual   6: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual   7: 256 op, 400.00 ns, 1.5625 ns/op
+OverheadActual   8: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual   9: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  10: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  11: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual  12: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  13: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual  14: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  15: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  16: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  17: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  18: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual  19: 256 op, 700.00 ns, 2.7344 ns/op
+OverheadActual  20: 256 op, 600.00 ns, 2.3438 ns/op
+
+WorkloadWarmup   1: 256 op, 629409300.00 ns, 2.4586 ms/op
+WorkloadWarmup   2: 256 op, 578238400.00 ns, 2.2587 ms/op
+WorkloadWarmup   3: 256 op, 543111700.00 ns, 2.1215 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 256 op, 532685600.00 ns, 2.0808 ms/op
+WorkloadActual   2: 256 op, 541022500.00 ns, 2.1134 ms/op
+WorkloadActual   3: 256 op, 496456100.00 ns, 1.9393 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 256 op, 532685050.00 ns, 2.0808 ms/op
+WorkloadResult   2: 256 op, 541021950.00 ns, 2.1134 ms/op
+WorkloadResult   3: 256 op, 496455550.00 ns, 1.9393 ms/op
+// GC:  2 0 0 39353568 256
+// Threading:  18431 0 256
+
+// AfterAll
+// Benchmark Process 41168 has exited with code 0.
+
+Mean = 2.044 ms, StdErr = 0.053 ms (2.61%), N = 3, StdDev = 0.093 ms
+Min = 1.939 ms, Q1 = 2.010 ms, Median = 2.081 ms, Q3 = 2.097 ms, Max = 2.113 ms
+IQR = 0.087 ms, LowerFence = 1.879 ms, UpperFence = 2.228 ms
+ConfidenceInterval = [0.356 ms; 3.733 ms] (CI 99.9%), Margin = 1.688 ms (82.59% of Mean)
+Skewness = -0.33, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 1 (8.3 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Setup power plan (GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c FriendlyName: High performance)
+// **************************
+// Benchmark: RealWorldFileOperationsBenchmarks.'OptimizedFileIO.WriteAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+// *** Execute ***
+// Launch: 1 / 1
+// Execute: dotnet UltrasharpTools.Benchmarks-1.dll --anonymousPipes 3260 4784 --benchmarkName UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks.Optimized_WriteSmallFiles --job ShortRun --benchmarkId 11 in D:\github\ultrasharp-tools-mcp\UltrasharpTools.Benchmarks\bin\Release\net10.0\UltrasharpTools.Benchmarks-1\bin\Release\net10.0
+// BeforeAnythingElse
+
+// Benchmark Process Environment Information:
+// BenchmarkDotNet v0.15.6
+// Runtime=.NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+// GC=Concurrent Workstation
+// HardwareIntrinsics=AVX2+BMI1+BMI2+F16C+FMA+LZCNT+MOVBE,AVX,SSE3+SSSE3+SSE4.1+SSE4.2+POPCNT,X86Base+SSE+SSE2,AES+PCLMUL,AvxVnni,SERIALIZE VectorSize=256
+// Job: ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+
+Collected 82 small files, 18 medium files, 0 large files
+OverheadJitting  1: 1 op, 76700.00 ns, 76.7000 us/op
+WorkloadJitting  1: 1 op, 10538400.00 ns, 10.5384 ms/op
+
+OverheadJitting  2: 16 op, 130500.00 ns, 8.1563 us/op
+WorkloadJitting  2: 16 op, 35040000.00 ns, 2.1900 ms/op
+
+WorkloadPilot    1: 16 op, 35907000.00 ns, 2.2442 ms/op
+WorkloadPilot    2: 32 op, 92771300.00 ns, 2.8991 ms/op
+WorkloadPilot    3: 64 op, 177717400.00 ns, 2.7768 ms/op
+WorkloadPilot    4: 128 op, 315672400.00 ns, 2.4662 ms/op
+WorkloadPilot    5: 256 op, 582403600.00 ns, 2.2750 ms/op
+
+OverheadWarmup   1: 256 op, 2100.00 ns, 8.2031 ns/op
+OverheadWarmup   2: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadWarmup   3: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadWarmup   4: 256 op, 400.00 ns, 1.5625 ns/op
+OverheadWarmup   5: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadWarmup   6: 256 op, 500.00 ns, 1.9531 ns/op
+
+OverheadActual   1: 256 op, 800.00 ns, 3.1250 ns/op
+OverheadActual   2: 256 op, 700.00 ns, 2.7344 ns/op
+OverheadActual   3: 256 op, 700.00 ns, 2.7344 ns/op
+OverheadActual   4: 256 op, 700.00 ns, 2.7344 ns/op
+OverheadActual   5: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual   6: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual   7: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual   8: 256 op, 400.00 ns, 1.5625 ns/op
+OverheadActual   9: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  10: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  11: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  12: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual  13: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  14: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  15: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  16: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual  17: 256 op, 400.00 ns, 1.5625 ns/op
+OverheadActual  18: 256 op, 600.00 ns, 2.3438 ns/op
+OverheadActual  19: 256 op, 500.00 ns, 1.9531 ns/op
+OverheadActual  20: 256 op, 500.00 ns, 1.9531 ns/op
+
+WorkloadWarmup   1: 256 op, 585333000.00 ns, 2.2865 ms/op
+WorkloadWarmup   2: 256 op, 597176900.00 ns, 2.3327 ms/op
+WorkloadWarmup   3: 256 op, 575429800.00 ns, 2.2478 ms/op
+
+// BeforeActualRun
+WorkloadActual   1: 256 op, 546647800.00 ns, 2.1353 ms/op
+WorkloadActual   2: 256 op, 556928200.00 ns, 2.1755 ms/op
+WorkloadActual   3: 256 op, 558045400.00 ns, 2.1799 ms/op
+
+// AfterActualRun
+WorkloadResult   1: 256 op, 546647300.00 ns, 2.1353 ms/op
+WorkloadResult   2: 256 op, 556927700.00 ns, 2.1755 ms/op
+WorkloadResult   3: 256 op, 558044900.00 ns, 2.1799 ms/op
+// GC:  2 0 0 39434168 256
+// Threading:  18429 1 256
+
+// AfterAll
+// Benchmark Process 10268 has exited with code 0.
+
+Mean = 2.164 ms, StdErr = 0.014 ms (0.65%), N = 3, StdDev = 0.025 ms
+Min = 2.135 ms, Q1 = 2.155 ms, Median = 2.175 ms, Q3 = 2.178 ms, Max = 2.180 ms
+IQR = 0.022 ms, LowerFence = 2.122 ms, UpperFence = 2.211 ms
+ConfidenceInterval = [1.716 ms; 2.611 ms] (CI 99.9%), Margin = 0.448 ms (20.69% of Mean)
+Skewness = -0.37, Kurtosis = 0.67, MValue = 2
+
+// ** Remained 0 (0.0 %) benchmark(s) to run. Estimated finish 2025-11-23 14:18 (0h 0m from now) **
+Successfully reverted power plan (GUID: 6fecc5ae-f350-48a5-b669-b472cb895ccf FriendlyName: Turbo)
+// ***** BenchmarkRunner: Finish  *****
+
+// * Export *
+  BenchmarkDotNet.Artifacts\results\UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks-report.csv
+  BenchmarkDotNet.Artifacts\results\UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks-report-github.md
+  BenchmarkDotNet.Artifacts\results\UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks-report.html
+  BenchmarkDotNet.Artifacts\results\UltrasharpTools.Benchmarks.RealWorldFileOperationsBenchmarks-report-default.md
+
+// * Detailed results *
+RealWorldFileOperationsBenchmarks.'File.* - Read+Process+Write (10 files)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 16.559 ms, StdErr = 0.052 ms (0.31%), N = 3, StdDev = 0.090 ms
+Min = 16.463 ms, Q1 = 16.517 ms, Median = 16.571 ms, Q3 = 16.607 ms, Max = 16.642 ms
+IQR = 0.090 ms, LowerFence = 16.383 ms, UpperFence = 16.741 ms
+ConfidenceInterval = [14.913 ms; 18.204 ms] (CI 99.9%), Margin = 1.646 ms (9.94% of Mean)
+Skewness = -0.14, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[16.441 ms ; 16.724 ms) | @@@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'OptimizedFileIO - Read+Process+Write (10 files)': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 20.081 ms, StdErr = 0.496 ms (2.47%), N = 3, StdDev = 0.859 ms
+Min = 19.099 ms, Q1 = 19.774 ms, Median = 20.449 ms, Q3 = 20.572 ms, Max = 20.696 ms
+IQR = 0.798 ms, LowerFence = 18.577 ms, UpperFence = 21.770 ms
+ConfidenceInterval = [4.402 ms; 35.760 ms] (CI 99.9%), Margin = 15.679 ms (78.08% of Mean)
+Skewness = -0.35, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[18.317 ms ; 19.790 ms) | @
+[19.790 ms ; 21.478 ms) | @@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Large Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 11.755 ns, StdErr = 0.065 ns (0.55%), N = 3, StdDev = 0.113 ns
+Min = 11.665 ns, Q1 = 11.692 ns, Median = 11.719 ns, Q3 = 11.800 ns, Max = 11.882 ns
+IQR = 0.108 ns, LowerFence = 11.529 ns, UpperFence = 11.963 ns
+ConfidenceInterval = [9.695 ns; 13.815 ns] (CI 99.9%), Margin = 2.060 ns (17.52% of Mean)
+Skewness = 0.29, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[11.562 ns ; 11.985 ns) | @@@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Large Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 10.530 ns, StdErr = 0.057 ns (0.54%), N = 3, StdDev = 0.099 ns
+Min = 10.436 ns, Q1 = 10.479 ns, Median = 10.521 ns, Q3 = 10.577 ns, Max = 10.633 ns
+IQR = 0.099 ns, LowerFence = 10.331 ns, UpperFence = 10.725 ns
+ConfidenceInterval = [8.728 ns; 12.333 ns] (CI 99.9%), Margin = 1.803 ns (17.12% of Mean)
+Skewness = 0.09, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[10.374 ns ; 10.723 ns) | @@@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 1.096 ms, StdErr = 0.011 ms (1.03%), N = 3, StdDev = 0.020 ms
+Min = 1.077 ms, Q1 = 1.087 ms, Median = 1.096 ms, Q3 = 1.106 ms, Max = 1.116 ms
+IQR = 0.020 ms, LowerFence = 1.057 ms, UpperFence = 1.136 ms
+ConfidenceInterval = [0.739 ms; 1.454 ms] (CI 99.9%), Margin = 0.357 ms (32.59% of Mean)
+Skewness = -0, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[1.059 ms ; 1.088 ms) | @
+[1.088 ms ; 1.124 ms) | @@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 1.273 ms, StdErr = 0.092 ms (7.21%), N = 3, StdDev = 0.159 ms
+Min = 1.131 ms, Q1 = 1.187 ms, Median = 1.242 ms, Q3 = 1.344 ms, Max = 1.445 ms
+IQR = 0.157 ms, LowerFence = 0.952 ms, UpperFence = 1.579 ms
+ConfidenceInterval = [-1.628 ms; 4.174 ms] (CI 99.9%), Margin = 2.901 ms (227.89% of Mean)
+Skewness = 0.19, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[1.042 ms ; 1.332 ms) | @@
+[1.332 ms ; 1.590 ms) | @
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'File.ReadAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 390.828 μs, StdErr = 3.455 μs (0.88%), N = 3, StdDev = 5.984 μs
+Min = 383.924 μs, Q1 = 388.985 μs, Median = 394.046 μs, Q3 = 394.280 μs, Max = 394.515 μs
+IQR = 5.295 μs, LowerFence = 381.042 μs, UpperFence = 402.224 μs
+ConfidenceInterval = [281.662 μs; 499.994 μs] (CI 99.9%), Margin = 109.166 μs (27.93% of Mean)
+Skewness = -0.38, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[383.774 μs ; 394.665 μs) | @@@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'OptimizedFileIO.ReadAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 379.075 μs, StdErr = 1.309 μs (0.35%), N = 3, StdDev = 2.266 μs
+Min = 376.667 μs, Q1 = 378.029 μs, Median = 379.392 μs, Q3 = 380.279 μs, Max = 381.167 μs
+IQR = 2.250 μs, LowerFence = 374.655 μs, UpperFence = 383.654 μs
+ConfidenceInterval = [337.726 μs; 420.424 μs] (CI 99.9%), Margin = 41.349 μs (10.91% of Mean)
+Skewness = -0.14, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[376.477 μs ; 383.230 μs) | @@@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'File.WriteAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 16.491 ms, StdErr = 0.101 ms (0.61%), N = 3, StdDev = 0.174 ms
+Min = 16.313 ms, Q1 = 16.405 ms, Median = 16.497 ms, Q3 = 16.579 ms, Max = 16.661 ms
+IQR = 0.174 ms, LowerFence = 16.144 ms, UpperFence = 16.840 ms
+ConfidenceInterval = [13.314 ms; 19.667 ms] (CI 99.9%), Margin = 3.177 ms (19.26% of Mean)
+Skewness = -0.04, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[16.155 ms ; 16.745 ms) | @@@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'OptimizedFileIO.WriteAllTextAsync - Medium Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 19.580 ms, StdErr = 0.114 ms (0.58%), N = 3, StdDev = 0.197 ms
+Min = 19.353 ms, Q1 = 19.514 ms, Median = 19.674 ms, Q3 = 19.693 ms, Max = 19.712 ms
+IQR = 0.179 ms, LowerFence = 19.245 ms, UpperFence = 19.962 ms
+ConfidenceInterval = [15.987 ms; 23.172 ms] (CI 99.9%), Margin = 3.592 ms (18.35% of Mean)
+Skewness = -0.37, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[19.353 ms ; 19.712 ms) | @@@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'File.WriteAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 2.044 ms, StdErr = 0.053 ms (2.61%), N = 3, StdDev = 0.093 ms
+Min = 1.939 ms, Q1 = 2.010 ms, Median = 2.081 ms, Q3 = 2.097 ms, Max = 2.113 ms
+IQR = 0.087 ms, LowerFence = 1.879 ms, UpperFence = 2.228 ms
+ConfidenceInterval = [0.356 ms; 3.733 ms] (CI 99.9%), Margin = 1.688 ms (82.59% of Mean)
+Skewness = -0.33, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[1.855 ms ; 2.013 ms) | @
+[2.013 ms ; 2.198 ms) | @@
+---------------------------------------------------
+
+RealWorldFileOperationsBenchmarks.'OptimizedFileIO.WriteAllTextAsync - Small Files': ShortRun(IterationCount=3, LaunchCount=1, WarmupCount=3)
+Runtime = .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3; GC = Concurrent Workstation
+Mean = 2.164 ms, StdErr = 0.014 ms (0.65%), N = 3, StdDev = 0.025 ms
+Min = 2.135 ms, Q1 = 2.155 ms, Median = 2.175 ms, Q3 = 2.178 ms, Max = 2.180 ms
+IQR = 0.022 ms, LowerFence = 2.122 ms, UpperFence = 2.211 ms
+ConfidenceInterval = [1.716 ms; 2.611 ms] (CI 99.9%), Margin = 0.448 ms (20.69% of Mean)
+Skewness = -0.37, Kurtosis = 0.67, MValue = 2
+-------------------- Histogram --------------------
+[2.135 ms ; 2.180 ms) | @@@
+---------------------------------------------------
+
+// * Summary *
+
+BenchmarkDotNet v0.15.6, Windows 11 (10.0.26200.7171)
+Intel Core Ultra 9 275HX 2.70GHz, 1 CPU, 24 logical and 24 physical cores
+.NET SDK 10.0.100
+  [Host]   : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+  ShortRun : .NET 10.0.0 (10.0.0, 10.0.25.52411), X64 RyuJIT x86-64-v3
+
+Job=ShortRun  IterationCount=3  LaunchCount=1  
+WarmupCount=3  
+
+| Method                                             | Mean             | Error             | StdDev         | Ratio  | RatioSD | Gen0    | Gen1    | Gen2    | Allocated | Alloc Ratio |
+|--------------------------------------------------- |-----------------:|------------------:|---------------:|-------:|--------:|--------:|--------:|--------:|----------:|------------:|
+| 'File.* - Read+Process+Write (10 files)'           | 16,558,664.58 ns |  1,645,723.919 ns |  90,207.682 ns | 42.375 |    0.60 | 93.7500 | 93.7500 | 93.7500 | 2168734 B |      14.937 |
+| 'OptimizedFileIO - Read+Process+Write (10 files)'  | 20,081,425.00 ns | 15,678,976.085 ns | 859,417.589 ns | 51.390 |    2.03 | 93.7500 | 93.7500 | 93.7500 | 2168956 B |      14.939 |
+| 'File.ReadAllTextAsync - Large Files'              |         11.76 ns |          2.060 ns |       0.113 ns |  0.000 |    0.00 |  0.0042 |       - |       - |      80 B |       0.001 |
+| 'OptimizedFileIO.ReadAllTextAsync - Large Files'   |         10.53 ns |          1.803 ns |       0.099 ns |  0.000 |    0.00 |  0.0042 |       - |       - |      80 B |       0.001 |
+| 'File.ReadAllTextAsync - Medium Files'             |  1,096,435.03 ns |    357,294.341 ns |  19,584.509 ns |  2.806 |    0.06 | 76.1719 | 37.1094 | 37.1094 | 1170874 B |       8.064 |
+| 'OptimizedFileIO.ReadAllTextAsync - Medium Files'  |  1,273,010.48 ns |  2,901,029.734 ns | 159,015.229 ns |  3.258 |    0.36 | 76.1719 | 37.1094 | 37.1094 | 1170891 B |       8.065 |
+| 'File.ReadAllTextAsync - Small Files'              |    390,828.30 ns |    109,166.071 ns |   5,983.761 ns |  1.000 |    0.02 |  7.8125 |  0.4883 |       - |  145190 B |       1.000 |
+| 'OptimizedFileIO.ReadAllTextAsync - Small Files'   |    379,075.32 ns |     41,349.170 ns |   2,266.488 ns |  0.970 |    0.01 |  7.8125 |  0.4883 |       - |  145209 B |       1.000 |
+| 'File.WriteAllTextAsync - Medium Files'            | 16,490,602.08 ns |  3,176,814.514 ns | 174,131.924 ns | 42.201 |    0.68 | 62.5000 | 31.2500 | 31.2500 | 1179758 B |       8.126 |
+| 'OptimizedFileIO.WriteAllTextAsync - Medium Files' | 19,579,619.27 ns |  3,592,249.973 ns | 196,903.343 ns | 50.106 |    0.80 | 62.5000 | 31.2500 | 31.2500 | 1180026 B |       8.127 |
+| 'File.WriteAllTextAsync - Small Files'             |  2,044,482.49 ns |  1,688,494.612 ns |  92,552.088 ns |  5.232 |    0.22 |  7.8125 |       - |       - |  153725 B |       1.059 |
+| 'OptimizedFileIO.WriteAllTextAsync - Small Files'  |  2,163,567.58 ns |    447,739.528 ns |  24,542.114 ns |  5.537 |    0.09 |  7.8125 |       - |       - |  154040 B |       1.061 |
+
+// * Legends *
+  Mean        : Arithmetic mean of all measurements
+  Error       : Half of 99.9% confidence interval
+  StdDev      : Standard deviation of all measurements
+  Ratio       : Mean of the ratio distribution ([Current]/[Baseline])
+  RatioSD     : Standard deviation of the ratio distribution ([Current]/[Baseline])
+  Gen0        : GC Generation 0 collects per 1000 operations
+  Gen1        : GC Generation 1 collects per 1000 operations
+  Gen2        : GC Generation 2 collects per 1000 operations
+  Allocated   : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  Alloc Ratio : Allocated memory ratio distribution ([Current]/[Baseline])
+  1 ns        : 1 Nanosecond (0.000000001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:01:18 (78.6 sec), executed benchmarks: 12
+
+Global total time: 00:01:28 (88.36 sec), executed benchmarks: 12
+// * Artifacts cleanup *
+Artifacts cleanup is finished

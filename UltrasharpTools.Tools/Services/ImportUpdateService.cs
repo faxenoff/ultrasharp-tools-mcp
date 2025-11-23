@@ -1,3 +1,5 @@
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
+
 namespace UltrasharpTools.Tools.Services;
 
 /// <summary>
@@ -178,7 +180,7 @@ public class ImportUpdateService
         );
 
         var newCode = newRoot.NormalizeWhitespace().ToFullString();
-        await File.WriteAllTextAsync(filePath, newCode, cancellationToken);
+        await OptimizedFileIO.WriteAllTextAsync(filePath, newCode, null, cancellationToken);
 
         _logger.LogInformation(
             "Updated usings for {FilePath}: +{Added} -{Removed}",

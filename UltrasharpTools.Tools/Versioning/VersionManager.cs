@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Versioning;
 
@@ -257,9 +258,10 @@ public sealed class VersionManager
         };
 
         var metadataPath = Path.Combine(snapshotDir, "metadata.json");
-        await File.WriteAllTextAsync(
+        await OptimizedFileIO.WriteAllTextAsync(
             metadataPath,
             JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true }),
+            null,
             cancellationToken
         );
 
@@ -289,7 +291,7 @@ public sealed class VersionManager
             throw new InvalidOperationException($"Snapshot metadata not found: {snapshotId}");
         }
 
-        var metadataJson = await File.ReadAllTextAsync(metadataPath, cancellationToken);
+        var metadataJson = await OptimizedFileIO.ReadAllTextAsync(metadataPath, null, cancellationToken);
         var metadata =
             JsonSerializer.Deserialize<SnapshotMetadata>(metadataJson)
             ?? throw new InvalidOperationException(
@@ -355,7 +357,7 @@ public sealed class VersionManager
 
             try
             {
-                var metadataJson = await File.ReadAllTextAsync(metadataPath, cancellationToken);
+                var metadataJson = await OptimizedFileIO.ReadAllTextAsync(metadataPath, null, cancellationToken);
                 var metadata = JsonSerializer.Deserialize<SnapshotMetadata>(metadataJson);
 
                 if (metadata != null)
@@ -449,9 +451,10 @@ public sealed class VersionManager
         };
 
         var metadataPath = Path.Combine(metadataDir, $"{snapshotId}.json");
-        await File.WriteAllTextAsync(
+        await OptimizedFileIO.WriteAllTextAsync(
             metadataPath,
             JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true }),
+            null,
             cancellationToken
         );
     }
@@ -471,7 +474,7 @@ public sealed class VersionManager
 
         try
         {
-            var metadataJson = await File.ReadAllTextAsync(metadataPath, cancellationToken);
+            var metadataJson = await OptimizedFileIO.ReadAllTextAsync(metadataPath, null, cancellationToken);
             return JsonSerializer.Deserialize<SnapshotMetadata>(metadataJson);
         }
         catch (Exception ex)

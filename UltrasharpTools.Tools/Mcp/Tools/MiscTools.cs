@@ -1,4 +1,5 @@
 using ModelContextProtocol;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -112,8 +113,9 @@ public static class MiscTools
                     {
                         try
                         {
-                            string existingJson = await File.ReadAllTextAsync(
+                            string existingJson = await OptimizedFileIO.ReadAllTextAsync(
                                 RequestLogFilePath,
+                                null,
                                 cancellationToken
                             );
                             existingRequests =
@@ -148,9 +150,10 @@ public static class MiscTools
 
                     try
                     {
-                        await File.WriteAllTextAsync(
+                        await OptimizedFileIO.WriteAllTextAsync(
                             RequestLogFilePath,
                             jsonContent,
+                            null,
                             cancellationToken
                         );
                     }

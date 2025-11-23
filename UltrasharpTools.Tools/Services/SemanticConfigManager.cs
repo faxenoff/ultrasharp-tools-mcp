@@ -1,4 +1,5 @@
 using UltrasharpTools.Tools.Config;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -80,7 +81,7 @@ public class SemanticConfigManager
         {
             // Config exists - load and validate
             _logger.LogInformation("Loading global config from: {Path}", configPath);
-            var json = await File.ReadAllTextAsync(configPath, cancellationToken);
+            var json = await OptimizedFileIO.ReadAllTextAsync(configPath, null, cancellationToken);
             _globalConfig =
                 JsonSerializer.Deserialize<SemanticEmbeddingConfig>(json)
                 ?? CreateDefaultGlobalConfig();
@@ -146,7 +147,7 @@ public class SemanticConfigManager
         else
         {
             _logger.LogInformation("Loading project config from: {Path}", configPath);
-            var json = await File.ReadAllTextAsync(configPath);
+            var json = await OptimizedFileIO.ReadAllTextAsync(configPath);
             config =
                 JsonSerializer.Deserialize<ProjectSemanticConfig>(json)
                 ?? new ProjectSemanticConfig();
@@ -253,7 +254,7 @@ public class SemanticConfigManager
             config,
             new JsonSerializerOptions { WriteIndented = true }
         );
-        await File.WriteAllTextAsync(path, json);
+        await OptimizedFileIO.WriteAllTextAsync(path, json);
         _logger.LogInformation("Global config saved to: {Path}", path);
     }
 
@@ -263,7 +264,7 @@ public class SemanticConfigManager
             config,
             new JsonSerializerOptions { WriteIndented = true }
         );
-        await File.WriteAllTextAsync(path, json);
+        await OptimizedFileIO.WriteAllTextAsync(path, json);
         _logger.LogInformation("Project config saved to: {Path}", path);
     }
 

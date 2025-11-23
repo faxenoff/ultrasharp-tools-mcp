@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Models;
 using UltrasharpTools.Tools.Merge.Parsing;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Merge.Indexing;
 
@@ -156,7 +157,7 @@ public sealed class CodeUnitExtractor
     /// </summary>
     private async Task<CodeUnit> CreateFallbackFileUnit(string filePath, CancellationToken ct)
     {
-        var content = await File.ReadAllTextAsync(filePath, ct);
+        var content = await OptimizedFileIO.ReadAllTextAsync(filePath, null, ct);
         var contentHash = ContentNormalizer.ComputeContentHash(content);
 
         // Для fallback используем тот же hash

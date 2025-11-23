@@ -1,6 +1,7 @@
 using System.Xml.Linq;
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Mcp;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -245,7 +246,7 @@ public static partial class TechnologyDetectionTools
         CancellationToken cancellationToken
     )
     {
-        var content = await File.ReadAllTextAsync(projectPath, cancellationToken);
+        var content = await OptimizedFileIO.ReadAllTextAsync(projectPath, null, cancellationToken);
         return XDocument.Parse(content);
     }
 

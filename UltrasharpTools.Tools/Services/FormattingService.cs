@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -46,7 +47,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
         {
             try
             {
-                var originalCode = await File.ReadAllTextAsync(filePath, cancellationToken);
+                var originalCode = await OptimizedFileIO.ReadAllTextAsync(filePath, null, cancellationToken);
                 var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
                 string formattedCode;
@@ -108,9 +109,10 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
                 {
                     try
                     {
-                        await File.WriteAllTextAsync(
+                        await OptimizedFileIO.WriteAllTextAsync(
                             result.FilePath,
                             result.FormattedCode!,
+                            null,
                             cancellationToken
                         );
                         filesFormatted.Add(result.FilePath);

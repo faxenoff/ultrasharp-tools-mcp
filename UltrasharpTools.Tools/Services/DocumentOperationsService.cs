@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Xml;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -126,7 +127,7 @@ public class DocumentOperationsService(
         }
 
         // Write the content to the file
-        await File.WriteAllTextAsync(filePath, content, cancellationToken);
+        await OptimizedFileIO.WriteAllTextAsync(filePath, content, null, cancellationToken);
         _logger.LogInformation(
             "File {Operation} at {FilePath}",
             File.Exists(filePath) ? "overwritten" : "created",
@@ -252,7 +253,7 @@ public class DocumentOperationsService(
             );
 
             // Create SourceText from file content
-            var fileContent = await File.ReadAllTextAsync(filePath, cancellationToken);
+            var fileContent = await OptimizedFileIO.ReadAllTextAsync(filePath, null, cancellationToken);
             var sourceText = SourceText.From(fileContent);
 
             // Add the document to the project in memory
@@ -272,7 +273,7 @@ public class DocumentOperationsService(
     {
         try
         {
-            var content = await File.ReadAllTextAsync(projectFilePath, cancellationToken);
+            var content = await OptimizedFileIO.ReadAllTextAsync(projectFilePath, null, cancellationToken);
 
             // Use XmlDocument for proper parsing
             var xmlDoc = new XmlDocument();

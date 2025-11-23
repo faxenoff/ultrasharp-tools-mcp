@@ -1,9 +1,13 @@
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
+
 namespace UltrasharpTools.Tools.Infrastructure;
 
 /// <summary>
 /// Утилита для нормализации содержимого файлов.
 /// Используется для raw file operations (не C# через Roslyn).
 /// КРИТИЧНО для корректного сравнения файлов независимо от encoding/BOM/line endings.
+///
+/// ОПТИМИЗИРОВАНО: Использует ArrayPool для сокращения GC аллокаций.
 /// </summary>
 public static class FileNormalizer
 {
@@ -13,6 +17,7 @@ public static class FileNormalizer
 
     /// <summary>
     /// Прочитать и нормализовать файл.
+    /// ОПТИМИЗИРОВАНО: Использует BufferPoolManager для сокращения аллокаций.
     /// </summary>
     /// <param name="filePath">Путь к файлу</param>
     /// <param name="ct">Cancellation token</param>
@@ -22,25 +27,40 @@ public static class FileNormalizer
         CancellationToken ct = default
     )
     {
-        // 1. Прочитать raw bytes
-        var bytes = await File.ReadAllBytesAsync(filePath, ct);
+        // 1. Get file size for buffer allocation
+        var fileInfo = new FileInfo(filePath);
+        var fileSize = (int)fileInfo.Length;
 
-        // 2. Определить encoding
-        var encoding = DetectEncoding(bytes, out var hasBom);
-
-        // 3. Декодировать
-        var content = encoding.GetString(bytes);
-
-        // 4. Удалить BOM если есть (в начале string)
-        if (hasBom && content.Length > 0 && content[0] == '\uFEFF')
+        // 2. Rent buffer from pool instead of allocating
+        var byteBuffer = BufferPoolManager.RentBytes(fileSize);
+        try
         {
-            content = content.Substring(1);
+            // 3. Read file into pooled buffer
+            using var stream = File.OpenRead(filePath);
+            int bytesRead = await stream.ReadAsync(byteBuffer.AsMemory(0, fileSize), ct);
+
+            // 4. Determine encoding
+            var encoding = DetectEncoding(byteBuffer.AsSpan(0, bytesRead), out var hasBom);
+
+            // 5. Decode bytes to string
+            var content = encoding.GetString(byteBuffer, 0, bytesRead);
+
+            // 6. Remove BOM if present (in string)
+            if (hasBom && content.Length > 0 && content[0] == '\uFEFF')
+            {
+                content = content.Substring(1);
+            }
+
+            // 7. Normalize line endings
+            content = NormalizeLineEndings(content);
+
+            return content;
         }
-
-        // 5. Нормализовать line endings
-        content = NormalizeLineEndings(content);
-
-        return content;
+        finally
+        {
+            // 8. Always return buffer to pool
+            BufferPoolManager.ReturnBytes(byteBuffer);
+        }
     }
 
     /// <summary>
@@ -63,11 +83,12 @@ public static class FileNormalizer
 
     /// <summary>
     /// Определить encoding файла через BOM detection.
+    /// ОПТИМИЗИРОВАНО: Принимает ReadOnlySpan&lt;byte&gt; для zero-copy доступа.
     /// </summary>
     /// <param name="bytes">Raw bytes файла</param>
     /// <param name="hasBom">Out: есть ли BOM</param>
     /// <returns>Detected encoding</returns>
-    private static Encoding DetectEncoding(byte[] bytes, out bool hasBom)
+    private static Encoding DetectEncoding(ReadOnlySpan<byte> bytes, out bool hasBom)
     {
         hasBom = false;
 

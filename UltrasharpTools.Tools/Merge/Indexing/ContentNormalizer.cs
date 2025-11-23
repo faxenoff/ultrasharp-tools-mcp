@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Merge.Indexing;
 
@@ -37,7 +38,7 @@ public sealed class ContentNormalizer
     )
     {
         // 1. Прочитать raw bytes
-        var rawBytes = await File.ReadAllBytesAsync(filePath, ct);
+        var rawBytes = await OptimizedFileIO.ReadAllBytesAsync(filePath, ct);
 
         // 2. Определить encoding
         var detectedEncoding = DetectEncoding(rawBytes, out var hasBom);
