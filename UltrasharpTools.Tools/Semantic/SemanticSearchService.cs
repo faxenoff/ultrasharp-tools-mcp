@@ -7,7 +7,7 @@ namespace UltrasharpTools.Tools.Semantic;
 /// Сервис для semantic code search с использованием vector embeddings.
 /// Интегрирует CodeSemanticIndexer для индексации и поиска.
 /// </summary>
-public sealed class SemanticSearchService : IAsyncDisposable
+public sealed class SemanticSearchService : ISemanticSearchService
 {
     private readonly CodeSemanticIndexer _indexer;
     private readonly ISolutionManager _solutionManager;
@@ -376,4 +376,5 @@ public enum CodeMatchType
 {
     Method,
     Class,
+    Unknown,
 }

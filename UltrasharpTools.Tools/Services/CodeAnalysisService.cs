@@ -83,7 +83,7 @@ public class CodeAnalysisService(
         if (_cacheService != null)
         {
             var solutionHash = GetSolutionHash();
-            var parameters = new { symbolFqn = symbol.ToDisplayString() };
+            var parameters = new SymbolFqnCacheParameter { SymbolFqn = symbol.ToDisplayString() };
 
             if (
                 _cacheService.TryGetCached<CachedReferencesResult>(
@@ -119,7 +119,7 @@ public class CodeAnalysisService(
         if (_cacheService != null && results != null)
         {
             var solutionHash = GetSolutionHash();
-            var parameters = new { symbolFqn = symbol.ToDisplayString() };
+            var parameters = new SymbolFqnCacheParameter { SymbolFqn = symbol.ToDisplayString() };
 
             // Convert to cacheable format
             var cachedResult = new CachedReferencesResult();
@@ -191,7 +191,7 @@ public class CodeAnalysisService(
         if (_cacheService != null)
         {
             var solutionHash = GetSolutionHash();
-            var parameters = new { symbolFqn = symbol.ToDisplayString() };
+            var parameters = new SymbolFqnCacheParameter { SymbolFqn = symbol.ToDisplayString() };
 
             if (
                 _cacheService.TryGetCached<List<SymbolCallerInfo>>(
@@ -224,7 +224,7 @@ public class CodeAnalysisService(
         if (_cacheService != null)
         {
             var solutionHash = GetSolutionHash();
-            var parameters = new { symbolFqn = symbol.ToDisplayString() };
+            var parameters = new SymbolFqnCacheParameter { SymbolFqn = symbol.ToDisplayString() };
             _cacheService.SetCached(solutionHash, "FindCallers", parameters, resultList);
             _logger.LogDebug(
                 "Cached FindCallers result for {SymbolName} ({Count} callers)",
@@ -247,7 +247,7 @@ public class CodeAnalysisService(
         if (_cacheService != null)
         {
             var solutionHash = GetSolutionHash();
-            var parameters = new { symbolFqn = methodSymbol.ToDisplayString() };
+            var parameters = new SymbolFqnCacheParameter { SymbolFqn = methodSymbol.ToDisplayString() };
 
             if (
                 _cacheService.TryGetCached<List<ISymbol>>(
@@ -324,7 +324,7 @@ public class CodeAnalysisService(
         if (_cacheService != null)
         {
             var solutionHash = GetSolutionHash();
-            var parameters = new { symbolFqn = methodSymbol.ToDisplayString() };
+            var parameters = new SymbolFqnCacheParameter { SymbolFqn = methodSymbol.ToDisplayString() };
             _cacheService.SetCached(solutionHash, "FindOutgoingCalls", parameters, resultList);
             _logger.LogDebug(
                 "Cached FindOutgoingCalls result for {MethodName} ({Count} calls)",
@@ -583,7 +583,7 @@ public class CodeAnalysisService(
         if (_cacheService != null)
         {
             var solutionHash = GetSolutionHash();
-            var parameters = new { symbolFqn = typeSymbol.ToDisplayString() };
+            var parameters = new SymbolFqnCacheParameter { SymbolFqn = typeSymbol.ToDisplayString() };
 
             if (
                 _cacheService.TryGetCached<HashSet<string>>(
@@ -812,7 +812,7 @@ public class CodeAnalysisService(
         if (_cacheService != null)
         {
             var solutionHash = GetSolutionHash();
-            var parameters = new { symbolFqn = typeSymbol.ToDisplayString() };
+            var parameters = new SymbolFqnCacheParameter { SymbolFqn = typeSymbol.ToDisplayString() };
             _cacheService.SetCached(solutionHash, "FindReferencedTypes", parameters, referencedTypes);
             _logger.LogDebug(
                 "Cached FindReferencedTypes result for {TypeName} ({Count} types)",

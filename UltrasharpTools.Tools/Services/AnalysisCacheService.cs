@@ -173,7 +173,24 @@ LIMIT 1;
             var parametersHash = ComputeHash(
                 JsonSerializer.Serialize(parameters, serializerOptions)
             );
-            var resultData = JsonSerializer.Serialize(result, serializerOptions);
+
+            // Try to serialize result - skip caching if not supported
+            string resultData;
+            try
+            {
+                resultData = JsonSerializer.Serialize(result, serializerOptions);
+            }
+            catch (NotSupportedException)
+            {
+                // Type not registered in JsonContext - skip caching
+                _logger.LogTrace(
+                    "Skipping cache for {Operation}: result type {Type} not registered in JsonContext",
+                    operationName,
+                    typeof(T).Name
+                );
+                return;
+            }
+
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             using var command = _connection.CreateCommand();
@@ -345,11 +362,21 @@ FROM cache_entries;
         object parameters
     )
     {
-        // Use source-generated context for faster serialization
-        var parametersJson = JsonSerializer.Serialize(
-            parameters,
-            new JsonSerializerOptions { TypeInfoResolver = UltrasharpToolsJsonContext.Default }
-        );
+        string parametersJson;
+        try
+        {
+            // Use source-generated context for faster serialization
+            parametersJson = JsonSerializer.Serialize(
+                parameters,
+                new JsonSerializerOptions { TypeInfoResolver = UltrasharpToolsJsonContext.Default }
+            );
+        }
+        catch (NotSupportedException)
+        {
+            // Fallback for types not registered in JsonContext (e.g. anonymous types)
+            // This should not happen in normal operation, but provides graceful degradation
+            parametersJson = parameters?.ToString() ?? "null";
+        }
         var combined = $"{solutionHash}|{operationName}|{parametersJson}";
         return ComputeHash(combined);
     }

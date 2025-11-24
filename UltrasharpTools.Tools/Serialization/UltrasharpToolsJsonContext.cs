@@ -32,6 +32,8 @@ namespace UltrasharpTools.Tools.Serialization;
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(Dictionary<string, object>))]
 [JsonSerializable(typeof(List<object>))]
+// Cache parameters for analysis operations
+[JsonSerializable(typeof(SymbolFqnCacheParameter))]
 // Primitive types for MCP responses
 [JsonSerializable(typeof(int))]
 [JsonSerializable(typeof(long))]

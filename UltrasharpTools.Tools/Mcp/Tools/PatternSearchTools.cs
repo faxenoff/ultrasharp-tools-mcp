@@ -31,7 +31,7 @@ public static partial class PatternSearchTools
     )]
     public static async Task<object> PatternSearch(
         ISolutionManager solutionManager,
-        SemanticSearchService? semanticService,
+        ISemanticSearchService? semanticService,
         ILogger<PatternSearchToolsLogCategory> logger,
         [Description(
             "Search pattern (regex for entity/content, natural language for semantic/hybrid)"
@@ -453,7 +453,7 @@ public static partial class PatternSearchTools
     // ==================== Semantic Mode ====================
 
     private static async Task<object> SearchSemanticMode(
-        SemanticSearchService semanticService,
+        ISemanticSearchService semanticService,
         string pattern,
         string[]? entityTypes,
         int limit,
@@ -536,7 +536,7 @@ public static partial class PatternSearchTools
 
     private static async Task<object> SearchHybridMode(
         Solution solution,
-        SemanticSearchService semanticService,
+        ISemanticSearchService semanticService,
         string pattern,
         string[]? entityTypes,
         string? namespaceFilter,

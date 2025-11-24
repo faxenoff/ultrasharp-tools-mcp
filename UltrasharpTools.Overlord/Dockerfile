@@ -20,10 +20,9 @@ COPY ["UltrasharpTools.Overlord/UltrasharpTools.Overlord.csproj", "UltrasharpToo
 COPY ["UltrasharpTools.Tools/UltrasharpTools.Tools.csproj", "UltrasharpTools.Tools/"]
 COPY ["UltrasharpTools.sln", "./"]
 
-# Restore with runtime and R2R settings for proper crossgen2 package resolution
+# Restore with runtime
 RUN dotnet restore "UltrasharpTools.Overlord/UltrasharpTools.Overlord.csproj" \
-    --runtime linux-x64 \
-    /p:PublishReadyToRun=true
+    --runtime linux-x64
 
 # Copy all source code
 COPY . .
@@ -36,9 +35,6 @@ RUN dotnet publish "UltrasharpTools.Overlord.csproj" \
     --runtime linux-x64 \
     --self-contained false \
     --no-restore \
-    /p:PublishReadyToRun=true \
-    /p:PublishReadyToRunComposite=false \
-    /p:PublishReadyToRunUseCrossgen2=true \
     /p:CI=true
 
 # ========================================
@@ -76,8 +72,6 @@ ENV \
     # GC settings for long-running server
     DOTNET_gcServer=1 \
     DOTNET_GCConserveMemory=5 \
-    # ReadyToRun
-    DOTNET_ReadyToRun=1 \
     # Globalization (enable for C# code analysis)
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
     # Diagnostics (keep enabled for debugging)

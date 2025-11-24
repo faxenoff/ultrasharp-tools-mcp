@@ -17,7 +17,7 @@ public class Program
 {
     // --- Application ---
     public const string ApplicationName = "UltrasharpToolsMcpOverlord";
-    public const string ApplicationVersion = "3.0.6";
+    public const string ApplicationVersion = "3.0.7";
 
     public static async Task<int> Main(string[] args)
     {

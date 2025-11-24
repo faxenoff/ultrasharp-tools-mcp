@@ -1,1 +1,0 @@
-- Логи лежат здесь D:\github\ultrasharp-tools-mcp\.ultrasharp\logs

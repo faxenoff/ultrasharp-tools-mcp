@@ -31,16 +31,11 @@ Write-Host ""
 
 # Verify structure
 $configDir = Join-Path $PublishDir "Config"
-$scriptsDir = Join-Path $PublishDir "Scripts"
 
 $hasConfig = Test-Path $configDir
-$hasScripts = Test-Path $scriptsDir
 
 if ($hasConfig) {
     Write-Host "✓ Config/ directory exists" -ForegroundColor Green
-}
-if ($hasScripts) {
-    Write-Host "✓ Scripts/ directory exists" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -64,14 +59,13 @@ Write-Host "  ├── SEMANTIC_SETUP_GUIDE.md             (Detailed guide)" -F
 Write-Host "  │" -ForegroundColor DarkGray
 Write-Host "  ├── semantic-config.json                (Created by setup)" -ForegroundColor Magenta
 Write-Host "  │" -ForegroundColor DarkGray
-Write-Host "  ├── Scripts/                            (Support scripts)" -ForegroundColor White
-Write-Host "  │   ├── setup-tei.ps1" -ForegroundColor DarkGray
-Write-Host "  │   ├── detect-gpu-architecture.ps1" -ForegroundColor DarkGray
-Write-Host "  │   ├── validate-semantic-config.ps1" -ForegroundColor DarkGray
-Write-Host "  │   └── ..." -ForegroundColor DarkGray
-Write-Host "  │" -ForegroundColor DarkGray
-Write-Host "  └── Config/                             (Example config)" -ForegroundColor White
-Write-Host "      └── semantic-config.yaml" -ForegroundColor DarkGray
+Write-Host "  └── Config/                             (Setup scripts & configs)" -ForegroundColor White
+Write-Host "      ├── setup-tei.ps1                   (TEI setup)" -ForegroundColor DarkGray
+Write-Host "      ├── setup-ollama.ps1                (Ollama setup)" -ForegroundColor DarkGray
+Write-Host "      ├── detect-gpu-architecture.ps1     (GPU detection)" -ForegroundColor DarkGray
+Write-Host "      ├── setup-embeddings-interactive.sh (Interactive setup)" -ForegroundColor DarkGray
+Write-Host "      ├── embedding-models.json           (Model configs)" -ForegroundColor DarkGray
+Write-Host "      └── semantic-*.json                 (Semantic configs)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "First Time Setup:" -ForegroundColor Yellow
 Write-Host "  Double-click: setup-semantic-embedding.cmd" -ForegroundColor Green

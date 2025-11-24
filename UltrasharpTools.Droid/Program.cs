@@ -179,13 +179,13 @@ public static class Program
             if (solutionFiles.Length == 1)
             {
                 solutionPath = solutionFiles[0];
-                Console.WriteLine($"Auto-detected solution: {Path.GetFileName(solutionPath)}");
+                // Console.WriteLine($"Auto-detected solution: {Path.GetFileName(solutionPath)}");
             }
             else if (solutionFiles.Length > 1)
             {
-                Console.WriteLine(
-                    $"Multiple solution files found in {currentDir}. Use --load-solution to specify which one to load."
-                );
+                // Console.WriteLine(
+                //     $"Multiple solution files found in {currentDir}. Use --load-solution to specify which one to load."
+                // );
             }
         }
 
@@ -225,9 +225,9 @@ public static class Program
         }
 
         string logFilePath = Path.Combine(logDirPath, $"{ApplicationName}-{{Date:yyyyMMdd}}.log");
-        Console.Error.WriteLine(
-            $"Logging to directory: {Path.GetFullPath(logDirPath)} with minimum level {minimumLogLevel}"
-        );
+        // Console.Error.WriteLine(
+        //     $"Logging to directory: {Path.GetFullPath(logDirPath)} with minimum level {minimumLogLevel}"
+        // );
 
         // Early startup information (before DI/logging is configured)
 
@@ -239,50 +239,61 @@ public static class Program
             return 1;
         }
 
-        if (isHybridMode)
-        {
-            Console.WriteLine($"Running in HYBRID mode, server: {serverUrl}");
-            Console.WriteLine($"Embedding service: {embeddingUrl}");
-            Console.WriteLine($"Embedding model: {embeddingModel}");
-        }
-        else
-        {
-            Console.WriteLine("Running in LOCAL mode");
-        }
+        // Console output disabled for MCP - all info goes to file logs only
+        const bool enableConsoleOutput = false;
 
-        if (disableGit)
+        if (enableConsoleOutput)
         {
-            Console.WriteLine("Git integration is disabled.");
-        }
-
-        if (!string.IsNullOrEmpty(buildConfiguration))
-        {
-            Console.WriteLine($"Using build configuration: {buildConfiguration}");
-        }
-
-        if (autoReload)
-        {
-            Console.WriteLine($"Auto-reload is enabled with {reloadDebounceMs}ms debounce");
-        }
-
-        if (symbolCacheEnabled)
-        {
-            Console.WriteLine("Symbol cache is enabled (10x faster solution initialization)");
-            if (!string.IsNullOrEmpty(symbolCacheDirectory))
+            if (isHybridMode)
             {
-                Console.WriteLine($"Symbol cache directory: {symbolCacheDirectory}");
+                Console.WriteLine($"Running in HYBRID mode, server: {serverUrl}");
+                Console.WriteLine($"Embedding service: {embeddingUrl}");
+                Console.WriteLine($"Embedding model: {embeddingModel}");
             }
-            if (symbolCacheClear)
+            else
             {
-                Console.WriteLine("Symbol cache will be cleared on startup");
+                Console.WriteLine("Running in LOCAL mode");
             }
-        }
-        else
-        {
-            Console.WriteLine("Symbol cache is disabled");
+
+            if (disableGit)
+            {
+                Console.WriteLine("Git integration is disabled.");
+            }
+
+            if (!string.IsNullOrEmpty(buildConfiguration))
+            {
+                Console.WriteLine($"Using build configuration: {buildConfiguration}");
+            }
+
+            if (autoReload)
+            {
+                Console.WriteLine($"Auto-reload is enabled with {reloadDebounceMs}ms debounce");
+            }
+
+            if (symbolCacheEnabled)
+            {
+                Console.WriteLine("Symbol cache is enabled (10x faster solution initialization)");
+                if (!string.IsNullOrEmpty(symbolCacheDirectory))
+                {
+                    Console.WriteLine($"Symbol cache directory: {symbolCacheDirectory}");
+                }
+                if (symbolCacheClear)
+                {
+                    Console.WriteLine("Symbol cache will be cleared on startup");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Symbol cache is disabled");
+            }
         }
 
-        var builder = Host.CreateApplicationBuilder(args);
+        // Create builder WITHOUT default logging providers (MCP requires pure JSON-RPC)
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            Args = args,
+            DisableDefaults = true, // Disable all defaults including console logging
+        });
 
         // Set content root to exe directory (not current working directory)
         var exeDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -292,18 +303,22 @@ public static class Program
             Directory.SetCurrentDirectory(exeDirectory);
         }
 
+        // CRITICAL: Disable ALL console output for MCP (requires pure JSON-RPC on stdout)
         builder.Logging.ClearProviders();
-        builder.Logging.AddConsole();
+        builder.Logging.AddFile(logFilePath, minimumLogLevel);
         builder.Logging.SetMinimumLevel(minimumLogLevel);
 
-        // Configure logging overrides
+        // Block all logging to console - only file logging allowed
+        builder.Logging.AddFilter<Microsoft.Extensions.Logging.Console.ConsoleLoggerProvider>((category, level) => false);
+
+        // Configure logging overrides - file only
         builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
         builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Information);
         builder.Logging.AddFilter("Microsoft.CodeAnalysis", LogLevel.Information);
         builder.Logging.AddFilter("ModelContextProtocol", LogLevel.Warning);
 
-        // Add file logging
-        builder.Logging.AddFile(logFilePath, minimumLogLevel);
+        // Suppress console status messages (Application started/stopped)
+        builder.Services.Configure<ConsoleLifetimeOptions>(opts => opts.SuppressStatusMessages = true);
 
         // Create GitOptions from command line arguments
         var gitOptions = new UltrasharpTools.Tools.Models.GitOptions
@@ -360,7 +375,11 @@ public static class Program
 
         if (hasSemanticConfig)
         {
-            Console.WriteLine($"[Semantic] Found {Path.GetFileName(semanticConfigPath)}");
+            if (enableConsoleOutput)
+            {
+                Console.WriteLine($"[Semantic] Found {Path.GetFileName(semanticConfigPath)}");
+            }
+
             File.AppendAllText(
                 Path.Combine(logDirPath, "semantic-debug.log"),
                 $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - Found semantic-config.json at: {semanticConfigPath}\n"
@@ -437,9 +456,12 @@ public static class Program
 
                     if (isAvailable)
                     {
-                        Console.WriteLine(
-                            $"[Semantic] ✓ {config.Embedding.Platform.ToUpperInvariant()} service is available"
-                        );
+                        if (enableConsoleOutput)
+                        {
+                            Console.WriteLine(
+                                $"[Semantic] ✓ {config.Embedding.Platform.ToUpperInvariant()} service is available"
+                            );
+                        }
 
                         // Determine database path based on solution
                         string? databasePath = null;
@@ -498,17 +520,24 @@ public static class Program
                             indexerConfig: null
                         );
 
-                        Console.WriteLine(
-                            $"[Semantic] Semantic RAG enabled (database: {databasePath ?? "in-memory"})"
-                        );
+                        if (enableConsoleOutput)
+                        {
+                            Console.WriteLine(
+                                $"[Semantic] Semantic RAG enabled (database: {databasePath ?? "in-memory"})"
+                            );
+                        }
+
                         semanticEnabled = true;
                     }
                     else
                     {
-                        Console.WriteLine(
-                            $"[Semantic] {config.Embedding.Platform.ToUpperInvariant()} service not responding"
-                        );
-                        Console.WriteLine($"[Semantic] Starting auto-recovery in background...");
+                        if (enableConsoleOutput)
+                        {
+                            Console.WriteLine(
+                                $"[Semantic] {config.Embedding.Platform.ToUpperInvariant()} service not responding"
+                            );
+                            Console.WriteLine($"[Semantic] Starting auto-recovery in background...");
+                        }
 
                         // Start background auto-recovery (non-blocking)
                         _ = Task.Run(async () =>
@@ -522,19 +551,28 @@ public static class Program
 
                                 if (result.IsAvailable)
                                 {
-                                    Console.WriteLine($"[Semantic] ✓ {result.Message}");
-                                    Console.WriteLine(
-                                        $"[Semantic] Restart MCP server to enable semantic mode"
-                                    );
+                                    if (enableConsoleOutput)
+                                    {
+                                        Console.WriteLine($"[Semantic] ✓ {result.Message}");
+                                        Console.WriteLine(
+                                            $"[Semantic] Restart MCP server to enable semantic mode"
+                                        );
+                                    }
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"[Semantic] ✗ {result.Message}");
+                                    if (enableConsoleOutput)
+                                    {
+                                        Console.WriteLine($"[Semantic] ✗ {result.Message}");
+                                    }
                                 }
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"[Semantic] Auto-recovery failed: {ex.Message}");
+                                if (enableConsoleOutput)
+                                {
+                                    Console.WriteLine($"[Semantic] Auto-recovery failed: {ex.Message}");
+                                }
                             }
                         });
                     }
@@ -542,15 +580,21 @@ public static class Program
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Semantic] Failed to load config: {ex.Message}");
+                if (enableConsoleOutput)
+                {
+                    Console.WriteLine($"[Semantic] Failed to load config: {ex.Message}");
+                }
             }
         }
         else
         {
-            Console.WriteLine("[Semantic] No semantic-config.json found, semantic mode disabled");
-            Console.WriteLine(
-                "[Semantic] Run Config\\setup-semantic-embedding.cmd to configure semantic search"
-            );
+            if (enableConsoleOutput)
+            {
+                Console.WriteLine("[Semantic] No semantic-config.json found, semantic mode disabled");
+                Console.WriteLine(
+                    "[Semantic] Run Config\\setup-semantic-embedding.cmd to configure semantic search"
+                );
+            }
         }
 
         if (!semanticEnabled)
@@ -709,7 +753,8 @@ public static class Program
 
             // Universal Semantic Mode - Phase 12
             // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
-            using var loggerFactory714 = LoggerFactory.Create(b => b.AddConsole());
+            // LoggerFactory without console output for MCP compatibility
+            using var loggerFactory714 = LoggerFactory.Create(b => { /* No console logging */ });
             var semanticConfigLoader =
                 new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
                     loggerFactory714
@@ -813,7 +858,8 @@ public static class Program
 
             // Universal Semantic Mode - Phase 12 (local mode)
             // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
-            using var loggerFactory818 = LoggerFactory.Create(b => b.AddConsole());
+            // LoggerFactory without console output for MCP compatibility
+            using var loggerFactory818 = LoggerFactory.Create(b => { /* No console logging */ });
             var semanticConfigLoader =
                 new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
                     loggerFactory818
@@ -885,13 +931,19 @@ public static class Program
                 }
             );
 
-            Console.WriteLine(
-                "Local mode - Universal Semantic Mode available if local embedding configured"
-            );
+            if (enableConsoleOutput)
+            {
+                Console.WriteLine(
+                    "Local mode - Universal Semantic Mode available if local embedding configured"
+                );
+            }
         }
 
         // Check semantic mode availability for MCP Initialize capabilities
-        Console.WriteLine("Checking semantic mode availability...");
+        if (enableConsoleOutput)
+        {
+            Console.WriteLine("Checking semantic mode availability...");
+        }
         var semanticAvailability =
             await UltrasharpTools.Droid.Services.Hybrid.SemanticModeBootstrapCheck.CheckAvailabilityAsync(
                 embeddingUrl,
@@ -899,13 +951,16 @@ public static class Program
                 timeoutMs: 3000
             );
 
-        if (semanticAvailability.IsAvailable)
+        if (enableConsoleOutput)
         {
-            Console.WriteLine($"Semantic mode: AVAILABLE ({semanticAvailability.Source})");
-        }
-        else
-        {
-            Console.WriteLine("Semantic mode: NOT AVAILABLE");
+            if (semanticAvailability.IsAvailable)
+            {
+                Console.WriteLine($"Semantic mode: AVAILABLE ({semanticAvailability.Source})");
+            }
+            else
+            {
+                Console.WriteLine("Semantic mode: NOT AVAILABLE");
+            }
         }
 
         builder
@@ -925,7 +980,7 @@ public static class Program
 
         try
         {
-            Console.WriteLine($"Starting {ApplicationName} v{ApplicationVersion}");
+            // Console.WriteLine($"Starting {ApplicationName} v{ApplicationVersion}");
             var host = builder.Build();
             var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger(ApplicationName);
@@ -996,7 +1051,7 @@ public static class Program
         }
         finally
         {
-            Console.WriteLine($"{ApplicationName} shutting down.");
+            // Console.WriteLine($"{ApplicationName} shutting down.");
         }
     }
 }

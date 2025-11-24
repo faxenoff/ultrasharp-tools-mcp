@@ -1,4 +1,5 @@
 using UltrasharpTools.Tools.Config;
+using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Services;
@@ -273,16 +274,9 @@ public class SemanticConfigManager
     /// </summary>
     private static string GetDefaultGlobalConfigPath()
     {
-        var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
-        var exeDir = Path.GetDirectoryName(exePath) ?? Directory.GetCurrentDirectory();
-
-        // Priority 1: Config\semantic-config.json (recommended location)
-        var configDirPath = Path.Combine(exeDir, "Config", "semantic-config.json");
-        if (File.Exists(configDirPath))
-            return configDirPath;
-
-        // Priority 2: semantic-config.json (legacy, next to .exe)
-        return Path.Combine(exeDir, "semantic-config.json");
+        // Use central config directory for all configurations
+        var configDir = ProjectPathHelper.GetConfigPath();
+        return Path.Combine(configDir, "semantic-config.json");
     }
 
     private static SemanticEmbeddingConfig CreateDefaultGlobalConfig()

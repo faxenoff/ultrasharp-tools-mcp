@@ -52,3 +52,12 @@ public class CachedSymbolInfo
     public string FilePath { get; set; } = "";
     public int Line { get; set; }
 }
+
+/// <summary>
+/// Cache parameters for symbol-based operations (FindCallers, FindOutgoingCalls, etc.)
+/// Replaces anonymous types to support AOT-compatible JSON serialization.
+/// </summary>
+public sealed record SymbolFqnCacheParameter
+{
+    public required string SymbolFqn { get; init; }
+}

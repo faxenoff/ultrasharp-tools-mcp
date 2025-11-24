@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace UltrasharpTools.Tools.Infrastructure;
 
 /// <summary>
@@ -5,33 +7,31 @@ namespace UltrasharpTools.Tools.Infrastructure;
 /// </summary>
 public static class ProjectPathHelper
 {
-    private const string UltrasharpDirName = ".ultrasharp";
-
     /// <summary>
-    /// Gets the .ultrasharp directory for the current solution.
-    /// Creates it if it doesn't exist.
+    /// Gets the central UltraSharpTools data directory.
+    /// Windows: %LOCALAPPDATA%\UltraSharpTools
+    /// Linux/macOS: ~/.ultrasharp
     /// </summary>
-    /// <param name="solutionPath">Path to the solution file, or null to use current directory</param>
-    /// <returns>Path to .ultrasharp directory</returns>
+    /// <returns>Path to central data directory</returns>
     public static string GetProjectUltrasharpDir(string? solutionPath = null)
     {
-        string projectRoot;
+        string baseDir;
 
-        if (!string.IsNullOrEmpty(solutionPath) && File.Exists(solutionPath))
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            // Use solution directory
-            projectRoot = Path.GetDirectoryName(solutionPath)!;
+            // Windows: C:\Users\{User}\AppData\Local\UltraSharpTools
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            baseDir = Path.Combine(localAppData, "UltraSharpTools");
         }
         else
         {
-            // Try to find solution or git root from current directory
-            projectRoot =
-                FindProjectRoot(Directory.GetCurrentDirectory()) ?? Directory.GetCurrentDirectory();
+            // Linux/macOS: ~/.ultrasharp
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            baseDir = Path.Combine(home, ".ultrasharp");
         }
 
-        var ultrasharpDir = Path.Combine(projectRoot, UltrasharpDirName);
-        Directory.CreateDirectory(ultrasharpDir);
-        return ultrasharpDir;
+        Directory.CreateDirectory(baseDir);
+        return baseDir;
     }
 
     /// <summary>
@@ -79,44 +79,46 @@ public static class ProjectPathHelper
     }
 
     /// <summary>
-    /// Finds project root by looking for .sln, .git, or other markers.
-    /// Prioritizes .sln and .git over project files to find the real root.
+    /// Gets path for vector database within .ultrasharp directory.
     /// </summary>
-    private static string? FindProjectRoot(string startDirectory)
+    public static string GetVectorDatabasePath(string? solutionPath = null)
     {
-        var current = new DirectoryInfo(startDirectory);
-        string? fallbackProjectDir = null;
+        var ultrasharpDir = GetProjectUltrasharpDir(solutionPath);
+        var vectorDbPath = Path.Combine(ultrasharpDir, "vector-db");
+        Directory.CreateDirectory(vectorDbPath);
+        return vectorDbPath;
+    }
 
-        while (current != null)
-        {
-            // Check for solution file (highest priority)
-            if (current.GetFiles("*.sln").Length > 0)
-            {
-                return current.FullName;
-            }
+    /// <summary>
+    /// Gets path for database within .ultrasharp directory.
+    /// </summary>
+    public static string GetDatabasePath(string? solutionPath = null)
+    {
+        var ultrasharpDir = GetProjectUltrasharpDir(solutionPath);
+        var dbPath = Path.Combine(ultrasharpDir, "db");
+        Directory.CreateDirectory(dbPath);
+        return dbPath;
+    }
 
-            // Check for .git directory (second priority)
-            if (Directory.Exists(Path.Combine(current.FullName, ".git")))
-            {
-                return current.FullName;
-            }
+    /// <summary>
+    /// Gets path for configuration files within .ultrasharp directory.
+    /// </summary>
+    public static string GetConfigPath(string? solutionPath = null)
+    {
+        var ultrasharpDir = GetProjectUltrasharpDir(solutionPath);
+        var configPath = Path.Combine(ultrasharpDir, "config");
+        Directory.CreateDirectory(configPath);
+        return configPath;
+    }
 
-            // Remember first project directory as fallback, but keep searching up
-            if (
-                fallbackProjectDir == null
-                && (
-                    current.GetFiles("*.csproj").Length > 0
-                    || current.GetFiles("package.json").Length > 0
-                )
-            )
-            {
-                fallbackProjectDir = current.FullName;
-            }
-
-            current = current.Parent;
-        }
-
-        // Return fallback if we found a project but no .sln or .git
-        return fallbackProjectDir;
+    /// <summary>
+    /// Gets path for setup scripts within .ultrasharp directory.
+    /// </summary>
+    public static string GetScriptsPath(string? solutionPath = null)
+    {
+        var ultrasharpDir = GetProjectUltrasharpDir(solutionPath);
+        var scriptsPath = Path.Combine(ultrasharpDir, "Scripts");
+        Directory.CreateDirectory(scriptsPath);
+        return scriptsPath;
     }
 }

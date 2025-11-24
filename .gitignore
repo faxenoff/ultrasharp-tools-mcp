@@ -30,8 +30,9 @@ bld/
 [Ll]ogs/
 publish/
 artifacts/
-Run.Publish
-Run.Logs
+Run.Publish/
+Run.Logs/
+Run.Build/
 Run.Config/*.json
 
 # Static PGO artifacts

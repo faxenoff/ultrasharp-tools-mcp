@@ -88,6 +88,18 @@ $filesToUpdate = @(
         Replacement = "<Version>$Version</Version>"
         Description = ".csproj (Overlord)"
     },
+    @{
+        Path = "UltraSharpTools.Comm\UltraSharpTools.Comm.csproj"
+        Pattern = '<Version>[\d\.]+(-[a-zA-Z0-9\.\-]+)?</Version>'
+        Replacement = "<Version>$Version</Version>"
+        Description = ".csproj (Comm)"
+    },
+    @{
+        Path = "UltraSharpTools.Indexer\UltraSharpTools.Indexer.csproj"
+        Pattern = '<Version>[\d\.]+(-[a-zA-Z0-9\.\-]+)?</Version>'
+        Replacement = "<Version>$Version</Version>"
+        Description = ".csproj (Indexer)"
+    },
 
     # Dockerfile - version label
     @{
@@ -117,6 +129,18 @@ $filesToUpdate = @(
         Pattern = 'ApplicationVersion = "[\d\.]+(-[a-zA-Z0-9\.\-]+)?"'
         Replacement = "ApplicationVersion = `"$Version`""
         Description = "Program.cs (Overlord)"
+    },
+    @{
+        Path = "UltraSharpTools.Comm\Program.cs"
+        Pattern = 'ApplicationVersion = "[\d\.]+(-[a-zA-Z0-9\.\-]+)?"'
+        Replacement = "ApplicationVersion = `"$Version`""
+        Description = "Program.cs (Comm)"
+    },
+    @{
+        Path = "UltraSharpTools.Indexer\Program.cs"
+        Pattern = 'ApplicationVersion = "[\d\.]+(-[a-zA-Z0-9\.\-]+)?"'
+        Replacement = "ApplicationVersion = `"$Version`""
+        Description = "Program.cs (Indexer)"
     },
 
     # AgentController.cs - health endpoint version

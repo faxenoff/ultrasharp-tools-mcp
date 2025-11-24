@@ -29,7 +29,7 @@ public static partial class SemanticAnalysisTools
             + "Useful for discovering similar implementations, patterns, or functionality across the codebase."
     )]
     public static async Task<object> SemanticSearch(
-        SemanticSearchService searchService,
+        ISemanticSearchService searchService,
         ISolutionManager solutionManager,
         ILogger<SemanticAnalysisToolsLogCategory> logger,
         [Description(

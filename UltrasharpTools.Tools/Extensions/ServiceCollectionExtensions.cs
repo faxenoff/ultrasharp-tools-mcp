@@ -272,14 +272,17 @@ public static class ServiceCollectionExtensions
             return new CodeSemanticIndexer(vectorStore, embeddingGenerator, config, logger);
         });
 
-        // Register SemanticSearchService
-        services.AddSingleton(sp =>
+        // Register SemanticSearchService (both interface and concrete type)
+        services.AddSingleton<SemanticSearchService>(sp =>
         {
             var indexer = sp.GetRequiredService<CodeSemanticIndexer>();
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
             var logger = sp.GetService<ILogger<SemanticSearchService>>();
             return new SemanticSearchService(indexer, solutionManager, null, logger);
         });
+        services.AddSingleton<ISemanticSearchService>(sp =>
+            sp.GetRequiredService<SemanticSearchService>()
+        );
 
         // Register QueryFeatureExtractor (для Hybrid Search)
         services.AddSingleton(sp =>

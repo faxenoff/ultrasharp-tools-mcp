@@ -6,11 +6,16 @@ REM
 REM DESCRIPTION:
 REM   Updates version across all project files automatically
 REM
-REM WHAT GETS UPDATED (11 places):
-REM   - .csproj files (3): Tools, Droid, Overlord
+REM WHAT GETS UPDATED (21 places):
+REM   - .csproj files (5): Tools, Droid, Overlord, Comm, Indexer
 REM   - Dockerfile (2): version label + k8s version
-REM   - Markdown docs (6): ARCHITECTURE.md, ROADMAP.md, USAGE_GUIDE.md,
-REM                        OVERLORD_README.md, Dev.Docs/README.md, CHANGELOG.md
+REM   - Program.cs files (4): Droid, Overlord, Comm, Indexer
+REM   - AgentController.cs (1): health endpoint version
+REM   - Helm Chart (2): Chart.yaml version + appVersion
+REM   - Deployment docs (1): README.md Docker examples
+REM   - Markdown docs (5): ARCHITECTURE.md, ROADMAP.md, USAGE_GUIDE.md,
+REM                        OVERLORD_README.md, Dev.Docs/README.md
+REM   - CHANGELOG.md (1): special handling for new version entries
 REM
 REM USAGE:
 REM   update-version.cmd <version> [--dry-run]

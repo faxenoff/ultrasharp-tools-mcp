@@ -133,7 +133,7 @@ Droid/
 ollama pull granite-embedding
 
 # Или TEI (сложнее)
-.\Scripts\setup-tei.ps1
+.\Config\Scripts\setup-tei.ps1
 ```
 
 ### "Configuration not found"

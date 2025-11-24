@@ -29,13 +29,7 @@
 
   <!-- Performance Optimizations (Release only) -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <!-- ReadyToRun AOT для ускорения старта (20-50% faster startup) -->
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <PublishReadyToRunComposite>false</PublishReadyToRunComposite>
-    <PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
-    <PublishReadyToRunUseCrossgen2>true</PublishReadyToRunUseCrossgen2>
-
-    <!-- Tiered Compilation: R2R Tier 0 → Optimized JIT Tier 1 (для hot paths) -->
+    <!-- Tiered Compilation для оптимизации hot paths -->
     <TieredCompilation>true</TieredCompilation>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
