@@ -197,34 +197,56 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
 
     private List<string> GetFilesToFormat(string path)
     {
-        var filesToCheck = new List<string>();
-
         if (File.Exists(path))
         {
             var ext = Path.GetExtension(path).ToLowerInvariant();
             if (SupportedExtensions.Contains(ext))
             {
-                filesToCheck.Add(path);
+                return new List<string> { path };
             }
             else
             {
                 _logger.LogWarning("Unsupported file extension: {Ext}", ext);
+                return new List<string>();
             }
         }
         else if (Directory.Exists(path))
         {
-            foreach (var ext in SupportedExtensions)
-            {
-                filesToCheck.AddRange(
-                    Directory.GetFiles(path, $"*{ext}", SearchOption.AllDirectories)
-                );
-            }
+            // Оптимизация: параллельное сканирование + EnumerateFiles
+            var filesBag = new ConcurrentBag<string>();
+
+            Parallel.ForEach(
+                SupportedExtensions,
+                new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                ext =>
+                {
+                    try
+                    {
+                        // EnumerateFiles для экономии памяти
+                        var files = Directory.EnumerateFiles(
+                            path,
+                            $"*{ext}",
+                            SearchOption.AllDirectories
+                        );
+
+                        foreach (var file in files)
+                        {
+                            filesBag.Add(file);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to enumerate files with extension {Ext}", ext);
+                    }
+                }
+            );
+
+            return filesBag.ToList();
         }
         else
         {
             _logger.LogWarning("Path does not exist: {Path}", path);
+            return new List<string>();
         }
-
-        return filesToCheck;
     }
 }

@@ -343,7 +343,7 @@ public class SymbolCacheManager
     }
 
     /// <summary>
-    /// Delete all cached files (for cleanup/debugging)
+    /// Delete all cached files (for cleanup/debugging) - optimized with parallel deletion
     /// </summary>
     public void ClearAllCaches()
     {
@@ -352,11 +352,27 @@ public class SymbolCacheManager
             if (Directory.Exists(_cacheDirectory))
             {
                 var files = Directory.GetFiles(_cacheDirectory, $"*{CacheFileExtension}");
-                foreach (var file in files)
-                {
-                    File.Delete(file);
-                }
-                _logger.LogInformation("Cleared {Count} cache files", files.Length);
+                var deletedCount = 0;
+
+                // Параллельное удаление файлов (4 потока)
+                Parallel.ForEach(
+                    files,
+                    new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                    file =>
+                    {
+                        try
+                        {
+                            File.Delete(file);
+                            Interlocked.Increment(ref deletedCount);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to delete cache file {File}", file);
+                        }
+                    }
+                );
+
+                _logger.LogInformation("Cleared {Count} cache files (parallel)", deletedCount);
             }
         }
         catch (Exception ex)

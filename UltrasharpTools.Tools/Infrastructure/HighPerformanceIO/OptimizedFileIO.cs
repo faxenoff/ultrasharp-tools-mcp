@@ -222,4 +222,113 @@ Data: data
 await writer.WriteParallelAsync(writeRegions, cancellationToken);
 writer.Flush();
 }
+
+// ==================== Batch Operations ====================
+
+/// <summary>
+/// Read multiple files in parallel (4 threads).
+/// Returns dictionary: filePath -> content
+/// </summary>
+public static async Task<Dictionary<string, string>> ReadManyAsync(
+IEnumerable<string> filePaths,
+Encoding? encoding = null,
+CancellationToken cancellationToken = default)
+{
+var results = new ConcurrentDictionary<string, string>();
+encoding ??= Encoding.UTF8;
+
+await Parallel.ForEachAsync(
+filePaths,
+new ParallelOptions
+{
+MaxDegreeOfParallelism = 4,
+CancellationToken = cancellationToken
+},
+async (filePath, ct) =>
+{
+try
+{
+var content = await ReadAllTextAsync(filePath, encoding, ct);
+results[filePath] = content;
+}
+catch (Exception)
+{
+// Skip failed files - caller can check missing keys
+}
+}
+);
+
+return new Dictionary<string, string>(results);
+}
+
+/// <summary>
+/// Write multiple files in parallel (4 threads).
+/// Input: dictionary filePath -> content
+/// Returns: list of successfully written paths
+/// </summary>
+public static async Task<List<string>> WriteManyAsync(
+Dictionary<string, string> filesContent,
+Encoding? encoding = null,
+CancellationToken cancellationToken = default)
+{
+var successPaths = new ConcurrentBag<string>();
+encoding ??= Encoding.UTF8;
+
+await Parallel.ForEachAsync(
+filesContent,
+new ParallelOptions
+{
+MaxDegreeOfParallelism = 4,
+CancellationToken = cancellationToken
+},
+async (kvp, ct) =>
+{
+try
+{
+await WriteAllTextAsync(kvp.Key, kvp.Value, encoding, ct);
+successPaths.Add(kvp.Key);
+}
+catch (Exception)
+{
+// Skip failed files - caller can check missing paths
+}
+}
+);
+
+return successPaths.ToList();
+}
+
+/// <summary>
+/// Delete multiple files in parallel (4 threads).
+/// Returns: number of successfully deleted files
+/// </summary>
+public static Task<int> DeleteManyAsync(
+IEnumerable<string> filePaths,
+CancellationToken cancellationToken = default)
+{
+var deletedCount = 0;
+
+Parallel.ForEach(
+filePaths,
+new ParallelOptions
+{
+MaxDegreeOfParallelism = 4,
+CancellationToken = cancellationToken
+},
+filePath =>
+{
+try
+{
+File.Delete(filePath);
+Interlocked.Increment(ref deletedCount);
+}
+catch (Exception)
+{
+// Skip failed files
+}
+}
+);
+
+return Task.FromResult(deletedCount);
+}
 }
