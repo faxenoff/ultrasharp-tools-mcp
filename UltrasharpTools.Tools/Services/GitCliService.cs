@@ -1035,7 +1035,34 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(cancellationToken);
+            // Используем timeout 10 секунд для git команд + cancellationToken
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                timeoutCts.Token
+            );
+
+            try
+            {
+                await process.WaitForExitAsync(linkedCts.Token);
+            }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
+            {
+                // Timeout - убиваем процесс
+                _logger.LogWarning(
+                    "Git command timed out after 10 seconds: {Arguments}",
+                    string.Join(" ", arguments)
+                );
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch
+                {
+                    // Игнорируем ошибки при kill
+                }
+                return (false, string.Empty, "Git command timed out after 10 seconds");
+            }
 
             var output = outputBuilder.ToString();
             var error = errorBuilder.ToString();
