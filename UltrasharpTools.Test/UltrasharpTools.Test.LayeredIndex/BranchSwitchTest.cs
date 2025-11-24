@@ -42,7 +42,7 @@ public class BranchSwitchTest
                 "=== Phase 7.3-7.5: Branch Switching & Delta Management Test ==="
             );
 
-            var solutionPath = @"D:\FABUZA2\Fabuza.sln";
+            var solutionPath = @"D:\github\ultrasharp-tools-mcp\UltrasharpTools.sln";
             var solutionManager = serviceProvider.GetRequiredService<ISolutionManager>();
             var gitService = serviceProvider.GetRequiredService<IGitService>();
 

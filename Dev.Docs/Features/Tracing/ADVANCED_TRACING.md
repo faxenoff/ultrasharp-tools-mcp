@@ -141,7 +141,7 @@ Confidence: 0.87 (high confidence despite typo/shortening)
 - `75b2588` - CachedCallerInfo wrapper completion
 - `3638793` - Documentation (VARIANT_A_COMPLETE.md)
 
-**Документация:** 📖 [VARIANT_A_COMPLETE.md](VARIANT_A_COMPLETE.md)
+**Документация:** Техническая документация включена в этот файл
 
 ---
 
@@ -210,4 +210,4 @@ Confidence: 0.87 (high confidence despite typo/shortening)
 
 Отложенные задачи (async/await, LINQ unwrapping) требуют значительного времени и должны быть приоритизированы на основе user feedback.
 
-**См. также:** 📖 [PHASE6_OPTIMIZATION_SUMMARY.md](PHASE6_OPTIMIZATION_SUMMARY.md) — завершенные оптимизации Variant B и C.
+**См. также:** 📖 [TRACING_OPTIMIZATION.md](TRACING_OPTIMIZATION.md) — детальная документация завершённых оптимизаций

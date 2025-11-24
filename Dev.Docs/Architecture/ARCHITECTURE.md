@@ -1,8 +1,8 @@
 # UltrasharpTools - Архитектура системы
 
-**Версия:** 3.0.6
+**Версия:** 3.0.7
 **Статус:** Production Ready
-**Дата обновления:** 2025-11-18
+**Дата обновления:** 2025-11-24
 
 ---
 
@@ -18,23 +18,32 @@ UltrasharpTools - это MCP-сервер для интеллектуально�
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────────┐        ┌──────────────────┐          │
-│  │  Droid (Stdio)   │        │  Overlord (HTTP) │          │
-│  │  Local Client    │        │  Team Server     │          │
+│  │  Comm (Stdio)    │        │  Overlord (HTTP) │          │
+│  │  Native AOT      │        │  Team Server     │          │
+│  │  < 4 MB          │        │  Multi-project   │          │
 │  └────────┬─────────┘        └────────┬─────────┘          │
-│           │                           │                     │
-│           └──────────┬────────────────┘                     │
-│                      │                                      │
-│           ┌──────────▼───────────────────────┐             │
-│           │  UltrasharpTools.Tools (Core)    │             │
-│           │  ────────────────────────────     │             │
-│           │  • 52 MCP инструмента            │             │
-│           │  • Roslyn Analysis & Modification│             │
-│           │  • Git Integration               │             │
-│           │  • Semantic Search & Indexing    │             │
-│           │  • Quality Tools (CSharpier)     │             │
-│           │  • Advanced Tracing (CFG, Z3)    │             │
-│           │  • Layered Symbol Index          │             │
-│           └──────────────────────────────────┘             │
+│           │ IPC                       │ HTTP                │
+│           ▼                           │                     │
+│  ┌──────────────────┐                │                     │
+│  │  Droid (Local)   │◄───────────────┘                     │
+│  │  Full Roslyn     │                                       │
+│  │  ~100 MB         │                                       │
+│  └────────┬─────────┘                                       │
+│           │                                                 │
+│           ▼                                                 │
+│  ┌──────────────────────────────────────────┐              │
+│  │  UltrasharpTools.Tools (Core Library)    │              │
+│  │  ────────────────────────────────────     │              │
+│  │  • 37 MCP инструментов                   │              │
+│  │  • Roslyn Analysis & Modification        │              │
+│  │  • Fast Symbol Index (Type Dictionary)   │              │
+│  │  • Layered Symbol Index (35x faster)     │              │
+│  │  • Git Integration (auto-commits)        │              │
+│  │  • Semantic Search & Indexing            │              │
+│  │  • Quality Tools (CSharpier + analyzers) │              │
+│  │  • Advanced Tracing (CFG, Z3, backwards) │              │
+│  │  • Semantic Merge (3-way intelligent)    │              │
+│  └──────────────────────────────────────────┘              │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -43,7 +52,7 @@ UltrasharpTools - это MCP-сервер для интеллектуально�
 
 ## 1. Архитектурные принципы
 
-### 1.1 Три-проектная структура
+### 1.1 Четырёх-проектная структура
 
 **Разделение ответственности:**
 
@@ -54,18 +63,25 @@ UltrasharpTools.Tools (Class Library)
 ├─ MCP tool implementations
 └─ Зависимости: Roslyn, LibGit2Sharp, NuGet.Protocol
 
-         ↑                           ↑
-         │                           │
+         ↑                           ↑                    ↑
+         │                           │                    │
 
-Droid (Console App)         Overlord (Web App)
-├─ Stdio transport              ├─ HTTP/SSE transport
-├─ Local mode                   ├─ Team collaboration
-├─ Claude Desktop integration   ├─ Multi-project vectorstore
-└─ Single-user focus            └─ Cross-project search
+Comm (Native AOT)      Droid (Console App)       Overlord (Web App)
+├─ Stdio MCP proxy     ├─ Full Roslyn            ├─ HTTP/SSE transport
+├─ < 4 MB exe          ├─ Local/Hybrid mode      ├─ Team collaboration
+├─ Fast startup        ├─ IPC server             ├─ Multi-project vectorstore
+├─ Claude Desktop      ├─ ~100 MB                ├─ Cross-project search
+└─ Auto-launch Droid   └─ Named pipes            └─ Kubernetes-ready
+
+        IPC via Named Pipes
+        (Windows/Linux)
 ```
 
 **Преимущества:**
-- Общая кодовая база для локального и сетевого режимов
+- **Comm** - минимальный footprint для Claude Desktop (Native AOT)
+- **Droid** - полная функциональность Roslyn локально
+- **Overlord** - сетевой режим для команд
+- Общая кодовая база (Tools) для всех режимов
 - Легкое тестирование (Tools - pure business logic)
 - Возможность создания новых транспортов без дублирования кода
 
@@ -188,24 +204,45 @@ source_code + dependencies + references
 
 ## 3. Ключевые подсистемы
 
-### 3.1 Layered Symbol Indexing
+### 3.1 Layered Symbol Indexing + Fast Symbol Index
 
-**Проблема:** При переключении Git веток полная переиндексация занимает 30+ секунд.
+**Проблема (до оптимизаций):** Загрузка solution с 485K символов занимала **356 секунд (6 минут)** из-за O(N) поиска типов для каждого символа.
 
-**Решение:** Трёхслойная архитектура индекса
+**Решение 1: Fast Symbol Index (Type Dictionary Cache)**
+
+Ключевая оптимизация, давшая **35x ускорение**:
+
+```
+ДО (Phase 0):
+GetTypeByMetadataName() вызывается 485,183 раз
+O(N) поиск по всем типам в compilation для каждого символа
+Время: 354 секунды (99% общего времени)
+
+ПОСЛЕ (Phase 7):
+BuildTypeCache() - один раз O(N) обход всех типов
+TypeCache[fqn] - O(1) lookup для каждого символа
+Время: ~6 секунд (Type Dictionary построен 1 раз)
+
+Результат: 356 сек → 10.16 сек (35x ускорение!)
+```
+
+**Решение 2: Трёхслойная архитектура индекса**
+
+Минимизация переиндексации при Git операциях:
 
 ```
 Layer 0: Base Index (SQLite cache)
 ├─ Main branch (or most used)
-├─ 355K symbols
-├─ Load: 4.8s (warm cache)
-└─ 500-800 MB RAM
+├─ 485K symbols (UltrasharpTools.sln)
+├─ Load: 10.16s (cold) / 8.9s (warm with cache)
+├─ Type Dictionary Cache built once
+└─ 114 MB disk cache
 
 Layer 1: Branch Deltas (per branch)
 ├─ Added symbols: [...]
 ├─ Modified symbols: [...]
 ├─ Deleted symbol IDs: [...]
-├─ Load: 16.6ms per branch (!)
+├─ Load: < 20ms per branch (!)
 └─ 10-50 MB RAM per branch
 
 Layer 2: Working Deltas (uncommitted)
@@ -227,13 +264,19 @@ finalResults = Layer2.Apply(layer1Results) // < 1ms
 return finalResults
 ```
 
-**Performance:**
-- Initial build: 48.3s (cold)
-- Warm cache: 8.9s (5.4x faster)
-- Branch switch: **16.6ms** (330x faster!)
-- Document change: 100-500ms (66-330x faster vs full rebuild)
+**Performance (UltrasharpTools.sln - 485K symbols, 8 projects):**
+- **Cold start:** 356 сек (до оптимизаций) → **10.16 сек** (после Type Dictionary Cache) = **35x ускорение** 🚀
+- **Warm cache:** 8.9s (5.4x faster with SQLite persistence)
+- **Branch switch:** **< 20ms** (1780x faster vs cold rebuild!)
+- **Document change:** 100-500ms (incremental working delta update)
 
-**Детали:** [Dev.Docs/Development/LAYERED_INDEXING_DESIGN.md](Dev.Docs/Development/LAYERED_INDEXING_DESIGN.md)
+**Breakdown по времени:**
+- Roslyn Solution Load: ~2s (20%)
+- Fast Symbol Index Build: ~6s (59%) - Type Dictionary Cache
+- Layered Index Init: ~1s (10%) - Bloom + SQLite
+- Metadata & Finalization: ~1s (10%)
+
+**Детали:** [Layered Indexing Design](../Development/LAYERED_INDEXING_DESIGN.md)
 
 ### 3.2 Universal Semantic Mode
 
@@ -295,7 +338,7 @@ Original Result:
 
 **Покрытие:** 15 стратегий, 18 инструментов (85% топ-20)
 
-**Детали:** [UNIVERSAL_SEMANTIC_MODE.md](UNIVERSAL_SEMANTIC_MODE.md)
+**Детали:** [Universal Semantic Mode Summary](UNIVERSAL_SEMANTIC_MODE_SUMMARY.md)
 
 ### 3.3 Advanced Tracing
 
@@ -336,7 +379,7 @@ Result:
 
 **Call Graph Caching:** 5-10x speedup на warm cache (SQLite persistence).
 
-**Детали:** [Dev.Docs/Features/Tracing/ADVANCED_TRACING.md](Dev.Docs/Features/Tracing/ADVANCED_TRACING.md), [TRACING_OPTIMIZATION.md](Dev.Docs/Features/Tracing/TRACING_OPTIMIZATION.md)
+**Детали:** [Advanced Tracing](../Features/Tracing/ADVANCED_TRACING.md), [Tracing Optimization](../Features/Tracing/TRACING_OPTIMIZATION.md)
 
 ### 3.4 Semantic Merge
 
@@ -440,19 +483,30 @@ public static float ComputeSimilarity(float[] a, float[] b)
 ```
 .ultrasharp/
 ├── cache/
-│   └── symbols/           # Symbol cache (50-100 MB)
+│   └── symbols/           # Legacy symbol cache (deprecated in Phase 7)
 │       └── <hash>.json
 │
-├── layered/
-│   ├── deltas.db          # Branch deltas (SQLite)
-│   └── vector_deltas.db   # Vector embeddings per branch
+├── layered/               # ✨ NEW: Layered Index (Phase 7)
+│   ├── base-index.db      # Base layer (485K symbols = ~100 MB)
+│   ├── deltas.db          # Branch deltas (SQLite WAL mode)
+│   └── vector_deltas.db   # Vector embeddings per branch (optional)
 │
-├── vectors/
+├── vectors/               # Semantic search vectors
 │   └── embeddings.db      # Main vector store (Vectorlite HNSW)
 │
-└── call-graph/
-    └── traces.db          # Call graph cache for tracing
+└── call-graph/            # Tracing cache
+    └── traces.db          # Call graph cache (SQLite)
 ```
+
+**Layered Index Structure (NEW in Phase 7):**
+- **base-index.db:** Read-only базовый индекс (main branch)
+  - Type Dictionary Cache (FQN → ISymbol metadata)
+  - Bloom filters для быстрых негативных проверок
+  - ~100 MB для 485K символов
+- **deltas.db:** Per-branch изменения (Added/Modified/Deleted)
+  - SQLite WAL mode для concurrent reads
+  - ~14 MB для нескольких веток
+- **Working deltas:** In-memory (незакоммиченные изменения)
 
 **Backend Selection (адаптивный):**
 - **< 10K symbols:** SqliteVec (brute-force SIMD, 100% accuracy)
@@ -462,7 +516,24 @@ public static float ComputeSimilarity(float[] a, float[] b)
 
 ## 5. Performance Benchmarks
 
-### 5.1 Production Load Test
+### 5.1 Solution Loading (Critical Path)
+
+**Базовый проект:** UltrasharpTools.sln (485,183 символов, 8 проектов)
+
+| Этап | Before (Phase 0) | After (Phase 7) | Улучшение |
+|------|------------------|-----------------|-----------|
+| **Full solution load** | **356 сек (6 мин)** | **10.16 сек** | **35x быстрее** 🚀🚀 |
+| Roslyn Solution Load | 2 сек | ~2 сек | — |
+| Symbol Index Build | 354 сек (99%) | ~6 сек | **59x быстрее** |
+| Layered Index Init | N/A | ~1 сек | New feature |
+| Metadata & Finalization | <1 сек | ~1 сек | — |
+
+**Ключевая оптимизация:** Type Dictionary Cache (FastSymbolIndex)
+- **До:** `GetTypeByMetadataName()` вызывался 485K раз = O(N) × 485K
+- **После:** `BuildTypeCache()` один раз + O(1) lookup = O(N) + 485K×O(1)
+- **Результат:** Превзошли прогноз (18x → 35x)
+
+### 5.2 Real-time Operations
 
 **Тестовый проект:** 890,868 символов, 61 проект, 112 git веток
 
@@ -470,19 +541,29 @@ public static float ComputeSimilarity(float[] a, float[] b)
 |----------|------|------|---------|
 | **Solution load** | 48.3s | 8.9s | **5.4x** ✨ |
 | **Symbol search** | 100ms | < 100ms | N/A |
-| **Branch switch** | 48.3s | **16.6ms** | **330x** 🚀 |
+| **Branch switch** | 48.3s | **< 20ms** | **2400x** 🚀 |
 | **TraceBackwards** | 2-3s | 400-600ms | **5-7x** ✨ |
 | **Background cleanup** | 2.2s | N/A | N/A |
 
-### 5.2 Memory Footprint
+### 5.3 Memory Footprint
 
-| Сценарий | Base | With Caching | Trade-off |
-|----------|------|--------------|-----------|
-| Small project (< 50K symbols) | 200 MB | +100 MB | 2x faster |
-| Medium (50-200K) | 500 MB | +300 MB | 5x faster |
-| Large (200K+) | 800 MB | +596 MB | 10x faster |
+**Фактические данные:**
 
-**Вывод:** Memory trade-off оправдан для production использования.
+| Проект | Символов | Base (Roslyn) | Cache (SQLite+Index) | Total | Speedup |
+|--------|----------|---------------|----------------------|-------|---------|
+| **UltrasharpTools** | 485K | ~500 MB | +114 MB | 614 MB | **35x** 🚀 |
+| Small (прогноз) | < 100K | 200 MB | +50 MB | 250 MB | 5-10x |
+| Medium (прогноз) | 100-500K | 400 MB | +100-150 MB | 500-550 MB | 15-35x |
+| Large (прогноз) | 500K-2M | 800 MB | +200-500 MB | 1-1.3 GB | 35-60x |
+
+**Breakdown кеша (UltrasharpTools.sln):**
+- **Layered Index (SQLite):** 114 MB
+  - Base Index: ~100 MB (485K symbols)
+  - Branch Deltas: ~14 MB (multiple branches)
+- **Type Dictionary Cache:** In-memory (included in Base RAM)
+- **Bloom Filters:** ~5 MB (in-memory)
+
+**Вывод:** Memory trade-off полностью оправдан — 114 MB за 35x ускорение!
 
 ---
 
@@ -490,9 +571,30 @@ public static float ComputeSimilarity(float[] a, float[] b)
 
 ### 6.1 Local (Claude Desktop)
 
+**Рекомендуемый способ (через Comm прокси):**
 ```json
 {
-  "Droids": {
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "type": "stdio",
+      "command": "D:/path/to/UltrasharpTools.Comm.exe",
+      "args": ["--log-level", "Information"],
+      "env": {}
+    }
+  }
+}
+```
+
+**Преимущества Comm:**
+- ✅ Native AOT (< 4 MB, быстрый startup)
+- ✅ Автоматический запуск Droid через IPC
+- ✅ Минимальный memory footprint для Claude Desktop
+- ✅ Graceful shutdown handling
+
+**Альтернатива (прямой запуск Droid):**
+```json
+{
+  "mcpServers": {
     "ultrasharp-tools": {
       "type": "stdio",
       "command": "D:/path/to/UltrasharpTools.Droid.exe",
@@ -601,7 +703,7 @@ services.AddSingleton<IEnrichmentStrategy, MyEnrichmentStrategy>();
 
 ## 9. Дальнейшее развитие
 
-См. [ROADMAP.md](ROADMAP.md) для детального плана.
+См. [ROADMAP.md](../../ROADMAP.md) для детального плана.
 
 ### Near-term (Phase 13-14)
 
@@ -626,24 +728,31 @@ services.AddSingleton<IEnrichmentStrategy, MyEnrichmentStrategy>();
 ## 10. Ссылки
 
 ### Основная документация
-- [README.md](README.md) - Обзор и quick start
-- [CHANGELOG.md](CHANGELOG.md) - История изменений проекта
-- [ROADMAP.md](ROADMAP.md) - Планы развития на 2025-2026
-- [Dev.Docs/CLAUDE.md](Dev.Docs/CLAUDE.md) - Инструкции для Claude Code
+- [README.md](../../README.md) - Обзор и quick start
+- [CHANGELOG.md](../../CHANGELOG.md) - История изменений проекта
+- [ROADMAP.md](../../ROADMAP.md) - Планы развития на 2025-2026
+- [CLAUDE.md](../CLAUDE.md) - Инструкции для Claude Code
 
 ### Технические детали
-- [Layered Indexing](Dev.Docs/Development/LAYERED_INDEXING_DESIGN.md)
-- [Universal Semantic Mode](UNIVERSAL_SEMANTIC_MODE.md)
-- [Semantic Merge](Dev.Docs/Features/SemanticMerge/)
-- [Advanced Tracing](Dev.Docs/Features/Tracing/)
+- [Layered Indexing](../Development/LAYERED_INDEXING_DESIGN.md)
+- [Universal Semantic Mode](UNIVERSAL_SEMANTIC_MODE_SUMMARY.md)
+- [Semantic Merge](../Features/SemanticMerge/)
+- [Advanced Tracing](../Features/Tracing/)
 
 ### Guides
-- [Setup Guide](SEMANTIC_SETUP_GUIDE.md)
-- [Performance Report](Dev.Docs/Performance/Test_Report.md)
-- [TODO List](Dev.Docs/Development/TODO.md)
+- [Setup Guide](../../Run.Docs/Deployment/SEMANTIC_SETUP_GUIDE.md)
+- [Performance Report](../Performance/Test_Report.md)
+- [TODO List](../Development/TODO.md)
 
 ---
 
-**Версия документа:** 1.0
-**Последнее обновление:** 2025-11-18
+**Версия документа:** 2.0
+**Последнее обновление:** 2025-11-24
 **Авторы:** UltrasharpTools Team
+
+**Ключевые обновления v2.0:**
+- ✅ Fast Symbol Index (Type Dictionary Cache) - **35x ускорение**
+- ✅ Hybrid режим с Comm (Native AOT) + Droid (IPC)
+- ✅ Фактические бенчмарки (485K символов, 10.16 сек)
+- ✅ Layered Index v2 с SQLite persistence
+- ✅ Обновлённая структура проектов (4 проекта)

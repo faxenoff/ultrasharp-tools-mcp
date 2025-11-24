@@ -44,7 +44,7 @@ pwsh Dev.Scripts/build-hybrid.ps1 -Configuration Release
 
 **Windows launchers в корне:**
 - `build-hybrid.cmd`
-- `build-hybrid-release.cmd`
+- `build-droid-release.cmd`
 
 ---
 

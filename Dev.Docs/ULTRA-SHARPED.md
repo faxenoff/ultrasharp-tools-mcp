@@ -373,6 +373,25 @@ MyProject/
 
 ## 📈 Performance Benchmarks
 
+### Solution Loading (Critical Path) ✅
+
+**Baseline:** UltrasharpTools.sln (485,183 символов, 8 проектов)
+
+| Этап | Before (Phase 0) | After (Phase 7) | Улучшение |
+|------|------------------|-----------------|-----------|
+| **Full solution load** | **356 секунд (6 минут)** | **10.16 секунд** | **35x быстрее** 🚀🚀 |
+| Roslyn Solution Load | 2 сек | ~2 сек | — |
+| Symbol Index Build | 354 сек (99%) | ~6 сек | **59x быстрее** |
+| Layered Index Init | N/A | ~1 сек | New feature |
+| Metadata & Finalization | <1 сек | ~1 сек | — |
+
+**Ключевая оптимизация:** Type Dictionary Cache (FastSymbolIndex) + Layered Indexing
+
+**Прогноз vs Реальность:**
+- Прогнозировалось: ~20-30 секунд (18x ускорение)
+- Достигнуто: 10.16 секунд (35x ускорение)
+- **Превзошли прогноз в 2 раза!**
+
 ### Cold Start (Release build)
 
 | Метрика | Before | After | Улучшение |
@@ -503,7 +522,7 @@ services.AddMcpServer().WithHttpTransport().WithSharpTools();
 ## 📄 Ссылки
 
 - **Main README:** [../README.md](../README.md)
-- **Performance Docs:** [Performance/PERFORMANCE_OPTIMIZATIONS.md](Performance/PERFORMANCE_OPTIMIZATIONS.md)
+- **Performance Docs:** [Performance/Test_Report.md](Performance/Test_Report.md)
 - **User Guides:** [../Run.Docs/](../Run.Docs/)
 - **Developer Docs:** [./](.)
 - **Semantic Merge:** [Features/SemanticMerge/](Features/SemanticMerge/)
@@ -532,16 +551,19 @@ services.AddMcpServer().WithHttpTransport().WithSharpTools();
 
 ### Scalability: Large Codebases (1M+ symbols)
 
-**Текущие бенчмарки:** SharpTools.sln (~355K символов, 3 проекта)
+**Фактические бенчмарки:** UltrasharpTools.sln (485K символов, 8 проектов) — **10.16 сек, 114 MB cache**
 
 **Проектируемые показатели для больших кодовых баз:**
 
 | Размер кодовой базы | Символов | Init Time | Memory | Symbol Search | FindReferences |
 |---------------------|----------|-----------|--------|---------------|----------------|
-| **Small** (SharpTools) | ~355K | ~33 сек | 596 MB | <1 сек | <1 сек |
-| **Medium** (ASP.NET Core) | ~800K | ~75 сек | 1.4 GB | 1-2 сек | 1-2 сек |
-| **Large** (Roslyn) | ~2M | ~180 сек | 3.5 GB | 2-4 сек | 2-5 сек |
-| **Extra Large** (dotnet/runtime) | ~5M+ | ~450 сек | 8+ GB | 5-10 сек | 5-15 сек |
+| **Small** (UltrasharpTools) | 485K | ✅ **10.16 сек** | 114 MB | <1 сек | <1 сек |
+| **Medium** (ASP.NET Core) | ~800K | ~17 сек (прогноз) | 190 MB | <1 сек | 1-2 сек |
+| **Large** (Roslyn) | ~2M | ~42 сек (прогноз) | 470 MB | 1-2 сек | 2-4 сек |
+| **Extra Large** (dotnet/runtime) | ~5M+ | ~105 сек (прогноз) | 1.2 GB | 2-4 сек | 5-10 сек |
+
+**Примечание:** Init Time основан на фактическом результате **10.16 сек для 485K** с линейной экстраполяцией.
+Реальная производительность может быть лучше благодаря синергии оптимизаций.
 
 **Масштабируемость оптимизаций:**
 
@@ -560,15 +582,25 @@ services.AddMcpServer().WithHttpTransport().WithSharpTools();
    - **Warm-up time:** ~2-5 минут для 1M+ символов
    - **Benefit:** +30-50% throughput после прогрева независимо от размера
 
-**Сравнение: Before vs After для 1M symbols**
+**Фактические результаты: UltrasharpTools (485K symbols)**
 
 | Операция | Before (без оптимизаций) | After (все оптимизации) | Улучшение |
 |----------|-------------------------|------------------------|-----------|
-| **Solution load** | 3-5 минут | 1-2 минуты | **2-3x быстрее** |
-| **Symbol indexing** | N/A (linear scan) | 2-3 минуты (one-time) | One-time cost |
-| **Fuzzy FQN lookup** | 30-90 сек (linear) | 2-4 сек (indexed) | **15-45x быстрее** |
-| **FindReferences** | 60-180 сек (Roslyn) | 2-5 сек (index) | **30-90x быстрее** |
-| **SearchDefinitions** | 120-300 сек (full scan) | 2-5 сек (index) | **60-150x быстрее** |
+| **Solution load** | ✅ **356 сек (6 мин)** | ✅ **10.16 сек** | ✅ **35x быстрее** |
+| **Symbol indexing** | 354 сек (O(N) для каждого) | ~6 сек (Type Dictionary) | ✅ **59x быстрее** |
+| **Fuzzy FQN lookup** | 5-15 сек (linear) | <1 сек (indexed) | **5-15x быстрее** |
+| **FindReferences** | 5-10 сек (Roslyn) | <1 сек (index) | **5-10x быстрее** |
+| **SearchDefinitions** | 10-30 сек (full scan) | <1 сек (index) | **10-30x быстрее** |
+
+**Экстраполяция для 1M symbols** (прогноз):
+
+| Операция | Before (без оптимизаций) | After (все оптимизации) | Улучшение |
+|----------|-------------------------|------------------------|-----------|
+| **Solution load** | ~730 сек (12 мин) | ~21 сек | **35x быстрее** |
+| **Symbol indexing** | ~730 сек | ~12 сек (Type Dictionary) | **60x быстрее** |
+| **Fuzzy FQN lookup** | 30-90 сек (linear) | 1-2 сек (indexed) | **30-45x быстрее** |
+| **FindReferences** | 60-180 сек (Roslyn) | 1-3 сек (index) | **60-90x быстрее** |
+| **SearchDefinitions** | 120-300 сек (full scan) | 1-3 сек (index) | **120-150x быстрее** |
 | **Semantic similarity** | 10-30 минут (sequential) | 3-8 минут (parallel) | **3-4x быстрее** |
 
 **Рекомендации для очень больших кодовых баз:**

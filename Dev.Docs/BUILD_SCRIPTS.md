@@ -48,8 +48,8 @@ build-comm-release.cmd        # Release сборка (Native AOT)
 ### Сборка Droid + Indexer
 
 ```cmd
-build-hybrid.cmd              # Debug сборка (обычная)
-build-hybrid-release.cmd      # Release сборка (с AOT для Indexer)
+build-droid.cmd              # Debug сборка (обычная)
+build-droid-release.cmd      # Release сборка (с AOT для Indexer)
 ```
 
 **Выход**:
@@ -81,7 +81,7 @@ build-hybrid.cmd   # Сначала Droid + Indexer
 build-comm.cmd     # Затем Comm
 
 # Собрать все компоненты (Release)
-build-hybrid-release.cmd   # Сначала Droid + Indexer
+build-droid-release.cmd   # Сначала Droid + Indexer
 build-comm-release.cmd     # Затем Comm
 ```
 

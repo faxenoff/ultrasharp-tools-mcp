@@ -1,4 +1,18 @@
-# UltrasharpTools MCP Server
+```
+        ██  ██
+        ██  ██  ██    ██████ █████▄  ▄████▄
+        ██  ██  ██      ██   ██▄▄██▄ ██▄▄██
+        ██  ██  ██      ██   ██   ██ ██  ██
+        ██  ██  ██████  ██   ██   ██ ██  ██
+        ▀████▀             ▄▄▄▄   ██  ██   ▄████▄   ██▄▄▄    ██▄▄▄
+                          ███▄▄   ██████   ██▄▄██   ██▄██▄   ██▄██▄
+                          ▄▄▄██▀  ██  ██   ██  ██   ██  ██   ██
+
+     ╔═════════════════════════════════════════════════════╗
+     ║            ULTRASHARP-TOOLS MCP SERVER              ║
+     ╚═════════════════════════════════════════════════════╝
+```
+
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -10,7 +24,92 @@
 
 UltrasharpTools делает именно это. Он даёт AI полный доступ к вашей C# кодовой базе через Roslyn — не просто как к тексту, а как к **реальному коду**, который можно анализировать, модифицировать и проверять на ошибки автоматически.
 
-**🚀 2-150x быстрее** | **✨ 37 готовых инструментов** | **🔍 482К+ символов за 4.8 сек** | **⚡ < 20ms переключение веток**
+**🚀 35x быстрее** | **✨ 37 готовых инструментов** | **🔍 485К символов за 10.16 сек** | **⚡ < 20ms переключение веток**
+
+---
+
+## 📦 **Быстрая установка**
+
+### Шаг 1: Скачать релиз
+
+Перейдите на [GitHub Releases](https://github.com/yourusername/ultrasharp-tools-mcp/releases) и скачайте архив для вашей ОС:
+
+- **Windows**: `UltrasharpTools-win-x64.zip`
+- **Linux**: `UltrasharpTools-linux-x64.tar.gz`
+- **macOS**: `UltrasharpTools-osx-x64.tar.gz`
+
+### Шаг 2: Распаковать
+
+**Windows:**
+```cmd
+# Распакуйте архив в удобное место, например:
+C:\Tools\UltrasharpTools\
+```
+
+**Linux/macOS:**
+```bash
+# Создайте директорию и распакуйте
+mkdir -p ~/Tools/UltrasharpTools
+tar -xzf UltrasharpTools-linux-x64.tar.gz -C ~/Tools/UltrasharpTools
+chmod +x ~/Tools/UltrasharpTools/UltrasharpTools.Droid
+```
+
+### Шаг 3: Настроить Claude Desktop
+
+Откройте конфигурационный файл Claude Desktop:
+
+**Windows**: `%USERPROFILE%\.claude\config.json`
+**Linux/macOS**: `~/.claude/config.json`
+
+Добавьте конфигурацию:
+
+```json
+{
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "command": "C:\\Tools\\UltrasharpTools\\UltrasharpTools.Droid.exe",
+      "args": ["--log-level", "Information"]
+    }
+  }
+}
+```
+
+> **Linux/macOS**: Замените путь на `/home/username/Tools/UltrasharpTools/UltrasharpTools.Droid`
+
+### Шаг 4: (Опционально) Настроить семантический поиск
+
+Для умного поиска похожего кода запустите мастер настройки:
+
+**Windows:**
+```cmd
+cd C:\Tools\UltrasharpTools
+Scripts\setup-semantic-embedding.cmd
+```
+
+**Linux/macOS:**
+```bash
+cd ~/Tools/UltrasharpTools
+pwsh Scripts/setup-semantic-embedding.ps1
+```
+
+Следуйте инструкциям мастера:
+1. Выберите **Ollama** (проще всего) или **TEI** (для GPU)
+2. Скрипт автоматически установит необходимые компоненты
+3. Готово! Семантический поиск теперь доступен
+
+> **Примечание**: Для работы скрипта нужен PowerShell 7+. Установите: https://aka.ms/powershell
+
+### Готово! 🎉
+
+Перезапустите Claude Desktop. Теперь можно работать:
+
+```
+Вы: "Загрузи solution D:/MyProject/MyApp.sln"
+Claude: ✅ Solution loaded: 15 projects, 482K symbols
+
+Вы: "Добавь метод SendEmail в EmailService"
+Claude: ✅ Метод добавлен, отформатирован, git commit создан
+```
 
 ---
 
@@ -136,9 +235,10 @@ UltrasharpTools:
 
 | Операция | Результат | Детали |
 |----------|-----------|--------|
-| **Индексация 482К символов** | **4.8 секунды** | С кешем (первый раз 23.5s) |
-| **Поиск символа** | **< 100 миллисекунд** | Bloom filter + SQLite cache |
-| **Переключение Git ветки** | **16.6 мс** | Layered index (base + deltas) |
+| **Индексация 485К символов** | **10.16 секунд** | Cold start с Type Dictionary Cache |
+| **Индексация с кешем** | **< 9 секунд** | Cache hit (5.4x быстрее) |
+| **Поиск символа** | **< 100 миллисекунд** | Bloom filter + FastSymbolIndex |
+| **Переключение Git ветки** | **< 20 мс** | Layered index (base + deltas) |
 | **Компиляция solution** | **В памяти** | Мгновенная проверка ошибок |
 
 **Почему так быстро?**
@@ -147,10 +247,10 @@ UltrasharpTools:
 ```
 ┌─────────────────────────────────────────┐
 │ Base Layer (SQLite)                     │  ← Основной индекс (кеш)
-│ 482К символов, загружается 1 раз        │     Загрузка: 4.8s
+│ 485К символов, загружается 1 раз        │     Загрузка: 10.16s cold / 8.9s warm
 ├─────────────────────────────────────────┤
 │ Branch Deltas (по ветке)                │  ← Изменения в ветке
-│ Только изменённые символы               │     Переключение: 16ms
+│ Только изменённые символы               │     Переключение: < 20ms
 ├─────────────────────────────────────────┤
 │ Working Delta (незакоммиченное)         │  ← Текущие правки
 │ Ваши изменения до git commit            │     Обновление: < 1ms
@@ -158,6 +258,8 @@ UltrasharpTools:
 ```
 
 **Результат**: при переключении веток не нужна полная переиндексация — только дельты!
+
+**Ключевая оптимизация**: Type Dictionary Cache (FastSymbolIndex) — O(1) поиск типов вместо O(N) для каждого символа. Это дало **35x ускорение** (от 356 сек до 10.16 сек).
 
 ### Fast Symbol Index
 - ✅ **Bloom Filter** - 99.9% false positive rate < 0.01%
@@ -197,67 +299,6 @@ CSharpier форматирование + Roslyn analyzers + автофиксы �
 
 ### Поддержка любых .NET проектов
 .NET Framework, Core, 5+, legacy csproj, SDK-style, respects .editorconfig
-
----
-
-## 📦 **Быстрый старт**
-
-### Сборка (2 минуты)
-
-**Windows (быстрый способ):**
-```cmd
-publish-droid.cmd
-```
-
-**PowerShell:**
-```powershell
-.\Dev.Scripts\publish-mcp.ps1
-```
-
-**Linux/Mac:**
-```bash
-./Dev.Scripts/publish-mcp.sh
-```
-
-**Результат**: `Run.Publish/Droid/` - готовый к запуску сервер со всеми зависимостями.
-
-### Интеграция с Claude Desktop
-
-**Глобальная конфигурация** (`~/.claude.json` или `%USERPROFILE%\.claude.json`):
-```json
-{
-  "Droids": {
-    "ultrasharp-tools": {
-      "type": "stdio",
-      "command": "D:/path/to/Run.Publish/Droid/UltrasharpTools.Droid.exe",
-      "args": [
-        "--log-level", "Information"
-      ],
-      "env": {}
-    }
-  }
-}
-```
-
-**Важно:**
-- ✅ Используйте **полные абсолютные пути**
-- ✅ На Windows: `\\` или `/` (оба работают)
-- ✅ Для глобальной конфигурации: добавьте `"type": "stdio"` и `"env": {}`
-
-См. примеры: `claude_global_config.example.json`, `claude_desktop_config.example.json`
-
-### Готово! Начинайте работать
-
-```
-Вы: "Загрузи solution D:/MyProject/MyApp.sln"
-Claude: ✅ Solution loaded: 15 projects, 482K symbols
-
-Вы: "Добавь метод SendEmail в EmailService"
-Claude: ✅ Метод добавлен, отформатирован, git commit создан
-
-Вы: "Покажи где используется UserRepository"
-Claude: Найдено 45 использований в 12 файлах...
-```
 
 ---
 
@@ -675,51 +716,9 @@ services.WithUltrasharpToolsServices(
 
 ---
 
-## 🛠️ **Разработка**
+## 🛠️ **Для разработчиков**
 
-### Development Build
-```bash
-# Сборка solution для разработки
-dotnet build UltrasharpTools.sln
-```
-
-### Production Build
-```bash
-# Windows
-publish-droid.cmd
-
-# PowerShell
-.\Dev.Scripts\publish-mcp.ps1
-
-# Linux/Mac
-./Dev.Scripts/publish-mcp.sh
-
-# Оба сервера (MCP + Remote)
-.\Dev.Scripts\publish-all.ps1  # Windows
-./Dev.Scripts\publish-all.sh   # Linux/Mac
-```
-
-### Запуск из исходников
-```bash
-# Droid (stdio)
-cd UltrasharpTools.Droid
-dotnet run -- --log-level Debug
-
-# Overlord (HTTP)
-cd UltrasharpTools.Overlord
-dotnet run -- --port 3001 --log-level Information
-```
-
-### Tests
-```bash
-# Layered Index tests
-cd UltrasharpTools.Test/UltrasharpTools.Test.LayeredIndex
-dotnet run -- --index-self
-
-# Semantic Merge tests
-cd UltrasharpTools.Test/UltrasharpTools.Test.SemanticMerge
-dotnet run
-```
+Инструкции по сборке из исходников, запуску тестов и разработке см. [Dev.Docs/CLAUDE.md](Dev.Docs/CLAUDE.md)
 
 ---
 

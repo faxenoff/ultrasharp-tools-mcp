@@ -72,4 +72,4 @@ ultrasharp-tools-mcp/
 
 - [ROADMAP.md](../../../ROADMAP.md) - Project roadmap
 - [CHANGELOG.md](../../../CHANGELOG.md) - Version history
-- [ARCHITECTURE.md](../../../ARCHITECTURE.md) - System architecture
+- [ARCHITECTURE.md](../../Architecture/ARCHITECTURE.md) - System architecture

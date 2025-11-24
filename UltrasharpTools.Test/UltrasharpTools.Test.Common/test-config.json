@@ -1,8 +1,9 @@
 {
   "TestSolutions": {
-    "Fabuza": "D:\\FABUZA2\\Fabuza.sln",
-    "Umbraco": "D:\\_mcp\\_test_repos\\Umbraco-CMS\\.merge-test-umbraco",
-    "UltrasharpTools": "D:\\OneDrive\\_mcp\\ultrasharp-tools-mcp\\UltrasharpTools.sln"
+    "Fabuza": "D:\\github\\repos-for-test\\aspnetcore\\AspNetCore.slnx",
+    "Umbraco": "D:\\github\\repos-for-test\\aspnetcore",
+    "UltrasharpTools": "D:\\github\\ultrasharp-tools-mcp\\UltrasharpTools.sln",
+    "AspNetCore": "D:\\github\\repos-for-test\\aspnetcore\\AspNetCore.slnx"
   },
   "LogLevel": "Information",
   "BuildConfiguration": "Debug",

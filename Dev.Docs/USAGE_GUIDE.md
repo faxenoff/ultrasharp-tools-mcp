@@ -816,11 +816,11 @@ view_definition("MyApp.Services.Users.UserService")
 ## 8. Ресурсы
 
 ### Документация
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Архитектура системы
-- [README.md](README.md) - Обзор и quick start
-- [CHANGELOG.md](CHANGELOG.md) - История изменений
-- [ROADMAP.md](ROADMAP.md) - Планы развития
-- [Dev.Docs/CLAUDE.md](Dev.Docs/CLAUDE.md) - Для Claude Code
+- [ARCHITECTURE.md](Architecture/ARCHITECTURE.md) - Архитектура системы
+- [README.md](../README.md) - Обзор и quick start
+- [CHANGELOG.md](../CHANGELOG.md) - История изменений
+- [ROADMAP.md](../ROADMAP.md) - Планы развития
+- [CLAUDE.md](CLAUDE.md) - Для Claude Code
 
 ### Помощь
 - GitHub Issues: https://github.com/your-org/ultrasharp-tools-mcp/issues

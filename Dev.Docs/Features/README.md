@@ -64,8 +64,8 @@
 
 Расширенные возможности статического трейсинга и анализа выполнения.
 
-- 📖 [Phase5_Advanced.md](Tracing/Phase5_Advanced.md) - Phase 5 summary
-- 📖 [Phase6_Optimization.md](Tracing/Phase6_Optimization.md) - Phase 6 optimizations
+- 📖 [ADVANCED_TRACING.md](Tracing/ADVANCED_TRACING.md) - Advanced tracing features
+- 📖 [TRACING_OPTIMIZATION.md](Tracing/TRACING_OPTIMIZATION.md) - Tracing optimizations
 
 **Ключевые возможности:**
 - TraceExecution - статический CFG-based трейсинг

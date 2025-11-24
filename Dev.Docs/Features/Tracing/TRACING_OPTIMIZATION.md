@@ -722,8 +722,4 @@ if (_z3Cache.TryGetValue(constraintHash, out var cachedResult))
 **Documentation:** 2300+ lines across 6 documents
 
 **См. также:**
-- 📖 [VARIANT_A_COMPLETE.md](VARIANT_A_COMPLETE.md) — TraceBackwards Full Cache technical details
-- 📖 [VARIANT_B_COMPLETE.md](VARIANT_B_COMPLETE.md) — Symbolic Execution technical details
-- 📖 [VARIANT_C_COMPLETE.md](VARIANT_C_COMPLETE.md) — FastSymbolIndex Cache technical details
-- 📖 [SYMBOL_CACHE.md](SYMBOL_CACHE.md) — Symbol cache comprehensive guide
-- 📖 [PHASE5_ADVANCED_TRACING_SUMMARY.md](PHASE5_ADVANCED_TRACING_SUMMARY.md) — Previous phase summary
+- 📖 Техническая документация вариантов оптимизации (TraceBackwards Cache, Symbolic Execution, FastSymbolIndex Cache) включена в данный документ

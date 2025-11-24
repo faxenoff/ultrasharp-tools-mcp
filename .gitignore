@@ -1,7 +1,9 @@
 # app specific user settings
 .claude
 .gemini
-.ultrasharp/
+.ultrasharp
+.vscode
+.codacy
 
 # Prerequisites
 *.vsconfig

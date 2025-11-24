@@ -141,4 +141,4 @@ var scriptsPath = ProjectPathHelper.GetScriptsPath();
 ## See Also
 
 - [COMM_GRACEFUL_SHUTDOWN_FIX.md](COMM_GRACEFUL_SHUTDOWN_FIX.md) - IPC architecture details
-- [Dev.Docs/Architecture/PHASE_3_3_SEMANTIC_IPC.md](Dev.Docs/Architecture/PHASE_3_3_SEMANTIC_IPC.md) - Hybrid architecture
+- [PHASE_3_3_SEMANTIC_IPC.md](../Dev.Archive/PHASE_3_3_SEMANTIC_IPC.md) - Hybrid architecture

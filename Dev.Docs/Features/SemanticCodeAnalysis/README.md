@@ -145,7 +145,6 @@ var result = await AnalyzeCodeStyle(
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Детальная архитектура
 - [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) - План реализации
 - [API.md](./API.md) - API спецификация
-- [EXAMPLES.md](./EXAMPLES.md) - Примеры использования
 
 ## Связанные Issue/Commits
 
