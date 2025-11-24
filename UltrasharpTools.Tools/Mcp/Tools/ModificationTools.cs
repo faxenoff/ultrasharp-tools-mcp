@@ -2044,13 +2044,31 @@ public static class ModificationTools
                 ErrorHandlingHelpers.ValidateStringParameter(regexPattern, "regexPattern", logger);
                 ErrorHandlingHelpers.ValidateStringParameter(target, "targetString", logger);
 
-                //normalize newlines in pattern
+                // Normalize newlines in pattern: all line endings should match \n only
+                // Because NormalizeEndOfLines() converts all \r\n and \r to \n in the text
+                //
+                // Strategy:
+                // 1. First, normalize literal line ending characters (\r\n, \r -> \n)
+                // 2. Then, normalize regex escape sequences (\r?\n, \r\n, \r -> \n)
+                // 3. Finally, convert literal \n to regex pattern \n
+                //
+                // Step 1: Normalize literal characters (from JSON decode)
                 regexPattern = regexPattern
-                    .Replace("\r\n", "\n")
-                    .Replace("\r", "\n")
-                    .Replace("\n", @"\n")
-                    .Replace(@"\r\n", @"\n")
-                    .Replace(@"\r", @"\n");
+                    .Replace("\r\n", "\n")   // Real CRLF -> LF
+                    .Replace("\r", "\n");    // Real CR -> LF
+
+                // Step 2: Normalize regex patterns (handle \r?\n, \r\n, \r in regex syntax)
+                // These patterns might exist if user wrote \\r?\\n in JSON (becomes literal \r?\n after decode)
+                // But BEFORE we convert \n to \\n
+                regexPattern = Regex.Replace(regexPattern, @"\\r\?\\n", @"%%NEWLINE%%");  // \r?\n -> temp marker
+                regexPattern = Regex.Replace(regexPattern, @"\\r\\n", @"%%NEWLINE%%");    // \r\n -> temp marker
+                regexPattern = regexPattern.Replace(@"\\r", @"%%NEWLINE%%");              // \r -> temp marker
+
+                // Step 3: Convert literal \n to regex \n
+                regexPattern = regexPattern.Replace("\n", @"\n");   // Real LF -> regex \n
+
+                // Step 4: Replace temp markers with \n
+                regexPattern = regexPattern.Replace("%%NEWLINE%%", @"\n");
 
                 // Ensure solution is loaded
                 await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(
