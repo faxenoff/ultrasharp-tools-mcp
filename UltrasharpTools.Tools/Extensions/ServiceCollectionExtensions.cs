@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Ipc;
 using UltrasharpTools.Tools.Layered;
 using UltrasharpTools.Tools.Merge;
 using UltrasharpTools.Tools.Merge.Analysis;
@@ -18,8 +19,7 @@ namespace UltrasharpTools.Tools.Extensions;
 /// <summary>
 /// Extension methods for IServiceCollection to register SharpTools services.
 /// </summary>
-public static class ServiceCollectionExtensions
-{
+public static class ServiceCollectionExtensions {
     /// <summary>
     /// Adds all SharpTools services to the service collection.
     /// </summary>
@@ -32,8 +32,7 @@ public static class ServiceCollectionExtensions
         GitOptions? gitOptions = null,
         SolutionReloadOptions? reloadOptions = null,
         SymbolCacheOptions? symbolCacheOptions = null
-    )
-    {
+    ) {
         services.AddSingleton<IFuzzyFqnLookupService, FuzzyFqnLookupService>();
         services.AddSingleton<ISolutionManager>(sp => new SolutionManager(
             sp.GetRequiredService<ILogger<SolutionManager>>(),
@@ -46,14 +45,12 @@ public static class ServiceCollectionExtensions
             sp.GetService<IGitService>() // Optional: null if Git not enabled
         ));
         // Register AnalysisCacheService (optional, for performance)
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetRequiredService<ILogger<AnalysisCacheService>>();
             return new AnalysisCacheService(logger);
         });
 
-        services.AddSingleton<ICodeAnalysisService>(sp =>
-        {
+        services.AddSingleton<ICodeAnalysisService>(sp => {
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
             var logger = sp.GetRequiredService<ILogger<CodeAnalysisService>>();
             var cacheService = sp.GetRequiredService<AnalysisCacheService>();
@@ -61,8 +58,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Register CallGraphIndexer for background call graph indexing
-        services.AddSingleton<CallGraphIndexer>(sp =>
-        {
+        services.AddSingleton<CallGraphIndexer>(sp => {
             var codeAnalysisService = sp.GetRequiredService<ICodeAnalysisService>();
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
             var logger = sp.GetRequiredService<ILogger<CallGraphIndexer>>();
@@ -72,12 +68,9 @@ public static class ServiceCollectionExtensions
         // Register GitOptions
         services.AddSingleton(gitOptions ?? new GitOptions());
 
-        if (enableGit)
-        {
+        if (enableGit) {
             services.AddSingleton<IGitService, GitCliService>();
-        }
-        else
-        {
+        } else {
             services.AddSingleton<IGitService, NoOpGitService>();
         }
         services.AddSingleton<ICodeModificationService, CodeModificationService>();
@@ -103,21 +96,18 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFormattingService, FormattingService>();
 
         // Semantic enrichment services (Phase 1 + Phase 2) - registered before DiagnosticService
-        services.AddSingleton<ISemanticDiagnosticEnricher>(sp =>
-        {
+        services.AddSingleton<ISemanticDiagnosticEnricher>(sp => {
             var semanticModeProvider = sp.GetService<ISemanticModeProvider>(); // Nullable
             var logger = sp.GetRequiredService<ILogger<SemanticDiagnosticEnricher>>();
             return new SemanticDiagnosticEnricher(semanticModeProvider, logger);
         });
 
-        services.AddSingleton<IEditorConfigGenerator>(sp =>
-        {
+        services.AddSingleton<IEditorConfigGenerator>(sp => {
             var logger = sp.GetRequiredService<ILogger<EditorConfigGenerator>>();
             return new EditorConfigGenerator(logger);
         });
 
-        services.AddSingleton<IDiagnosticService>(sp =>
-        {
+        services.AddSingleton<IDiagnosticService>(sp => {
             var logger = sp.GetRequiredService<ILogger<DiagnosticService>>();
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
             var semanticEnricher = sp.GetService<ISemanticDiagnosticEnricher>(); // Nullable
@@ -150,8 +140,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="builder">The MCP service builder.</param>
     /// <returns>The MCP service builder for chaining.</returns>
-    public static IMcpServerBuilder WithUltrasharpTools(this IMcpServerBuilder builder)
-    {
+    public static IMcpServerBuilder WithUltrasharpTools(this IMcpServerBuilder builder) {
         var toolAssembly = Assembly.Load("UltrasharpTools.Tools");
 
         return builder.WithToolsFromAssembly(toolAssembly);
@@ -170,15 +159,11 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection WithEmbeddingServices(
         this IServiceCollection services,
         Action<EmbeddingOptions>? configure = null
-    )
-    {
+    ) {
         // Register embedding options
-        if (configure != null)
-        {
+        if (configure != null) {
             services.Configure(configure);
-        }
-        else
-        {
+        } else {
             services.AddOptions<EmbeddingOptions>().BindConfiguration("Embedding");
         }
 
@@ -192,8 +177,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<EmbeddingProviderFactory>();
 
         // Register IEmbeddingProvider (lazily created via factory)
-        services.AddSingleton<IEmbeddingProvider>(sp =>
-        {
+        services.AddSingleton<IEmbeddingProvider>(sp => {
             var factory = sp.GetRequiredService<EmbeddingProviderFactory>();
             // Create provider synchronously (in production use IHostedService)
             return factory.CreateAsync().GetAwaiter().GetResult();
@@ -218,24 +202,21 @@ public static class ServiceCollectionExtensions
         int dimension = 768,
         Action<EmbeddingOptions>? configureEmbedding = null,
         CodeSemanticIndexerConfig? indexerConfig = null
-    )
-    {
+    ) {
         // Register VectorStore configuration
         // NOTE: databasePath будет resolved lazily через LazyVectorStoreInitializer
         // чтобы можно было использовать ProjectPathHelper с solutionPath
         var vectorStoreConfig =
             databasePath != null
                 ? VectorStoreConfig.ForProduction(databasePath, dimension)
-                : VectorStoreConfig.Default with
-                {
+                : VectorStoreConfig.Default with {
                     Dimension = dimension,
                 };
 
         services.AddSingleton(vectorStoreConfig);
 
         // Register VectorStore (not initialized yet)
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<VectorStore>>();
             var config = sp.GetRequiredService<VectorStoreConfig>();
             return new VectorStore(config, logger);
@@ -251,8 +232,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(EmbeddingGeneratorConfig.Default);
 
         // Register EmbeddingGenerator
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var provider = sp.GetRequiredService<IEmbeddingProvider>();
             var config = sp.GetRequiredService<EmbeddingGeneratorConfig>();
             var logger = sp.GetService<ILogger<EmbeddingGenerator>>();
@@ -263,8 +243,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(indexerConfig ?? CodeSemanticIndexerConfig.Default);
 
         // Register CodeSemanticIndexer
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var vectorStore = sp.GetRequiredService<VectorStore>();
             var embeddingGenerator = sp.GetRequiredService<EmbeddingGenerator>();
             var config = sp.GetRequiredService<CodeSemanticIndexerConfig>();
@@ -273,8 +252,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Register SemanticSearchService (both interface and concrete type)
-        services.AddSingleton<SemanticSearchService>(sp =>
-        {
+        services.AddSingleton<SemanticSearchService>(sp => {
             var indexer = sp.GetRequiredService<CodeSemanticIndexer>();
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
             var logger = sp.GetService<ILogger<SemanticSearchService>>();
@@ -285,15 +263,13 @@ public static class ServiceCollectionExtensions
         );
 
         // Register QueryFeatureExtractor (для Hybrid Search)
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<QueryFeatureExtractor>>();
             return new QueryFeatureExtractor(logger);
         });
 
         // Register HybridSearchService (Phase 4: Hybrid Search)
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var vectorSearch = sp.GetRequiredService<SemanticSearchService>();
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
             var featureExtractor = sp.GetRequiredService<QueryFeatureExtractor>();
@@ -317,7 +293,50 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+    /// <summary>
+    /// Adds Semantic RAG services using external Indexer process via IPC.
+    /// This is a lightweight alternative to WithSemanticRag that delegates all semantic operations
+    /// to a separate UltraSharpTools.Indexer.exe process via Named Pipe communication.
+    /// 
+    /// Benefits:
+    /// - Lower memory usage in Droid process
+    /// - AOT-compiled Indexer for better performance
+    /// - Process isolation - Indexer crash doesn't affect Droid
+    /// - Shared Indexer across multiple Droid instances
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="indexerPath">Optional custom path to Indexer executable. If null, uses default location.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection WithSemanticRagIndexer(
+        this IServiceCollection services,
+        string? indexerPath = null
+    ) {
+        // Register IndexerClient for IPC communication
+        services.AddSingleton(sp => {
+            var logger = sp.GetRequiredService<ILogger<IndexerClient>>();
+            return new IndexerClient(logger);
+        });
 
+        // Register HybridSemanticSearchService as the primary ISemanticSearchService implementation
+        services.AddSingleton<ISemanticSearchService>(sp => {
+            var indexerClient = sp.GetRequiredService<IndexerClient>();
+            var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var logger = sp.GetService<ILogger<HybridSemanticSearchService>>();
+            return new HybridSemanticSearchService(
+                indexerClient,
+                solutionManager,
+                config: null,
+                logger
+            );
+        });
+
+        // Also register as concrete type for direct access if needed
+        services.AddSingleton(sp =>
+            (HybridSemanticSearchService)sp.GetRequiredService<ISemanticSearchService>()
+        );
+
+        return services;
+    }
     /// <summary>
     /// Adds Semantic Merge services for AI-powered 3-way merge.
     /// Requires Semantic RAG services (WithSemanticRag) to be registered first.
@@ -325,71 +344,61 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection WithSemanticMerge(this IServiceCollection services)
-    {
+    public static IServiceCollection WithSemanticMerge(this IServiceCollection services) {
         // Parsing services
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<ContentNormalizer>>();
             return new ContentNormalizer(null, logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<StructuralFingerprint>>();
             return new StructuralFingerprint(logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var fingerprint = sp.GetRequiredService<StructuralFingerprint>();
             var normalizer = sp.GetRequiredService<ContentNormalizer>();
             var logger = sp.GetService<ILogger<CSharpParser>>();
             return new CSharpParser(fingerprint, normalizer, logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var fingerprint = sp.GetRequiredService<StructuralFingerprint>();
             var normalizer = sp.GetRequiredService<ContentNormalizer>();
             var logger = sp.GetService<ILogger<JsonParser>>();
             return new JsonParser(fingerprint, normalizer, logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var fingerprint = sp.GetRequiredService<StructuralFingerprint>();
             var normalizer = sp.GetRequiredService<ContentNormalizer>();
             var logger = sp.GetService<ILogger<XmlParser>>();
             return new XmlParser(fingerprint, normalizer, logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var fingerprint = sp.GetRequiredService<StructuralFingerprint>();
             var normalizer = sp.GetRequiredService<ContentNormalizer>();
             var logger = sp.GetService<ILogger<YamlParser>>();
             return new YamlParser(fingerprint, normalizer, logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var fingerprint = sp.GetRequiredService<StructuralFingerprint>();
             var normalizer = sp.GetRequiredService<ContentNormalizer>();
             var logger = sp.GetService<ILogger<PowerShellParser>>();
             return new PowerShellParser(fingerprint, normalizer, logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var fingerprint = sp.GetRequiredService<StructuralFingerprint>();
             var normalizer = sp.GetRequiredService<ContentNormalizer>();
             var logger = sp.GetService<ILogger<ShellParser>>();
             return new ShellParser(fingerprint, normalizer, logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var csharpParser = sp.GetRequiredService<CSharpParser>();
             var jsonParser = sp.GetRequiredService<JsonParser>();
             var xmlParser = sp.GetRequiredService<XmlParser>();
@@ -409,48 +418,41 @@ public static class ServiceCollectionExtensions
         });
 
         // Indexing services
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var extractor = sp.GetRequiredService<CodeUnitExtractor>();
             var logger = sp.GetService<ILogger<MultiVersionIndexer>>();
             return new MultiVersionIndexer(extractor, logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var embeddingGenerator = sp.GetRequiredService<EmbeddingGenerator>();
             var logger = sp.GetService<ILogger<LazyEmbeddingGenerator>>();
             return new LazyEmbeddingGenerator(embeddingGenerator, logger);
         });
 
         // Matching services
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<FastPathMatcher>>();
             return new FastPathMatcher(logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<SemanticMatcher>>();
             return new SemanticMatcher(logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<MovementDetector>>();
             return new MovementDetector(logger);
         });
 
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<StructuralAligner>>();
             return new StructuralAligner(logger);
         });
 
         // Merge engine
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var fastPathMatcher = sp.GetRequiredService<FastPathMatcher>();
             var semanticMatcher = sp.GetRequiredService<SemanticMatcher>();
             var movementDetector = sp.GetRequiredService<MovementDetector>();
@@ -466,15 +468,13 @@ public static class ServiceCollectionExtensions
         });
 
         // Analysis services
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var logger = sp.GetService<ILogger<IntentClassifier>>();
             return new IntentClassifier(logger);
         });
 
         // Main Semantic Merge service
-        services.AddSingleton(sp =>
-        {
+        services.AddSingleton(sp => {
             var indexer = sp.GetRequiredService<MultiVersionIndexer>();
             var merger = sp.GetRequiredService<ThreeWayMerger>();
             var logger = sp.GetService<ILogger<SemanticMergeService>>();
@@ -504,12 +504,10 @@ public static class ServiceCollectionExtensions
         int maxBranchDeltas = 20,
         bool enablePersistence = true,
         int deltaCompactionThreshold = 1000
-    )
-    {
+    ) {
         // Register layered indexing configuration
         services.AddSingleton(
-            new LayeredIndexingOptions
-            {
+            new LayeredIndexingOptions {
                 MaxBranchDeltas = maxBranchDeltas,
                 EnablePersistence = enablePersistence,
                 DeltaCompactionThreshold = deltaCompactionThreshold,
@@ -517,8 +515,7 @@ public static class ServiceCollectionExtensions
         );
 
         // Register LayeredSymbolIndex (Phase 1.1 + 1.2)
-        services.AddSingleton<ILayeredIndex>(sp =>
-        {
+        services.AddSingleton<ILayeredIndex>(sp => {
             var baseIndex = sp.GetRequiredService<FastSymbolIndex>();
             var options = sp.GetRequiredService<LayeredIndexingOptions>();
             var gitService = sp.GetService<IGitService>(); // Optional: null if not registered

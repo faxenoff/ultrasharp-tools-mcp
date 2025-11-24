@@ -1,6 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\UltrasharpTools.Tools\UltrasharpTools.Tools.csproj" />
+    <!-- Reference Indexer project to copy its output (exe + dependencies) -->
+    <ProjectReference Include="..\UltraSharpTools.Indexer\UltraSharpTools.Indexer.csproj">
+      <!-- Don't reference assembly, just copy output files -->
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <!-- Copy Indexer output to Droid output directory -->
+      <Private>false</Private>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -54,6 +62,26 @@
     <DebugType>embedded</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
+
+  <!-- Copy Indexer executable and dependencies to output directory -->
+  <Target Name="CopyIndexerToOutput" AfterTargets="Build">
+    <PropertyGroup>
+      <IndexerOutputPath>..\UltraSharpTools.Indexer\bin\$(Configuration)\net10.0\</IndexerOutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <!-- Copy Indexer exe and all its dependencies -->
+      <IndexerFiles Include="$(IndexerOutputPath)**\*.*" Exclude="$(IndexerOutputPath)**\*.pdb" />
+    </ItemGroup>
+
+    <Copy
+      SourceFiles="@(IndexerFiles)"
+      DestinationFiles="@(IndexerFiles->'$(OutputPath)\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+    />
+
+    <Message Importance="high" Text="Copied Indexer files to $(OutputPath)" />
+  </Target>
 
   <!-- Clean up PDB files after publish (Release only) -->
   <!-- Note: BuildHost directories cleaned by publish-mcp.ps1 -->

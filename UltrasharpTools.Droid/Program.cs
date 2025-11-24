@@ -480,47 +480,10 @@ public static class Program
                             }
                         }
 
-                        // Register semantic RAG services
-                        builder.Services.WithSemanticRag(
-                            databasePath: databasePath,
-                            dimension: 384, // Default for granite-embedding and all-MiniLM-L6-v2
-                            configureEmbedding: options =>
-                            {
-                                options.Provider = config.Embedding.Platform;
-                                options.AutoDetectGPU = false; // Already detected
-
-                                if (
-                                    string.Equals(
-                                        config.Embedding.Platform,
-                                        "ollama",
-                                        StringComparison.OrdinalIgnoreCase
-                                    )
-                                )
-                                {
-                                    options.Ollama.BaseUrl =
-                                        config.Embedding.Ollama?.Endpoint
-                                        ?? "http://127.0.0.1:11434";
-                                    options.Ollama.Model =
-                                        config.Embedding.Ollama?.SelectedModel
-                                        ?? "nomic-embed-text";
-                                }
-                                else if (
-                                    string.Equals(
-                                        config.Embedding.Platform,
-                                        "tei",
-                                        StringComparison.OrdinalIgnoreCase
-                                    )
-                                )
-                                {
-                                    options.TEI.BaseUrl =
-                                        config.Embedding.Tei?.Endpoint ?? "http://127.0.0.1:8080";
-                                    options.TEI.Model =
-                                        config.Embedding.Tei?.SelectedModel
-                                        ?? "BAAI/bge-small-en-v1.5";
-                                }
-                            },
-                            indexerConfig: null
-                        );
+                        // Register semantic RAG services via external Indexer process
+                        // Indexer.exe manages its own embedding configuration (Ollama/TEI)
+                        // Communication via Named Pipe IPC for process isolation and performance
+                        builder.Services.WithSemanticRagIndexer();
 
                         if (enableConsoleOutput)
                         {
