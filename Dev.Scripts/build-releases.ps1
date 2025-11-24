@@ -1,16 +1,29 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Build Droid for multiple platforms and create release archives
+    Build UltrasharpTools for multiple platforms and create release archives.
+
+.DESCRIPTION
+    Builds all components with shared runtime architecture:
+    - shared/: Common .NET runtime (~70MB)
+    - Droid: Framework-dependent
+    - VectorDB: Native AOT (included in Droid/)
+    - Comm: Trimmed SingleFile
+
+    Note: Overlord собирается отдельно через Dockerfile.
+
 .PARAMETER Version
     Version string (default: auto-detect from .csproj)
+
 .PARAMETER Configuration
     Build configuration (default: Release)
+
 .PARAMETER OutputDir
     Output directory for release archives (default: Run.Publish/Releases)
+
 .EXAMPLE
     .\build-releases.ps1
-    .\build-releases.ps1 -Version "3.0.0"
+    .\build-releases.ps1 -Version "3.0.8"
 #>
 
 param(
@@ -44,9 +57,9 @@ Set-Location $ProjectRoot
 
 # Colors
 function Write-Header { param([string]$Text) Write-Host "`n=== $Text ===" -ForegroundColor Cyan }
-function Write-Success { param([string]$Text) Write-Host "✓ $Text" -ForegroundColor Green }
-function Write-Info { param([string]$Text) Write-Host "→ $Text" -ForegroundColor Yellow }
-function Write-Error { param([string]$Text) Write-Host "✗ $Text" -ForegroundColor Red }
+function Write-Success { param([string]$Text) Write-Host "[OK] $Text" -ForegroundColor Green }
+function Write-Info { param([string]$Text) Write-Host "    $Text" -ForegroundColor Yellow }
+function Write-Err { param([string]$Text) Write-Host "[X] $Text" -ForegroundColor Red }
 
 Write-Header "UltrasharpTools Multi-Platform Release Builder"
 
@@ -61,7 +74,7 @@ if (-not $Version) {
         }
     }
     if (-not $Version) {
-        $Version = "3.0.0"
+        $Version = "3.0.8"
         Write-Info "Version auto-detection failed, using default: $Version"
     } else {
         Write-Info "Auto-detected version: $Version"
@@ -99,24 +112,24 @@ foreach ($Platform in $Platforms) {
     Write-Header "Building for $rid ($os / $arch)"
 
     try {
-        # Build using publish-mcp.ps1
-        $publishScript = Join-Path $PSScriptRoot "publish-mcp.ps1"
-        Write-Info "Running: publish-mcp.ps1 -Configuration $Configuration -Runtime $rid"
+        # Build using build-release.ps1 from project root
+        $buildScript = Join-Path $ProjectRoot "build-release.ps1"
+        Write-Info "Running: build-release.ps1 -RuntimeIdentifier $rid -Clean"
 
-        & $publishScript -Configuration $Configuration -Runtime $rid
+        & $buildScript -RuntimeIdentifier $rid -Clean
 
         if ($LASTEXITCODE -ne 0) {
             throw "Build failed with exit code $LASTEXITCODE"
         }
 
         # Find output directory
-        $buildOutput = Join-Path $ProjectRoot "Run.Publish/Droid"
+        $buildOutput = Join-Path $ProjectRoot "Run.Publish"
         if (-not (Test-Path $buildOutput)) {
             throw "Build output not found at: $buildOutput"
         }
 
         # Create archive name
-        $archiveName = "ultrasharp-tools-droid-v$Version-$os-$arch"
+        $archiveName = "ultrasharp-tools-v$Version-$os-$arch"
 
         Write-Info "Creating archive: $archiveName.$archiveType"
 
@@ -149,7 +162,7 @@ foreach ($Platform in $Platforms) {
         $SuccessCount++
     }
     catch {
-        Write-Error "Failed to build ${rid}: ${_}"
+        Write-Err "Failed to build ${rid}: ${_}"
         $FailCount++
     }
 }
@@ -157,9 +170,9 @@ foreach ($Platform in $Platforms) {
 # Summary
 Write-Header "Build Summary"
 Write-Host "Total platforms: $($Platforms.Count)" -ForegroundColor White
-Write-Host "✓ Successful: $SuccessCount" -ForegroundColor Green
+Write-Host "[OK] Successful: $SuccessCount" -ForegroundColor Green
 if ($FailCount -gt 0) {
-    Write-Host "✗ Failed: $FailCount" -ForegroundColor Red
+    Write-Host "[X] Failed: $FailCount" -ForegroundColor Red
 }
 
 Write-Host "`nRelease archives location:" -ForegroundColor Cyan
@@ -172,7 +185,7 @@ if ($SuccessCount -gt 0) {
         Write-Host "  $($_.Name) - $([math]::Round($size, 2)) MB" -ForegroundColor Gray
     }
 
-    Write-Host "`n📦 Next steps for GitHub Release:" -ForegroundColor Yellow
+    Write-Host "`nNext steps for GitHub Release:" -ForegroundColor Yellow
     Write-Host "1. Create a new release on GitHub:" -ForegroundColor White
     Write-Host "   gh release create v$Version --title `"Release v$Version`" --notes `"Release notes here`"" -ForegroundColor Gray
     Write-Host "`n2. Upload release archives:" -ForegroundColor White

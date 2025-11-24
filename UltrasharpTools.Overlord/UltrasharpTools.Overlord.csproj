@@ -29,6 +29,10 @@
 
   <!-- Performance Optimizations (Release only) -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Framework-dependent: shared runtime в ../shared/ -->
+    <SelfContained>false</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
     <!-- Tiered Compilation для оптимизации hot paths -->
     <TieredCompilation>true</TieredCompilation>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>

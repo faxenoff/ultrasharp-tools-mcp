@@ -686,6 +686,7 @@ Droid (Console)         Overlord (Web)
 --disable-git                    # Отключить Git integration
 --symbol-cache                   # Включить persistent cache (по умолчанию: true)
 --symbol-cache-clear             # Очистить cache при старте
+--low-memory                     # Режим экономии памяти (SQLite для reflection types)
 
 # Overlord (HTTP/SSE)
 --port <number>                  # HTTP порт (по умолчанию: 3001)
@@ -711,6 +712,24 @@ services.WithUltrasharpToolsServices(
     }
 );
 ```
+
+**Low Memory Mode** (экономия ~50-100MB):
+```csharp
+services.WithUltrasharpToolsServices(
+    lowMemoryMode: true  // Использует SQLite для reflection types вместо FrozenDictionary
+);
+```
+
+Или через CLI:
+```bash
+UltrasharpTools.Droid.exe --low-memory
+```
+
+**Оптимизации в режиме `--low-memory`:**
+- SQLite FTS5 для reflection type search вместо in-memory FrozenDictionary
+- LRU cache (500 типов) для горячих данных
+- Lazy loading Type объектов через MetadataLoadContext
+- Уменьшенные лимиты MemoryCache (150MB + 250MB вместо 500MB + 1GB)
 
 </details>
 

@@ -31,9 +31,9 @@
 
 ---
 
-### 2. UltraSharpTools.Indexer (Семантическая индексация с AOT)
+### 2. UltraSharpTools.VectorDB (Семантическая индексация с AOT)
 
-**Создан проект:** `UltraSharpTools.Indexer/`
+**Создан проект:** `UltraSharpTools.VectorDB/`
 
 **Особенности:**
 - ✅ Native AOT + Full Trimming (целевой размер ~30 MB)
@@ -69,9 +69,9 @@
   - Принимает подключения от Comm
   - Проксирует MCP запросы к основному движку
 
-- `IndexerClient.cs` - IPC клиент для Indexer
+- `IndexerClient.cs` - IPC клиент для VectorDB
   - Подключается к `UltraSharpTools_Indexer` pipe
-  - Запускает Indexer процесс если нужно
+  - Запускает VectorDB процесс если нужно
   - Методы: `IndexCodeAsync()`, `SearchSimilarAsync()`
   - Thread-safe запросы через SemaphoreSlim
 
@@ -130,22 +130,22 @@
 
 ---
 
-### Phase 3: Перенос Semantic компонентов в Indexer
+### Phase 3: Перенос Semantic компонентов в VectorDB
 
-**Из UltrasharpTools.Tools переместить в UltrasharpTools.Indexer:**
+**Из UltrasharpTools.Tools переместить в UltrasharpTools.VectorDB:**
 
 ```
 UltrasharpTools.Tools/Semantic/
-├─ VectorStore.cs              → Indexer/Services/VectorStore.cs
-├─ SemanticSearchService.cs    → Indexer/Services/SemanticSearchService.cs
-├─ EmbeddingGenerator.cs       → Indexer/Services/EmbeddingGenerator.cs
-├─ Backends/                   → Indexer/Backends/
-└─ Models/                     → Indexer/Models/
+├─ VectorStore.cs              → VectorDB/Services/VectorStore.cs
+├─ SemanticSearchService.cs    → VectorDB/Services/SemanticSearchService.cs
+├─ EmbeddingGenerator.cs       → VectorDB/Services/EmbeddingGenerator.cs
+├─ Backends/                   → VectorDB/Backends/
+└─ Models/                     → VectorDB/Models/
 
 UltrasharpTools.Tools/Layered/
-├─ VectorCacheManager.cs       → Indexer/Layered/VectorCacheManager.cs
-├─ LayeredCacheManager.cs      → Indexer/Layered/LayeredCacheManager.cs
-└─ ...                         → Indexer/Layered/
+├─ VectorCacheManager.cs       → VectorDB/Layered/VectorCacheManager.cs
+├─ LayeredCacheManager.cs      → VectorDB/Layered/LayeredCacheManager.cs
+└─ ...                         → VectorDB/Layered/
 ```
 
 **После переноса:**
@@ -170,26 +170,26 @@ UltrasharpTools.Tools/Layered/
        -o Run.Publish/Comm
    ```
 
-2. **publish-indexer.ps1:**
+2. **publish-vectordb.ps1:**
    ```powershell
-   dotnet publish UltraSharpTools.Indexer `
+   dotnet publish UltraSharpTools.VectorDB `
        -c Release `
        -r win-x64 `
        --self-contained `
        -p:PublishAot=true `
        -p:StripSymbols=true `
-       -o Run.Publish/Indexer
+       -o Run.Publish/VectorDB
    ```
 
 3. **publish-all.ps1:**
-   - Собрать Comm, Droid, Indexer
+   - Собрать Comm, Droid, VectorDB
    - Скопировать в единую директорию
    - Проверить размеры
 
 **Целевые размеры (Release + AOT + Trimming):**
 - Comm: ~5-10 MB
 - Droid: ~60-70 MB (без Semantic)
-- Indexer: ~30-40 MB (с Semantic + vectorlite)
+- VectorDB: ~30-40 MB (с Semantic + vectorlite)
 - **Total: ~95-120 MB** (vs текущие 103 MB только для Droid)
 
 ---
@@ -214,12 +214,12 @@ UltrasharpTools.Tools/Layered/
 │ ├─ SingletonLock (только 1 экземпляр)               │
 │ ├─ IpcServer (для Comm)                             │
 │ ├─ Roslyn + Tools (Core)                            │
-│ └─ IndexerClient (к Indexer)                        │
+│ └─ IndexerClient (к VectorDB)                        │
 └────────────────┬────────────────────────────────────┘
                  │ Named Pipe IPC
                  ↓
 ┌─────────────────────────────────────────────────────┐
-│ UltraSharpTools.Indexer (~32 MB, AOT)               │
+│ UltraSharpTools.VectorDB (~32 MB, AOT)               │
 │ ├─ VectorStore (SQLite + vectorlite)                │
 │ ├─ SemanticSearch                                   │
 │ ├─ EmbeddingGenerator                               │
@@ -243,7 +243,7 @@ UltrasharpTools.Tools/Layered/
 
 **3. Отдельный процесс индексации:**
 - Изоляция тяжелых семантических операций
-- Можно перезапустить Indexer без перезагрузки Droid
+- Можно перезапустить VectorDB без перезагрузки Droid
 - AOT + trimming для минимального размера
 
 **4. IPC через Named Pipes:**

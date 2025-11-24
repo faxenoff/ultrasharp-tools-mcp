@@ -1,6 +1,30 @@
 # Multi-Platform Release Build Guide
 
-Скрипты для сборки UltrasharpTools.Droid под все поддерживаемые платформы и создания release архивов.
+Скрипты для сборки UltrasharpTools под все поддерживаемые платформы и создания release архивов.
+
+## Архитектура сборки (v3.0.8+)
+
+**Shared Runtime Architecture** — один .NET runtime для всех framework-dependent приложений.
+
+```
+Run.Publish/Releases/ultrasharp-tools-v3.0.8-windows-x64.zip
+├── shared/                    # Общий .NET runtime (~70MB)
+│   └── Microsoft.NETCore.App/
+├── Droid/                     # Framework-dependent (~30MB)
+│   ├── run-droid.cmd          # Launcher (устанавливает DOTNET_ROOT)
+│   ├── run-droid.sh
+│   ├── UltrasharpTools.Droid.exe
+│   └── UltraSharpTools.VectorDB.exe  # Native AOT (~15MB)
+├── Comm/                      # Trimmed SingleFile (~5MB)
+│   └── UltraSharpTools.Comm.exe
+└── README.md
+```
+
+> **Note:** Overlord собирается отдельно через Dockerfile и не включён в release архивы.
+
+**Экономия:** ~50MB (~33%) по сравнению с self-contained сборкой.
+
+---
 
 ## Поддерживаемые платформы
 
@@ -13,49 +37,55 @@
 | `linux-x64` | Linux | x64 | .tar.gz |
 | `linux-arm64` | Linux | ARM64 | .tar.gz |
 
+---
+
 ## Использование
 
-### Windows
-
-```cmd
-# Автоопределение версии из .csproj
-Dev.Scripts\build-releases.cmd
-
-# Указать версию вручную
-Dev.Scripts\build-releases.cmd 3.0.0
-```
-
-### Linux/macOS
+### Быстрый старт (из корня проекта)
 
 ```bash
-# Автоопределение версии
+# Windows
+build-release.cmd
+
+# Linux/macOS
+./build-release.sh
+```
+
+Это создаст release для текущей платформы в `Run.Publish/`.
+
+### Multi-Platform Release (все платформы)
+
+```cmd
+# Windows
+Dev.Scripts\build-releases.cmd
+
+# Linux/macOS
 ./Dev.Scripts/build-releases.sh
 
-# Указать версию
-./Dev.Scripts/build-releases.sh 3.0.0
+# PowerShell (кросс-платформенный)
+pwsh Dev.Scripts/build-releases.ps1 -Version "3.0.8"
 ```
 
-### PowerShell (кросс-платформенный)
-
-```powershell
-# Автоопределение версии
-pwsh Dev.Scripts/build-releases.ps1
-
-# С параметрами
-pwsh Dev.Scripts/build-releases.ps1 -Version "3.0.0" -Configuration "Release"
-```
+---
 
 ## Что делает скрипт
 
-1. **Определяет версию** - автоматически из `.csproj` или из параметра
-2. **Очищает старые релизы** - удаляет `Run.Publish/Releases/`
-3. **Собирает для каждой платформы**:
-   - Вызывает `publish-mcp.ps1` с нужным RID
-   - Создаёт ReadyToRun сборки для быстрого старта
-4. **Упаковывает в архивы**:
-   - Windows: `.zip` (через `Compress-Archive`)
-   - Linux/macOS: `.tar.gz` (через `tar`)
-5. **Выводит summary** с размерами файлов
+1. **Определяет версию** — автоматически из `.csproj` или из параметра
+2. **Для каждой платформы:**
+   - Извлекает shared .NET runtime в `shared/`
+   - Собирает VectorDB (Native AOT)
+   - Собирает Comm (Trimmed SingleFile)
+   - Собирает Droid (framework-dependent)
+   - Копирует VectorDB в Droid/
+   - Создаёт launcher скрипты
+3. **Упаковывает в архивы:**
+   - Windows: `.zip`
+   - Linux/macOS: `.tar.gz`
+4. **Выводит summary** с размерами файлов
+
+> **Note:** Overlord собирается отдельно через Dockerfile.
+
+---
 
 ## Результат
 
@@ -63,41 +93,41 @@ pwsh Dev.Scripts/build-releases.ps1 -Version "3.0.0" -Configuration "Release"
 
 ```
 Run.Publish/Releases/
-├── ultrasharp-tools-droid-v3.0.0-windows-x64.zip
-├── ultrasharp-tools-droid-v3.0.0-windows-arm64.zip
-├── ultrasharp-tools-droid-v3.0.0-macos-x64.tar.gz
-├── ultrasharp-tools-droid-v3.0.0-macos-arm64.tar.gz
-├── ultrasharp-tools-droid-v3.0.0-linux-x64.tar.gz
-└── ultrasharp-tools-droid-v3.0.0-linux-arm64.tar.gz
+├── ultrasharp-tools-v3.0.8-windows-x64.zip       (~100MB)
+├── ultrasharp-tools-v3.0.8-windows-arm64.zip
+├── ultrasharp-tools-v3.0.8-macos-x64.tar.gz
+├── ultrasharp-tools-v3.0.8-macos-arm64.tar.gz
+├── ultrasharp-tools-v3.0.8-linux-x64.tar.gz
+└── ultrasharp-tools-v3.0.8-linux-arm64.tar.gz
 ```
+
+---
 
 ## Публикация в GitHub Releases
 
-### Вариант 1: Через GitHub CLI (автоматически)
+### Вариант 1: Через GitHub CLI
 
 ```bash
 # 1. Создать release
-gh release create v3.0.0 \
-  --title "Release v3.0.0" \
+gh release create v3.0.8 \
+  --title "Release v3.0.8" \
   --notes "$(cat CHANGELOG.md)"
 
 # 2. Загрузить все архивы
-gh release upload v3.0.0 Run.Publish/Releases/*
+gh release upload v3.0.8 Run.Publish/Releases/*
 ```
 
-### Вариант 2: Через GitHub UI (вручную)
+### Вариант 2: Через GitHub UI
 
 1. Перейдите на https://github.com/your-username/ultrasharp-tools-mcp/releases/new
 2. Заполните форму:
-   - **Tag**: `v3.0.0` (создаётся автоматически если нет)
-   - **Title**: `Release v3.0.0`
+   - **Tag**: `v3.0.8`
+   - **Title**: `Release v3.0.8`
    - **Description**: скопируйте из CHANGELOG.md
-3. Перетащите файлы из `Run.Publish/Releases/` в секцию "Attach binaries"
+3. Перетащите файлы из `Run.Publish/Releases/`
 4. Нажмите "Publish release"
 
 ### Вариант 3: Через GitHub Actions (CI/CD)
-
-Создайте `.github/workflows/release.yml`:
 
 ```yaml
 name: Build Release
@@ -109,29 +139,39 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      - name: Build releases
-        run: pwsh Dev.Scripts/build-releases.ps1 -Version ${GITHUB_REF#refs/tags/v}
+      - name: Build release
+        run: pwsh build-release.ps1
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}
+          path: Run.Publish/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: Run.Publish/Releases/*
+          files: release-*/**/*
 ```
 
-Затем:
-```bash
-git tag v3.0.0
-git push origin v3.0.0
-```
-
-GitHub Actions автоматически соберёт и опубликует релиз.
+---
 
 ## Требования
 
@@ -145,65 +185,51 @@ GitHub Actions автоматически соберёт и опубликует
 - .NET 10 SDK
 - `tar` и `zip` (обычно установлены)
 
+---
+
+## Параметры скриптов
+
+### build-release.ps1 (в корне)
+
+| Параметр | По умолчанию | Описание |
+|----------|--------------|----------|
+| `-Clean` | false | Очистить выходные директории |
+| `-RuntimeIdentifier` | win-x64 | Целевая платформа (RID) |
+| `-SkipRuntime` | false | Пропустить извлечение runtime |
+
+### build-releases.ps1 (в Dev.Scripts/)
+
+| Параметр | По умолчанию | Описание |
+|----------|--------------|----------|
+| `-Version` | auto | Версия (из .csproj если не указана) |
+| `-Configuration` | Release | Конфигурация сборки |
+| `-OutputDir` | Run.Publish/Releases | Директория для архивов |
+
+---
+
 ## Troubleshooting
 
 ### "tar: command not found" на Windows
 
-Установите tar через:
 - Windows 10 1803+: встроен в систему
-- Или через Git for Windows (включает GNU tar)
-
-### "Compress-Archive: OutOfMemoryException"
-
-Для очень больших сборок (>500 MB):
-```powershell
-# Используйте 7-Zip вместо Compress-Archive
-7z a archive.zip folder/*
-```
+- Или установите через Git for Windows (включает GNU tar)
 
 ### Сборка зависает
 
 - Проверьте доступность NuGet пакетов
 - Очистите кэш: `dotnet nuget locals all --clear`
-- Пересоберите: `dotnet clean && ./build-releases.cmd`
+- Пересоберите: `build-release.cmd -Clean`
 
-## Примеры
+### Native AOT не собирается
 
-### Собрать только для текущей платформы
+- Убедитесь что установлен C++ Build Tools
+- Windows: Visual Studio Build Tools с C++ workload
+- Linux: `sudo apt install clang zlib1g-dev`
 
-```powershell
-# Вместо build-releases используйте publish-mcp
-pwsh Dev.Scripts/publish-mcp.ps1 -Runtime $(dotnet --info | grep 'RID' | awk '{print $2}')
-```
-
-### Собрать только для Windows
-
-```powershell
-# Модифицируйте $Platforms в build-releases.ps1
-$Platforms = @(
-    @{ RID = "win-x64"; OS = "windows"; Arch = "x64"; Archive = "zip" }
-)
-```
-
-### Создать pre-release
-
-```bash
-# Tag с суффиксом
-git tag v3.0.0-beta.1
-
-# Build
-./build-releases.sh 3.0.0-beta.1
-
-# Release как pre-release
-gh release create v3.0.0-beta.1 \
-  --prerelease \
-  --title "Beta Release v3.0.0-beta.1" \
-  Run.Publish/Releases/*
-```
+---
 
 ## См. также
 
-- [Dev.Scripts/publish-mcp.ps1](./publish-mcp.ps1) - Single-platform build
-- [Dev.Scripts/publish-all.ps1](./publish-all.ps1) - Build Droid + Overlord
+- [BUILD_DEV_README.md](./BUILD_DEV_README.md) - Скрипты разработки
+- [UPDATE_VERSION_README.md](./UPDATE_VERSION_README.md) - Управление версиями
 - [GitHub Releases Documentation](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)
-- [GitHub CLI Documentation](https://cli.github.com/manual/gh_release)

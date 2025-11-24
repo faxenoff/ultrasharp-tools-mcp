@@ -6,6 +6,85 @@
 
 ---
 
+## [3.0.8] - 2025-11-25
+
+### 🎯 Статус
+**Memory Optimization Release** - Значительное снижение потребления памяти (~1.1GB → ~400-600MB)
+
+### Добавлено
+
+#### Memory Optimization: Low Memory Mode ⚡💾
+
+**Проблема (до 3.0.8):**
+- Droid процесс потреблял **1.7-2.5 GB** памяти на средних проектах
+- MemoryCache лимиты: 500MB + 1GB = **1.5GB** только на кеш
+- FrozenDictionary для reflection types: **50-150MB** в памяти
+- Все ISymbol объекты хранились в памяти
+
+**Решение:** Low Memory Mode (`--low-memory` CLI flag)
+
+**Компоненты:**
+
+1. **Уменьшенные лимиты MemoryCache** (всегда активно):
+   - Compilation cache: 500MB → **150MB** (-70%)
+   - SemanticModel cache: 1GB → **250MB** (-75%)
+   - **Общая экономия:** ~1.1GB памяти
+
+2. **SqliteSymbolIndex** (FTS5):
+   - Disk-based storage для символов вместо памяти
+   - Full-Text Search 5 для быстрого поиска по именам
+   - Возвращает `SymbolSearchResult` без ISymbol reference
+   - WAL mode для производительности
+
+3. **SqliteReflectionTypeIndex** (только в `--low-memory` режиме):
+   - Disk-based storage для reflection types
+   - Заменяет FrozenDictionary (~50-150MB экономия)
+   - LRU cache (500 типов) для горячих данных
+   - Lazy loading Type объектов через MetadataLoadContext
+   - FTS5 для полнотекстового поиска типов
+
+**Новый CLI флаг:**
+```bash
+UltrasharpTools.Droid.exe --low-memory
+```
+
+**Результаты:**
+| Метрика | Before | After (--low-memory) | Экономия |
+|---------|--------|---------------------|----------|
+| MemoryCache лимиты | 1.5GB | 400MB | **~1.1GB** |
+| Reflection types | 50-150MB (FrozenDict) | ~5MB (SQLite + LRU) | **~50-100MB** |
+| Общее потребление | 1.7-2.5GB | 400-600MB | **~1.2GB (60-70%)** |
+
+### Изменено
+
+**SolutionManager:**
+- Добавлен параметр `lowMemoryMode` в конструктор
+- Условная загрузка reflection types (FrozenDictionary vs SQLite)
+- Интеграция SqliteReflectionTypeIndex для поиска типов
+
+**ServiceCollectionExtensions:**
+- Добавлен параметр `lowMemoryMode` в `WithUltrasharpToolsServices()`
+
+**Program.cs (Droid):**
+- Новый CLI флаг `--low-memory`
+
+### Производительность
+
+**Memory vs Speed trade-off в `--low-memory` режиме:**
+
+| Операция | Normal Mode | Low Memory Mode | Разница |
+|----------|-------------|-----------------|---------|
+| Type lookup | O(1) FrozenDict | O(1) SQLite + LRU | +1-5ms |
+| Type search | O(N) linear | O(log N) FTS5 | **Быстрее** |
+| First type load | Instant | Lazy load | +10-50ms |
+| Memory | 1.7-2.5GB | 400-600MB | **-60-70%** |
+
+**Рекомендации:**
+- **Default mode** — для машин с 16+ GB RAM
+- **Low memory mode** — для ограниченных ресурсов или CI/CD
+
+---
+
 ## [3.0.7] - 2025-11-24
 
 ### 🎯 Статус

@@ -1031,7 +1031,7 @@ public class RoslynResourceManager
 
 ### ❌ Multi-agent архитектура
 **Причина:** Roslyn уже предоставляет всю информацию синхронно
-- Не нужны Parser/Indexer/Query агенты
+- Не нужны Parser/VectorDB/Query агенты
 - Roslyn Semantic Model быстрее чем Code Graph в SQLite
 - Добавит сложности без выигрыша
 

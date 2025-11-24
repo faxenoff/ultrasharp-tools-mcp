@@ -1,12 +1,99 @@
 # Development Build Scripts
 
-Скрипты для локальной разработки и тестирования hybrid архитектуры.
+Скрипты для локальной разработки и тестирования UltrasharpTools.
 
-## Основные скрипты сборки
+## Основные скрипты в корне проекта
+
+### build-debug.cmd / build-debug.sh / build-debug.ps1
+
+**Debug сборка для локальной разработки**
+
+```bash
+# Windows
+build-debug.cmd
+
+# Linux/macOS
+./build-debug.sh
+
+# PowerShell (кросс-платформенный)
+pwsh build-debug.ps1
+```
+
+**Параметры:**
+- `-Clean` — очистить выходные директории перед сборкой
+- `-RuntimeIdentifier` — целевая платформа (default: win-x64)
+
+**Что делает:**
+1. Собирает VectorDB (self-contained)
+2. Собирает Droid (self-contained)
+3. Собирает Comm (trimmed single-file)
+4. Копирует VectorDB в Droid/
+
+> **Note:** Overlord собирается отдельно через Dockerfile.
+
+**Выход:** `Run.Publish.Debug/`
+```
+Run.Publish.Debug/
+├── Droid/          # Droid + VectorDB + все зависимости
+├── Comm/           # Comm single-file
+└── VectorDB/       # VectorDB standalone
+```
+
+---
+
+### build-release.cmd / build-release.sh / build-release.ps1
+
+**Release сборка с shared runtime (~70MB экономия)**
+
+```bash
+# Windows
+build-release.cmd
+
+# Linux/macOS
+./build-release.sh
+
+# PowerShell (кросс-платформенный)
+pwsh build-release.ps1
+```
+
+**Параметры:**
+- `-Clean` — очистить выходные директории перед сборкой
+- `-RuntimeIdentifier` — целевая платформа (default: win-x64)
+- `-SkipRuntime` — пропустить извлечение runtime (использовать существующий)
+
+**Что делает:**
+1. Извлекает .NET runtime в `shared/` (один раз)
+2. Собирает VectorDB (Native AOT) → один бинарник
+3. Собирает Comm (Trimmed SingleFile) → один бинарник
+4. Собирает Droid (framework-dependent) → использует shared runtime
+5. Создаёт launcher скрипты (run-droid.cmd, run-droid.sh)
+
+> **Note:** Overlord собирается отдельно через Dockerfile.
+
+**Выход:** `Run.Publish/`
+```
+Run.Publish/
+├── shared/         # Общий .NET runtime (~70MB)
+├── Droid/          # Droid + VectorDB (framework-dependent)
+│   ├── run-droid.cmd
+│   ├── run-droid.sh
+│   └── UltrasharpTools.Droid.exe
+├── Comm/           # Comm (trimmed single-file, ~5MB)
+└── README.md
+```
+
+**Экономия места:**
+- До: ~150MB (Droid self-contained)
+- После: ~70MB (shared) + ~30MB (Droid) = ~100MB
+- **Экономия: ~50MB (~33%)**
+
+---
+
+## Вспомогательные скрипты в Dev.Scripts/
 
 ### build-all.ps1
 
-**Универсальный скрипт для сборки всех компонентов**
+**Универсальный скрипт для сборки всех компонентов (legacy)**
 
 ```powershell
 # Debug сборка (по умолчанию)
@@ -16,35 +103,15 @@ pwsh Dev.Scripts/build-all.ps1
 pwsh Dev.Scripts/build-all.ps1 -Configuration Release
 ```
 
-**Что делает:**
-1. Собирает Droid + Indexer (`build-hybrid.ps1`)
-2. Собирает Comm (`build-comm.ps1`)
-3. Копирует все в `Run.Build/Droid/`
-4. Показывает инструкции для Claude Desktop
-
-**Windows launchers в корне:**
-- `build-all.cmd` - Debug
-- `build-all-release.cmd` - Release
-
 ---
 
 ### build-hybrid.ps1
 
-**Сборка Droid + Indexer**
+**Сборка Droid + VectorDB**
 
 ```powershell
 pwsh Dev.Scripts/build-hybrid.ps1 -Configuration Debug
-pwsh Dev.Scripts/build-hybrid.ps1 -Configuration Release
 ```
-
-**Выход:**
-- `Run.Build/Droid/UltrasharpTools.Droid.exe`
-- `Run.Build/Droid/UltraSharpTools.Indexer.exe`
-- Все зависимости и `Config/`
-
-**Windows launchers в корне:**
-- `build-hybrid.cmd`
-- `build-droid-release.cmd`
 
 ---
 
@@ -54,37 +121,7 @@ pwsh Dev.Scripts/build-hybrid.ps1 -Configuration Release
 
 ```powershell
 pwsh Dev.Scripts/build-comm.ps1 -Configuration Debug
-pwsh Dev.Scripts/build-comm.ps1 -Configuration Release
 ```
-
-**Выход:**
-- `Run.Build/Droid/UltraSharpTools.Comm.exe`
-- Debug: + все dll зависимости
-- Release: только exe (Native AOT)
-
-**Windows launchers в корне:**
-- `build-comm.cmd`
-- `build-comm-release.cmd`
-
----
-
-## Production Release Scripts
-
-### publish-hybrid.ps1
-
-**Публикация всей hybrid архитектуры с оптимизациями**
-
-```powershell
-pwsh Dev.Scripts/publish-hybrid.ps1
-```
-
-**Выход:** `Run.Publish/Hybrid/` со всеми компонентами
-- Comm: Native AOT (~13 MB)
-- Indexer: Native AOT (~18 MB)
-- Droid: (~165 MB)
-
-**Windows launcher в корне:**
-- `publish-hybrid.cmd`
 
 ---
 
@@ -92,14 +129,9 @@ pwsh Dev.Scripts/publish-hybrid.ps1
 
 **Публикация только Droid (монолитная версия)**
 
-Используется для standalone Droid без hybrid архитектуры.
-
 ```powershell
-pwsh Dev.Scripts/publish-mcp.ps1
+pwsh Dev.Scripts/publish-mcp.ps1 -Runtime win-x64
 ```
-
-**Windows launcher в корне:**
-- `publish-droid.cmd`
 
 ---
 
@@ -110,18 +142,16 @@ pwsh Dev.Scripts/publish-mcp.ps1
 **Обновление версии во всех .csproj**
 
 ```powershell
-pwsh Dev.Scripts/update-version.ps1 -NewVersion "3.0.7"
+pwsh Dev.Scripts/update-version.ps1 -NewVersion "3.0.8"
 ```
 
 **Что делает:**
 1. Обновляет `<Version>` во всех .csproj
 2. Создает Git commit
-3. Создает Git tag `v3.0.7`
+3. Создает Git tag `v3.0.8`
 
 **Windows launcher в корне:**
-- `update-version.cmd 3.0.7`
-
-См. также: [UPDATE_VERSION_README.md](./UPDATE_VERSION_README.md)
+- `update-version.cmd 3.0.8`
 
 ---
 
@@ -132,14 +162,14 @@ pwsh Dev.Scripts/update-version.ps1 -NewVersion "3.0.7"
 **Сборка для всех платформ (win/mac/linux, x64/arm64)**
 
 ```powershell
-pwsh Dev.Scripts/build-releases.ps1 -Version "3.0.0"
+pwsh Dev.Scripts/build-releases.ps1 -Version "3.0.8"
 ```
 
 **Выход:** `Run.Publish/Releases/*.zip` и `*.tar.gz` архивы
 
 **Launchers:**
-- `build-releases.cmd` (Windows)
-- `build-releases.sh` (Linux/macOS)
+- `Dev.Scripts/build-releases.cmd` (Windows)
+- `Dev.Scripts/build-releases.sh` (Linux/macOS)
 
 См. также: [BUILD_RELEASES_README.md](./BUILD_RELEASES_README.md)
 
@@ -155,74 +185,73 @@ pwsh Dev.Scripts/build-releases.ps1 -Version "3.0.0"
 pwsh Dev.Scripts/setup-semantic-embedding.ps1
 ```
 
-**Что делает:**
-1. Определяет язык кодовой базы
-2. Определяет размер проекта
-3. Подбирает embedding модель
-4. Настраивает провайдер (TEI/Ollama/Memory)
-5. Создает `semantic-config.json`
-
-**Windows launcher в корне:**
+**Windows launcher:**
 - `Run.Config/setup-semantic-embedding.cmd`
-
----
-
-## Вспомогательные скрипты
-
-### organize-publish.ps1
-
-Организует структуру папок в `Run.Publish/`
-
-### convert-tokenizer-to-fast.ps1/.py
-
-Конвертирует токенизаторы HuggingFace в fast версии
-
-### setup-nvidia-container-toolkit.ps1
-
-Устанавливает NVIDIA Container Toolkit для Docker + GPU
 
 ---
 
 ## Быстрый старт
 
 ```bash
-# 1. Полная сборка для локальной разработки
-build-all.cmd
+# 1. Debug сборка для локальной разработки
+build-debug.cmd
 
-# 2. Настройка Claude Desktop
+# 2. Release сборка для production
+build-release.cmd
+
+# 3. Настройка Claude Desktop
 # %APPDATA%\Claude\claude_desktop_config.json:
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:\\github\\ultrasharp-tools-mcp\\Run.Build\\Droid\\UltraSharpTools.Comm.exe"
+      "command": "D:\\path\\to\\Run.Publish\\Droid\\run-droid.cmd"
     }
   }
 }
 
-# 3. Перезапуск Claude Desktop
+# 4. Или использовать Comm (IPC proxy)
+{
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "command": "D:\\path\\to\\Run.Publish\\Comm\\UltraSharpTools.Comm.exe"
+    }
+  }
+}
 ```
 
 ---
 
-## Иерархия скриптов
+## Архитектура сборки
 
 ```
-Dev.Scripts/
-├── build-all.ps1           ← Основной (вызывает build-hybrid + build-comm)
-├── build-hybrid.ps1        ← Droid + Indexer
-├── build-comm.ps1          ← Comm
-├── publish-hybrid.ps1      ← Release hybrid (все компоненты)
-├── publish-mcp.ps1         ← Release monolith (только Droid)
-└── build-releases.ps1      ← Multi-platform releases
+                    ┌─────────────────────────────────────┐
+                    │         build-release.ps1           │
+                    │   (создаёт shared runtime)          │
+                    └─────────────┬───────────────────────┘
+                                  │
+          ┌───────────────────────┼───────────────────────┐
+          │                       │                       │
+          ▼                       ▼                       ▼
+    ┌───────────┐           ┌───────────┐          ┌───────────┐
+    │   Droid   │           │  VectorDB │          │   Comm    │
+    │ framework │           │ Native AOT│          │  trimmed  │
+    │ dependent │           │ (single)  │          │single-file│
+    └─────┬─────┘           └───────────┘          └───────────┘
+          │
+          │    ┌────────────────────────────┐
+          └───►│  shared/ (.NET runtime)   │
+               │       ~70MB               │
+               └────────────────────────────┘
 ```
 
-**Правило:** Всегда используйте `build-all.ps1` для локальной разработки!
+**Comm** — отдельный trimmed single-file (~5MB), не использует shared runtime.
+
+> **Note:** Overlord собирается отдельно через Dockerfile (не включён в диаграмму).
 
 ---
 
 ## См. также
 
-- [BUILD_SCRIPTS.md](../BUILD_SCRIPTS.md) - Детальная документация
 - [BUILD_RELEASES_README.md](./BUILD_RELEASES_README.md) - Multi-platform releases
 - [UPDATE_VERSION_README.md](./UPDATE_VERSION_README.md) - Управление версиями
-- [QUICK_START.md](../QUICK_START.md) - Быстрый старт
+- [../Dev.Docs/BUILD_SCRIPTS.md](../Dev.Docs/BUILD_SCRIPTS.md) - Детальная документация

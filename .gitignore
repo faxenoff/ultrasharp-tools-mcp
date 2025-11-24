@@ -33,6 +33,7 @@ bld/
 publish/
 artifacts/
 Run.Publish/
+Run.Publish.Debug/
 Run.Logs/
 Run.Build/
 Run.Config/*.json

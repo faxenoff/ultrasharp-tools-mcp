@@ -7,17 +7,17 @@
 - Индексация **блокирует** Roslyn операции (критично для больших проектов)
 - Mono-repos: индексация **25 минут** блокирует всю работу
 
-**Решение**: **3 процесса** (Proxy + Core + Indexer)
+**Решение**: **3 процесса** (Proxy + Core + VectorDB)
 
 **Результат**:
 - 3 окна = **610 MB** (~60% экономии)
 - Proxy startup **<100ms**
 - **Индексация НЕ блокирует Core** (параллелизм)
-- Возможность remote Indexer с GPU (25 мин → 2 мин)
+- Возможность remote VectorDB с GPU (25 мин → 2 мин)
 
 **Рекомендация**: Вариант B (3 процесса) - **обязательно для больших проектов**
 
-**Критично**: БЕЗ разделения Indexer большие проекты **непригодны** для работы
+**Критично**: БЕЗ разделения VectorDB большие проекты **непригодны** для работы
 
 ---
 
@@ -159,7 +159,7 @@ _ = Task.Run(async () => {
 
 ### Вариант 1: Минимальный (простота > оптимизация)
 
-**НЕ выносить** Indexer, только Proxy + Server
+**НЕ выносить** VectorDB, только Proxy + Server
 
 ```
 ┌─────────────────────────────────────┐
@@ -256,7 +256,7 @@ UltrasharpTools.sln
          ├──────────────┬──────────────┐
          ↓              ↓              ↓
 ┌──────────────────┐  ┌───────────────────┐
-│ Core (НЕ AOT)    │  │ Indexer (✅ AOT*) │
+│ Core (НЕ AOT)    │  │ VectorDB (✅ AOT*) │
 │ - Roslyn (23)    │  │ - Vector DB       │
 │ - Utilities (25) │  │ - Semantic Search │
 │ - 350 MB RAM     │  │ - CodeIndexer     │
@@ -283,7 +283,7 @@ UltrasharpTools.sln
 │   ├── Utility Services (25 шт)
 │   └── Roslyn Tools (55 шт)
 │
-└── UltrasharpTools.Indexer (✅ AOT*)
+└── UltrasharpTools.VectorDB (✅ AOT*)
     ├── Semantic Services
     │   ├── VectorStore
     │   ├── CodeSemanticIndexer
@@ -372,20 +372,20 @@ public class CodeSemanticIndexer
 
 **Плюсы**:
 - ✅ Индексация НЕ блокирует Core (разные процессы)
-- ✅ Можно restart Indexer без Core
+- ✅ Можно restart VectorDB без Core
 - ✅ Vector DB изолирован (200 MB в отдельном процессе)
-- ✅ Indexer **МОЖЕТ быть AOT** (если убрать ISolutionManager)
+- ✅ VectorDB **МОЖЕТ быть AOT** (если убрать ISolutionManager)
 - ✅ Параллельная индексация и Roslyn операции
-- ✅ Можно scale Indexer отдельно (больше RAM/CPU)
+- ✅ Можно scale VectorDB отдельно (больше RAM/CPU)
 
 **Минусы**:
 - ❌ Дополнительный процесс (3 вместо 2)
 - ❌ Рефакторинг SemanticSearchService
 - ❌ Source code в Vector DB (дублирование, +размер БД)
-- ❌ Синхронизация между Core и Indexer при изменениях
+- ❌ Синхронизация между Core и VectorDB при изменениях
 - ❌ Дополнительная неделя разработки
 
-**Когда выносить Indexer**:
+**Когда выносить VectorDB**:
 
 ✅ **ОБЯЗАТЕЛЬНО ДЕЛАТЬ** если:
 - **Большие проекты**: >100 файлов, >50K LOC
@@ -393,7 +393,7 @@ public class CodeSemanticIndexer
 - Индексация занимает >30s (блокирует работу)
 - Vector DB >500 MB (много проектов)
 - Нужна независимая индексация в фоне
-- Планируется remote Indexer (на отдельной машине)
+- Планируется remote VectorDB (на отдельной машине)
 
 ❌ **МОЖНО НЕ ДЕЛАТЬ** если:
 - Маленькие проекты: <50 файлов, <10K LOC
@@ -404,14 +404,14 @@ public class CodeSemanticIndexer
 **Для вашего случая** (большие + очень большие проекты):
 - ✅ **Вариант B - единственный правильный выбор**
 - ✅ Индексация в фоне НЕ блокирует работу
-- ✅ Можно масштабировать Indexer независимо
-- ✅ В будущем: Indexer на отдельной машине с GPU для эмбеддингов
+- ✅ Можно масштабировать VectorDB независимо
+- ✅ В будущем: VectorDB на отдельной машине с GPU для эмбеддингов
 
 **Результат**:
 - 3 окна Claude Code: **610 MB** (3×20 + 350 + 200)
 - Memory экономия: **60%** (same as Вариант 1)
-- Indexer startup: **2s** (vs 33s Core)
-- Indexer **AOT возможен** (если рефакторинг)
+- VectorDB startup: **2s** (vs 33s Core)
+- VectorDB **AOT возможен** (если рефакторинг)
 
 ---
 
@@ -424,7 +424,7 @@ public class CodeSemanticIndexer
 - Vector DB: 200-500 MB
 - Блокирует работу при полной переиндексации
 
-**Решение**: Indexer в отдельном процессе (Вариант B)
+**Решение**: VectorDB в отдельном процессе (Вариант B)
 
 **Оптимизации**:
 1. **Incremental indexing**: только измененные файлы
@@ -447,9 +447,9 @@ public async Task OnFileChangedAsync(string filePath)
 - Индексация: 5-15 минут
 - Vector DB: 1-5 GB
 - Эмбеддинги: >100K вызовов к модели
-- RAM: Core + Indexer = 800 MB+
+- RAM: Core + VectorDB = 800 MB+
 
-**Решение**: Remote Indexer + оптимизации
+**Решение**: Remote VectorDB + оптимизации
 
 **Архитектура для mono-repos**:
 
@@ -468,7 +468,7 @@ public async Task OnFileChangedAsync(string filePath)
        │ gRPC (network)
        ↓
 ┌──────────────────────────────┐
-│ Indexer (Remote)             │  ← На отдельном сервере!
+│ VectorDB (Remote)             │  ← На отдельном сервере!
 │ - Vector DB (5 GB)           │
 │ - GPU для эмбеддингов        │
 │ - 2-4 GB RAM                 │
@@ -478,7 +478,7 @@ public async Task OnFileChangedAsync(string filePath)
 
 **Оптимизации для очень больших проектов**:
 
-1. **Distributed indexing**: несколько Indexer процессов
+1. **Distributed indexing**: несколько VectorDB процессов
 ```csharp
 // Шардирование по проектам
 Indexer1: ProjectA, ProjectB
@@ -532,7 +532,7 @@ VACUUM;
 | **Very Large** | 1000 | 500K | 5min | 30s | 1 GB |
 | **Mono-repo** | 5000 | 2M | 25min | 2min | 5 GB |
 
-**Критический порог**: >500K LOC → Remote Indexer обязательно
+**Критический порог**: >500K LOC → Remote VectorDB обязательно
 
 ---
 
@@ -918,19 +918,19 @@ catch (RpcException)
 
 | Метрика | Сейчас | После | Улучшение |
 |---------|--------|-------|-----------|
-| **Memory (1 окно)** | 500 MB | 20 MB (proxy) + 350 MB (core) + 200 MB (indexer) | N/A |
+| **Memory (1 окно)** | 500 MB | 20 MB (proxy) + 350 MB (core) + 200 MB (vectordb) | N/A |
 | **Memory (3 окна)** | 1500 MB | 60 MB + 350 MB + 200 MB = **610 MB** | **60%** ⬇️ |
 | **Cold start (Proxy)** | 33s | **<100ms** | **330x** ⚡ |
 | **Cold start (Core)** | 33s | 33s (один раз) | Same |
-| **Cold start (Indexer)** | N/A | **2s** (фон) | N/A |
+| **Cold start (VectorDB)** | N/A | **2s** (фон) | N/A |
 | **Warm start** | 33s | <100ms | **330x** ⚡ |
 | **Binary size (Proxy)** | 150 MB | **5-10 MB** (AOT) | **93%** ⬇️ |
-| **Binary size (Indexer)** | N/A | **15-20 MB** (AOT) | N/A |
+| **Binary size (VectorDB)** | N/A | **15-20 MB** (AOT) | N/A |
 | **IPC overhead** | 0 | 0.1-0.5ms | Negligible |
 
 ### Метрики индексации
 
-| Размер проекта | Файлов | LOC | Индексация (монолит) | Индексация (Indexer) | Блокировка Core |
+| Размер проекта | Файлов | LOC | Индексация (монолит) | Индексация (VectorDB) | Блокировка Core |
 |----------------|--------|-----|----------------------|----------------------|-----------------|
 | **Small** | 50 | 10K | 5s (блокирует) | 5s | ❌ НЕТ |
 | **Medium** | 200 | 100K | 30s (блокирует) | 30s | ❌ НЕТ |
@@ -1035,18 +1035,18 @@ message Response {
 **Для**: Быстрая реализация, минимальная сложность
 **Время**: 2-3 недели (20 дней)
 
-#### Вариант B: Proxy + Core + Indexer (3 процесса) - Оптимальность
+#### Вариант B: Proxy + Core + VectorDB (3 процесса) - Оптимальность
 **Для**: Индексация критична, планируется масштабирование
 **Время**: 3-4 недели (25 дней)
 **Дополнительно**: Рефакторинг SemanticSearchService
 
-**Рекомендация**: **Вариант B** (Proxy + Core + Indexer)
+**Рекомендация**: **Вариант B** (Proxy + Core + VectorDB)
 
 **Почему**:
 1. ✅ Индексация НЕ блокирует Roslyn операции (параллелизм)
 2. ✅ Vector DB изолирован (можно restart/scale)
-3. ✅ Indexer может быть AOT (после рефакторинга)
-4. ✅ Заделка на будущее (remote Indexer)
+3. ✅ VectorDB может быть AOT (после рефакторинга)
+4. ✅ Заделка на будущее (remote VectorDB)
 5. ✅ Всего +5 дней разработки, но долгосрочная польза
 
 **План реализации (Вариант B)**:
@@ -1062,7 +1062,7 @@ message Response {
 - gRPC server
 - Unix Domain Sockets
 
-**Phase 3**: Indexer Process (4-5 дней)
+**Phase 3**: VectorDB Process (4-5 дней)
 - Рефакторинг SemanticSearchService (убрать ISolutionManager)
 - Vector DB с source code storage
 - gRPC server для semantic operations
@@ -1070,7 +1070,7 @@ message Response {
 
 **Phase 4**: Proxy Process (4-5 дней)
 - MCP stdio transport
-- gRPC клиенты (Core + Indexer)
+- gRPC клиенты (Core + VectorDB)
 - Routing логика
 - AOT публикация
 
@@ -1090,8 +1090,8 @@ message Response {
 - **60% экономии памяти** (1.5 GB → 610 MB)
 - **330x быстрее старт** Proxy (<100ms)
 - **Индексация изолирована** (не блокирует Core)
-- **2 AOT бинарика** (Proxy + Indexer)
-- **Масштабируемость** (можно вынести Indexer на отдельный сервер)
+- **2 AOT бинарика** (Proxy + VectorDB)
+- **Масштабируемость** (можно вынести VectorDB на отдельный сервер)
 
 ### ❌ НЕ ДЕЛАТЬ
 
@@ -1135,13 +1135,13 @@ message Response {
 
 ## 🏁 Заключение
 
-**Рекомендуемая архитектура**: **3 процесса** (Proxy + Core + Indexer)
+**Рекомендуемая архитектура**: **3 процесса** (Proxy + Core + VectorDB)
 
 **Почему не 2**:
 - Индексация критична для работы
 - Vector DB изолирован (200 MB отдельно)
 - Параллелизм: Roslyn + Indexing одновременно
-- Заделка на будущее (remote Indexer, scaling)
+- Заделка на будущее (remote VectorDB, scaling)
 - Только +5 дней разработки (+25%)
 
 **Почему не 4+**:
@@ -1151,17 +1151,17 @@ message Response {
 
 **Ключевые преимущества**:
 - ✅ **60% экономии памяти** (1.5 GB → 610 MB)
-- ✅ **2 AOT процесса** (Proxy 5-10 MB, Indexer ~20 MB)
-- ✅ **Изоляция** (restart Indexer без Core)
+- ✅ **2 AOT процесса** (Proxy 5-10 MB, VectorDB ~20 MB)
+- ✅ **Изоляция** (restart VectorDB без Core)
 - ✅ **Параллелизм** (Roslyn + Indexing)
-- ✅ **Масштабируемость** (remote Indexer в будущем)
+- ✅ **Масштабируемость** (remote VectorDB в будущем)
 
 **НЕ** делать over-engineering:
 - ❌ Разделение Services на библиотеки (circular dependencies)
 - ❌ >3 процессов (Index, AI, Tool отдельно)
 - ❌ Альтернативные парсеры вместо Roslyn
 
-**Критический рефакторинг для Indexer AOT**:
+**Критический рефакторинг для VectorDB AOT**:
 ```csharp
 // Убрать ISolutionManager из SemanticSearchService
 // Сохранять source code в Vector DB при индексации

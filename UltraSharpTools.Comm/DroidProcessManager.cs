@@ -41,6 +41,15 @@ public sealed class DroidProcessManager : IDisposable
             RedirectStandardError = true
         };
 
+        // Check for shared runtime folder (Release builds use framework-dependent deployment)
+        var currentDir = AppContext.BaseDirectory;
+        var sharedRuntimePath = Path.Combine(currentDir, "shared");
+        if (Directory.Exists(sharedRuntimePath))
+        {
+            // Set DOTNET_ROOT so Droid can find the shared runtime
+            startInfo.Environment["DOTNET_ROOT"] = sharedRuntimePath;
+        }
+
         // Forward all command line arguments to Droid
         foreach (var arg in _args)
         {

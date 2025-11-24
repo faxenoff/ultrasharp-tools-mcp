@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup>
+<OutputType>Exe</OutputType>
+<TargetFramework>net10.0</TargetFramework>
+<LangVersion>13.0</LangVersion>
+<ImplicitUsings>enable</ImplicitUsings>
+<Nullable>enable</Nullable>
+<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+<Version>3.0.7</Version>
+<AssemblyName>UltraSharpTools.VectorDB</AssemblyName>
+<RootNamespace>UltraSharpTools.VectorDB</RootNamespace>
+
+<!-- Отключение глобализации -->
+<InvariantGlobalization>true</InvariantGlobalization>
+<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+</PropertyGroup>
+
+<!-- Copy dependencies for Debug regular build (allows Droid to reference) -->
+<!-- Self-contained и PublishSingleFile включаются через dotnet publish в build-hybrid.ps1 -->
+<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+</PropertyGroup>
+
+<!-- Native AOT для Release сборки -->
+<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+<PublishAot>true</PublishAot>
+<OptimizationPreference>Speed</OptimizationPreference>
+<IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+
+<PublishTrimmed>true</PublishTrimmed>
+<TrimMode>full</TrimMode>
+<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+
+<SelfContained>true</SelfContained>
+<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
+<StripSymbols>true</StripSymbols>
+</PropertyGroup>
+
+<ItemGroup>
+<!-- Semantic indexing dependencies -->
+<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
+<PackageReference Include="System.IO.Hashing" Version="10.0.0" />
+</ItemGroup>
+
+<!-- Vectorlite native library -->
+<ItemGroup>
+<None
+Include="Native\vectorlite.dll"
+CopyToOutputDirectory="PreserveNewest"
+Link="vectorlite.dll"
+/>
+</ItemGroup>
+</Project>

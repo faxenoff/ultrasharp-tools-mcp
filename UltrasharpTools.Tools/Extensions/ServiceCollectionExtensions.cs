@@ -31,7 +31,8 @@ public static class ServiceCollectionExtensions {
         string? buildConfiguration = null,
         GitOptions? gitOptions = null,
         SolutionReloadOptions? reloadOptions = null,
-        SymbolCacheOptions? symbolCacheOptions = null
+        SymbolCacheOptions? symbolCacheOptions = null,
+        bool lowMemoryMode = false
     ) {
         services.AddSingleton<IFuzzyFqnLookupService, FuzzyFqnLookupService>();
         services.AddSingleton<ISolutionManager>(sp => new SolutionManager(
@@ -42,7 +43,8 @@ public static class ServiceCollectionExtensions {
             symbolCacheOptions,
             sp.GetService<LazyVectorStoreInitializer>(), // Optional: null if Semantic RAG not registered
             sp.GetService<LayeredIndexingOptions>(), // Optional: null if Layered Indexing not enabled
-            sp.GetService<IGitService>() // Optional: null if Git not enabled
+            sp.GetService<IGitService>(), // Optional: null if Git not enabled
+            lowMemoryMode
         ));
         // Register AnalysisCacheService (optional, for performance)
         services.AddSingleton(sp => {
@@ -311,15 +313,15 @@ public static class ServiceCollectionExtensions {
         this IServiceCollection services,
         string? indexerPath = null
     ) {
-        // Register IndexerClient for IPC communication
+        // Register VectorDBClient for IPC communication
         services.AddSingleton(sp => {
-            var logger = sp.GetRequiredService<ILogger<IndexerClient>>();
-            return new IndexerClient(logger);
+            var logger = sp.GetRequiredService<ILogger<VectorDBClient>>();
+            return new VectorDBClient(logger);
         });
 
         // Register HybridSemanticSearchService as the primary ISemanticSearchService implementation
         services.AddSingleton<ISemanticSearchService>(sp => {
-            var indexerClient = sp.GetRequiredService<IndexerClient>();
+            var indexerClient = sp.GetRequiredService<VectorDBClient>();
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
             var logger = sp.GetService<ILogger<HybridSemanticSearchService>>();
             return new HybridSemanticSearchService(

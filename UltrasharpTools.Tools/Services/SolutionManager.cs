@@ -21,8 +21,7 @@ using MsLogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace UltrasharpTools.Tools.Services;
 
-public sealed class SolutionManager : ISolutionManager
-{
+public sealed class SolutionManager : ISolutionManager {
     private readonly ILogger<SolutionManager> _logger;
     private readonly IFuzzyFqnLookupService _fuzzyFqnLookupService;
     private MSBuildWorkspace? _workspace;
@@ -55,10 +54,15 @@ public sealed class SolutionManager : ISolutionManager
     private readonly MemoryCache _semanticModelCache;
 
     // FrozenDictionary for 20-30% faster lookups (built once after solution load)
+    // Used only when LowMemoryMode is disabled
     private FrozenDictionary<string, Type> _allLoadedReflectionTypesCache = FrozenDictionary<
         string,
         Type
     >.Empty;
+
+    // SQLite-based reflection type index for low memory mode
+    private SqliteReflectionTypeIndex? _sqliteReflectionTypeIndex;
+    private readonly bool _lowMemoryMode;
 
     // File-based cache invalidation support
     private FileSystemWatcher? _fileWatcher;
@@ -85,34 +89,37 @@ public sealed class SolutionManager : ISolutionManager
     public MSBuildWorkspace? CurrentWorkspace => _workspace;
     public Solution? CurrentSolution => _currentSolution;
     private readonly string? _buildConfiguration;
-
     public SolutionManager(
-        ILogger<SolutionManager> logger,
-        IFuzzyFqnLookupService fuzzyFqnLookupService,
-        string? buildConfiguration = null,
-        SolutionReloadOptions? reloadOptions = null,
-        SymbolCacheOptions? symbolCacheOptions = null,
-        LazyVectorStoreInitializer? vectorStoreInitializer = null,
-        LayeredIndexingOptions? layeredIndexingOptions = null,
-        IGitService? gitService = null
-    )
-    {
+    ILogger<SolutionManager> logger,
+    IFuzzyFqnLookupService fuzzyFqnLookupService,
+    string? buildConfiguration = null,
+    SolutionReloadOptions? reloadOptions = null,
+    SymbolCacheOptions? symbolCacheOptions = null,
+    LazyVectorStoreInitializer? vectorStoreInitializer = null,
+    LayeredIndexingOptions? layeredIndexingOptions = null,
+    IGitService? gitService = null,
+    bool lowMemoryMode = false
+    ) {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _fuzzyFqnLookupService =
-            fuzzyFqnLookupService ?? throw new ArgumentNullException(nameof(fuzzyFqnLookupService));
+        fuzzyFqnLookupService ?? throw new ArgumentNullException(nameof(fuzzyFqnLookupService));
         _buildConfiguration = buildConfiguration;
         _reloadOptions = reloadOptions ?? new SolutionReloadOptions();
         _vectorStoreInitializer = vectorStoreInitializer; // Optional dependency
+        _lowMemoryMode = lowMemoryMode;
+
+        if (_lowMemoryMode) {
+            _logger.LogInformation("Low memory mode enabled - using SQLite-based reflection type index");
+        }
 
         // Initialize symbol cache manager (or null if disabled)
         symbolCacheOptions ??= new SymbolCacheOptions();
         _symbolCacheManager = symbolCacheOptions.Enabled
-            ? new SymbolCacheManager(_logger, symbolCacheOptions.CacheDirectory)
-            : null;
+        ? new SymbolCacheManager(_logger, symbolCacheOptions.CacheDirectory)
+        : null;
 
         // Clear cache if requested
-        if (symbolCacheOptions.ClearOnStartup && _symbolCacheManager != null)
-        {
+        if (symbolCacheOptions.ClearOnStartup && _symbolCacheManager != null) {
             _logger.LogInformation("Clearing symbol cache on startup");
             _symbolCacheManager.ClearAllCaches();
         }
@@ -121,23 +128,21 @@ public sealed class SolutionManager : ISolutionManager
         _symbolIndex = new FastSymbolIndex(_logger, _symbolCacheManager);
 
         // Initialize layered symbol index if enabled (Phase 1+)
-        if (layeredIndexingOptions != null)
-        {
+        if (layeredIndexingOptions != null) {
             _layeredIndex = new LayeredSymbolIndex(
-                _symbolIndex,
-                layeredIndexingOptions,
-                gitService,
-                null
+            _symbolIndex,
+            layeredIndexingOptions,
+            gitService,
+            null
             );
             _logger.LogInformation(
-                "LayeredSymbolIndex enabled with {MaxBranchDeltas} max branch deltas",
-                layeredIndexingOptions.MaxBranchDeltas
+            "LayeredSymbolIndex enabled with {MaxBranchDeltas} max branch deltas",
+            layeredIndexingOptions.MaxBranchDeltas
             );
         }
 
         // Initialize git workflow service if layered indexing and git service are available (Phase 5)
-        if (gitService != null && _layeredIndex != null)
-        {
+        if (gitService != null && _layeredIndex != null) {
             _gitWorkflowService = new GitWorkflowService(gitService, _layeredIndex, null, null);
             _logger.LogInformation("GitWorkflowService enabled for git workflow integration");
         }
@@ -145,32 +150,32 @@ public sealed class SolutionManager : ISolutionManager
         // Initialize incremental update queue (Phase 3)
         _incrementalUpdateQueue = new IncrementalUpdateQueue(_symbolIndex, null);
 
-        // Инициализация MemoryCache с ограничениями
-        // Compilation кэш: ~10-15 проектов, каждая компиляция ~50-100 MB
+        // Инициализация MemoryCache с ОПТИМИЗИРОВАННЫМИ ограничениями
+        // Compilation кэш: ~2-4 проекта одновременно, каждая компиляция ~50-100 MB
         _compilationCache = new MemoryCache(
-            new MemoryCacheOptions
-            {
-                SizeLimit = 500 * 1024 * 1024, // 500 MB лимит
-                ExpirationScanFrequency = TimeSpan.FromMinutes(5),
-                CompactionPercentage = 0.25, // Удалить 25% при достижении лимита
-            }
+        new MemoryCacheOptions {
+            SizeLimit = 150 * 1024 * 1024, // 150 MB лимит (было 500 MB)
+            ExpirationScanFrequency = TimeSpan.FromMinutes(2),
+            CompactionPercentage = 0.30, // Удалить 30% при достижении лимита
+        }
         );
 
-        // SemanticModel кэш: ~50-100 документов, каждая модель ~10-20 MB
+        // SemanticModel кэш: ~20-30 документов, каждая модель ~10-20 MB
         _semanticModelCache = new MemoryCache(
-            new MemoryCacheOptions
-            {
-                SizeLimit = 1024 * 1024 * 1024, // 1 GB лимит
-                ExpirationScanFrequency = TimeSpan.FromMinutes(5),
-                CompactionPercentage = 0.25,
-            }
+        new MemoryCacheOptions {
+            SizeLimit = 250 * 1024 * 1024, // 250 MB лимит (было 1 GB!)
+            ExpirationScanFrequency = TimeSpan.FromMinutes(2),
+            CompactionPercentage = 0.30,
+        }
+        );
+
+        _logger.LogInformation(
+        "MemoryCache initialized: Compilation={CompilationMB}MB, SemanticModel={SemanticMB}MB",
+        150, 250
         );
     }
-
-    public async Task LoadSolutionAsync(string solutionPath, CancellationToken cancellationToken)
-    {
-        if (!File.Exists(solutionPath))
-        {
+    public async Task LoadSolutionAsync(string solutionPath, CancellationToken cancellationToken) {
+        if (!File.Exists(solutionPath)) {
             _logger.LogError("Solution file not found: {SolutionPath}", solutionPath);
             throw new FileNotFoundException("Solution file not found.", solutionPath);
         }
@@ -182,28 +187,24 @@ public sealed class SolutionManager : ISolutionManager
         var loadLock = _loadingLocks.GetOrAdd(normalizedPath, _ => new SemaphoreSlim(1, 1));
 
         // Try to acquire lock - if already loading, fail immediately
-        if (!await loadLock.WaitAsync(0, cancellationToken))
-        {
+        if (!await loadLock.WaitAsync(0, cancellationToken)) {
             _logger.LogWarning("Solution is already being loaded: {SolutionPath}", normalizedPath);
             throw new McpException(
                 $"Solution '{normalizedPath}' is already being loaded. Please wait for the current loading operation to complete."
             );
         }
 
-        try
-        {
+        try {
             UnloadSolution(); // Clears previous state including _allLoadedReflectionTypesCache
 
             // Store solution path for auto-reload
             _currentSolutionPath = solutionPath;
 
-            try
-            {
+            try {
                 _logger.LogInformation("Creating MSBuildWorkspace...");
                 var properties = new Dictionary<string, string> { { "DesignTimeBuild", "true" } };
 
-                if (!string.IsNullOrEmpty(_buildConfiguration))
-                {
+                if (!string.IsNullOrEmpty(_buildConfiguration)) {
                     properties.Add("Configuration", _buildConfiguration);
                 }
 
@@ -243,18 +244,15 @@ public sealed class SolutionManager : ISolutionManager
                 LogMemoryUsage("After Symbol Index Build");
 
                 // Build layered index if enabled (Phase 1+)
-                if (_layeredIndex != null)
-                {
+                if (_layeredIndex != null) {
                     await _layeredIndex.BuildFromSolutionAsync(_currentSolution, cancellationToken);
                     _logger.LogInformation("LayeredSymbolIndex built successfully");
                     LogMemoryUsage("After Layered Index Build");
                 }
 
                 // Initialize VectorStore if Semantic RAG is registered
-                if (_vectorStoreInitializer != null)
-                {
-                    try
-                    {
+                if (_vectorStoreInitializer != null) {
+                    try {
                         _logger.LogInformation(
                             "Initializing VectorStore with solution path: {SolutionPath}",
                             solutionPath
@@ -264,9 +262,7 @@ public sealed class SolutionManager : ISolutionManager
                             cancellationToken
                         );
                         LogMemoryUsage("After VectorStore Init");
-                    }
-                    catch (Exception ex)
-                    {
+                    } catch (Exception ex) {
                         _logger.LogWarning(
                             ex,
                             "Failed to initialize VectorStore, semantic search may not be available"
@@ -277,41 +273,33 @@ public sealed class SolutionManager : ISolutionManager
 
                 // Initialize FileSystemWatcher for automatic cache invalidation
                 var solutionDirectory = Path.GetDirectoryName(solutionPath);
-                if (!string.IsNullOrEmpty(solutionDirectory))
-                {
+                if (!string.IsNullOrEmpty(solutionDirectory)) {
                     InitializeFileSystemWatcher(solutionDirectory);
 
                     // Initialize project file watcher for auto-reload if enabled
-                    if (_reloadOptions.AutoReloadEnabled)
-                    {
+                    if (_reloadOptions.AutoReloadEnabled) {
                         InitializeProjectFileWatcher(solutionDirectory);
                     }
                 }
 
                 // Subscribe to workspace events for incremental updates (Phase 3)
-                if (_workspace != null)
-                {
+                if (_workspace != null) {
                     _workspace.RegisterWorkspaceChangedHandler(OnWorkspaceChanged);
                     _logger.LogInformation(
                         "Subscribed to workspace change events for incremental updates"
                     );
                 }
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 _logger.LogError(ex, "Failed to load solution: {SolutionPath}", solutionPath);
                 UnloadSolution();
                 throw;
             }
-        }
-        finally
-        {
+        } finally {
             // Release the loading lock
             loadLock.Release();
 
             // Clean up completed locks to prevent memory leak
-            if (_loadingLocks.TryRemove(normalizedPath, out var removedLock))
-            {
+            if (_loadingLocks.TryRemove(normalizedPath, out var removedLock)) {
                 removedLock.Dispose();
             }
         }
@@ -322,10 +310,8 @@ public sealed class SolutionManager : ISolutionManager
     /// Searches up the directory tree from current directory for .sln, then .csproj files.
     /// </summary>
     /// <returns>True if a solution/project was found and loaded, false otherwise</returns>
-    public async Task<bool> TryAutoLoadSolutionAsync(CancellationToken cancellationToken)
-    {
-        if (IsSolutionLoaded)
-        {
+    public async Task<bool> TryAutoLoadSolutionAsync(CancellationToken cancellationToken) {
+        if (IsSolutionLoaded) {
             _logger.LogDebug("Solution already loaded, skipping auto-discovery");
             return true;
         }
@@ -338,16 +324,12 @@ public sealed class SolutionManager : ISolutionManager
 
         // First, search for .sln files up the directory tree
         var solutionPath = SearchForFileUpwards(currentDir, "*.sln");
-        if (solutionPath != null)
-        {
+        if (solutionPath != null) {
             _logger.LogInformation("Auto-discovered solution file: {Path}", solutionPath);
-            try
-            {
+            try {
                 await LoadSolutionAsync(solutionPath, cancellationToken);
                 return true;
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 _logger.LogWarning(
                     ex,
                     "Failed to auto-load discovered solution: {Path}",
@@ -358,16 +340,12 @@ public sealed class SolutionManager : ISolutionManager
 
         // If no .sln found, search for .csproj files
         var projectPath = SearchForFileUpwards(currentDir, "*.csproj");
-        if (projectPath != null)
-        {
+        if (projectPath != null) {
             _logger.LogInformation("Auto-discovered project file: {Path}", projectPath);
-            try
-            {
+            try {
                 await LoadProjectAsync(projectPath, cancellationToken);
                 return true;
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 _logger.LogWarning(
                     ex,
                     "Failed to auto-load discovered project: {Path}",
@@ -389,17 +367,13 @@ public sealed class SolutionManager : ISolutionManager
     /// <param name="startDirectory">Directory to start searching from</param>
     /// <param name="pattern">File pattern to search for (e.g., "*.sln")</param>
     /// <returns>Full path to the first matching file, or null if not found</returns>
-    private string? SearchForFileUpwards(string startDirectory, string pattern)
-    {
-        try
-        {
+    private string? SearchForFileUpwards(string startDirectory, string pattern) {
+        try {
             var currentDir = new DirectoryInfo(startDirectory);
 
-            while (currentDir != null)
-            {
+            while (currentDir != null) {
                 var files = currentDir.GetFiles(pattern);
-                if (files.Length > 0)
-                {
+                if (files.Length > 0) {
                     _logger.LogDebug(
                         "Found {Pattern} file in: {Directory}",
                         pattern,
@@ -412,9 +386,7 @@ public sealed class SolutionManager : ISolutionManager
             }
 
             _logger.LogDebug("No {Pattern} file found in directory tree", pattern);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogWarning(ex, "Error searching for {Pattern} files", pattern);
         }
 
@@ -424,23 +396,19 @@ public sealed class SolutionManager : ISolutionManager
     /// <summary>
     /// Loads a single project file (.csproj) as a standalone solution.
     /// </summary>
-    private async Task LoadProjectAsync(string projectPath, CancellationToken cancellationToken)
-    {
-        if (!File.Exists(projectPath))
-        {
+    private async Task LoadProjectAsync(string projectPath, CancellationToken cancellationToken) {
+        if (!File.Exists(projectPath)) {
             _logger.LogError("Project file not found: {ProjectPath}", projectPath);
             throw new FileNotFoundException("Project file not found.", projectPath);
         }
 
         UnloadSolution();
 
-        try
-        {
+        try {
             _logger.LogInformation("Creating MSBuildWorkspace for single project...");
             var properties = new Dictionary<string, string> { { "DesignTimeBuild", "true" } };
 
-            if (!string.IsNullOrEmpty(_buildConfiguration))
-            {
+            if (!string.IsNullOrEmpty(_buildConfiguration)) {
                 properties.Add("Configuration", _buildConfiguration);
             }
 
@@ -470,8 +438,7 @@ public sealed class SolutionManager : ISolutionManager
             LogMemoryUsage("After Symbol Index Build");
 
             // Build layered index if enabled (Phase 1+)
-            if (_layeredIndex != null)
-            {
+            if (_layeredIndex != null) {
                 await _layeredIndex.BuildFromSolutionAsync(_currentSolution, cancellationToken);
                 _logger.LogInformation("LayeredSymbolIndex built successfully (Project)");
                 LogMemoryUsage("After Layered Index Build (Project)");
@@ -479,13 +446,10 @@ public sealed class SolutionManager : ISolutionManager
 
             // Initialize FileSystemWatcher for automatic cache invalidation
             var projectDirectory = Path.GetDirectoryName(projectPath);
-            if (!string.IsNullOrEmpty(projectDirectory))
-            {
+            if (!string.IsNullOrEmpty(projectDirectory)) {
                 InitializeFileSystemWatcher(projectDirectory);
             }
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogError(ex, "Failed to load project: {ProjectPath}", projectPath);
             UnloadSolution();
             throw;
@@ -505,8 +469,7 @@ public sealed class SolutionManager : ISolutionManager
         StringComparer.OrdinalIgnoreCase
     );
 
-    private static bool IsRelevantAssembly(string assemblyPath)
-    {
+    private static bool IsRelevantAssembly(string assemblyPath) {
         var fileName = Path.GetFileNameWithoutExtension(assemblyPath);
         return RelevantAssemblyPrefixes.Any(prefix =>
             fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
@@ -514,8 +477,7 @@ public sealed class SolutionManager : ISolutionManager
     }
 
     // Мониторинг использования памяти
-    private void LogMemoryUsage(string context)
-    {
+    private void LogMemoryUsage(string context) {
         var gcMemoryInfo = GC.GetGCMemoryInfo();
         var process = System.Diagnostics.Process.GetCurrentProcess();
 
@@ -539,8 +501,7 @@ public sealed class SolutionManager : ISolutionManager
     private void InitializeMetadataContextAndReflectionCache(
         Solution solution,
         CancellationToken cancellationToken = default
-    )
-    {
+    ) {
         // Check cancellation at entry point
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -566,20 +527,17 @@ public sealed class SolutionManager : ISolutionManager
                 / allRuntimeAssemblies.Length
         );
 
-        foreach (var assemblyPath in runtimeAssemblies)
-        {
+        foreach (var assemblyPath in runtimeAssemblies) {
             // Check cancellation periodically
             cancellationToken.ThrowIfCancellationRequested();
-            if (!_assemblyPathsForReflection.Contains(assemblyPath))
-            {
+            if (!_assemblyPathsForReflection.Contains(assemblyPath)) {
                 _assemblyPathsForReflection.Add(assemblyPath);
             }
         }
 
         // Load NuGet package assemblies from global cache instead of output directories
         var nugetAssemblies = GetNuGetAssemblyPaths(solution, cancellationToken);
-        foreach (var assemblyPath in nugetAssemblies)
-        {
+        foreach (var assemblyPath in nugetAssemblies) {
             cancellationToken.ThrowIfCancellationRequested();
             _assemblyPathsForReflection.Add(assemblyPath);
         }
@@ -616,18 +574,23 @@ public sealed class SolutionManager : ISolutionManager
     private void PopulateReflectionCache(
         IEnumerable<string> assemblyPathsToInspect,
         CancellationToken cancellationToken = default
-    )
-    {
+    ) {
         // Check cancellation at entry point
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_metadataLoadContext == null)
-        {
+        if (_metadataLoadContext == null) {
             _logger.LogWarning(
                 "Cannot populate reflection cache: MetadataLoadContext not initialized."
             );
             return;
         }
+
+        // Low memory mode: use SQLite-based index instead of in-memory FrozenDictionary
+        if (_lowMemoryMode) {
+            PopulateReflectionCacheSqlite(assemblyPathsToInspect, cancellationToken);
+            return;
+        }
+
         // _allLoadedReflectionTypesCache is cleared in UnloadSolution
         _logger.LogInformation("Starting population of reflection type cache (parallel mode)...");
         int typesCachedCount = 0;
@@ -642,8 +605,7 @@ public sealed class SolutionManager : ISolutionManager
         var tempCache = new ConcurrentDictionary<string, Type>();
 
         // Parallel processing for 4-5x speedup
-        var parallelOptions = new ParallelOptions
-        {
+        var parallelOptions = new ParallelOptions {
             MaxDegreeOfParallelism = Environment.ProcessorCount,
             CancellationToken = cancellationToken,
         };
@@ -651,15 +613,13 @@ public sealed class SolutionManager : ISolutionManager
         Parallel.ForEach(
             pathsList,
             parallelOptions,
-            assemblyPath =>
-            {
+            assemblyPath => {
                 var loadedCount = LoadTypesFromAssembly(assemblyPath, tempCache, cancellationToken);
                 Interlocked.Add(ref typesCachedCount, loadedCount);
 
                 // Thread-safe progress tracking
                 var currentProcessed = Interlocked.Increment(ref processedPaths);
-                if (currentProcessed % progressCheckInterval == 0)
-                {
+                if (currentProcessed % progressCheckInterval == 0) {
                     _logger.LogTrace(
                         "Reflection cache population progress: {Progress}% ({Current}/{Total})",
                         (int)((float)currentProcessed / totalPaths * 100),
@@ -680,12 +640,42 @@ public sealed class SolutionManager : ISolutionManager
         );
     }
 
+    private void PopulateReflectionCacheSqlite(
+        IEnumerable<string> assemblyPathsToInspect,
+        CancellationToken cancellationToken = default
+    ) {
+        _logger.LogInformation("Starting population of reflection type cache (SQLite low-memory mode)...");
+
+        // Initialize SQLite index if not already done
+        if (_sqliteReflectionTypeIndex == null) {
+            _sqliteReflectionTypeIndex = new SqliteReflectionTypeIndex(_logger);
+            _sqliteReflectionTypeIndex.InitializeAsync(_metadataLoadContext!, cancellationToken)
+                .GetAwaiter().GetResult();
+        }
+
+        // Compute solution hash for cache invalidation
+        var solutionHash = _currentSolutionPath != null
+            ? $"{Path.GetFileName(_currentSolutionPath)}:{_assemblyPathsForReflection.Count}:{DateTime.UtcNow:yyyyMMdd}"
+            : $"unknown:{_assemblyPathsForReflection.Count}";
+
+        // Populate from assemblies
+        _sqliteReflectionTypeIndex.PopulateFromAssembliesAsync(
+            assemblyPathsToInspect,
+            solutionHash,
+            cancellationToken
+        ).GetAwaiter().GetResult();
+
+        _logger.LogInformation(
+            "SQLite reflection type cache populated with {Count} types",
+            _sqliteReflectionTypeIndex.TotalTypes
+        );
+    }
+
     private int LoadTypesFromAssembly(
         string assemblyPath,
         ConcurrentDictionary<string, Type> targetCache,
         CancellationToken cancellationToken = default
-    )
-    {
+    ) {
         // Check cancellation at entry point
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -693,10 +683,8 @@ public sealed class SolutionManager : ISolutionManager
             _metadataLoadContext == null
             || string.IsNullOrEmpty(assemblyPath)
             || !File.Exists(assemblyPath)
-        )
-        {
-            if (string.IsNullOrEmpty(assemblyPath) || !File.Exists(assemblyPath))
-            {
+        ) {
+            if (string.IsNullOrEmpty(assemblyPath) || !File.Exists(assemblyPath)) {
                 _logger.LogTrace(
                     "Assembly path is invalid or file does not exist, skipping for reflection cache: {Path}",
                     assemblyPath
@@ -707,8 +695,7 @@ public sealed class SolutionManager : ISolutionManager
 
         int loadedTypesCount = 0;
 
-        try
-        {
+        try {
             var assembly = _metadataLoadContext.LoadFromAssemblyPath(assemblyPath);
 
             // For large assemblies, check cancellation periodically during type collection
@@ -719,29 +706,23 @@ public sealed class SolutionManager : ISolutionManager
             int processedTypes = 0;
             const int typeCheckInterval = 50; // Check cancellation every 50 types
 
-            foreach (var type in types)
-            {
+            foreach (var type in types) {
                 // Check cancellation periodically when processing many types
-                if (++processedTypes % typeCheckInterval == 0)
-                {
+                if (++processedTypes % typeCheckInterval == 0) {
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                if (type?.FullName != null && targetCache.TryAdd(type.FullName, type))
-                {
+                if (type?.FullName != null && targetCache.TryAdd(type.FullName, type)) {
                     loadedTypesCount++;
                 }
             }
-        }
-        catch (ReflectionTypeLoadException rtlex)
-        {
+        } catch (ReflectionTypeLoadException rtlex) {
             _logger.LogWarning(
                 "Could not load all types from assembly {Path} for reflection cache. LoaderExceptions: {Count}",
                 assemblyPath,
                 rtlex.LoaderExceptions.Length
             );
-            foreach (var loaderEx in rtlex.LoaderExceptions.Where(e => e != null))
-            {
+            foreach (var loaderEx in rtlex.LoaderExceptions.Where(e => e != null)) {
                 _logger.LogTrace("LoaderException: {Message}", loaderEx!.Message);
             }
 
@@ -749,30 +730,21 @@ public sealed class SolutionManager : ISolutionManager
             int processedTypes = 0;
             const int typeCheckInterval = 20; // Check cancellation more frequently when dealing with problematic assemblies
 
-            foreach (var type in rtlex.Types.Where(t => t != null))
-            {
+            foreach (var type in rtlex.Types.Where(t => t != null)) {
                 // Check cancellation periodically
-                if (++processedTypes % typeCheckInterval == 0)
-                {
+                if (++processedTypes % typeCheckInterval == 0) {
                     cancellationToken.ThrowIfCancellationRequested();
                 }
 
-                if (type!.FullName != null && targetCache.TryAdd(type.FullName, type))
-                {
+                if (type!.FullName != null && targetCache.TryAdd(type.FullName, type)) {
                     loadedTypesCount++;
                 }
             }
-        }
-        catch (FileNotFoundException)
-        { // Should be rare due to File.Exists check, but MLC might have its own resolution logic
+        } catch (FileNotFoundException) { // Should be rare due to File.Exists check, but MLC might have its own resolution logic
             _logger.LogTrace("Assembly file not found by MetadataLoadContext: {Path}", assemblyPath);
-        }
-        catch (BadImageFormatException)
-        {
+        } catch (BadImageFormatException) {
             _logger.LogTrace("Bad image format for assembly file: {Path}", assemblyPath);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogWarning(
                 ex,
                 "Error loading types from assembly {Path} for reflection cache.",
@@ -783,21 +755,18 @@ public sealed class SolutionManager : ISolutionManager
         return loadedTypesCount;
     }
 
-    public void UnloadSolution()
-    {
+    public void UnloadSolution() {
         _logger.LogInformation("Unloading current solution and workspace.");
 
         LogMemoryUsage("Before Unload");
 
         // Stop FileSystemWatcher
-        if (_fileWatcher != null)
-        {
+        if (_fileWatcher != null) {
             _fileWatcher.EnableRaisingEvents = false;
         }
 
         // Stop project file watcher
-        if (_projectFileWatcher != null)
-        {
+        if (_projectFileWatcher != null) {
             _projectFileWatcher.EnableRaisingEvents = false;
         }
 
@@ -819,8 +788,13 @@ public sealed class SolutionManager : ISolutionManager
         // Reset to empty FrozenDictionary (FrozenDictionary doesn't have Clear method)
         _allLoadedReflectionTypesCache = FrozenDictionary<string, Type>.Empty;
 
-        if (_workspace != null)
-        {
+        // Dispose SQLite reflection type index if in low memory mode
+        if (_sqliteReflectionTypeIndex != null) {
+            _sqliteReflectionTypeIndex.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            _sqliteReflectionTypeIndex = null;
+        }
+
+        if (_workspace != null) {
             _workspace.CloseSolution();
             _workspace.Dispose();
             _workspace = null;
@@ -839,15 +813,12 @@ public sealed class SolutionManager : ISolutionManager
         _logger.LogInformation("Solution unloaded. Caches compacted.");
     }
 
-    public void RefreshCurrentSolution()
-    {
-        if (_workspace == null)
-        {
+    public void RefreshCurrentSolution() {
+        if (_workspace == null) {
             _logger.LogWarning("Cannot refresh solution: Workspace is null.");
             return;
         }
-        if (_workspace.CurrentSolution == null)
-        {
+        if (_workspace.CurrentSolution == null) {
             _logger.LogWarning("Cannot refresh solution: No solution loaded.");
             return;
         }
@@ -860,15 +831,12 @@ public sealed class SolutionManager : ISolutionManager
         );
     }
 
-    public async Task ReloadSolutionFromDiskAsync(CancellationToken cancellationToken)
-    {
-        if (_workspace == null)
-        {
+    public async Task ReloadSolutionFromDiskAsync(CancellationToken cancellationToken) {
+        if (_workspace == null) {
             _logger.LogWarning("Cannot reload solution: Workspace is null.");
             return;
         }
-        if (_workspace.CurrentSolution == null)
-        {
+        if (_workspace.CurrentSolution == null) {
             _logger.LogWarning("Cannot reload solution: No solution loaded.");
             return;
         }
@@ -876,8 +844,7 @@ public sealed class SolutionManager : ISolutionManager
         _logger.LogDebug("Current solution state has been refreshed from workspace.");
     }
 
-    private void OnWorkspaceFailedHandler(WorkspaceDiagnosticEventArgs e)
-    {
+    private void OnWorkspaceFailedHandler(WorkspaceDiagnosticEventArgs e) {
         var diagnostic = e.Diagnostic;
         var level =
             diagnostic.Kind == WorkspaceDiagnosticKind.Failure
@@ -894,21 +861,16 @@ public sealed class SolutionManager : ISolutionManager
     /// <summary>
     /// Handles workspace change events for incremental symbol index updates (Phase 3).
     /// </summary>
-    private void OnWorkspaceChanged(WorkspaceChangeEventArgs e)
-    {
-        if (_incrementalUpdateQueue == null || e.NewSolution == null)
-        {
+    private void OnWorkspaceChanged(WorkspaceChangeEventArgs e) {
+        if (_incrementalUpdateQueue == null || e.NewSolution == null) {
             return;
         }
 
-        try
-        {
+        try {
             // Enqueue updates based on change kind
-            switch (e.Kind)
-            {
+            switch (e.Kind) {
                 case WorkspaceChangeKind.DocumentAdded:
-                    if (e.DocumentId != null)
-                    {
+                    if (e.DocumentId != null) {
                         _ = _incrementalUpdateQueue.EnqueueAsync(
                             new DocumentUpdate(
                                 e.DocumentId,
@@ -922,8 +884,7 @@ public sealed class SolutionManager : ISolutionManager
 
                 case WorkspaceChangeKind.DocumentChanged:
                 case WorkspaceChangeKind.DocumentReloaded:
-                    if (e.DocumentId != null)
-                    {
+                    if (e.DocumentId != null) {
                         _ = _incrementalUpdateQueue.EnqueueAsync(
                             new DocumentUpdate(
                                 e.DocumentId,
@@ -936,8 +897,7 @@ public sealed class SolutionManager : ISolutionManager
                     break;
 
                 case WorkspaceChangeKind.DocumentRemoved:
-                    if (e.DocumentId != null)
-                    {
+                    if (e.DocumentId != null) {
                         _ = _incrementalUpdateQueue.EnqueueAsync(
                             new DocumentUpdate(
                                 e.DocumentId,
@@ -956,9 +916,7 @@ public sealed class SolutionManager : ISolutionManager
 
             // Update current solution reference
             _currentSolution = e.NewSolution;
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogWarning(ex, "Error handling workspace change event: {Kind}", e.Kind);
         }
     }
@@ -966,10 +924,8 @@ public sealed class SolutionManager : ISolutionManager
     public async Task<INamedTypeSymbol?> FindRoslynNamedTypeSymbolAsync(
         string fullyQualifiedTypeName,
         CancellationToken cancellationToken
-    )
-    {
-        if (!IsSolutionLoaded)
-        {
+    ) {
+        if (!IsSolutionLoaded) {
             _logger.LogWarning("Cannot find Roslyn symbol: No solution loaded.");
             return null;
         }
@@ -984,8 +940,7 @@ public sealed class SolutionManager : ISolutionManager
         var matchList = matches.Where(m => m.Symbol is INamedTypeSymbol).ToList();
         // Check cancellation after initial matching
         cancellationToken.ThrowIfCancellationRequested();
-        if (matchList.Count == 1)
-        {
+        if (matchList.Count == 1) {
             var match = matchList.First();
             _logger.LogDebug(
                 "Roslyn named type symbol found: {FullyQualifiedTypeName} (score: {Score}, reason: {Reason})",
@@ -995,8 +950,7 @@ public sealed class SolutionManager : ISolutionManager
             );
             return (INamedTypeSymbol)match.Symbol;
         }
-        if (matchList.Count > 1)
-        {
+        if (matchList.Count > 1) {
             _logger.LogWarning(
                 "Multiple matches found for {FullyQualifiedTypeName}",
                 fullyQualifiedTypeName
@@ -1006,23 +960,19 @@ public sealed class SolutionManager : ISolutionManager
             );
         }
         // Direct lookup as fallback
-        if (CurrentSolution == null)
-        {
+        if (CurrentSolution == null) {
             _logger.LogWarning("Cannot perform direct lookup: No solution loaded.");
             return null;
         }
-        foreach (var project in CurrentSolution.Projects)
-        {
+        foreach (var project in CurrentSolution.Projects) {
             // Check cancellation before each project
             cancellationToken.ThrowIfCancellationRequested();
             var compilation = await GetCompilationAsync(project.Id, cancellationToken);
-            if (compilation == null)
-            {
+            if (compilation == null) {
                 continue;
             }
             var symbol = compilation.GetTypeByMetadataName(fullyQualifiedTypeName);
-            if (symbol != null)
-            {
+            if (symbol != null) {
                 _logger.LogDebug(
                     "Roslyn named type symbol found via direct lookup: {FullyQualifiedTypeName} in project {ProjectName}",
                     fullyQualifiedTypeName,
@@ -1035,26 +985,21 @@ public sealed class SolutionManager : ISolutionManager
         cancellationToken.ThrowIfCancellationRequested();
         // Check for nested type with dot notation as last resort
         var lastDotIndex = fullyQualifiedTypeName.LastIndexOf('.');
-        if (lastDotIndex > 0)
-        {
+        if (lastDotIndex > 0) {
             var parentTypeName = fullyQualifiedTypeName.Substring(0, lastDotIndex);
             var nestedTypeName = fullyQualifiedTypeName.Substring(lastDotIndex + 1);
-            foreach (var project in CurrentSolution.Projects)
-            {
+            foreach (var project in CurrentSolution.Projects) {
                 // Check cancellation before each project
                 cancellationToken.ThrowIfCancellationRequested();
                 var compilation = await GetCompilationAsync(project.Id, cancellationToken);
-                if (compilation == null)
-                {
+                if (compilation == null) {
                     continue;
                 }
                 var parentSymbol = compilation.GetTypeByMetadataName(parentTypeName);
-                if (parentSymbol != null)
-                {
+                if (parentSymbol != null) {
                     // Check if there's a nested type with this name
                     var nestedType = parentSymbol.GetTypeMembers(nestedTypeName).FirstOrDefault();
-                    if (nestedType != null)
-                    {
+                    if (nestedType != null) {
                         var correctName = $"{parentTypeName}+{nestedTypeName}";
                         _logger.LogWarning(
                             "Type not found: '{FullyQualifiedTypeName}'. This appears to be a nested type - use '{CorrectName}' instead (use + instead of . for nested types)",
@@ -1078,10 +1023,8 @@ public sealed class SolutionManager : ISolutionManager
     public async Task<ISymbol?> FindRoslynSymbolAsync(
         string fullyQualifiedName,
         CancellationToken cancellationToken
-    )
-    {
-        if (!IsSolutionLoaded)
-        {
+    ) {
+        if (!IsSolutionLoaded) {
             _logger.LogWarning("Cannot find Roslyn symbol: No solution loaded.");
             return null;
         }
@@ -1100,8 +1043,7 @@ public sealed class SolutionManager : ISolutionManager
         // Check cancellation after initial matching
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (matchList.Count == 1)
-        {
+        if (matchList.Count == 1) {
             var match = matchList.First();
             _logger.LogDebug(
                 "Roslyn symbol found: {FullyQualifiedName} (score: {Score}, reason: {Reason})",
@@ -1112,8 +1054,7 @@ public sealed class SolutionManager : ISolutionManager
             return match.Symbol;
         }
 
-        if (matchList.Count > 1)
-        {
+        if (matchList.Count > 1) {
             _logger.LogWarning(
                 "Multiple matches found for {FullyQualifiedName}",
                 fullyQualifiedName
@@ -1131,8 +1072,7 @@ public sealed class SolutionManager : ISolutionManager
             fullyQualifiedName,
             cancellationToken
         );
-        if (typeSymbol != null)
-        {
+        if (typeSymbol != null) {
             return typeSymbol;
         }
 
@@ -1141,8 +1081,7 @@ public sealed class SolutionManager : ISolutionManager
 
         // Check for member of a type as fallback
         var lastDotIndex = fullyQualifiedName.LastIndexOf('.');
-        if (lastDotIndex > 0 && lastDotIndex < fullyQualifiedName.Length - 1)
-        {
+        if (lastDotIndex > 0 && lastDotIndex < fullyQualifiedName.Length - 1) {
             var typeName = fullyQualifiedName.Substring(0, lastDotIndex);
             var memberName = fullyQualifiedName.Substring(lastDotIndex + 1);
 
@@ -1150,14 +1089,12 @@ public sealed class SolutionManager : ISolutionManager
                 typeName,
                 cancellationToken
             );
-            if (parentTypeSymbol != null)
-            {
+            if (parentTypeSymbol != null) {
                 // Check cancellation before final lookup step
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var members = parentTypeSymbol.GetMembers(memberName);
-                if (members.Length > 0)
-                {
+                if (members.Length > 0) {
                     // TODO: Handle overloads if necessary, for now, take the first.
                     var memberSymbol = members.First();
                     _logger.LogDebug(
@@ -1173,77 +1110,102 @@ public sealed class SolutionManager : ISolutionManager
         return null;
     }
 
-    public Task<Type?> FindReflectionTypeAsync(
+    public async Task<Type?> FindReflectionTypeAsync(
         string fullyQualifiedTypeName,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         // Check cancellation at the beginning of the method
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_metadataLoadContext == null)
-        {
+        if (_metadataLoadContext == null) {
             _logger.LogWarning("Cannot find reflection type: MetadataLoadContext not initialized.");
-            return Task.FromResult<Type?>(null);
+            return null;
         }
-        if (_allLoadedReflectionTypesCache.TryGetValue(fullyQualifiedTypeName, out var type))
-        {
+
+        // Low memory mode: use SQLite index
+        if (_lowMemoryMode && _sqliteReflectionTypeIndex != null) {
+            var type = await _sqliteReflectionTypeIndex.FindTypeAsync(fullyQualifiedTypeName, cancellationToken);
+            if (type != null) {
+                _logger.LogDebug("Reflection type found in SQLite index: {Name}", fullyQualifiedTypeName);
+            }
+            return type;
+        }
+
+        // Standard mode: use in-memory cache
+        if (_allLoadedReflectionTypesCache.TryGetValue(fullyQualifiedTypeName, out var cachedType)) {
             _logger.LogDebug("Reflection type found in cache: {Name}", fullyQualifiedTypeName);
-            return Task.FromResult<Type?>(type);
+            return cachedType;
         }
         _logger.LogDebug(
             "Reflection type '{FullyQualifiedTypeName}' not found in cache. It might not exist in the loaded solution's dependencies or was not loadable.",
             fullyQualifiedTypeName
         );
-        return Task.FromResult<Type?>(null);
+        return null;
     }
 
-    public Task<IEnumerable<Type>> SearchReflectionTypesAsync(
+    public async Task<IEnumerable<Type>> SearchReflectionTypesAsync(
         string regexPattern,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         // Check cancellation at the method entry point
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_metadataLoadContext == null)
-        {
+        if (_metadataLoadContext == null) {
             _logger.LogWarning(
                 "Cannot search reflection types: MetadataLoadContext not initialized."
             );
-            return Task.FromResult<IEnumerable<Type>>([]);
+            return [];
         }
-        if (_allLoadedReflectionTypesCache.Count == 0)
-        {
+
+        // Low memory mode: use SQLite index
+        if (_lowMemoryMode && _sqliteReflectionTypeIndex != null) {
+            var searchResults = await _sqliteReflectionTypeIndex.SearchTypesAsync(
+                regexPattern, limit: 200, cancellationToken);
+
+            // Lazy load actual Type objects from search results
+            var matchedTypes = new List<Type>();
+            foreach (var result in searchResults) {
+                cancellationToken.ThrowIfCancellationRequested();
+                var type = _sqliteReflectionTypeIndex.LoadType(result);
+                if (type != null) {
+                    matchedTypes.Add(type);
+                }
+            }
+
+            _logger.LogDebug(
+                "Found {Count} reflection types matching pattern '{Pattern}' (SQLite mode).",
+                matchedTypes.Count,
+                regexPattern
+            );
+            return matchedTypes.Distinct();
+        }
+
+        // Standard mode: use in-memory cache
+        if (_allLoadedReflectionTypesCache.Count == 0) {
             _logger.LogInformation("Reflection type cache is empty. Search will yield no results.");
-            return Task.FromResult<IEnumerable<Type>>([]);
+            return [];
         }
 
         // Check cancellation before regex compilation
         cancellationToken.ThrowIfCancellationRequested();
 
         var regex = new Regex(regexPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-        var matchedTypes = new List<Type>();
+        var results = new List<Type>();
 
         // Consider batching in chunks to check cancellation more frequently on large type caches
         int processedCount = 0;
         const int batchSize = 100; // Check cancellation every 100 types
 
-        foreach (var typeEntry in _allLoadedReflectionTypesCache)
-        { // Iterate KeyValuePair to access FQN directly
-            if (++processedCount % batchSize == 0)
-            {
+        foreach (var typeEntry in _allLoadedReflectionTypesCache) { // Iterate KeyValuePair to access FQN directly
+            if (++processedCount % batchSize == 0) {
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
             // Key is type.FullName which should not be null for cached types
-            if (regex.IsMatch(typeEntry.Key))
-            { // Search FQN
-                matchedTypes.Add(typeEntry.Value);
-            }
-            else if (regex.IsMatch(typeEntry.Value.Name))
-            { // Search simple name
-                matchedTypes.Add(typeEntry.Value);
+            if (regex.IsMatch(typeEntry.Key)) { // Search FQN
+                results.Add(typeEntry.Value);
+            } else if (regex.IsMatch(typeEntry.Value.Name)) { // Search simple name
+                results.Add(typeEntry.Value);
             }
         }
 
@@ -1252,29 +1214,25 @@ public sealed class SolutionManager : ISolutionManager
 
         _logger.LogDebug(
             "Found {Count} reflection types matching pattern '{Pattern}'.",
-            matchedTypes.Count,
+            results.Count,
             regexPattern
         );
-        return Task.FromResult<IEnumerable<Type>>(matchedTypes.Distinct());
+        return results.Distinct();
     }
 
-    public IEnumerable<Project> GetProjects()
-    {
+    public IEnumerable<Project> GetProjects() {
         return CurrentSolution?.Projects ?? [];
     }
 
-    public Project? GetProjectByName(string projectName)
-    {
-        if (!IsSolutionLoaded)
-        {
+    public Project? GetProjectByName(string projectName) {
+        if (!IsSolutionLoaded) {
             _logger.LogWarning("Cannot get project by name: No solution loaded.");
             return null;
         }
         var project = CurrentSolution?.Projects.FirstOrDefault(p =>
             p.Name.Equals(projectName, StringComparison.OrdinalIgnoreCase)
         );
-        if (project == null)
-        {
+        if (project == null) {
             _logger.LogWarning("Project not found: {ProjectName}", projectName);
         }
         return project;
@@ -1283,32 +1241,26 @@ public sealed class SolutionManager : ISolutionManager
     public ValueTask<SemanticModel?> GetSemanticModelAsync(
         DocumentId documentId,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         // Check cancellation at entry point
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!IsSolutionLoaded)
-        {
+        if (!IsSolutionLoaded) {
             _logger.LogWarning("Cannot get semantic model: No solution loaded.");
             return ValueTask.FromResult<SemanticModel?>(null);
         }
 
         // Fast path: check cache first with file-based validation
-        if (_semanticModelCache.TryGetValue(documentId, out CacheEntry<SemanticModel>? cacheEntry))
-        {
+        if (_semanticModelCache.TryGetValue(documentId, out CacheEntry<SemanticModel>? cacheEntry)) {
             // Validate cache entry based on file modification time
-            if (cacheEntry!.IsValid())
-            {
+            if (cacheEntry!.IsValid()) {
                 Interlocked.Increment(ref _semanticModelCacheHits);
                 _logger.LogTrace(
                     "Returning valid cached semantic model for document ID: {DocumentId}",
                     documentId
                 );
                 return ValueTask.FromResult<SemanticModel?>(cacheEntry.Value);
-            }
-            else
-            {
+            } else {
                 // File has been modified - invalidate cache entry
                 _semanticModelCache.Remove(documentId);
                 _logger.LogDebug(
@@ -1327,20 +1279,17 @@ public sealed class SolutionManager : ISolutionManager
     private async ValueTask<SemanticModel?> LoadSemanticModelAsync(
         DocumentId documentId,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         // Check cancellation before document lookup
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (CurrentSolution == null)
-        {
+        if (CurrentSolution == null) {
             _logger.LogWarning("Cannot get semantic model: No solution loaded.");
             return null;
         }
 
         var document = CurrentSolution.GetDocument(documentId);
-        if (document == null)
-        {
+        if (document == null) {
             _logger.LogWarning("Document not found for ID: {DocumentId}", documentId);
             return null;
         }
@@ -1354,16 +1303,12 @@ public sealed class SolutionManager : ISolutionManager
         cancellationToken.ThrowIfCancellationRequested();
 
         var model = await document.GetSemanticModelAsync(cancellationToken);
-        if (model != null && document.FilePath != null)
-        {
+        if (model != null && document.FilePath != null) {
             // Get file LastWriteTime for invalidation
             DateTime lastWriteTime;
-            try
-            {
+            try {
                 lastWriteTime = File.GetLastWriteTimeUtc(document.FilePath);
-            }
-            catch
-            {
+            } catch {
                 lastWriteTime = DateTime.UtcNow;
                 _logger.LogWarning(
                     "Could not get LastWriteTime for {FilePath}, using current time",
@@ -1372,21 +1317,19 @@ public sealed class SolutionManager : ISolutionManager
             }
 
             // Create cache entry with file metadata
-            var cacheEntry = new CacheEntry<SemanticModel>
-            {
+            var cacheEntry = new CacheEntry<SemanticModel> {
                 Value = model,
                 FilePath = document.FilePath,
                 LastWriteTimeUtc = lastWriteTime,
             };
 
-            // Store with expiration and size settings
+            // Store with expiration and size settings (OPTIMIZED for lower memory)
             var cacheEntryOptions = new MemoryCacheEntryOptions()
                 .SetSize(15 * 1024 * 1024) // Estimate: ~15 MB per semantic model
-                .SetSlidingExpiration(TimeSpan.FromMinutes(30)) // Extend on use (increased from 10)
-                .SetAbsoluteExpiration(TimeSpan.FromHours(2)) // Max 2 hours (increased from 30 min)
+                .SetSlidingExpiration(TimeSpan.FromMinutes(10)) // Reduced from 30 min
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(30)) // Reduced from 2 hours
                 .RegisterPostEvictionCallback(
-                    (key, value, reason, state) =>
-                    {
+                    (key, value, reason, state) => {
                         _logger.LogDebug(
                             "SemanticModel evicted from cache. DocumentId: {DocumentId}, Reason: {Reason}",
                             key,
@@ -1406,9 +1349,7 @@ public sealed class SolutionManager : ISolutionManager
                 document.FilePath,
                 lastWriteTime
             );
-        }
-        else
-        {
+        } else {
             _logger.LogWarning(
                 "Failed to get semantic model for document: {DocumentFilePath}",
                 document.FilePath
@@ -1420,32 +1361,26 @@ public sealed class SolutionManager : ISolutionManager
     public ValueTask<Compilation?> GetCompilationAsync(
         ProjectId projectId,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         // Check cancellation at entry point
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!IsSolutionLoaded)
-        {
+        if (!IsSolutionLoaded) {
             _logger.LogWarning("Cannot get compilation: No solution loaded.");
             return ValueTask.FromResult<Compilation?>(null);
         }
 
         // Fast path: check cache first with file-based validation
-        if (_compilationCache.TryGetValue(projectId, out ProjectCacheEntry? cacheEntry))
-        {
+        if (_compilationCache.TryGetValue(projectId, out ProjectCacheEntry? cacheEntry)) {
             // Validate cache entry based on project file modification time
-            if (cacheEntry!.IsValid())
-            {
+            if (cacheEntry!.IsValid()) {
                 Interlocked.Increment(ref _compilationCacheHits);
                 _logger.LogTrace(
                     "Returning valid cached compilation for project ID: {ProjectId}",
                     projectId
                 );
                 return ValueTask.FromResult<Compilation?>(cacheEntry.Value);
-            }
-            else
-            {
+            } else {
                 // Project file has been modified - invalidate compilation and all related documents
                 InvalidateCompilationInternal(projectId, cacheEntry);
                 _logger.LogDebug(
@@ -1464,20 +1399,17 @@ public sealed class SolutionManager : ISolutionManager
     private async ValueTask<Compilation?> LoadCompilationAsync(
         ProjectId projectId,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         // Check cancellation before project lookup
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (CurrentSolution == null)
-        {
+        if (CurrentSolution == null) {
             _logger.LogWarning("Cannot get compilation: No solution loaded.");
             return null;
         }
 
         var project = CurrentSolution.GetProject(projectId);
-        if (project == null)
-        {
+        if (project == null) {
             _logger.LogWarning("Project not found for ID: {ProjectId}", projectId);
             return null;
         }
@@ -1488,16 +1420,12 @@ public sealed class SolutionManager : ISolutionManager
         cancellationToken.ThrowIfCancellationRequested();
 
         var compilation = await project.GetCompilationAsync(cancellationToken);
-        if (compilation != null && project.FilePath != null)
-        {
+        if (compilation != null && project.FilePath != null) {
             // Get project file LastWriteTime for invalidation
             DateTime lastWriteTime;
-            try
-            {
+            try {
                 lastWriteTime = File.GetLastWriteTimeUtc(project.FilePath);
-            }
-            catch
-            {
+            } catch {
                 lastWriteTime = DateTime.UtcNow;
                 _logger.LogWarning(
                     "Could not get LastWriteTime for {FilePath}, using current time",
@@ -1509,22 +1437,20 @@ public sealed class SolutionManager : ISolutionManager
             var documentIds = project.DocumentIds.ToHashSet();
 
             // Create project cache entry with metadata
-            var cacheEntry = new ProjectCacheEntry
-            {
+            var cacheEntry = new ProjectCacheEntry {
                 Value = compilation,
                 ProjectFilePath = project.FilePath,
                 LastWriteTimeUtc = lastWriteTime,
                 DocumentIds = documentIds,
             };
 
-            // Store with expiration and size settings
+            // Store with expiration and size settings (OPTIMIZED for lower memory)
             var cacheEntryOptions = new MemoryCacheEntryOptions()
                 .SetSize(100 * 1024 * 1024) // Estimate: ~100 MB per compilation
-                .SetSlidingExpiration(TimeSpan.FromMinutes(60)) // Extend on use (increased from 15)
-                .SetAbsoluteExpiration(TimeSpan.FromHours(4)) // Max 4 hours (increased from 60 min)
+                .SetSlidingExpiration(TimeSpan.FromMinutes(20)) // Reduced from 60 min
+                .SetAbsoluteExpiration(TimeSpan.FromHours(1)) // Reduced from 4 hours
                 .RegisterPostEvictionCallback(
-                    (key, value, reason, state) =>
-                    {
+                    (key, value, reason, state) => {
                         _logger.LogDebug(
                             "Compilation evicted from cache. ProjectId: {ProjectId}, Reason: {Reason}",
                             key,
@@ -1541,9 +1467,7 @@ public sealed class SolutionManager : ISolutionManager
                 lastWriteTime,
                 documentIds.Count
             );
-        }
-        else
-        {
+        } else {
             _logger.LogWarning(
                 "Failed to get compilation for project: {ProjectName}",
                 project.Name
@@ -1555,8 +1479,7 @@ public sealed class SolutionManager : ISolutionManager
     /// <summary>
     /// Invalidate semantic model cache for a specific document (granular invalidation)
     /// </summary>
-    public void InvalidateSemanticModel(DocumentId documentId)
-    {
+    public void InvalidateSemanticModel(DocumentId documentId) {
         _semanticModelCache.Remove(documentId);
         _logger.LogDebug(
             "Invalidated semantic model cache for DocumentId: {DocumentId}",
@@ -1564,8 +1487,7 @@ public sealed class SolutionManager : ISolutionManager
         );
 
         // Remove from mapping
-        if (_documentIdToFilePath.TryRemove(documentId, out var filePath))
-        {
+        if (_documentIdToFilePath.TryRemove(documentId, out var filePath)) {
             _filePathToDocumentId.TryRemove(filePath, out _);
         }
     }
@@ -1573,23 +1495,19 @@ public sealed class SolutionManager : ISolutionManager
     /// <summary>
     /// Invalidate compilation and all related semantic models (cascade invalidation)
     /// </summary>
-    public void InvalidateCompilation(ProjectId projectId)
-    {
-        if (_compilationCache.TryGetValue(projectId, out ProjectCacheEntry? cacheEntry))
-        {
+    public void InvalidateCompilation(ProjectId projectId) {
+        if (_compilationCache.TryGetValue(projectId, out ProjectCacheEntry? cacheEntry)) {
             InvalidateCompilationInternal(projectId, cacheEntry!);
         }
     }
 
-    private void InvalidateCompilationInternal(ProjectId projectId, ProjectCacheEntry cacheEntry)
-    {
+    private void InvalidateCompilationInternal(ProjectId projectId, ProjectCacheEntry cacheEntry) {
         // Remove compilation from cache
         _compilationCache.Remove(projectId);
         _logger.LogDebug("Invalidated compilation cache for ProjectId: {ProjectId}", projectId);
 
         // Cascade: invalidate all semantic models for documents in this project
-        foreach (var documentId in cacheEntry.DocumentIds)
-        {
+        foreach (var documentId in cacheEntry.DocumentIds) {
             InvalidateSemanticModel(documentId);
         }
         _logger.LogDebug(
@@ -1601,12 +1519,10 @@ public sealed class SolutionManager : ISolutionManager
     /// <summary>
     /// Get cache statistics for monitoring
     /// </summary>
-    public CacheStatistics GetCacheStatistics()
-    {
+    public CacheStatistics GetCacheStatistics() {
         var totalMemory = GC.GetTotalMemory(forceFullCollection: false);
 
-        return new CacheStatistics
-        {
+        return new CacheStatistics {
             CompilationCacheSize = _compilationCache.Count,
             SemanticModelCacheSize = _semanticModelCache.Count,
             ReflectionTypesCacheSize = _allLoadedReflectionTypesCache.Count,
@@ -1621,12 +1537,9 @@ public sealed class SolutionManager : ISolutionManager
     /// <summary>
     /// Initialize FileSystemWatcher for automatic cache invalidation
     /// </summary>
-    private void InitializeFileSystemWatcher(string solutionDirectory)
-    {
-        try
-        {
-            _fileWatcher = new FileSystemWatcher(solutionDirectory)
-            {
+    private void InitializeFileSystemWatcher(string solutionDirectory) {
+        try {
+            _fileWatcher = new FileSystemWatcher(solutionDirectory) {
                 IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName,
                 Filter = "*.cs",
@@ -1643,9 +1556,7 @@ public sealed class SolutionManager : ISolutionManager
                 "FileSystemWatcher initialized for directory: {Directory}",
                 solutionDirectory
             );
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogWarning(
                 ex,
                 "Failed to initialize FileSystemWatcher for {Directory}. Automatic cache invalidation disabled.",
@@ -1655,31 +1566,25 @@ public sealed class SolutionManager : ISolutionManager
         }
     }
 
-    private void OnFileChanged(object sender, FileSystemEventArgs e)
-    {
+    private void OnFileChanged(object sender, FileSystemEventArgs e) {
         // Find DocumentId by file path and invalidate
-        if (_filePathToDocumentId.TryGetValue(e.FullPath, out var documentId))
-        {
+        if (_filePathToDocumentId.TryGetValue(e.FullPath, out var documentId)) {
             _logger.LogDebug("File changed detected by FileSystemWatcher: {FilePath}", e.FullPath);
             InvalidateSemanticModel(documentId);
         }
     }
 
-    private void OnFileDeleted(object sender, FileSystemEventArgs e)
-    {
+    private void OnFileDeleted(object sender, FileSystemEventArgs e) {
         // File deleted - invalidate cache
-        if (_filePathToDocumentId.TryGetValue(e.FullPath, out var documentId))
-        {
+        if (_filePathToDocumentId.TryGetValue(e.FullPath, out var documentId)) {
             _logger.LogDebug("File deleted detected by FileSystemWatcher: {FilePath}", e.FullPath);
             InvalidateSemanticModel(documentId);
         }
     }
 
-    private void OnFileRenamed(object sender, RenamedEventArgs e)
-    {
+    private void OnFileRenamed(object sender, RenamedEventArgs e) {
         // Old file path - invalidate
-        if (_filePathToDocumentId.TryGetValue(e.OldFullPath, out var documentId))
-        {
+        if (_filePathToDocumentId.TryGetValue(e.OldFullPath, out var documentId)) {
             _logger.LogDebug(
                 "File renamed detected by FileSystemWatcher: {OldPath} -> {NewPath}",
                 e.OldFullPath,
@@ -1688,11 +1593,9 @@ public sealed class SolutionManager : ISolutionManager
             InvalidateSemanticModel(documentId);
 
             // Update mapping with new path
-            if (CurrentSolution != null)
-            {
+            if (CurrentSolution != null) {
                 var document = CurrentSolution.GetDocument(documentId);
-                if (document != null && document.FilePath == e.FullPath)
-                {
+                if (document != null && document.FilePath == e.FullPath) {
                     _documentIdToFilePath[documentId] = e.FullPath;
                     _filePathToDocumentId[e.FullPath] = documentId;
                 }
@@ -1703,19 +1606,15 @@ public sealed class SolutionManager : ISolutionManager
     /// <summary>
     /// Initialize FileSystemWatcher for project files (.csproj, .sln) to trigger automatic reload
     /// </summary>
-    private void InitializeProjectFileWatcher(string solutionDirectory)
-    {
-        try
-        {
-            _projectFileWatcher = new FileSystemWatcher(solutionDirectory)
-            {
+    private void InitializeProjectFileWatcher(string solutionDirectory) {
+        try {
+            _projectFileWatcher = new FileSystemWatcher(solutionDirectory) {
                 IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName,
             };
 
             // Watch all configured extensions
-            if (_reloadOptions.WatchedExtensions?.Length > 0)
-            {
+            if (_reloadOptions.WatchedExtensions?.Length > 0) {
                 // FileSystemWatcher doesn't support multiple filters directly, so we'll filter in the event handler
                 _projectFileWatcher.Filter = "*.*";
             }
@@ -1729,9 +1628,7 @@ public sealed class SolutionManager : ISolutionManager
                 string.Join(", ", _reloadOptions.WatchedExtensions ?? Array.Empty<string>()),
                 _reloadOptions.DebounceDelayMs
             );
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogWarning(
                 ex,
                 "Failed to initialize project file watcher for {Directory}. Auto-reload disabled.",
@@ -1741,8 +1638,7 @@ public sealed class SolutionManager : ISolutionManager
         }
     }
 
-    private void OnProjectFileChanged(object sender, FileSystemEventArgs e)
-    {
+    private void OnProjectFileChanged(object sender, FileSystemEventArgs e) {
         // Check if the file extension is in the watched list
         var extension = Path.GetExtension(e.FullPath);
         if (
@@ -1751,8 +1647,7 @@ public sealed class SolutionManager : ISolutionManager
                 extension,
                 StringComparer.OrdinalIgnoreCase
             )
-        )
-        {
+        ) {
             return;
         }
 
@@ -1772,12 +1667,9 @@ public sealed class SolutionManager : ISolutionManager
         );
     }
 
-    private async Task TriggerAutoReloadAsync()
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(_currentSolutionPath))
-            {
+    private async Task TriggerAutoReloadAsync() {
+        try {
+            if (string.IsNullOrEmpty(_currentSolutionPath)) {
                 _logger.LogWarning("Cannot auto-reload: Solution path not stored");
                 return;
             }
@@ -1787,21 +1679,16 @@ public sealed class SolutionManager : ISolutionManager
             await ReloadSolutionFromDiskAsync(CancellationToken.None);
 
             _logger.LogInformation("Auto-reload completed successfully");
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogError(ex, "Error during auto-reload");
-        }
-        finally
-        {
+        } finally {
             // Dispose the timer after it fires
             _reloadDebounceTimer?.Dispose();
             _reloadDebounceTimer = null;
         }
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         // Note: Workspace.RegisterWorkspaceChangedHandler doesn't provide unsubscribe mechanism
         // The handler will be disposed when workspace is disposed in UnloadSolution
 
@@ -1812,8 +1699,7 @@ public sealed class SolutionManager : ISolutionManager
         _incrementalUpdateQueue = null;
 
         // Dispose FileSystemWatcher
-        if (_fileWatcher != null)
-        {
+        if (_fileWatcher != null) {
             _fileWatcher.EnableRaisingEvents = false;
             _fileWatcher.Changed -= OnFileChanged;
             _fileWatcher.Deleted -= OnFileDeleted;
@@ -1823,8 +1709,7 @@ public sealed class SolutionManager : ISolutionManager
         }
 
         // Dispose project file watcher
-        if (_projectFileWatcher != null)
-        {
+        if (_projectFileWatcher != null) {
             _projectFileWatcher.EnableRaisingEvents = false;
             _projectFileWatcher.Changed -= OnProjectFileChanged;
             _projectFileWatcher.Dispose();
@@ -1842,17 +1727,14 @@ public sealed class SolutionManager : ISolutionManager
         GC.SuppressFinalize(this);
     }
 
-    private class ProgressReporter : IProgress<ProjectLoadProgress>
-    {
+    private class ProgressReporter : IProgress<ProjectLoadProgress> {
         private readonly Microsoft.Extensions.Logging.ILogger _logger;
 
-        public ProgressReporter(Microsoft.Extensions.Logging.ILogger logger)
-        {
+        public ProgressReporter(Microsoft.Extensions.Logging.ILogger logger) {
             _logger = logger;
         }
 
-        public void Report(ProjectLoadProgress loadProgress)
-        {
+        public void Report(ProjectLoadProgress loadProgress) {
             var projectDisplay = Path.GetFileName(loadProgress.FilePath);
             _logger.LogTrace(
                 "Project Load Progress: {ProjectDisplayName}, Operation: {Operation}, Time: {TimeElapsed}",
@@ -1866,13 +1748,11 @@ public sealed class SolutionManager : ISolutionManager
     private HashSet<string> GetNuGetAssemblyPaths(
         Solution solution,
         CancellationToken cancellationToken = default
-    )
-    {
+    ) {
         var nugetAssemblyPaths = new ConcurrentBag<string>();
         var nugetCacheDir = GetNuGetGlobalPackagesFolder();
 
-        if (string.IsNullOrEmpty(nugetCacheDir) || !Directory.Exists(nugetCacheDir))
-        {
+        if (string.IsNullOrEmpty(nugetCacheDir) || !Directory.Exists(nugetCacheDir)) {
             _logger.LogWarning(
                 "NuGet global packages folder not found or inaccessible: {NuGetCacheDir}",
                 nugetCacheDir
@@ -1881,8 +1761,7 @@ public sealed class SolutionManager : ISolutionManager
         }
 
         // Parallel processing of projects for 3-4x speedup
-        var parallelOptions = new ParallelOptions
-        {
+        var parallelOptions = new ParallelOptions {
             MaxDegreeOfParallelism = 4, // I/O bound operations
             CancellationToken = cancellationToken,
         };
@@ -1890,10 +1769,8 @@ public sealed class SolutionManager : ISolutionManager
         Parallel.ForEach(
             solution.Projects,
             parallelOptions,
-            project =>
-            {
-                if (string.IsNullOrEmpty(project.FilePath))
-                {
+            project => {
+                if (string.IsNullOrEmpty(project.FilePath)) {
                     return;
                 }
 
@@ -1904,8 +1781,7 @@ public sealed class SolutionManager : ISolutionManager
                     project.FilePath
                 );
 
-                foreach (var package in packageReferences)
-                {
+                foreach (var package in packageReferences) {
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var packageDir = Path.Combine(
@@ -1913,15 +1789,13 @@ public sealed class SolutionManager : ISolutionManager
                         package.PackageId.ToLowerInvariant(),
                         package.Version
                     );
-                    if (!Directory.Exists(packageDir))
-                    {
+                    if (!Directory.Exists(packageDir)) {
                         _logger.LogTrace("Package directory not found: {PackageDir}", packageDir);
                         continue;
                     }
 
                     var libDir = Path.Combine(packageDir, "lib");
-                    if (!Directory.Exists(libDir))
-                    {
+                    if (!Directory.Exists(libDir)) {
                         _logger.LogTrace(
                             "No lib directory found for package {PackageId} {Version}",
                             package.PackageId,
@@ -1937,8 +1811,7 @@ public sealed class SolutionManager : ISolutionManager
                         package.PackageId,
                         package.Version
                     );
-                    foreach (var assemblyPath in assemblyPaths)
-                    {
+                    foreach (var assemblyPath in assemblyPaths) {
                         nugetAssemblyPaths.Add(assemblyPath);
                     }
                 }
@@ -1953,12 +1826,10 @@ public sealed class SolutionManager : ISolutionManager
         return resultSet;
     }
 
-    private static string GetNuGetGlobalPackagesFolder()
-    {
+    private static string GetNuGetGlobalPackagesFolder() {
         // Check environment variable first
         var globalPackagesPath = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
-        if (!string.IsNullOrEmpty(globalPackagesPath))
-        {
+        if (!string.IsNullOrEmpty(globalPackagesPath)) {
             return globalPackagesPath;
         }
 
@@ -1972,19 +1843,16 @@ public sealed class SolutionManager : ISolutionManager
         string targetFramework,
         string packageId,
         string version
-    )
-    {
+    ) {
         var assemblies = new List<string>();
 
-        if (!Directory.Exists(libDir))
-        {
+        if (!Directory.Exists(libDir)) {
             return assemblies;
         }
 
         // First try exact target framework match
         var exactFrameworkDir = Path.Combine(libDir, targetFramework);
-        if (Directory.Exists(exactFrameworkDir))
-        {
+        if (Directory.Exists(exactFrameworkDir)) {
             var exactAssemblies = Directory.GetFiles(
                 exactFrameworkDir,
                 "*.dll",
@@ -2004,11 +1872,9 @@ public sealed class SolutionManager : ISolutionManager
         // Try compatible frameworks in order of preference
         var compatibleFrameworks = GetCompatibleFrameworks(targetFramework);
 
-        foreach (var framework in compatibleFrameworks)
-        {
+        foreach (var framework in compatibleFrameworks) {
             var frameworkDir = Path.Combine(libDir, framework);
-            if (Directory.Exists(frameworkDir))
-            {
+            if (Directory.Exists(frameworkDir)) {
                 var frameworkAssemblies = Directory.GetFiles(
                     frameworkDir,
                     "*.dll",
@@ -2027,12 +1893,10 @@ public sealed class SolutionManager : ISolutionManager
         }
 
         // Fallback: check if there are any DLLs directly in lib directory
-        if (assemblies.Count == 0)
-        {
+        if (assemblies.Count == 0) {
             var libAssemblies = Directory.GetFiles(libDir, "*.dll", SearchOption.TopDirectoryOnly);
             assemblies.AddRange(libAssemblies);
-            if (libAssemblies.Length > 0)
-            {
+            if (libAssemblies.Length > 0) {
                 _logger.LogTrace(
                     "Found {AssemblyCount} assemblies in lib root for {PackageId} {Version}",
                     libAssemblies.Length,
@@ -2045,11 +1909,9 @@ public sealed class SolutionManager : ISolutionManager
         return assemblies;
     }
 
-    private static string[] GetCompatibleFrameworks(string targetFramework)
-    {
+    private static string[] GetCompatibleFrameworks(string targetFramework) {
         // Return frameworks in order of compatibility preference
-        return targetFramework.ToLowerInvariant() switch
-        {
+        return targetFramework.ToLowerInvariant() switch {
             "net10.0" =>
             [
                 "net10.0",

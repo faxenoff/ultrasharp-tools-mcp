@@ -87,7 +87,7 @@
 
 ```
 ┌────────────────────────────┐
-│ Build-time Indexer (НЕ AOT)│
+│ Build-time VectorDB (НЕ AOT)│
 │ - Roslyn Workspace         │
 │ - Extract ALL symbols      │
 │ - Save to SQLite           │
@@ -220,7 +220,7 @@ var code = await roslynClient.GetSourceCodeAsync(fqn);
 **Адаптация**:
 ```
 Build-time:
-  dotnet run UltrasharpTools.Indexer MySolution.sln
+  dotnet run UltrasharpTools.VectorDB MySolution.sln
   → создает .ultrasharp/index.db
 
 Runtime (AOT):

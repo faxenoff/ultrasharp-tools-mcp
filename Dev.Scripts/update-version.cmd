@@ -7,9 +7,9 @@ REM DESCRIPTION:
 REM   Updates version across all project files automatically
 REM
 REM WHAT GETS UPDATED (21 places):
-REM   - .csproj files (5): Tools, Droid, Overlord, Comm, Indexer
+REM   - .csproj files (5): Tools, Droid, Overlord, Comm, VectorDB
 REM   - Dockerfile (2): version label + k8s version
-REM   - Program.cs files (4): Droid, Overlord, Comm, Indexer
+REM   - Program.cs files (4): Droid, Overlord, Comm, VectorDB
 REM   - AgentController.cs (1): health endpoint version
 REM   - Helm Chart (2): Chart.yaml version + appVersion
 REM   - Deployment docs (1): README.md Docker examples

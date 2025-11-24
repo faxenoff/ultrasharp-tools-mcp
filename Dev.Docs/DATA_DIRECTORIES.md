@@ -24,7 +24,7 @@ Typical path: `/home/{username}/.ultrasharp/`
 
 ```
 UltraSharpTools/  (or .ultrasharp/)
-├── logs/              # Droid and Indexer logs
+├── logs/              # Droid and VectorDB logs
 ├── db/                # Main database files
 ├── vector-db/         # Semantic embedding vector database
 ├── cache/
@@ -43,7 +43,7 @@ UltraSharpTools/  (or .ultrasharp/)
 
 ### Logs (`logs/`)
 - Droid process logs
-- Indexer process logs
+- VectorDB process logs
 - MCP communication logs (if enabled)
 
 **Auto-rotation**: Old logs are automatically cleaned up after 7 days.

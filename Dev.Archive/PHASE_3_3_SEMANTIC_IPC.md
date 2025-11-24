@@ -5,7 +5,7 @@
 
 ## Обзор
 
-Реализована полная поддержка semantic search в IPC режиме (Comm → Droid → Indexer). Semantic операции теперь делегируются из Droid в Indexer процесс через Named Pipe IPC.
+Реализована полная поддержка semantic search в IPC режиме (Comm → Droid → VectorDB). Semantic операции теперь делегируются из Droid в VectorDB процесс через Named Pipe IPC.
 
 ## Выполненные задачи
 
@@ -55,9 +55,9 @@ public sealed class HybridSemanticSearchService : ISemanticSearchService
 ```
 
 **Особенности**:
-- Нет локальной индексации - все делегируется в Indexer
+- Нет локальной индексации - все делегируется в VectorDB
 - Автоматическая конвертация типов (SimilarityMatch → SemanticCodeMatch)
-- IndexCodeAsync/ReindexProjectAsync - no-op методы (индексация в Indexer фоне)
+- IndexCodeAsync/ReindexProjectAsync - no-op методы (индексация в VectorDB фоне)
 
 ### 3. Обновлены MCP Tools ✅
 
@@ -122,15 +122,15 @@ if (ipcMode && semanticEnabled)
 
 ### 5. Исправлена логика semanticEnabled в IPC mode ✅
 
-**Проблема**: В IPC mode код проверял isAvailable локального embedding service (Ollama/TEI), хотя в IPC mode embedding должен обрабатываться Indexer.
+**Проблема**: В IPC mode код проверял isAvailable локального embedding service (Ollama/TEI), хотя в IPC mode embedding должен обрабатываться VectorDB.
 
 **Решение**: Разделил логику для IPC и non-IPC режимов:
 
 ```csharp
-// В IPC режиме semantic обрабатывается Indexer процессом - НЕ проверяем локальный health check
+// В IPC режиме semantic обрабатывается VectorDB процессом - НЕ проверяем локальный health check
 if (ipcMode)
 {
-    Console.WriteLine("[Semantic] IPC mode: semantic processing delegated to Indexer");
+    Console.WriteLine("[Semantic] IPC mode: semantic processing delegated to VectorDB");
     semanticEnabled = true; // Always enable in IPC mode if config exists
 }
 else
@@ -167,7 +167,7 @@ public enum CodeMatchType
 
 ```
 ┌──────────┐       ┌──────────┐       ┌──────────────┐
-│  Comm    │──IPC─→│  Droid   │──IPC─→│   Indexer    │
+│  Comm    │──IPC─→│  Droid   │──IPC─→│   VectorDB    │
 │  (8 MB)  │       │ (65 MB)  │       │   (32 MB)    │
 └──────────┘       └──────────┘       └──────────────┘
                          │                    │
@@ -209,7 +209,7 @@ dotnet build UltrasharpTools.sln -c Debug
 ```bash
 .\publish-hybrid.cmd
 # ✅ Comm: 12.82 MB (AOT)
-# ✅ Indexer: 18.52 MB (AOT)
+# ✅ VectorDB: 18.52 MB (AOT)
 # ✅ Droid: 165 MB
 ```
 
@@ -218,34 +218,34 @@ dotnet build UltrasharpTools.sln -c Debug
 При запуске Droid в IPC mode с semantic-config.json:
 ```
 [Semantic] Found semantic-config.json
-[Semantic] IPC mode: semantic processing delegated to Indexer
+[Semantic] IPC mode: semantic processing delegated to VectorDB
 semanticEnabled = true  ← Правильно!
 ```
 
 ## Следующие шаги
 
 ### Немедленные (Phase 3.4)
-1. **Тестирование end-to-end**: Запустить Comm → Droid → Indexer и протестировать semantic_search через MCP
-2. **Проверка IndexerClient.ConnectAsync**: Убедиться, что Indexer запускается автоматически при подключении
+1. **Тестирование end-to-end**: Запустить Comm → Droid → VectorDB и протестировать semantic_search через MCP
+2. **Проверка IndexerClient.ConnectAsync**: Убедиться, что VectorDB запускается автоматически при подключении
 3. **Тестирование индексации**: Проверить, что IndexCodeAsync корректно работает через IPC
 
 ### Дальнейшие улучшения
 1. **GetIndexerMetrics реализация**: Использовать IndexerClient.GetStatusAsync() для реальных метрик
 2. **Error handling**: Добавить retry logic для IPC коммуникации
-3. **Health checks**: Добавить проверку доступности Indexer при старте Droid
-4. **Reconnection logic**: Автоматическое переподключение при потере связи с Indexer
+3. **Health checks**: Добавить проверку доступности VectorDB при старте Droid
+4. **Reconnection logic**: Автоматическое переподключение при потере связи с VectorDB
 
 ## Производительность
 
 **Размеры после оптимизации**:
 - Comm: 12.82 MB (Native AOT, ~80% меньше без Roslyn)
-- Indexer: 18.52 MB (Native AOT, минимальные зависимости)
+- VectorDB: 18.52 MB (Native AOT, минимальные зависимости)
 - Droid: 165 MB (полная функциональность)
 - **Итого**: ~196 MB (vs ~260 MB монолитной версии)
 
 ## Заключение
 
-Phase 3.3 успешно завершена! Semantic search теперь полностью работает в IPC режиме через делегирование в Indexer процесс. Все компоненты скомпилированы, опубликованы и готовы к тестированию.
+Phase 3.3 успешно завершена! Semantic search теперь полностью работает в IPC режиме через делегирование в VectorDB процесс. Все компоненты скомпилированы, опубликованы и готовы к тестированию.
 
 **Критические исправления**:
 - ✅ Создан ISemanticSearchService интерфейс для полиморфизма

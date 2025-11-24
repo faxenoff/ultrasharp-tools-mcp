@@ -95,10 +95,10 @@ $filesToUpdate = @(
         Description = ".csproj (Comm)"
     },
     @{
-        Path = "UltraSharpTools.Indexer\UltraSharpTools.Indexer.csproj"
+        Path = "UltraSharpTools.VectorDB\UltraSharpTools.VectorDB.csproj"
         Pattern = '<Version>[\d\.]+(-[a-zA-Z0-9\.\-]+)?</Version>'
         Replacement = "<Version>$Version</Version>"
-        Description = ".csproj (Indexer)"
+        Description = ".csproj (VectorDB)"
     },
 
     # Dockerfile - version label
@@ -137,10 +137,10 @@ $filesToUpdate = @(
         Description = "Program.cs (Comm)"
     },
     @{
-        Path = "UltraSharpTools.Indexer\Program.cs"
+        Path = "UltraSharpTools.VectorDB\Program.cs"
         Pattern = 'ApplicationVersion = "[\d\.]+(-[a-zA-Z0-9\.\-]+)?"'
         Replacement = "ApplicationVersion = `"$Version`""
-        Description = "Program.cs (Indexer)"
+        Description = "Program.cs (VectorDB)"
     },
 
     # AgentController.cs - health endpoint version

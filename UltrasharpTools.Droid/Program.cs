@@ -145,6 +145,13 @@ public static class Program
                 "Custom directory for symbol cache (default: %TEMP%/UltrasharpTools/SymbolCache).",
         };
 
+        var lowMemoryOption = new Option<bool>("--low-memory")
+        {
+            Description =
+                "Enable low memory mode - uses SQLite for reflection types instead of in-memory cache (~50MB savings).",
+            DefaultValueFactory = _ => false,
+        };
+
         var rootCommand = new RootCommand("UltrasharpTools MCP Droid")
         {
             logDirOption,
@@ -164,6 +171,7 @@ public static class Program
             symbolCacheEnabledOption,
             symbolCacheClearOption,
             symbolCacheDirectoryOption,
+            lowMemoryOption,
         };
 
         // Parse arguments first to get values
@@ -205,6 +213,7 @@ public static class Program
         bool symbolCacheEnabled = parseResult.GetValue(symbolCacheEnabledOption);
         bool symbolCacheClear = parseResult.GetValue(symbolCacheClearOption);
         string? symbolCacheDirectory = parseResult.GetValue(symbolCacheDirectoryOption);
+        bool lowMemoryMode = parseResult.GetValue(lowMemoryOption);
 
         // Use project-local logs directory if not specified
         if (string.IsNullOrWhiteSpace(logDirPath))
@@ -350,7 +359,8 @@ public static class Program
             buildConfiguration,
             gitOptions,
             reloadOptions,
-            symbolCacheOptions
+            symbolCacheOptions,
+            lowMemoryMode
         );
 
         // Auto-enable semantic RAG if semantic-config.json exists

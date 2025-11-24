@@ -5,7 +5,7 @@
 **Phase 2: IPC Infrastructure** полностью завершен:
 
 1. ✅ **UltraSharpTools.Comm** - легкий прокси (~8 MB с AOT)
-2. ✅ **UltraSharpTools.Indexer** - семантический индексатор (~32 MB с AOT)
+2. ✅ **UltraSharpTools.VectorDB** - семантический индексатор (~32 MB с AOT)
 3. ✅ **IPC инфраструктура** в Droid (SingletonLock, IpcServer, IndexerClient)
 4. ✅ **Опция --ipc-mode** для Droid
 5. ✅ **Скрипты публикации** (publish-hybrid.ps1)
@@ -48,31 +48,31 @@ await _mcpServer.ProcessAsync(input, output, ct);
 
 ### Задача 2: Перенос Semantic компонентов
 
-**Цель:** Переместить векторную индексацию из Tools в Indexer
+**Цель:** Переместить векторную индексацию из Tools в VectorDB
 
 **Файлы для переноса:**
 ```
 UltrasharpTools.Tools/Semantic/
-├─ VectorStore.cs              → UltraSharpTools.Indexer/Services/
-├─ SemanticSearchService.cs    → UltraSharpTools.Indexer/Services/
-├─ EmbeddingGenerator.cs       → UltraSharpTools.Indexer/Services/
-├─ Backends/                   → UltraSharpTools.Indexer/Backends/
+├─ VectorStore.cs              → UltraSharpTools.VectorDB/Services/
+├─ SemanticSearchService.cs    → UltraSharpTools.VectorDB/Services/
+├─ EmbeddingGenerator.cs       → UltraSharpTools.VectorDB/Services/
+├─ Backends/                   → UltraSharpTools.VectorDB/Backends/
 │  ├─ OllamaBackend.cs
 │  ├─ TEIBackend.cs
 │  └─ MemoryBackend.cs
-└─ Models/                     → UltraSharpTools.Indexer/Models/
+└─ Models/                     → UltraSharpTools.VectorDB/Models/
    ├─ VectorEmbedding.cs
    └─ SimilarityResult.cs
 
 UltrasharpTools.Tools/Layered/
-├─ VectorCacheManager.cs       → UltraSharpTools.Indexer/Layered/
-└─ LayeredCacheManager.cs      → UltraSharpTools.Indexer/Layered/
+├─ VectorCacheManager.cs       → UltraSharpTools.VectorDB/Layered/
+└─ LayeredCacheManager.cs      → UltraSharpTools.VectorDB/Layered/
 ```
 
 **Шаги:**
-1. Скопировать файлы в Indexer
+1. Скопировать файлы в VectorDB
 2. Обновить namespaces
-3. Добавить зависимости в Indexer.csproj
+3. Добавить зависимости в VectorDB.csproj
 4. Реализовать IndexerService методы:
    ```csharp
    private async Task<string> IndexCodeAsync(...)
@@ -109,7 +109,7 @@ public async Task<object> SemanticSearchAsync(
     double threshold,
     IndexerClient indexerClient) // Inject
 {
-    // Делегировать в Indexer вместо локального выполнения
+    // Делегировать в VectorDB вместо локального выполнения
     var results = await indexerClient.SearchSimilarAsync(query, threshold);
     return results;
 }
@@ -132,11 +132,11 @@ cd Run.Publish\Comm
 # Должен подключиться к Droid через Named Pipe
 ```
 
-**2. Тестирование Indexer:**
+**2. Тестирование VectorDB:**
 ```bash
-# Terminal 1: Запустить Indexer
-cd Run.Publish\Indexer
-.\UltraSharpTools.Indexer.exe
+# Terminal 1: Запустить VectorDB
+cd Run.Publish\VectorDB
+.\UltraSharpTools.VectorDB.exe
 
 # Terminal 2: Тест IndexerClient из Droid
 # (после реализации MCP handler)
@@ -144,7 +144,7 @@ cd Run.Publish\Indexer
 
 **3. End-to-end тестирование:**
 ```bash
-# Полный стек: Comm → Droid → Indexer
+# Полный стек: Comm → Droid → VectorDB
 # Проверить semantic_search через Claude Desktop
 ```
 
@@ -163,9 +163,9 @@ cd Run.Publish\Indexer
 ### Вариант 2: Semantic Migration (параллельно)
 ```bash
 # 1. Создать ветку feature/semantic-migration
-# 2. Скопировать Semantic/ файлы в Indexer
+# 2. Скопировать Semantic/ файлы в VectorDB
 # 3. Обновить IndexerService.cs
-# 4. Тестировать Droid → Indexer
+# 4. Тестировать Droid → VectorDB
 ```
 
 ---
@@ -179,7 +179,7 @@ cd Run.Publish\Indexer
 
 **Скрипты:**
 - `Dev.Scripts/publish-comm.ps1` - публикация Comm
-- `Dev.Scripts/publish-indexer.ps1` - публикация Indexer
+- `Dev.Scripts/publish-vectordb.ps1` - публикация VectorDB
 - `Dev.Scripts/publish-hybrid.ps1` - публикация всей архитектуры
 - `publish-hybrid.cmd` - quick launcher
 
@@ -209,8 +209,8 @@ cd Run.Publish\Indexer
 Phase 3 считается завершенным когда:
 
 ✅ Claude Desktop → Comm → Droid работает
-✅ semantic_search делегируется в Indexer
-✅ Indexer возвращает реальные results
+✅ semantic_search делегируется в VectorDB
+✅ VectorDB возвращает реальные results
 ✅ Все компоненты работают через Named Pipe IPC
 
 **Тогда можно мерить production performance и размеры!**

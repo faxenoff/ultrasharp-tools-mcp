@@ -23,7 +23,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Test.Semant
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltraSharpTools.Comm", "UltraSharpTools.Comm\UltraSharpTools.Comm.csproj", "{D9C77309-0840-4500-A463-24C18BA8D5C5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltraSharpTools.Indexer", "UltraSharpTools.Indexer\UltraSharpTools.Indexer.csproj", "{2099593E-F852-4C11-9590-7FD83A2BE2DC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltraSharpTools.VectorDB", "UltraSharpTools.VectorDB\UltraSharpTools.VectorDB.csproj", "{2099593E-F852-4C11-9590-7FD83A2BE2DC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

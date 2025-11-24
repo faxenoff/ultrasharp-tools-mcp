@@ -103,7 +103,7 @@ This document describes the integration of **Retrieval-Augmented Generation (RAG
 │  │              New RAG Components                          │   │
 │  │  ┌────────────────┐  ┌─────────────────┐               │   │
 │  │  │ HybridSearch   │  │ CodeSemantic    │               │   │
-│  │  │ Engine         │  │ Indexer         │               │   │
+│  │  │ Engine         │  │ VectorDB         │               │   │
 │  │  └────────┬───────┘  └────────┬────────┘               │   │
 │  │           │                    │                         │   │
 │  │  ┌────────▼────────┐  ┌───────▼────────┐               │   │
@@ -1313,14 +1313,14 @@ public class SemanticIntegrationTests
         var vectorStore = new VectorStore(":memory:");
         await vectorStore.InitializeAsync();
 
-        var indexer = new CodeSemanticIndexer(
+        var vectordb = new CodeSemanticIndexer(
             solutionManager,
             embeddingGen,
             vectorStore
         );
 
         // Act: Index a small solution
-        await indexer.IndexSolutionAsync();
+        await vectordb.IndexSolutionAsync();
 
         // Act: Search
         var hybridSearch = new HybridSearchEngine(

@@ -34,7 +34,7 @@
 
 ---
 
-### 2. UltraSharpTools.Indexer - Семантическая индексация (✅ Готов)
+### 2. UltraSharpTools.VectorDB - Семантическая индексация (✅ Готов)
 
 **Создан IPC сервер для векторной индексации:**
 
@@ -79,9 +79,9 @@
    - Background service pattern
    - Error handling + retry logic
 
-3. **`Ipc/IndexerClient.cs`** - клиент для Indexer
-   - Подключение к Indexer pipe
-   - Автозапуск Indexer процесса
+3. **`Ipc/IndexerClient.cs`** - клиент для VectorDB
+   - Подключение к VectorDB pipe
+   - Автозапуск VectorDB процесса
    - Thread-safe запросы (SemaphoreSlim)
    - Методы: `IndexCodeAsync()`, `SearchSimilarAsync()`
 
@@ -139,8 +139,8 @@
    - Проверка размера (~5-10 MB target)
    - Подробный вывод статистики
 
-2. **`Dev.Scripts/publish-indexer.ps1`**
-   - Native AOT публикация Indexer
+2. **`Dev.Scripts/publish-vectordb.ps1`**
+   - Native AOT публикация VectorDB
    - Проверка vectorlite.dll
    - Размер статистика (~30-40 MB target)
 
@@ -148,7 +148,7 @@
    - Публикует все 3 компонента:
      - Comm (AOT)
      - Droid (standard)
-     - Indexer (AOT)
+     - VectorDB (AOT)
    - Консолидирует в `Run.Publish/Hybrid/`
    - Показывает итоговые размеры
    - Инструкции по использованию
@@ -163,7 +163,7 @@
 
 # Или отдельно
 .\Dev.Scripts\publish-comm.ps1
-.\Dev.Scripts\publish-indexer.ps1
+.\Dev.Scripts\publish-vectordb.ps1
 .\Dev.Scripts\publish-mcp.ps1  # для Droid
 ```
 
@@ -200,15 +200,15 @@
 │ │  └─ MCP handler (TODO Phase 3)           │
 │ ├─ Roslyn + Tools (Core)                   │
 │ └─ IndexerClient ✅                          │
-│    ├─ Подключение к Indexer                │
-│    ├─ Автозапуск Indexer                   │
+│    ├─ Подключение к VectorDB                │
+│    ├─ Автозапуск VectorDB                   │
 │    └─ IndexCodeAsync, SearchSimilarAsync   │
 └────────────┬────────────────────────────────┘
              │ Named Pipe IPC
              │ "UltraSharpTools_Indexer"
              ↓
 ┌─────────────────────────────────────────────┐
-│ UltraSharpTools.Indexer (~32 MB, Native AOT)│
+│ UltraSharpTools.VectorDB (~32 MB, Native AOT)│
 │ ├─ IndexerService ✅                         │
 │ │  ├─ index_code (TODO: implement)         │
 │ │  ├─ search_similar (TODO: implement)     │
@@ -236,13 +236,13 @@
    - Named Pipe сервер (ready for connections)
    - DI регистрация IPC сервисов
 
-3. **Indexer процесс:**
+3. **VectorDB процесс:**
    - Named Pipe сервер
    - JSON protocol обработка
    - Структура для semantic операций
 
 4. **Скрипты публикации:**
-   - Native AOT для Comm и Indexer
+   - Native AOT для Comm и VectorDB
    - Консолидация всех компонентов
    - Размер статистика
 
@@ -254,16 +254,16 @@
    - Тестировать Comm → Droid взаимодействие
 
 2. **Semantic Migration:**
-   - Перенести VectorStore из Tools в Indexer
+   - Перенести VectorStore из Tools в VectorDB
    - Перенести SemanticSearchService
    - Перенести EmbeddingGenerator
-   - Обновить Droid Tools для делегирования в Indexer
+   - Обновить Droid Tools для делегирования в VectorDB
 
 3. **Testing:**
    - Запустить Droid в --ipc-mode
    - Подключиться через Comm
    - Проверить Named Pipe communication
-   - Протестировать Indexer integration
+   - Протестировать VectorDB integration
 
 ---
 
@@ -302,7 +302,7 @@ UltraSharpTools.Comm.exe
 ## 🎉 Итоги Phase 2
 
 ### Реализовано:
-- ✅ 3 новых проекта (Comm, Indexer, IPC infrastructure)
+- ✅ 3 новых проекта (Comm, VectorDB, IPC infrastructure)
 - ✅ 9 новых файлов (классы, скрипты)
 - ✅ Интеграция в Droid Program.cs
 - ✅ Native AOT configuration
@@ -313,14 +313,14 @@ UltraSharpTools.Comm.exe
 
 ### Следующие шаги (Phase 3):
 1. MCP handler implementation
-2. Semantic migration to Indexer
+2. Semantic migration to VectorDB
 3. End-to-end testing
 4. Performance benchmarks
 
 ### Размеры (оценочные после AOT):
 - Comm: ~8 MB
 - Droid: ~65 MB (без Semantic)
-- Indexer: ~32 MB
+- VectorDB: ~32 MB
 - **Total: ~105 MB** (vs 103 MB standalone Droid)
 
 Но главное:
