@@ -19,6 +19,8 @@ using UltrasharpTools.Tools.Logging;
 using UltrasharpTools.Tools.Mcp.Tools;
 using UltrasharpTools.Tools.Services;
 
+#pragma warning disable CS0162 // Unreachable code detected (enableConsoleOutput = false)
+
 namespace UltrasharpTools.Droid;
 
 public static class Program
