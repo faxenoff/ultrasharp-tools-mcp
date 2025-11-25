@@ -10,8 +10,7 @@ namespace UltrasharpTools.Tools.Semantic.Hybrid;
 /// Извлекает structural features из query кода для feature-based поиска.
 /// Создаёт временную компиляцию для анализа partial/incomplete кода.
 /// </summary>
-public sealed class QueryFeatureExtractor
-{
+public sealed class QueryFeatureExtractor {
     private readonly ILogger<QueryFeatureExtractor> _logger;
 
     // Базовые references для компиляции
@@ -22,8 +21,7 @@ public sealed class QueryFeatureExtractor
         MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
     ];
 
-    public QueryFeatureExtractor(ILogger<QueryFeatureExtractor>? logger = null)
-    {
+    public QueryFeatureExtractor(ILogger<QueryFeatureExtractor>? logger = null) {
         _logger = logger ?? NullLogger<QueryFeatureExtractor>.Instance;
     }
 
@@ -33,10 +31,8 @@ public sealed class QueryFeatureExtractor
     public async Task<MethodSemanticFeatures?> ExtractMethodFeaturesAsync(
         string queryCode,
         CancellationToken ct = default
-    )
-    {
-        try
-        {
+    ) {
+        try {
             // Wrap код в class если это standalone method
             var wrappedCode = WrapMethodCode(queryCode);
 
@@ -57,15 +53,13 @@ public sealed class QueryFeatureExtractor
                 .OfType<MethodDeclarationSyntax>()
                 .FirstOrDefault();
 
-            if (methodDecl == null)
-            {
+            if (methodDecl == null) {
                 _logger.LogWarning("No method declaration found in query code");
                 return null;
             }
 
             var methodSymbol = semanticModel.GetDeclaredSymbol(methodDecl, ct) as IMethodSymbol;
-            if (methodSymbol == null)
-            {
+            if (methodSymbol == null) {
                 _logger.LogWarning("Could not get method symbol from query code");
                 return null;
             }
@@ -78,9 +72,7 @@ public sealed class QueryFeatureExtractor
                 compilation,
                 ct
             );
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogError(ex, "Failed to extract method features from query code");
             return null;
         }
@@ -92,10 +84,8 @@ public sealed class QueryFeatureExtractor
     public async Task<ClassSemanticFeatures?> ExtractClassFeaturesAsync(
         string queryCode,
         CancellationToken ct = default
-    )
-    {
-        try
-        {
+    ) {
+        try {
             // Parse как class
             var syntaxTree = CSharpSyntaxTree.ParseText(queryCode, cancellationToken: ct);
             var compilation = CSharpCompilation.Create(
@@ -113,15 +103,13 @@ public sealed class QueryFeatureExtractor
                 .OfType<ClassDeclarationSyntax>()
                 .FirstOrDefault();
 
-            if (classDecl == null)
-            {
+            if (classDecl == null) {
                 _logger.LogWarning("No class declaration found in query code");
                 return null;
             }
 
             var classSymbol = semanticModel.GetDeclaredSymbol(classDecl, ct) as INamedTypeSymbol;
-            if (classSymbol == null)
-            {
+            if (classSymbol == null) {
                 _logger.LogWarning("Could not get class symbol from query code");
                 return null;
             }
@@ -134,9 +122,7 @@ public sealed class QueryFeatureExtractor
                 compilation,
                 ct
             );
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogError(ex, "Failed to extract class features from query code");
             return null;
         }
@@ -150,8 +136,7 @@ public sealed class QueryFeatureExtractor
         SemanticModel semanticModel,
         Compilation compilation,
         CancellationToken ct
-    )
-    {
+    ) {
         var methodName = methodSymbol.Name;
         var fullyQualifiedMethodName = methodSymbol.ToDisplayString(
             ToolHelpers.FullyQualifiedFormatWithoutGlobal
@@ -182,29 +167,22 @@ public sealed class QueryFeatureExtractor
         SyntaxNode? bodyOrExpressionBody =
             methodDecl.Body ?? (SyntaxNode?)methodDecl.ExpressionBody?.Expression;
 
-        if (bodyOrExpressionBody != null)
-        {
-            try
-            {
+        if (bodyOrExpressionBody != null) {
+            try {
                 // CFG analysis
                 var controlFlowGraph = ControlFlowGraph.Create(methodDecl, semanticModel, ct);
-                if (controlFlowGraph != null && controlFlowGraph.Blocks.Length > 0)
-                {
+                if (controlFlowGraph != null && controlFlowGraph.Blocks.Length > 0) {
                     basicBlockCount = controlFlowGraph.Blocks.Length;
 
                     // Count conditional branches and loops
-                    foreach (var block in controlFlowGraph.Blocks)
-                    {
-                        if (block.ConditionalSuccessor != null)
-                        {
+                    foreach (var block in controlFlowGraph.Blocks) {
+                        if (block.ConditionalSuccessor != null) {
                             conditionalBranchCount++;
                         }
 
                         // Detect loops (back edges)
-                        foreach (var predecessor in block.Predecessors)
-                        {
-                            if (predecessor.Source.Ordinal > block.Ordinal)
-                            {
+                        foreach (var predecessor in block.Predecessors) {
+                            if (predecessor.Source.Ordinal > block.Ordinal) {
                                 loopCount++;
                             }
                         }
@@ -213,29 +191,23 @@ public sealed class QueryFeatureExtractor
                     // Estimate cyclomatic complexity: edges - nodes + 2
                     cyclomaticComplexity = Math.Max(1, controlFlowGraph.Blocks.Length - 1);
                 }
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 _logger.LogDebug(
                     ex,
                     "CFG analysis failed for query method (expected for partial code)"
                 );
             }
 
-            try
-            {
+            try {
                 // IOperation analysis
                 var operation = semanticModel.GetOperation(bodyOrExpressionBody, ct);
-                if (operation != null)
-                {
-                    foreach (var op in operation.DescendantsAndSelf())
-                    {
+                if (operation != null) {
+                    foreach (var op in operation.DescendantsAndSelf()) {
                         var opKind = op.Kind.ToString();
                         operationCounts[opKind] = operationCounts.GetValueOrDefault(opKind) + 1;
 
                         // Invoked methods
-                        if (op is IInvocationOperation invocation)
-                        {
+                        if (op is IInvocationOperation invocation) {
                             var signature = invocation.TargetMethod.ToDisplayString(
                                 ToolHelpers.FullyQualifiedFormatWithoutGlobal
                             );
@@ -243,21 +215,17 @@ public sealed class QueryFeatureExtractor
                         }
 
                         // Accessed members
-                        if (op is IMemberReferenceOperation memberRef)
-                        {
+                        if (op is IMemberReferenceOperation memberRef) {
                             var memberType = memberRef.Member.ContainingType?.ToDisplayString(
                                 ToolHelpers.FullyQualifiedFormatWithoutGlobal
                             );
-                            if (memberType != null)
-                            {
+                            if (memberType != null) {
                                 distinctAccessedMemberTypes.Add(memberType);
                             }
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 _logger.LogDebug(
                     ex,
                     "Operation analysis failed for query method (expected for partial code)"
@@ -288,8 +256,7 @@ public sealed class QueryFeatureExtractor
         SemanticModel semanticModel,
         Compilation compilation,
         CancellationToken ct
-    )
-    {
+    ) {
         var className = classSymbol.Name;
         var fullyQualifiedClassName = classSymbol.ToDisplayString(
             ToolHelpers.FullyQualifiedFormatWithoutGlobal
@@ -330,10 +297,8 @@ public sealed class QueryFeatureExtractor
         int nestedEnumCount = 0;
         int nestedInterfaceCount = 0;
 
-        foreach (var member in classSymbol.GetMembers())
-        {
-            switch (member)
-            {
+        foreach (var member in classSymbol.GetMembers()) {
+            switch (member) {
                 case IMethodSymbol method when !ToolHelpers.IsPropertyAccessor(method):
                     if (method.DeclaredAccessibility == Accessibility.Public)
                         publicMethodCount++;
@@ -372,8 +337,7 @@ public sealed class QueryFeatureExtractor
                     break;
 
                 case INamedTypeSymbol nestedType:
-                    switch (nestedType.TypeKind)
-                    {
+                    switch (nestedType.TypeKind) {
                         case TypeKind.Class:
                             nestedClassCount++;
                             break;
@@ -386,6 +350,9 @@ public sealed class QueryFeatureExtractor
                         case TypeKind.Interface:
                             nestedInterfaceCount++;
                             break;
+                        default:
+                            // Ignore other type kinds (delegates, pointers, etc.)
+                            break;
                     }
                     break;
             }
@@ -395,23 +362,19 @@ public sealed class QueryFeatureExtractor
         var referencedTypes = new HashSet<string>();
         var usedNamespaces = new HashSet<string>();
 
-        foreach (var descendant in classDecl.DescendantNodes())
-        {
+        foreach (var descendant in classDecl.DescendantNodes()) {
             var symbolInfo = semanticModel.GetSymbolInfo(descendant, ct);
-            if (symbolInfo.Symbol != null)
-            {
+            if (symbolInfo.Symbol != null) {
                 var typeSymbol =
                     symbolInfo.Symbol as ITypeSymbol ?? symbolInfo.Symbol.ContainingType;
-                if (typeSymbol != null)
-                {
+                if (typeSymbol != null) {
                     var typeName = typeSymbol.ToDisplayString(
                         ToolHelpers.FullyQualifiedFormatWithoutGlobal
                     );
                     referencedTypes.Add(typeName);
 
                     var ns = typeSymbol.ContainingNamespace?.ToDisplayString();
-                    if (!string.IsNullOrEmpty(ns) && ns != "<global namespace>")
-                    {
+                    if (!string.IsNullOrEmpty(ns) && ns != "<global namespace>") {
                         usedNamespaces.Add(ns);
                     }
                 }
@@ -459,11 +422,9 @@ public sealed class QueryFeatureExtractor
         );
     }
 
-    private static string WrapMethodCode(string methodCode)
-    {
+    private static string WrapMethodCode(string methodCode) {
         // Если код уже содержит class declaration - вернуть как есть
-        if (methodCode.Contains("class ") || methodCode.Contains("record "))
-        {
+        if (methodCode.Contains("class ") || methodCode.Contains("record ")) {
             return methodCode;
         }
 

@@ -375,6 +375,10 @@ WHERE BranchName = @branchName";
                         target[currentKey] = currentValues.ToArray();
                     }
                     break;
+
+                default:
+                    // Ignore other token types (StartArray, StartObject, EndObject, etc.)
+                    break;
             }
         }
     }

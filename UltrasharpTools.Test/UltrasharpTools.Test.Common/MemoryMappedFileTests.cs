@@ -323,9 +323,15 @@ Assert.Equal(recordCount - 1, last.Id);
 }
 }
 
-private struct TestStruct
+private struct TestStruct : IEquatable<TestStruct>
 {
 public int Id;
 public double Value;
+
+public readonly bool Equals(TestStruct other) => Id == other.Id && Value == other.Value;
+public override readonly bool Equals(object? obj) => obj is TestStruct other && Equals(other);
+public override readonly int GetHashCode() => HashCode.Combine(Id, Value);
+public static bool operator ==(TestStruct left, TestStruct right) => left.Equals(right);
+public static bool operator !=(TestStruct left, TestStruct right) => !left.Equals(right);
 }
 }

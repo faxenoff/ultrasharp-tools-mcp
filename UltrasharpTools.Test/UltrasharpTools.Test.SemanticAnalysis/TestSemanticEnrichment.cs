@@ -19,8 +19,8 @@ public class TestSemanticEnrichment
     public static async Task<int> Run(string[] args)
     {
         // Parse command line arguments
-        var provider = args.Length > 0 ? args[0].ToLower() : "memory";
-        var enableSemanticClustering = args.Length > 1 && args[1].ToLower() == "true";
+        var provider = args.Length > 0 ? args[0].ToLowerInvariant() : "memory";
+        var enableSemanticClustering = args.Length > 1 && args[1].ToLowerInvariant() == "true";
 
         Console.WriteLine("=== UltrasharpTools Semantic Enrichment Test ===");
         Console.WriteLine();
