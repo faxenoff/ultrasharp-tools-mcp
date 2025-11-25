@@ -5,7 +5,7 @@ namespace UltraSharpTools.VectorDB;
 
 /// <summary>
 /// Управляет энергопотреблением процесса.
-/// После периода неактивности переключает в энергоэффективный режим (низкий приоритет).
+/// После периода неактивности переключает в энергоэффективный режим (EcoQoS на Windows 11+).
 /// При поступлении запроса - мгновенно возвращается в нормальный режим.
 /// </summary>
 public sealed partial class PowerManagementService : IDisposable {
@@ -18,7 +18,7 @@ public sealed partial class PowerManagementService : IDisposable {
     private PowerMode _currentMode = PowerMode.Normal;
     private bool _disposed;
 
-    // Настройки для разных режимов
+    // Настройки для разных режимов ThreadPool
     private readonly int _normalMinWorkerThreads;
     private readonly int _normalMinCompletionThreads;
     private const int IdleMinWorkerThreads = 1;
@@ -28,8 +28,8 @@ public sealed partial class PowerManagementService : IDisposable {
     public DateTime LastActivityTime => _lastActivityTime;
 
     public PowerManagementService(
-        ILogger<PowerManagementService> logger,
-        TimeSpan? idleTimeout = null) {
+    ILogger<PowerManagementService> logger,
+    TimeSpan? idleTimeout = null) {
         _logger = logger;
         _idleTimeout = idleTimeout ?? TimeSpan.FromMinutes(3);
         _lastActivityTime = DateTime.UtcNow;
@@ -39,12 +39,12 @@ public sealed partial class PowerManagementService : IDisposable {
 
         // Проверка каждые 30 секунд
         _idleCheckTimer = new Timer(
-            CheckIdleState,
-            null,
-            TimeSpan.FromSeconds(30),
-            TimeSpan.FromSeconds(30));
+        CheckIdleState,
+        null,
+        TimeSpan.FromSeconds(30),
+        TimeSpan.FromSeconds(30));
 
-        LogServiceStarted(_idleTimeout.TotalMinutes);
+        LogServiceStarted(_idleTimeout.TotalMinutes, EfficiencyModeHelper.IsEcoQosSupported());
     }
 
     /// <summary>
@@ -102,9 +102,8 @@ public sealed partial class PowerManagementService : IDisposable {
             return;
 
         try {
-            // Снижаем приоритет процесса
-            using var process = Process.GetCurrentProcess();
-            process.PriorityClass = ProcessPriorityClass.BelowNormal;
+            // Включаем настоящий Efficiency Mode (EcoQoS на Windows 11+)
+            EfficiencyModeHelper.EnableEfficiencyMode(_logger);
 
             // Уменьшаем минимальные потоки ThreadPool
             ThreadPool.SetMinThreads(IdleMinWorkerThreads, IdleMinCompletionThreads);
@@ -124,9 +123,8 @@ public sealed partial class PowerManagementService : IDisposable {
             return;
 
         try {
-            // Восстанавливаем приоритет процесса
-            using var process = Process.GetCurrentProcess();
-            process.PriorityClass = ProcessPriorityClass.Normal;
+            // Отключаем Efficiency Mode
+            EfficiencyModeHelper.DisableEfficiencyMode(_logger);
 
             // Восстанавливаем настройки ThreadPool
             ThreadPool.SetMinThreads(_normalMinWorkerThreads, _normalMinCompletionThreads);
@@ -153,19 +151,19 @@ public sealed partial class PowerManagementService : IDisposable {
 
     // Logging
     [LoggerMessage(EventId = 2000, Level = LogLevel.Information,
-        Message = "[PowerManagement] Service started. Idle timeout: {TimeoutMinutes} minutes")]
-    private partial void LogServiceStarted(double timeoutMinutes);
+    Message = "[PowerManagement] Service started. Idle timeout: {TimeoutMinutes} minutes, EcoQoS supported: {EcoQosSupported}")]
+    private partial void LogServiceStarted(double timeoutMinutes, bool ecoQosSupported);
 
     [LoggerMessage(EventId = 2001, Level = LogLevel.Information,
-        Message = "[PowerManagement] Switched to IDLE mode (low priority, reduced threads)")]
+    Message = "[PowerManagement] Switched to IDLE mode (Efficiency Mode active)")]
     private partial void LogSwitchedToIdleMode();
 
     [LoggerMessage(EventId = 2002, Level = LogLevel.Information,
-        Message = "[PowerManagement] Switched to NORMAL mode (normal priority, full threads)")]
+    Message = "[PowerManagement] Switched to NORMAL mode")]
     private partial void LogSwitchedToNormalMode();
 
     [LoggerMessage(EventId = 2003, Level = LogLevel.Warning,
-        Message = "[PowerManagement] Failed to switch to {Mode} mode")]
+    Message = "[PowerManagement] Failed to switch to {Mode} mode")]
     private partial void LogFailedToSwitchMode(Exception ex, string mode);
 }
 

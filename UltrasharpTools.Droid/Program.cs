@@ -18,6 +18,7 @@ using UltrasharpTools.Tools.Interfaces;
 using UltrasharpTools.Tools.Logging;
 using UltrasharpTools.Tools.Mcp.Tools;
 using UltrasharpTools.Tools.Services;
+using UltrasharpTools.Droid.Services;
 
 #pragma warning disable CS0162 // Unreachable code detected (enableConsoleOutput = false)
 
@@ -362,6 +363,10 @@ public static class Program
             symbolCacheOptions,
             lowMemoryMode
         );
+
+        // Register PowerManagementService for energy efficiency mode
+        // After 3 minutes of inactivity, switches to EcoQoS mode (Windows 11+)
+        builder.Services.AddHostedService<PowerManagementService>();
 
         // Auto-enable semantic RAG if semantic-config.json exists
         // Use centralized config directory: %LOCALAPPDATA%\UltraSharpTools\config (Windows)

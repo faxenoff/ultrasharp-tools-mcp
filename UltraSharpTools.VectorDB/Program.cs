@@ -16,7 +16,6 @@ public class Program {
     // Принимает запросы от Droid через Named Pipe IPC
 
     private const string PipeName = "UltraSharpTools_VectorDB";
-    private const int ConnectionTimeoutMinutes = 5;
     private const int ParentCheckIntervalMs = 2000;
 
     public static async Task Main(string[] args) {
@@ -184,8 +183,6 @@ public class Program {
     VectorDBService indexerService,
     CancellationTokenSource cts,
     ILogger logger) {
-        bool firstConnection = true;
-
         try {
             while (!cts.Token.IsCancellationRequested) {
                 // Создаем Named Pipe сервер для каждого подключения
@@ -200,23 +197,8 @@ public class Program {
                 logger.LogInformation("[VectorDB] Waiting for Droid connection on pipe: {PipeName}", PipeName);
 
                 try {
-                    if (firstConnection) {
-                        // Первое подключение - с таймаутом
-                        using var connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
-                        connectionCts.CancelAfter(TimeSpan.FromMinutes(ConnectionTimeoutMinutes));
-
-                        try {
-                            await pipeServer.WaitForConnectionAsync(connectionCts.Token);
-                        } catch (OperationCanceledException) when (!cts.Token.IsCancellationRequested) {
-                            logger.LogWarning("[VectorDB] No client connected within {Timeout} minutes. Shutting down.", ConnectionTimeoutMinutes);
-                            return;
-                        }
-
-                        firstConnection = false;
-                    } else {
-                        // Последующие подключения - без таймаута, только по cancellation
-                        await pipeServer.WaitForConnectionAsync(cts.Token);
-                    }
+                    // Ждём подключения бесконечно (пока родительский процесс жив)
+                    await pipeServer.WaitForConnectionAsync(cts.Token);
 
                     if (cts.Token.IsCancellationRequested) {
                         logger.LogInformation("[VectorDB] Shutdown requested during connection wait");

@@ -1,4 +1,5 @@
 using ModelContextProtocol;
+using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Tools.Mcp;
 
@@ -20,6 +21,9 @@ internal static class ErrorHandlingHelpers
     {
         try
         {
+            // Record activity to exit idle/efficiency mode on MCP requests
+            ActivityTrackerProvider.RecordActivity();
+
             cancellationToken.ThrowIfCancellationRequested();
             return await operation();
         }

@@ -1,24 +1,28 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Droid.Services;
 
 /// <summary>
 /// Управляет энергопотреблением процесса Droid.
-/// После периода неактивности переключает в энергоэффективный режим (низкий приоритет).
+/// После периода неактивности переключает в энергоэффективный режим (EcoQoS на Windows 11+).
 /// При поступлении запроса - мгновенно возвращается в нормальный режим.
+/// Реализует IHostedService для автоматического запуска при старте приложения.
+/// Реализует IActivityTracker для интеграции с MCP pipeline.
 /// </summary>
-public sealed partial class PowerManagementService : IDisposable {
+public sealed partial class PowerManagementService : IHostedService, IActivityTracker, IDisposable {
     private readonly ILogger<PowerManagementService> _logger;
     private readonly TimeSpan _idleTimeout;
-    private readonly Timer _idleCheckTimer;
+    private Timer? _idleCheckTimer;
     private readonly object _lock = new();
 
     private DateTime _lastActivityTime;
     private PowerMode _currentMode = PowerMode.Normal;
     private bool _disposed;
 
-    // Настройки для разных режимов
+    // Настройки для разных режимов ThreadPool
     private readonly int _normalMinWorkerThreads;
     private readonly int _normalMinCompletionThreads;
     private const int IdleMinWorkerThreads = 2;  // Droid нужен 1 для FileWatcher
@@ -28,15 +32,20 @@ public sealed partial class PowerManagementService : IDisposable {
     public DateTime LastActivityTime => _lastActivityTime;
     public TimeSpan IdleDuration => DateTime.UtcNow - _lastActivityTime;
 
-    public PowerManagementService(
-        ILogger<PowerManagementService> logger,
-        TimeSpan? idleTimeout = null) {
+    public PowerManagementService(ILogger<PowerManagementService> logger) {
         _logger = logger;
-        _idleTimeout = idleTimeout ?? TimeSpan.FromMinutes(3);
+        _idleTimeout = TimeSpan.FromMinutes(3);
         _lastActivityTime = DateTime.UtcNow;
 
         // Сохраняем текущие настройки ThreadPool
         ThreadPool.GetMinThreads(out _normalMinWorkerThreads, out _normalMinCompletionThreads);
+    }
+
+    public Task StartAsync(CancellationToken cancellationToken) {
+        LogServiceStarted(_idleTimeout.TotalMinutes, EfficiencyModeHelper.IsEcoQosSupported());
+
+        // Register as global activity tracker for MCP tools
+        ActivityTrackerProvider.Current = this;
 
         // Проверка каждые 30 секунд
         _idleCheckTimer = new Timer(
@@ -45,7 +54,18 @@ public sealed partial class PowerManagementService : IDisposable {
             TimeSpan.FromSeconds(30),
             TimeSpan.FromSeconds(30));
 
-        LogServiceStarted(_idleTimeout.TotalMinutes);
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) {
+        _idleCheckTimer?.Change(Timeout.Infinite, 0);
+
+        // Восстанавливаем нормальный режим при завершении
+        if (_currentMode == PowerMode.Idle) {
+            SwitchToNormalMode();
+        }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -103,9 +123,8 @@ public sealed partial class PowerManagementService : IDisposable {
             return;
 
         try {
-            // Снижаем приоритет процесса
-            using var process = Process.GetCurrentProcess();
-            process.PriorityClass = ProcessPriorityClass.BelowNormal;
+            // Включаем настоящий Efficiency Mode (EcoQoS на Windows 11+)
+            EfficiencyModeHelper.EnableEfficiencyMode(_logger);
 
             // Уменьшаем минимальные потоки ThreadPool
             ThreadPool.SetMinThreads(IdleMinWorkerThreads, IdleMinCompletionThreads);
@@ -125,9 +144,8 @@ public sealed partial class PowerManagementService : IDisposable {
             return;
 
         try {
-            // Восстанавливаем приоритет процесса
-            using var process = Process.GetCurrentProcess();
-            process.PriorityClass = ProcessPriorityClass.Normal;
+            // Отключаем Efficiency Mode
+            EfficiencyModeHelper.DisableEfficiencyMode(_logger);
 
             // Восстанавливаем настройки ThreadPool
             ThreadPool.SetMinThreads(_normalMinWorkerThreads, _normalMinCompletionThreads);
@@ -151,7 +169,7 @@ public sealed partial class PowerManagementService : IDisposable {
             return;
         _disposed = true;
 
-        _idleCheckTimer.Dispose();
+        _idleCheckTimer?.Dispose();
 
         // Восстанавливаем нормальный режим при завершении
         if (_currentMode == PowerMode.Idle) {
@@ -161,19 +179,19 @@ public sealed partial class PowerManagementService : IDisposable {
 
     // Logging
     [LoggerMessage(EventId = 3000, Level = LogLevel.Information,
-        Message = "[PowerManagement] Service started. Idle timeout: {TimeoutMinutes} minutes")]
-    private partial void LogServiceStarted(double timeoutMinutes);
+    Message = "[PowerManagement] Service started. Idle timeout: {TimeoutMinutes} minutes, EcoQoS supported: {EcoQosSupported}")]
+    private partial void LogServiceStarted(double timeoutMinutes, bool ecoQosSupported);
 
     [LoggerMessage(EventId = 3001, Level = LogLevel.Information,
-        Message = "[PowerManagement] Switched to IDLE mode (low priority, reduced threads)")]
+    Message = "[PowerManagement] Switched to IDLE mode (Efficiency Mode active)")]
     private partial void LogSwitchedToIdleMode();
 
     [LoggerMessage(EventId = 3002, Level = LogLevel.Information,
-        Message = "[PowerManagement] Switched to NORMAL mode (normal priority, full threads)")]
+    Message = "[PowerManagement] Switched to NORMAL mode")]
     private partial void LogSwitchedToNormalMode();
 
     [LoggerMessage(EventId = 3003, Level = LogLevel.Warning,
-        Message = "[PowerManagement] Failed to switch to {Mode} mode")]
+    Message = "[PowerManagement] Failed to switch to {Mode} mode")]
     private partial void LogFailedToSwitchMode(Exception ex, string mode);
 }
 
