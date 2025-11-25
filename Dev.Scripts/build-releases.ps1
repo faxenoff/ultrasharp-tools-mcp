@@ -81,7 +81,7 @@ if (-not $Version) {
     }
 }
 
-# Create output directory
+# Create releases directory
 $ReleasesDir = Join-Path $ProjectRoot $OutputDir
 if (Test-Path $ReleasesDir) {
     Write-Info "Cleaning existing releases directory..."
@@ -89,6 +89,9 @@ if (Test-Path $ReleasesDir) {
 }
 New-Item -ItemType Directory -Path $ReleasesDir -Force | Out-Null
 Write-Success "Created: $ReleasesDir"
+
+# Temporary directory for creating archives (avoids locking issues)
+$ZipTempDir = Join-Path $ProjectRoot "Run.Publish.Zip"
 
 # Define target platforms
 $Platforms = @(
@@ -112,21 +115,88 @@ foreach ($Platform in $Platforms) {
     Write-Header "Building for $rid ($os / $arch)"
 
     try {
-        # Build using build-release.ps1 from project root
-        $buildScript = Join-Path $ProjectRoot "build-release.ps1"
-        Write-Info "Running: build-release.ps1 -RuntimeIdentifier $rid -Clean"
+        # Each platform builds to its own directory to avoid file locking
+        $platformOutput = Join-Path $ProjectRoot "Run.Publish.$rid"
 
-        & $buildScript -RuntimeIdentifier $rid -Clean
-
-        if ($LASTEXITCODE -ne 0) {
-            throw "Build failed with exit code $LASTEXITCODE"
+        # Clean platform-specific output
+        if (Test-Path $platformOutput) {
+            Write-Info "Cleaning $rid output directory..."
+            Remove-Item $platformOutput -Recurse -Force
         }
 
-        # Find output directory
-        $buildOutput = Join-Path $ProjectRoot "Run.Publish"
-        if (-not (Test-Path $buildOutput)) {
-            throw "Build output not found at: $buildOutput"
+        # Build strategy (optimized for size and simplicity):
+        # - Windows: Native AOT for VectorDB/Comm (~15MB + ~5MB)
+        # - Other platforms: Self-contained single-file for all components (~130MB total)
+        #   (can't cross-compile AOT - requires native compilers on each OS)
+        # - All components are single executable files - no shared runtime needed
+        $useNativeAot = $rid -like "win-*"
+
+        if ($useNativeAot) {
+            Write-Info "Building VectorDB (Native AOT)..."
+            dotnet publish "$ProjectRoot\UltraSharpTools.VectorDB\UltraSharpTools.VectorDB.csproj" `
+                -c Release `
+                -r $rid `
+                -o (Join-Path $platformOutput "_temp_vectordb") `
+                /p:PublishAot=true | Out-Null
+        } else {
+            Write-Info "Building VectorDB (self-contained single-file)..."
+            dotnet publish "$ProjectRoot\UltraSharpTools.VectorDB\UltraSharpTools.VectorDB.csproj" `
+                -c Release `
+                -r $rid `
+                --self-contained true `
+                -o (Join-Path $platformOutput "_temp_vectordb") `
+                /p:PublishSingleFile=true `
+                /p:EnableCompressionInSingleFile=true | Out-Null
         }
+
+        if ($LASTEXITCODE -ne 0) { throw "VectorDB build failed" }
+
+        if ($useNativeAot) {
+            Write-Info "Building Comm (Native AOT)..."
+            dotnet publish "$ProjectRoot\UltraSharpTools.Comm\UltraSharpTools.Comm.csproj" `
+                -c Release `
+                -r $rid `
+                -o (Join-Path $platformOutput "_temp_comm") `
+                /p:PublishAot=true | Out-Null
+        } else {
+            Write-Info "Building Comm (self-contained single-file)..."
+            dotnet publish "$ProjectRoot\UltraSharpTools.Comm\UltraSharpTools.Comm.csproj" `
+                -c Release `
+                -r $rid `
+                --self-contained true `
+                -o (Join-Path $platformOutput "_temp_comm") `
+                /p:PublishSingleFile=true `
+                /p:EnableCompressionInSingleFile=true | Out-Null
+        }
+
+        if ($LASTEXITCODE -ne 0) { throw "Comm build failed" }
+
+        Write-Info "Building Droid (self-contained single-file)..."
+        dotnet publish "$ProjectRoot\UltrasharpTools.Droid\UltrasharpTools.Droid.csproj" `
+            -c Release `
+            -r $rid `
+            --self-contained true `
+            -o (Join-Path $platformOutput "Droid") `
+            /p:PublishSingleFile=true `
+            /p:EnableCompressionInSingleFile=true | Out-Null
+
+        if ($LASTEXITCODE -ne 0) { throw "Droid build failed" }
+
+        # Copy VectorDB and Comm to Droid folder
+        $droidOut = Join-Path $platformOutput "Droid"
+        Copy-Item -Path (Join-Path $platformOutput "_temp_vectordb\*") -Destination $droidOut -Recurse -Force
+        Copy-Item -Path (Join-Path $platformOutput "_temp_comm\*") -Destination $droidOut -Recurse -Force
+
+        # Cleanup temp folders
+        Remove-Item (Join-Path $platformOutput "_temp_vectordb") -Recurse -Force
+        Remove-Item (Join-Path $platformOutput "_temp_comm") -Recurse -Force
+
+        # Copy to archive temp directory
+        Write-Info "Preparing archive..."
+        if (Test-Path $ZipTempDir) {
+            Remove-Item $ZipTempDir -Recurse -Force
+        }
+        Copy-Item -Path $droidOut -Destination $ZipTempDir -Recurse -Force
 
         # Create archive name
         $archiveName = "ultrasharp-tools-v$Version-$os-$arch"
@@ -136,7 +206,7 @@ foreach ($Platform in $Platforms) {
         if ($archiveType -eq "zip") {
             # Windows: ZIP archive
             $zipPath = Join-Path $ReleasesDir "$archiveName.zip"
-            Compress-Archive -Path "$buildOutput/*" -DestinationPath $zipPath -Force
+            Compress-Archive -Path "$ZipTempDir/*" -DestinationPath $zipPath -Force
             $fileSize = (Get-Item $zipPath).Length / 1MB
             Write-Success "Created: $archiveName.zip ($([math]::Round($fileSize, 2)) MB)"
         }
@@ -144,7 +214,7 @@ foreach ($Platform in $Platforms) {
             # Linux/macOS: tar.gz archive
             $tarPath = Join-Path $ReleasesDir "$archiveName.tar.gz"
 
-            Push-Location $buildOutput
+            Push-Location $ZipTempDir
             try {
                 # Create tar.gz (requires tar in PATH)
                 tar -czf $tarPath *
@@ -159,12 +229,29 @@ foreach ($Platform in $Platforms) {
             }
         }
 
+        # Cleanup temp directory and platform output
+        Remove-Item $ZipTempDir -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item $platformOutput -Recurse -Force -ErrorAction SilentlyContinue
+
         $SuccessCount++
     }
     catch {
         Write-Err "Failed to build ${rid}: ${_}"
         $FailCount++
+
+        # Cleanup on failure
+        if (Test-Path $ZipTempDir) {
+            Remove-Item $ZipTempDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path $platformOutput) {
+            Remove-Item $platformOutput -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
+}
+
+# Cleanup temp directory (final cleanup)
+if (Test-Path $ZipTempDir) {
+    Remove-Item $ZipTempDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # Summary

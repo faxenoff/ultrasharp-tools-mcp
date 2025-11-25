@@ -20,18 +20,15 @@
 <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 </PropertyGroup>
 
-<!-- Native AOT для Release сборки -->
+<!-- Optimization settings for Release builds -->
+<!-- PublishAot, RuntimeIdentifier, and SelfContained are specified via command line in build scripts -->
 <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-<PublishAot>true</PublishAot>
 <OptimizationPreference>Speed</OptimizationPreference>
 <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
 
 <PublishTrimmed>true</PublishTrimmed>
 <TrimMode>full</TrimMode>
 <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-
-<SelfContained>true</SelfContained>
-<RuntimeIdentifier>win-x64</RuntimeIdentifier>
 
 <StripSymbols>true</StripSymbols>
 </PropertyGroup>
