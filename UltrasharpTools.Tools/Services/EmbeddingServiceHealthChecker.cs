@@ -5,7 +5,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Checks health of embedding services (TEI, Ollama)
 /// </summary>
-public class EmbeddingServiceHealthChecker
+public partial class EmbeddingServiceHealthChecker
 {
     private readonly ILogger<EmbeddingServiceHealthChecker> _logger;
     private readonly HttpClient _httpClient;
@@ -42,7 +42,7 @@ public class EmbeddingServiceHealthChecker
         try
         {
             var healthUrl = $"{endpoint.TrimEnd('/')}/health";
-            _logger.LogDebug("Checking TEI health: {Url}", healthUrl);
+            LogCheckingTeiHealth(healthUrl);
 
             var response = await _httpClient.GetAsync(healthUrl, cancellationToken);
             result.ResponseTime = DateTime.UtcNow - startTime;
@@ -51,14 +51,14 @@ public class EmbeddingServiceHealthChecker
             {
                 result.IsHealthy = true;
                 result.Details = $"TEI is available ({result.ResponseTime.TotalMilliseconds:F0}ms)";
-                _logger.LogInformation("✓ TEI is healthy at {Endpoint}", endpoint);
+                LogTeiHealthy(endpoint);
             }
             else
             {
                 result.IsHealthy = false;
                 result.ErrorMessage = $"TEI returned status {response.StatusCode}";
                 result.Details = $"Endpoint: {endpoint}";
-                _logger.LogWarning("✗ TEI health check failed: {Status}", response.StatusCode);
+                LogTeiHealthFailed(response.StatusCode);
             }
         }
         catch (HttpRequestException ex)
@@ -66,21 +66,21 @@ public class EmbeddingServiceHealthChecker
             result.IsHealthy = false;
             result.ErrorMessage = "Cannot connect to TEI server";
             result.Details = $"Endpoint: {endpoint}\nError: {ex.Message}";
-            _logger.LogWarning("✗ TEI connection failed: {Error}", ex.Message);
+            LogTeiConnectionFailed(ex.Message);
         }
         catch (TaskCanceledException)
         {
             result.IsHealthy = false;
             result.ErrorMessage = "TEI health check timed out";
             result.Details = $"Endpoint: {endpoint}\nTimeout: 5 seconds";
-            _logger.LogWarning("✗ TEI health check timed out");
+            LogTeiTimeout();
         }
         catch (Exception ex)
         {
             result.IsHealthy = false;
             result.ErrorMessage = "Unexpected error checking TEI";
             result.Details = ex.Message;
-            _logger.LogError(ex, "✗ Unexpected error checking TEI health");
+            LogTeiUnexpectedError(ex);
         }
 
         return result;
@@ -100,7 +100,7 @@ public class EmbeddingServiceHealthChecker
         try
         {
             var tagsUrl = $"{endpoint.TrimEnd('/')}/api/tags";
-            _logger.LogDebug("Checking Ollama health: {Url}", tagsUrl);
+            LogCheckingOllamaHealth(tagsUrl);
 
             var response = await _httpClient.GetAsync(tagsUrl, cancellationToken);
             result.ResponseTime = DateTime.UtcNow - startTime;
@@ -116,18 +116,14 @@ public class EmbeddingServiceHealthChecker
                 result.IsHealthy = true;
                 result.Details =
                     $"Ollama is available with {modelCount} model(s) ({result.ResponseTime.TotalMilliseconds:F0}ms)";
-                _logger.LogInformation(
-                    "✓ Ollama is healthy at {Endpoint} ({Count} models)",
-                    endpoint,
-                    modelCount
-                );
+                LogOllamaHealthy(endpoint, modelCount);
             }
             else
             {
                 result.IsHealthy = false;
                 result.ErrorMessage = $"Ollama returned status {response.StatusCode}";
                 result.Details = $"Endpoint: {endpoint}";
-                _logger.LogWarning("✗ Ollama health check failed: {Status}", response.StatusCode);
+                LogOllamaHealthFailed(response.StatusCode);
             }
         }
         catch (HttpRequestException ex)
@@ -136,21 +132,21 @@ public class EmbeddingServiceHealthChecker
             result.ErrorMessage = "Cannot connect to Ollama server";
             result.Details =
                 $"Endpoint: {endpoint}\nError: {ex.Message}\n\nIs Ollama installed? Visit: https://ollama.ai";
-            _logger.LogWarning("✗ Ollama connection failed: {Error}", ex.Message);
+            LogOllamaConnectionFailed(ex.Message);
         }
         catch (TaskCanceledException)
         {
             result.IsHealthy = false;
             result.ErrorMessage = "Ollama health check timed out";
             result.Details = $"Endpoint: {endpoint}\nTimeout: 5 seconds";
-            _logger.LogWarning("✗ Ollama health check timed out");
+            LogOllamaTimeout();
         }
         catch (Exception ex)
         {
             result.IsHealthy = false;
             result.ErrorMessage = "Unexpected error checking Ollama";
             result.Details = ex.Message;
-            _logger.LogError(ex, "✗ Unexpected error checking Ollama health");
+            LogOllamaUnexpectedError(ex);
         }
 
         return result;
@@ -181,17 +177,17 @@ public class EmbeddingServiceHealthChecker
             {
                 if (model.TryGetProperty("name", out var name) && name.GetString() == modelName)
                 {
-                    _logger.LogDebug("✓ Ollama model found: {Model}", modelName);
+                    LogOllamaModelFound(modelName);
                     return true;
                 }
             }
 
-            _logger.LogWarning("✗ Ollama model not found: {Model}", modelName);
+            LogOllamaModelNotFound(modelName);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to check Ollama model: {Model}", modelName);
+            LogOllamaModelCheckFailed(ex, modelName);
             return false;
         }
     }

@@ -23,7 +23,7 @@ public sealed class AgentConfig
     /// <summary>
     /// URL embedding сервиса (Ollama/TEI)
     /// </summary>
-    public string EmbeddingUrl { get; init; } = "http://localhost:11434";
+    public string EmbeddingUrl { get; init; } = "http://127.0.0.1:11434";
 
     /// <summary>
     /// Название модели для embedding

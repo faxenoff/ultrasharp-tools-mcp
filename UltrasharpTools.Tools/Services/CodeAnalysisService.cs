@@ -7,7 +7,7 @@ using UltrasharpTools.Tools.Models;
 
 namespace UltrasharpTools.Tools.Services;
 
-public class CodeAnalysisService(
+public partial class CodeAnalysisService(
     ISolutionManager solutionManager,
     ILogger<CodeAnalysisService> logger,
     AnalysisCacheService? cacheService = null
@@ -49,7 +49,7 @@ public class CodeAnalysisService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogDebug("Finding implementations for symbol: {SymbolName}", symbol.Name);
+        LogFindingImplementations(symbol.Name);
         return await SymbolFinder.FindImplementationsAsync(
             symbol,
             solution,
@@ -63,7 +63,7 @@ public class CodeAnalysisService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogDebug("Finding overrides for symbol: {SymbolName}", symbol.Name);
+        LogFindingOverrides(symbol.Name);
         return await SymbolFinder.FindOverridesAsync(
             symbol,
             solution,
@@ -77,7 +77,7 @@ public class CodeAnalysisService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogDebug("Finding references for symbol: {SymbolName}", symbol.Name);
+        LogFindingReferences(symbol.Name);
 
         // Try cache if available
         if (_cacheService != null)
@@ -95,11 +95,7 @@ public class CodeAnalysisService(
                 && cachedResult != null
             )
             {
-                _logger.LogDebug(
-                    "Cache hit for FindReferences: {SymbolName} ({Count} locations)",
-                    symbol.Name,
-                    cachedResult.Locations.Count
-                );
+                LogFindReferencesCacheHit(symbol.Name, cachedResult.Locations.Count);
 
                 // Note: Returning simplified cached result
                 // Full ReferencedSymbol reconstruction would require re-resolving documents
@@ -157,7 +153,7 @@ public class CodeAnalysisService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogDebug("Finding derived classes for type: {TypeName}", typeSymbol.Name);
+        LogFindingDerivedClasses(typeSymbol.Name);
         return await SymbolFinder.FindDerivedClassesAsync(
             typeSymbol,
             solution,
@@ -171,7 +167,7 @@ public class CodeAnalysisService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogDebug("Finding derived interfaces for type: {TypeName}", typeSymbol.Name);
+        LogFindingDerivedInterfaces(typeSymbol.Name);
         return await SymbolFinder.FindDerivedInterfacesAsync(
             typeSymbol,
             solution,
@@ -185,7 +181,7 @@ public class CodeAnalysisService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogDebug("Finding callers for symbol: {SymbolName}", symbol.Name);
+        LogFindingCallers(symbol.Name);
 
         // Try cache if available
         if (_cacheService != null)
@@ -203,11 +199,7 @@ public class CodeAnalysisService(
                 && cachedResult != null
             )
             {
-                _logger.LogDebug(
-                    "Cache hit for FindCallers: {SymbolName} ({Count} callers)",
-                    symbol.Name,
-                    cachedResult.Count
-                );
+                LogFindCallersCacheHit(symbol.Name, cachedResult.Count);
                 return cachedResult;
             }
         }
@@ -226,11 +218,7 @@ public class CodeAnalysisService(
             var solutionHash = GetSolutionHash();
             var parameters = new SymbolFqnCacheParameter { SymbolFqn = symbol.ToDisplayString() };
             _cacheService.SetCached(solutionHash, "FindCallers", parameters, resultList);
-            _logger.LogDebug(
-                "Cached FindCallers result for {SymbolName} ({Count} callers)",
-                symbol.Name,
-                resultList.Count
-            );
+            LogFindCallersCached(symbol.Name, resultList.Count);
         }
 
         return resultList;
@@ -241,7 +229,7 @@ public class CodeAnalysisService(
         CancellationToken cancellationToken
     )
     {
-        _logger.LogDebug("Finding outgoing calls for method: {MethodName}", methodSymbol.Name);
+        LogFindingOutgoingCalls(methodSymbol.Name);
 
         // Try cache if available
         if (_cacheService != null)
@@ -259,11 +247,7 @@ public class CodeAnalysisService(
                 && cachedResult != null
             )
             {
-                _logger.LogDebug(
-                    "Cache hit for FindOutgoingCalls: {MethodName} ({Count} calls)",
-                    methodSymbol.Name,
-                    cachedResult.Count
-                );
+                LogFindOutgoingCallsCacheHit(methodSymbol.Name, cachedResult.Count);
                 return cachedResult;
             }
         }
@@ -271,10 +255,7 @@ public class CodeAnalysisService(
         var outgoingCalls = new List<ISymbol>();
         if (!methodSymbol.DeclaringSyntaxReferences.Any())
         {
-            _logger.LogWarning(
-                "Method {MethodName} has no declaring syntax references, cannot find outgoing calls.",
-                methodSymbol.Name
-            );
+            LogMethodNoSyntaxReferences(methodSymbol.Name);
             return outgoingCalls;
         }
 
@@ -291,11 +272,7 @@ public class CodeAnalysisService(
             var document = currentSolution.GetDocument(syntaxRef.SyntaxTree);
             if (document == null)
             {
-                _logger.LogWarning(
-                    "Could not get document for syntax tree {FilePath} of method {MethodName}",
-                    syntaxRef.SyntaxTree.FilePath,
-                    methodSymbol.Name
-                );
+                LogCouldNotGetDocument(syntaxRef.SyntaxTree.FilePath, methodSymbol.Name);
                 continue;
             }
             var semanticModel = await _solutionManager.GetSemanticModelAsync(
@@ -305,11 +282,7 @@ public class CodeAnalysisService(
 
             if (semanticModel == null)
             {
-                _logger.LogWarning(
-                    "Could not get semantic model for method {MethodName} in document {DocumentPath}",
-                    methodSymbol.Name,
-                    document.FilePath
-                );
+                LogCouldNotGetSemanticModel(methodSymbol.Name, document.FilePath);
                 continue;
             }
 
@@ -326,11 +299,7 @@ public class CodeAnalysisService(
             var solutionHash = GetSolutionHash();
             var parameters = new SymbolFqnCacheParameter { SymbolFqn = methodSymbol.ToDisplayString() };
             _cacheService.SetCached(solutionHash, "FindOutgoingCalls", parameters, resultList);
-            _logger.LogDebug(
-                "Cached FindOutgoingCalls result for {MethodName} ({Count} calls)",
-                methodSymbol.Name,
-                resultList.Count
-            );
+            LogFindOutgoingCallsCached(methodSymbol.Name, resultList.Count);
         }
 
         return resultList;
@@ -575,7 +544,7 @@ public class CodeAnalysisService(
 
         if (typeSymbol == null)
         {
-            _logger.LogWarning("Cannot analyze referenced types: Type symbol is null.");
+            LogTypeSymbolNull();
             return new HashSet<string>(StringComparer.Ordinal);
         }
 
@@ -595,11 +564,7 @@ public class CodeAnalysisService(
                 && cachedResult != null
             )
             {
-                _logger.LogDebug(
-                    "Cache hit for FindReferencedTypes: {TypeName} ({Count} types)",
-                    typeSymbol.Name,
-                    cachedResult.Count
-                );
+                LogFindReferencedTypesCacheHit(typeSymbol.Name, cachedResult.Count);
                 return cachedResult;
             }
         }
@@ -801,11 +766,7 @@ public class CodeAnalysisService(
         }
         catch (Exception ex) when (!(ex is OperationCanceledException))
         {
-            _logger.LogWarning(
-                ex,
-                "Error finding referenced types for type {TypeName}",
-                typeSymbol.Name
-            );
+            LogFindReferencedTypesError(ex, typeSymbol.Name);
         }
 
         // Cache the result
@@ -814,11 +775,7 @@ public class CodeAnalysisService(
             var solutionHash = GetSolutionHash();
             var parameters = new SymbolFqnCacheParameter { SymbolFqn = typeSymbol.ToDisplayString() };
             _cacheService.SetCached(solutionHash, "FindReferencedTypes", parameters, referencedTypes);
-            _logger.LogDebug(
-                "Cached FindReferencedTypes result for {TypeName} ({Count} types)",
-                typeSymbol.Name,
-                referencedTypes.Count
-            );
+            LogFindReferencedTypesCached(typeSymbol.Name, referencedTypes.Count);
         }
 
         return referencedTypes;

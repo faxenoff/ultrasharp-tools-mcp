@@ -6,7 +6,22 @@
 
 ---
 
-## [3.0.8] - 2025-11-25
+### [3.2.0] - 2025-11-25
+
+### 🎯 Статус
+**TBD** - Brief description of this release
+
+### Добавлено
+- TODO: Add new features here
+
+### Изменено
+- TODO: Add changes here
+
+### Исправлено
+- TODO: Add fixes here
+
+---
+# [3.0.8] - 2025-11-25
 
 ### 🎯 Статус
 **Memory Optimization Release** - Значительное снижение потребления памяти (~1.1GB → ~400-600MB)

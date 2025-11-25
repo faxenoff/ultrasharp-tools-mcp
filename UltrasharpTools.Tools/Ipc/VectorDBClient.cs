@@ -171,6 +171,29 @@ public sealed class VectorDBClient : IDisposable {
     }
 
     /// <summary>
+    /// Batch-индексация множества элементов (оптимизировано)
+    /// </summary>
+    public async Task<int> IndexBatchAsync(
+        IReadOnlyList<IndexBatchItem> items,
+        CancellationToken cancellationToken = default) {
+        if (items.Count == 0) return 0;
+
+        var response = await SendRequestAsync<JsonElement>(
+            "index_batch",
+            new { items },
+            cancellationToken
+        );
+
+        if (response.TryGetProperty("success", out var success) && success.GetBoolean()) {
+            return response.TryGetProperty("indexed_count", out var count)
+                ? count.GetInt32()
+                : items.Count;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
     /// Ищет семантически похожий код
     /// </summary>
     public async Task<List<SimilarityMatch>> SearchSimilarAsync(
@@ -262,4 +285,18 @@ public sealed record IndexerStatus {
     public required string Status { get; init; }
     public required int IndexedCount { get; init; }
     public required string Version { get; init; }
+}
+
+/// <summary>
+/// Элемент для batch-индексации
+/// </summary>
+public sealed record IndexBatchItem {
+    [System.Text.Json.Serialization.JsonPropertyName("code")]
+    public required string Code { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("documentPath")]
+    public required string DocumentPath { get; init; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("metadata")]
+    public string? Metadata { get; init; }
 }

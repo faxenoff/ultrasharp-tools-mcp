@@ -6,7 +6,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// <summary>
 /// Фоновый сервис для периодической проверки доступности Overlord
 /// </summary>
-public sealed class HealthCheckHostedService : BackgroundService
+public sealed partial class HealthCheckHostedService : BackgroundService
 {
     private readonly ILogger<HealthCheckHostedService> _logger;
     private readonly IToolRouter _toolRouter;
@@ -35,10 +35,7 @@ public sealed class HealthCheckHostedService : BackgroundService
         var config = _configService.LoadOrCreateConfig(_solutionPath);
         _checkInterval = TimeSpan.FromSeconds(config.HealthCheckIntervalSeconds);
 
-        _logger.LogInformation(
-            "Health check service started. Interval: {Interval}s",
-            config.HealthCheckIntervalSeconds
-        );
+        LogServiceStarted(config.HealthCheckIntervalSeconds);
 
         // Первая проверка сразу
         await CheckHealthAsync(stoppingToken);
@@ -60,11 +57,11 @@ public sealed class HealthCheckHostedService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in health check loop");
+                LogHealthCheckLoopError(ex);
             }
         }
 
-        _logger.LogInformation("Health check service stopped");
+        LogServiceStopped();
     }
 
     private async Task CheckHealthAsync(CancellationToken cancellationToken)
@@ -78,32 +75,27 @@ public sealed class HealthCheckHostedService : BackgroundService
             {
                 if (isAvailable)
                 {
-                    _logger.LogInformation("Overlord is now AVAILABLE");
+                    LogOverlordAvailable();
                 }
                 else
                 {
-                    _logger.LogWarning(
-                        "Overlord is now UNAVAILABLE - routing will fallback to LOCAL"
-                    );
+                    LogOverlordUnavailable();
                 }
 
                 _lastKnownStatus = isAvailable;
             }
             else
             {
-                _logger.LogTrace(
-                    "Overlord status: {Status}",
-                    isAvailable ? "AVAILABLE" : "UNAVAILABLE"
-                );
+                LogOverlordStatus(isAvailable ? "AVAILABLE" : "UNAVAILABLE");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Health check failed");
+            LogHealthCheckFailed(ex);
 
             if (_lastKnownStatus)
             {
-                _logger.LogWarning("Overlord status changed to UNAVAILABLE due to error");
+                LogOverlordUnavailableDueToError();
                 _lastKnownStatus = false;
             }
         }

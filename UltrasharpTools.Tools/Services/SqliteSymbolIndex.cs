@@ -11,7 +11,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Replaces in-memory FastSymbolIndex to reduce memory footprint from ~150MB to ~5MB.
 /// All symbol data is stored on disk with FTS5 indexing for fast searches.
 /// </summary>
-public sealed class SqliteSymbolIndex : IAsyncDisposable {
+public sealed partial class SqliteSymbolIndex : IAsyncDisposable {
     private readonly ILogger _logger;
     private readonly string _dbPath;
     private SqliteConnection? _connection;
@@ -58,7 +58,7 @@ public sealed class SqliteSymbolIndex : IAsyncDisposable {
 
         await CreateSchemaAsync(cancellationToken);
 
-        _logger.LogInformation("SQLite symbol index initialized at {DbPath}", _dbPath);
+        LogInitialized(_dbPath);
     }
 
     private async Task CreateSchemaAsync(CancellationToken cancellationToken) {
@@ -132,7 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_symbols_solution ON symbols(solution_hash);
         }
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        _logger.LogInformation("Building SQLite symbol index from solution...");
+        LogBuildingIndex();
 
         var solutionHash = ComputeSolutionHash(solution);
 
@@ -141,9 +141,7 @@ CREATE INDEX IF NOT EXISTS idx_symbols_solution ON symbols(solution_hash);
         if (existingHash == solutionHash) {
             TotalSymbols = await GetCountAsync(cancellationToken);
             _isBuilt = true;
-            _logger.LogInformation(
-            "SQLite symbol index is up-to-date with {Count} symbols",
-            TotalSymbols);
+            LogIndexUpToDate(TotalSymbols);
             return;
         }
 
@@ -176,7 +174,7 @@ CREATE INDEX IF NOT EXISTS idx_symbols_solution ON symbols(solution_hash);
                 totalInserted += entries.Count;
                 entries.Clear();
 
-                _logger.LogDebug("Inserted {Count} symbols...", totalInserted);
+                LogInsertedSymbols(totalInserted);
             }
         }
 
@@ -190,11 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_symbols_solution ON symbols(solution_hash);
         _isBuilt = true;
 
         sw.Stop();
-        _logger.LogInformation(
-        "SQLite symbol index built: {Count} symbols in {ElapsedMs}ms. DB size: {Size}",
-        TotalSymbols,
-        sw.ElapsedMilliseconds,
-        GetDbSizeFormatted());
+        LogIndexBuilt(TotalSymbols, sw.ElapsedMilliseconds, GetDbSizeFormatted());
     }
 
     private void CollectSymbolsFromCompilation(
@@ -459,7 +453,7 @@ CREATE INDEX IF NOT EXISTS idx_symbols_solution ON symbols(solution_hash);
         var deleted = await cmd.ExecuteNonQueryAsync(cancellationToken);
         if (deleted > 0) {
             TotalSymbols -= deleted;
-            _logger.LogDebug("Removed {Count} symbols for document {DocId}", deleted, documentId);
+            LogRemovedSymbols(deleted, documentId);
         }
     }
 

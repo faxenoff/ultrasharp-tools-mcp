@@ -9,23 +9,19 @@ namespace UltrasharpTools.Tools.Merge.Parsing;
 /// Поддерживает: .sh, .cmd, .bat
 /// Использует regex-based парсинг для извлечения функций и блоков.
 /// </summary>
-public sealed class ShellParser
+public sealed partial class ShellParser
 {
     private readonly ILogger<ShellParser> _logger;
     private readonly StructuralFingerprint _fingerprint;
     private readonly ContentNormalizer _normalizer;
 
     // Regex для bash функций: function_name() { ... } или function function_name { ... }
-    private static readonly Regex BashFunctionRegex = new(
-        @"^\s*(function\s+)?(?<name>[\w_-]+)\s*\(\)\s*(\{|$)",
-        RegexOptions.Multiline | RegexOptions.Compiled
-    );
+    [GeneratedRegex(@"^\s*(function\s+)?(?<name>[\w_-]+)\s*\(\)\s*(\{|$)", RegexOptions.Multiline)]
+    private static partial Regex BashFunctionRegex();
 
     // Regex для cmd labels: :label_name
-    private static readonly Regex CmdLabelRegex = new(
-        @"^\s*:(?<name>[\w_-]+)\s*$",
-        RegexOptions.Multiline | RegexOptions.Compiled
-    );
+    [GeneratedRegex(@"^\s*:(?<name>[\w_-]+)\s*$", RegexOptions.Multiline)]
+    private static partial Regex CmdLabelRegex();
 
     public ShellParser(
         StructuralFingerprint fingerprint,
@@ -132,7 +128,7 @@ public sealed class ShellParser
     )
     {
         var lines = content.Split('\n');
-        var functionMatches = BashFunctionRegex.Matches(content);
+        var functionMatches = BashFunctionRegex().Matches(content);
 
         foreach (Match match in functionMatches)
         {
@@ -178,7 +174,7 @@ public sealed class ShellParser
     )
     {
         var lines = content.Split('\n');
-        var labelMatches = CmdLabelRegex.Matches(content);
+        var labelMatches = CmdLabelRegex().Matches(content);
 
         foreach (Match match in labelMatches)
         {
@@ -302,7 +298,7 @@ public sealed class ShellParser
     {
         for (int i = startLine; i < lines.Length; i++)
         {
-            if (CmdLabelRegex.IsMatch(lines[i]))
+            if (CmdLabelRegex().IsMatch(lines[i]))
             {
                 return i + 1; // Линии 1-based
             }

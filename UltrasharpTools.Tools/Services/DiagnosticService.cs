@@ -11,7 +11,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Сервис для анализа кода через Roslyn analyzers
 /// </summary>
-public class DiagnosticService(
+public partial class DiagnosticService(
     ILogger<DiagnosticService> logger,
     ISolutionManager solutionManager,
     ISemanticDiagnosticEnricher? semanticEnricher = null,
@@ -50,8 +50,7 @@ public class DiagnosticService(
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation(
-            "Starting diagnostic analysis for solution: {SolutionPath}, Preset: {Preset}, Ids: {Ids}",
+        LogStartingAnalysis(
             solutionPath,
             filterOptions.PresetName ?? "none",
             filterOptions.DiagnosticIds != null
@@ -96,7 +95,7 @@ public class DiagnosticService(
         {
             try
             {
-                _logger.LogInformation("Starting semantic enrichment for {Count} diagnostics", totalCount);
+                LogStartingSemanticEnrichment(totalCount);
 
                 // LEVEL 1: Statistical Analysis
                 var statistics = _semanticEnricher.AnalyzeStatistics(filteredDiagnostics);
@@ -112,8 +111,7 @@ public class DiagnosticService(
                         cancellationToken
                     );
 
-                    _logger.LogInformation(
-                        "Semantic enrichment complete. Clusters: {Clusters}, Categories: {Categories}",
+                    LogSemanticEnrichmentComplete(
                         semanticEnrichment.Clusters.Count,
                         semanticEnrichment.Summary.CategoriesFound.Count
                     );
@@ -162,8 +160,7 @@ public class DiagnosticService(
                         cancellationToken
                     );
 
-                    _logger.LogInformation(
-                        "EditorConfig generation complete. Rules: {Rules}, Manual review: {ManualReview}",
+                    LogEditorConfigGenerated(
                         editorConfigRecommendations.Rules.Count,
                         editorConfigRecommendations.RequiresManualReview.Count
                     );
@@ -171,7 +168,7 @@ public class DiagnosticService(
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to perform semantic enrichment");
+                LogSemanticEnrichmentFailed(ex);
             }
         }
 
@@ -182,12 +179,7 @@ public class DiagnosticService(
             .Select(item => (item.Diagnostic, item.FilePath))
             .ToList();
 
-        _logger.LogInformation(
-            "Diagnostic analysis complete. Total: {Total}, Filtered: {Filtered}, Returned: {Returned}",
-            allDiagnostics.Count,
-            totalCount,
-            paginatedDiagnostics.Count
-        );
+        LogAnalysisComplete(allDiagnostics.Count, totalCount, paginatedDiagnostics.Count);
 
         return new DiagnosticAnalysisResult
         {
@@ -222,7 +214,7 @@ public class DiagnosticService(
     {
         var count = _cache.Count;
         _cache.Clear();
-        _logger.LogInformation("Diagnostic cache cleared. Removed {Count} entries", count);
+        LogCacheCleared(count);
     }
 
     /// <summary>
@@ -245,19 +237,11 @@ public class DiagnosticService(
 
             if (age < CacheExpiration)
             {
-                _logger.LogInformation(
-                    "Using cached diagnostics for {SolutionPath} (age: {Age:F1}s)",
-                    solutionPath,
-                    age.TotalSeconds
-                );
+                LogUsingCachedDiagnostics(solutionPath, age.TotalSeconds);
                 return cached.Diagnostics;
             }
 
-            _logger.LogInformation(
-                "Cache expired for {SolutionPath} (age: {Age:F1}s)",
-                solutionPath,
-                age.TotalSeconds
-            );
+            LogCacheExpired(solutionPath, age.TotalSeconds);
         }
 
         // FIX: Загружаем solution только если ещё не загружено или это другое решение
@@ -266,12 +250,12 @@ public class DiagnosticService(
             || _solutionManager.CurrentSolution?.FilePath != solutionPath
         )
         {
-            _logger.LogInformation("Loading solution: {SolutionPath}", solutionPath);
+            LogLoadingSolution(solutionPath);
             await _solutionManager.LoadSolutionAsync(solutionPath, cancellationToken);
         }
         else
         {
-            _logger.LogDebug("Solution already loaded: {SolutionPath}", solutionPath);
+            LogSolutionAlreadyLoaded(solutionPath);
         }
 
         var solution = _solutionManager.CurrentSolution!;
@@ -282,8 +266,7 @@ public class DiagnosticService(
 
         if (changedFiles.Count > 0)
         {
-            _logger.LogInformation(
-                "INCREMENTAL: Detected {ChangedCount} changed files (out of {TotalFiles} total files)",
+            LogIncrementalChangedFiles(
                 changedFiles.Count,
                 solution.Projects.SelectMany(p => p.Documents).Count()
             );
@@ -300,20 +283,14 @@ public class DiagnosticService(
                         / solution.Projects.SelectMany(p => p.Documents).Count()
                 );
 
-            _logger.LogInformation(
-                "INCREMENTAL: {AffectedCount} files affected by changes (potential {Savings:F1}% analysis skip)",
-                affectedFiles.Count,
-                potentialSavings
-            );
+            LogIncrementalAffectedFiles(affectedFiles.Count, potentialSavings);
 
             // Инвалидируем кеш для затронутых файлов
             InvalidateFileCache(affectedFiles);
         }
         else if (_fileCache.Count > 0)
         {
-            _logger.LogInformation(
-                "INCREMENTAL: No changed files detected (100% cache hit potential)"
-            );
+            LogIncrementalNoChanges();
         }
 
         // OPTIMIZATION: Ранняя фильтрация проектов (экономия 50-90% времени)
@@ -326,18 +303,14 @@ public class DiagnosticService(
                 filterOptions.ProjectNames.Contains(p.Name, StringComparer.OrdinalIgnoreCase)
             );
 
-            _logger.LogInformation(
-                "Filtered to {FilteredProjects} projects: {ProjectNames}",
+            LogFilteredProjects(
                 projectsToAnalyze.Count(),
                 string.Join(", ", filterOptions.ProjectNames)
             );
         }
 
         var totalProjects = projectsToAnalyze.Count();
-        _logger.LogInformation(
-            "Found {TotalProjects} compilable projects to analyze",
-            totalProjects
-        );
+        LogCompilableProjects(totalProjects);
 
         // INCREMENTAL: Собираем диагностики из кеша и определяем какие проекты нужно анализировать
         var allDiagnostics = new List<(Diagnostic Diagnostic, string FilePath, string ProjectName)>();
@@ -393,16 +366,11 @@ public class DiagnosticService(
             {
                 // Все файлы проекта в кеше - используем кешированные результаты
                 allDiagnostics.AddRange(cachedDiagnostics);
-                _logger.LogDebug(
-                    "INCREMENTAL: Using cached diagnostics for project {ProjectName} ({Count} diagnostics)",
-                    project.Name,
-                    cachedDiagnostics.Count
-                );
+                LogIncrementalProjectCached(project.Name, cachedDiagnostics.Count);
             }
         }
 
-        _logger.LogInformation(
-            "INCREMENTAL: {CachedProjects}/{TotalProjects} projects fully cached, analyzing {NeedAnalysis} projects",
+        LogIncrementalCacheStatus(
             totalProjects - projectsNeedingAnalysis.Count,
             totalProjects,
             projectsNeedingAnalysis.Count
@@ -424,12 +392,7 @@ public class DiagnosticService(
         // Сохраняем в кеш
         _cache[normalizedPath] = (DateTime.UtcNow, allDiagnostics);
 
-        _logger.LogInformation(
-            "Cached {Count} diagnostics for {SolutionPath} from {ProjectCount} projects",
-            allDiagnostics.Count,
-            solutionPath,
-            totalProjects
-        );
+        LogDiagnosticsCached(allDiagnostics.Count, solutionPath, totalProjects);
 
         return allDiagnostics;
     }
@@ -484,8 +447,7 @@ public class DiagnosticService(
                     )
                     .ToImmutableArray();
 
-                _logger.LogDebug(
-                    "Filtered analyzers for {ProjectName}: {FilteredCount}/{TotalCount} (requested IDs: {RequestedIds})",
+                LogFilteredAnalyzers(
                     project.Name,
                     analyzers.Length,
                     allAnalyzers.Count,
@@ -521,19 +483,11 @@ public class DiagnosticService(
                         cancellationToken
                     );
 
-                    _logger.LogDebug(
-                        "Analyzed project {ProjectName} with {AnalyzerCount} analyzers",
-                        project.Name,
-                        analyzers.Length
-                    );
+                    LogProjectAnalyzed(project.Name, analyzers.Length);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(
-                        ex,
-                        "Analyzer execution failed for {ProjectName}, falling back to compilation diagnostics",
-                        project.Name
-                    );
+                    LogAnalyzerFallback(ex, project.Name);
                     // Fallback к базовым диагностикам компиляции
                     diagnostics = compilation.GetDiagnostics(cancellationToken);
                 }
@@ -542,10 +496,7 @@ public class DiagnosticService(
             {
                 // Нет анализаторов, используем базовые диагностики компиляции
                 diagnostics = compilation.GetDiagnostics(cancellationToken);
-                _logger.LogDebug(
-                    "No analyzers found for project {ProjectName}, using compilation diagnostics only",
-                    project.Name
-                );
+                LogNoAnalyzers(project.Name);
             }
 
             // Собираем диагностики с метаданными (фильтруем подавленные)
@@ -576,17 +527,13 @@ public class DiagnosticService(
                 _fileCache[document.FilePath] = (fileHash, DateTime.UtcNow, fileDiagnostics);
             }
 
-            _logger.LogDebug(
-                "INCREMENTAL: Cached diagnostics for {FileCount} files in project {ProjectName}",
-                diagnosticsByFile.Count,
-                project.Name
-            );
+            LogIncrementalFileCached(diagnosticsByFile.Count, project.Name);
 
             return projectDiagnostics;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to analyze project: {ProjectName}", project.Name);
+            LogProjectAnalysisFailed(ex, project.Name);
             return [];
         }
     }
@@ -641,7 +588,7 @@ public class DiagnosticService(
             }
         }
 
-        _logger.LogDebug("Found {ChangedCount} changed files", changedFiles.Count);
+        LogChangedFilesFound(changedFiles.Count);
         return changedFiles;
     }
 
@@ -653,7 +600,7 @@ public class DiagnosticService(
         CancellationToken cancellationToken
     )
     {
-        _logger.LogDebug("Building dependency graph...");
+        LogBuildingDependencyGraph();
 
         foreach (var project in solution.Projects)
         {
@@ -704,16 +651,12 @@ public class DiagnosticService(
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(
-                        ex,
-                        "Failed to build dependencies for {FilePath}",
-                        document.FilePath
-                    );
+                    LogBuildDependenciesFailed(ex, document.FilePath);
                 }
             }
         }
 
-        _logger.LogDebug("Dependency graph built with {Count} entries", _dependencyGraph.Count);
+        LogDependencyGraphBuilt(_dependencyGraph.Count);
     }
 
     /// <summary>
@@ -742,11 +685,7 @@ public class DiagnosticService(
             }
         }
 
-        _logger.LogDebug(
-            "Affected files: {AffectedCount} (changed: {ChangedCount})",
-            affectedFiles.Count,
-            changedFiles.Count
-        );
+        LogAffectedFiles(affectedFiles.Count, changedFiles.Count);
 
         return affectedFiles;
     }

@@ -2470,7 +2470,23 @@ membersByKind;
                             )
                         );
 
-                    await Task.WhenAll(projectTasks);
+                    // Add timeout for Roslyn search (30 seconds)
+                    var roslynSearchTask = Task.WhenAll(projectTasks);
+                    var roslynTimeout = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+
+                    if (await Task.WhenAny(roslynSearchTask, roslynTimeout) == roslynTimeout)
+                    {
+                        logger.LogWarning(
+                            "Roslyn search timed out after 30 seconds. Returning partial results."
+                        );
+                        hasPartialResults = true;
+                        errors.Add("Roslyn search timed out after 30 seconds, returning partial results.");
+                        earlyStopCts.Cancel(); // Stop remaining tasks
+                    }
+                    else if (roslynSearchTask.IsFaulted && roslynSearchTask.Exception != null)
+                    {
+                        throw roslynSearchTask.Exception.InnerException ?? roslynSearchTask.Exception;
+                    }
                 }
                 catch (Exception ex)
                     when (!(ex is McpException || ex is OperationCanceledException))
@@ -2513,7 +2529,7 @@ membersByKind;
                             );
 
                             var allTypes = await solutionManager.SearchReflectionTypesAsync(
-                                ".*",
+                                reflectionPattern,
                                 cancellationToken
                             );
                             var typesToProcess = allTypes.ToList();

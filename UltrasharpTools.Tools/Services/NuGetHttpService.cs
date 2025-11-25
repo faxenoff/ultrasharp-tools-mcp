@@ -7,7 +7,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Lightweight NuGet service using direct HTTP API calls instead of heavy NuGet.Protocol library.
 /// Saves ~1.6 MB by replacing NuGet.Protocol + NuGet.Packaging dependencies.
 /// </summary>
-public sealed class NuGetHttpService
+public sealed partial class NuGetHttpService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<NuGetHttpService> _logger;
@@ -31,18 +31,14 @@ public sealed class NuGetHttpService
     {
         try
         {
-            _logger.LogDebug(
-                "Validating package {PackageId} {Version} on NuGet.org",
-                packageId,
-                version ?? "latest"
-            );
+            LogValidatingPackage(packageId, version ?? "latest");
 
             // Get all versions from NuGet API
             var versions = await GetPackageVersionsAsync(packageId, cancellationToken);
 
             if (versions == null || versions.Length == 0)
             {
-                _logger.LogWarning("Package {PackageId} not found on NuGet.org", packageId);
+                LogPackageNotFound(packageId);
                 return false;
             }
 
@@ -59,23 +55,14 @@ public sealed class NuGetHttpService
 
             if (!versionExists)
             {
-                _logger.LogWarning(
-                    "Version {Version} not found for package {PackageId}",
-                    version,
-                    packageId
-                );
+                LogVersionNotFound(version, packageId);
             }
 
             return versionExists;
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error validating NuGet package {PackageId} {Version}",
-                packageId,
-                version
-            );
+            LogValidationError(ex, packageId, version);
             return false;
         }
     }
@@ -125,13 +112,13 @@ public sealed class NuGetHttpService
             }
 
             var latest = parsedVersions[0].Original;
-            _logger.LogDebug("Latest version for {PackageId}: {Version}", packageId, latest);
+            LogLatestVersion(packageId, latest);
 
             return latest;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting latest version for package {PackageId}", packageId);
+            LogGetLatestError(ex, packageId);
             throw;
         }
     }
@@ -159,7 +146,7 @@ public sealed class NuGetHttpService
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            _logger.LogWarning("Package {PackageId} not found on NuGet.org", packageId);
+            LogPackageNotFound(packageId);
             return Array.Empty<string>();
         }
     }

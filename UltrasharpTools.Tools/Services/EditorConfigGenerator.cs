@@ -8,7 +8,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Сервис для генерации .editorconfig рекомендаций (Phase 2)
 /// Преобразует результаты semantic enrichment в готовый .editorconfig файл
 /// </summary>
-public class EditorConfigGenerator(ILogger<EditorConfigGenerator> logger) : IEditorConfigGenerator
+public partial class EditorConfigGenerator(ILogger<EditorConfigGenerator> logger) : IEditorConfigGenerator
 {
     private readonly ILogger<EditorConfigGenerator> _logger = logger;
 
@@ -21,10 +21,7 @@ public class EditorConfigGenerator(ILogger<EditorConfigGenerator> logger) : IEdi
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation(
-            "Starting EditorConfig generation for {ClusterCount} clusters",
-            enrichmentResult.Clusters.Count
-        );
+        LogStartingGeneration(enrichmentResult.Clusters.Count);
 
         var recommendations = new EditorConfigRecommendations();
 
@@ -37,11 +34,7 @@ public class EditorConfigGenerator(ILogger<EditorConfigGenerator> logger) : IEdi
             .Clusters.Where(c => c.ConfidenceScore < options.MinConfidenceForAutoApproval)
             .ToList();
 
-        _logger.LogInformation(
-            "Clusters analysis: {AutoApproved} auto-approved, {NeedsReview} needs review",
-            autoApprovedClusters.Count,
-            needsReviewClusters.Count
-        );
+        LogClustersAnalysis(autoApprovedClusters.Count, needsReviewClusters.Count);
 
         // Генерируем правила для auto-approved clusters
         var rules = new List<EditorConfigRule>();
@@ -90,11 +83,7 @@ public class EditorConfigGenerator(ILogger<EditorConfigGenerator> logger) : IEdi
         recommendations.RequiresManualReview = manualReviewCases;
         recommendations.Stats = stats;
 
-        _logger.LogInformation(
-            "EditorConfig generation complete. Rules: {RulesCount}, Manual review: {ReviewCount}",
-            rules.Count,
-            manualReviewCases.Count
-        );
+        LogGenerationComplete(rules.Count, manualReviewCases.Count);
 
         return Task.FromResult(recommendations);
     }

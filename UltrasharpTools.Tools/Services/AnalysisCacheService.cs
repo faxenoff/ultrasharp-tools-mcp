@@ -8,7 +8,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Persistent cache for analysis results using SQLite.
 /// Provides 2-3x speedup for repeated analysis operations.
 /// </summary>
-public class AnalysisCacheService : IDisposable
+public partial class AnalysisCacheService : IDisposable
 {
     private readonly ILogger _logger;
     private readonly string _dbPath;
@@ -25,7 +25,7 @@ public class AnalysisCacheService : IDisposable
         if (!Directory.Exists(baseDir))
         {
             Directory.CreateDirectory(baseDir);
-            _logger.LogInformation("Created analysis cache directory: {Directory}", baseDir);
+            LogCacheDirectoryCreated(baseDir);
         }
 
         _dbPath = Path.Combine(baseDir, "analysis_cache.db");
@@ -36,7 +36,7 @@ public class AnalysisCacheService : IDisposable
 
         InitializeDatabase();
 
-        _logger.LogInformation("AnalysisCacheService initialized with database: {DbPath}", _dbPath);
+        LogInitialized(_dbPath);
     }
 
     private void InitializeDatabase()
@@ -62,7 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_accessed_at ON cache_entries(accessed_at);
 ";
         command.ExecuteNonQuery();
 
-        _logger.LogDebug("Database schema initialized");
+        LogSchemaInitialized();
     }
 
     /// <summary>
@@ -94,11 +94,7 @@ LIMIT 1;
             using var reader = command.ExecuteReader();
             if (!reader.Read())
             {
-                _logger.LogTrace(
-                    "Cache miss for {Operation} (key: {Key})",
-                    operationName,
-                    cacheKey
-                );
+                LogCacheMiss(operationName, cacheKey);
                 return false;
             }
 
@@ -110,12 +106,7 @@ LIMIT 1;
             // Check version
             if (version != CacheVersion)
             {
-                _logger.LogDebug(
-                    "Cache version mismatch for {Operation}: expected {Expected}, got {Actual}",
-                    operationName,
-                    CacheVersion,
-                    version
-                );
+                LogVersionMismatch(operationName, CacheVersion, version);
                 return false;
             }
 
@@ -123,12 +114,7 @@ LIMIT 1;
             var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             if (now - createdAt > ttlSeconds)
             {
-                _logger.LogDebug(
-                    "Cache entry expired for {Operation} (age: {Age}s, TTL: {Ttl}s)",
-                    operationName,
-                    now - createdAt,
-                    ttlSeconds
-                );
+                LogCacheExpired(operationName, now - createdAt, ttlSeconds);
                 return false;
             }
 
@@ -141,12 +127,12 @@ LIMIT 1;
             // Update accessed_at
             UpdateAccessTime(cacheKey);
 
-            _logger.LogDebug("Cache hit for {Operation} (key: {Key})", operationName, cacheKey);
+            LogCacheHit(operationName, cacheKey);
             return result != null;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error reading from cache for {Operation}", operationName);
+            LogCacheReadError(ex, operationName);
             return false;
         }
     }
@@ -183,11 +169,7 @@ LIMIT 1;
             catch (NotSupportedException)
             {
                 // Type not registered in JsonContext - skip caching
-                _logger.LogTrace(
-                    "Skipping cache for {Operation}: result type {Type} not registered in JsonContext",
-                    operationName,
-                    typeof(T).Name
-                );
+                LogSkippingCache(operationName, typeof(T).Name);
                 return;
             }
 
@@ -214,16 +196,11 @@ VALUES
 
             command.ExecuteNonQuery();
 
-            _logger.LogDebug(
-                "Cached result for {Operation} (key: {Key}, size: {Size} bytes)",
-                operationName,
-                cacheKey,
-                resultData.Length
-            );
+            LogResultCached(operationName, cacheKey, resultData.Length);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error writing to cache for {Operation}", operationName);
+            LogCacheWriteError(ex, operationName);
         }
     }
 
@@ -239,15 +216,11 @@ VALUES
             command.Parameters.AddWithValue("@solutionHash", solutionHash);
 
             var deletedCount = command.ExecuteNonQuery();
-            _logger.LogInformation(
-                "Invalidated {Count} cache entries for solution {Hash}",
-                deletedCount,
-                solutionHash
-            );
+            LogSolutionInvalidated(deletedCount, solutionHash);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error invalidating cache for solution {Hash}", solutionHash);
+            LogInvalidationError(ex, solutionHash);
         }
     }
 
@@ -271,12 +244,12 @@ WHERE (created_at + ttl_seconds) < @now;
             var deletedCount = command.ExecuteNonQuery();
             if (deletedCount > 0)
             {
-                _logger.LogInformation("Cleaned up {Count} expired cache entries", deletedCount);
+                LogExpiredCleaned(deletedCount);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error cleaning up expired cache entries");
+            LogCleanupError(ex);
         }
     }
 
@@ -312,7 +285,7 @@ FROM cache_entries;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting cache statistics");
+            LogStatisticsError(ex);
         }
 
         return new AnalysisCacheStatistics();
@@ -329,11 +302,11 @@ FROM cache_entries;
             command.CommandText = "DELETE FROM cache_entries;";
             var deletedCount = command.ExecuteNonQuery();
 
-            _logger.LogInformation("Cleared all cache entries ({Count} deleted)", deletedCount);
+            LogCacheCleared(deletedCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing cache");
+            LogClearError(ex);
         }
     }
 
@@ -352,7 +325,7 @@ FROM cache_entries;
         }
         catch (Exception ex)
         {
-            _logger.LogTrace(ex, "Error updating access time for cache key {Key}", cacheKey);
+            LogAccessTimeError(ex, cacheKey);
         }
     }
 

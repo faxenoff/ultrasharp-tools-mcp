@@ -11,7 +11,7 @@ namespace UltraSharpTools.VectorDB.Semantic;
 /// Генератор embeddings с LRU кэшем и batch processing.
 /// Thread-safe, поддерживает метрики производительности.
 /// </summary>
-public sealed class EmbeddingGenerator : IAsyncDisposable
+public sealed partial class EmbeddingGenerator : IAsyncDisposable
 {
     private readonly IEmbeddingProvider _provider;
     private readonly LruCache<string, float[]> _cache;
@@ -53,7 +53,7 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
         if (_cache.TryGet(cacheKey, out var cachedVector))
         {
             Interlocked.Increment(ref _cacheHits);
-            _logger.LogDebug("Cache hit for text (length={Length})", text.Length);
+            LogCacheHit(text.Length);
             return cachedVector;
         }
 
@@ -69,11 +69,7 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
         // Добавить в кэш
         _cache.Add(cacheKey, vector);
 
-        _logger.LogDebug(
-            "Generated embedding for text (length={Length}) in {ElapsedMs}ms",
-            text.Length,
-            sw.ElapsedMilliseconds
-        );
+        LogEmbeddingGenerated(text.Length, sw.ElapsedMilliseconds);
 
         return vector;
     }
@@ -117,17 +113,12 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
         // Если все в кэше - вернуть результат
         if (uncachedTexts.Count == 0)
         {
-            _logger.LogDebug("All {Count} texts found in cache", texts.Length);
+            LogAllCacheHits(texts.Length);
             return results;
         }
 
         // Генерировать embeddings для uncached текстов
-        _logger.LogDebug(
-            "Generating embeddings for {UncachedCount}/{TotalCount} texts (cache hit rate: {HitRate:P1})",
-            uncachedTexts.Count,
-            texts.Length,
-            (double)_cacheHits / _totalRequests
-        );
+        LogBatchProcessing(uncachedTexts.Count, texts.Length, $"{(double)_cacheHits / _totalRequests:P1}");
 
         var sw = Stopwatch.StartNew();
         var newVectors = await _provider.EmbedBatchAsync(uncachedTexts.ToArray(), ct);
@@ -146,12 +137,7 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
             _cache.Add(GetCacheKey(text), vector);
         }
 
-        _logger.LogDebug(
-            "Generated {Count} embeddings in {ElapsedMs}ms ({AvgMs:F2}ms/embedding)",
-            uncachedTexts.Count,
-            sw.ElapsedMilliseconds,
-            (double)sw.ElapsedMilliseconds / uncachedTexts.Count
-        );
+        LogBatchGenerated(uncachedTexts.Count, sw.ElapsedMilliseconds, $"{(double)sw.ElapsedMilliseconds / uncachedTexts.Count:F2}");
 
         return results;
     }
@@ -162,7 +148,7 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
     public void ClearCache()
     {
         _cache.Clear();
-        _logger.LogInformation("Embedding cache cleared");
+        LogCacheCleared();
     }
 
     /// <summary>
@@ -199,7 +185,7 @@ public sealed class EmbeddingGenerator : IAsyncDisposable
         Interlocked.Exchange(ref _cacheMisses, 0);
         Interlocked.Exchange(ref _totalEmbedTimeMs, 0);
 
-        _logger.LogInformation("Embedding metrics reset");
+        LogMetricsReset();
     }
 
     public async ValueTask DisposeAsync()

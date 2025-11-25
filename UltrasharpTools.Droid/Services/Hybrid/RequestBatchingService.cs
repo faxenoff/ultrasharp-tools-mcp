@@ -33,8 +33,8 @@ public sealed class RequestBatchingService : IAsyncDisposable
 
         // Timer для периодической отправки batch
         _batchTimer = new Timer(
-            _ => ProcessBatchAsync().GetAwaiter().GetResult(),
-            null,
+            static state => _ = ((RequestBatchingService)state!).ProcessBatchAsync(),
+            this,
             _batchWindow,
             _batchWindow
         );

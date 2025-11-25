@@ -9,23 +9,19 @@ namespace UltrasharpTools.Tools.Merge.Parsing;
 /// Поддерживает: .ps1
 /// Использует regex-based парсинг для извлечения функций и блоков.
 /// </summary>
-public sealed class PowerShellParser
+public sealed partial class PowerShellParser
 {
     private readonly ILogger<PowerShellParser> _logger;
     private readonly StructuralFingerprint _fingerprint;
     private readonly ContentNormalizer _normalizer;
 
     // Regex для функций: function FunctionName { ... }
-    private static readonly Regex FunctionRegex = new(
-        @"^\s*function\s+(?<name>[\w-]+)\s*(\{|$)",
-        RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled
-    );
+    [GeneratedRegex(@"^\s*function\s+(?<name>[\w-]+)\s*(\{|$)", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex FunctionRegex();
 
     // Regex для param блоков
-    private static readonly Regex ParamRegex = new(
-        @"^\s*param\s*\(",
-        RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.Compiled
-    );
+    [GeneratedRegex(@"^\s*param\s*\(", RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex ParamRegex();
 
     public PowerShellParser(
         StructuralFingerprint fingerprint,
@@ -59,7 +55,7 @@ public sealed class PowerShellParser
 
         // 3. Извлечь функции
         var lines = content.Split('\n');
-        var functionMatches = FunctionRegex.Matches(content);
+        var functionMatches = FunctionRegex().Matches(content);
 
         foreach (Match match in functionMatches)
         {
@@ -186,7 +182,7 @@ public sealed class PowerShellParser
     private List<string> ExtractParameters(string content)
     {
         var parameters = new List<string>();
-        var paramMatch = ParamRegex.Match(content);
+        var paramMatch = ParamRegex().Match(content);
 
         if (!paramMatch.Success)
             return parameters;

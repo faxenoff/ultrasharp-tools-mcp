@@ -6,7 +6,7 @@ namespace UltrasharpTools.Overlord.Services;
 /// <summary>
 /// Сервис для автоматического обнаружения дубликатов и конфликтов кода
 /// </summary>
-public sealed class ConflictDetectionService : IConflictDetectionService
+public sealed partial class ConflictDetectionService : IConflictDetectionService
 {
     private readonly ILogger<ConflictDetectionService> _logger;
     private readonly IMultiProjectVectorStoreService _vectorStore;
@@ -36,12 +36,7 @@ public sealed class ConflictDetectionService : IConflictDetectionService
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogDebug(
-            "Detecting duplicates for {Project}/{Branch}/{File}",
-            project,
-            branch,
-            file
-        );
+        LogDetectingDuplicates(project, branch, file);
 
         try
         {
@@ -89,18 +84,13 @@ public sealed class ConflictDetectionService : IConflictDetectionService
                 );
             }
 
-            _logger.LogInformation(
-                "Found {Count} duplicates for {Project}/{File}",
-                duplicates.Count,
-                project,
-                file
-            );
+            LogDuplicatesFound(duplicates.Count, project, file);
 
             return duplicates;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to detect duplicates for {Project}/{File}", project, file);
+            LogDetectDuplicatesFailed(ex, project, file);
             return new List<DuplicateMatch>();
         }
     }
@@ -137,12 +127,7 @@ public sealed class ConflictDetectionService : IConflictDetectionService
             // Отправляем уведомление проекту, в котором обнаружен дубликат
             await _notificationService.SendToProjectAsync(project, notification, cancellationToken);
 
-            _logger.LogInformation(
-                "Sent duplicate notification: {Project} -> {DuplicateProject} (similarity: {Similarity:P0})",
-                project,
-                duplicate.Project,
-                duplicate.Similarity
-            );
+            LogDuplicateNotificationSent(project, duplicate.Project, duplicate.Similarity);
         }
 
         // Рекомендация по переиспользованию, если найден дубликат в другом проекте

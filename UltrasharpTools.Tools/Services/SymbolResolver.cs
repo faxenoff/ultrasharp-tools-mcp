@@ -9,7 +9,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Used for restoring symbols from persistent cache
 /// OPTIMIZED: Uses Type Dictionary Cache for O(1) lookups instead of O(n)
 /// </summary>
-public class SymbolResolver
+public partial class SymbolResolver
 {
     private readonly ILogger _logger;
 
@@ -25,7 +25,7 @@ public class SymbolResolver
     /// </summary>
     private FrozenDictionary<string, INamedTypeSymbol> BuildTypeCache(Compilation compilation, string projectName)
     {
-        _logger.LogDebug("Building type cache for {ProjectName}...", projectName);
+        LogBuildingTypeCache(projectName);
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         var typeDict = new Dictionary<string, INamedTypeSymbol>(capacity: 10000);
@@ -74,12 +74,7 @@ public class SymbolResolver
         VisitNamespace(compilation.GlobalNamespace);
 
         sw.Stop();
-        _logger.LogDebug(
-            "Built type cache for {ProjectName}: {TypeCount} types in {ElapsedMs}ms",
-            projectName,
-            typeDict.Count,
-            sw.ElapsedMilliseconds
-        );
+        LogTypeCacheBuilt(projectName, typeDict.Count, sw.ElapsedMilliseconds);
 
         // Convert to FrozenDictionary for optimal read performance (20-30% faster lookups)
         return typeDict.ToFrozenDictionary();
@@ -137,10 +132,7 @@ public class SymbolResolver
         }
 
         // Fallback: return first candidate
-        _logger.LogTrace(
-            "Multiple candidates for member {MemberName}, using first match",
-            memberName
-        );
+        LogMultipleCandidates(memberName);
         return candidates[0];
     }
 
@@ -227,12 +219,7 @@ public class SymbolResolver
                 .Select(g => $"{g.Key} ({g.Count()} symbols)")
                 .ToList();
 
-            _logger.LogWarning(
-                "Skipping {InvalidCount} symbols from {ProjectCount} invalid/missing projects: {Projects}",
-                invalidEntries.Count,
-                invalidEntries.Select(e => e.ProjectName).Distinct().Count(),
-                string.Join(", ", unknownProjects)
-            );
+            LogSkippingInvalidSymbols(invalidEntries.Count, invalidEntries.Select(e => e.ProjectName).Distinct().Count(), string.Join(", ", unknownProjects));
         }
 
         // Filter to only valid entries
@@ -244,7 +231,7 @@ public class SymbolResolver
 
         if (validEntries.Count == 0)
         {
-            _logger.LogWarning("No valid symbols to resolve after filtering");
+            LogNoValidSymbols();
             return new List<(SerializableSymbolEntry Entry, ISymbol? Symbol)>();
         }
 
@@ -254,13 +241,7 @@ public class SymbolResolver
             .Distinct()
             .ToHashSet();
 
-        _logger.LogInformation(
-            "Symbol resolution: {ValidSymbols}/{TotalSymbols} symbols from {NeededProjects}/{TotalProjects} projects",
-            validEntries.Count,
-            entries.Count,
-            neededProjects.Count,
-            solution.Projects.Count()
-        );
+        LogSymbolResolutionStart(validEntries.Count, entries.Count, neededProjects.Count, solution.Projects.Count());
 
         // OPTIMIZATION 2: Lazy compilation loading with concurrency control
         var compilationCache = new ConcurrentDictionary<string, Compilation?>();
@@ -281,7 +262,7 @@ public class SymbolResolver
             // Not in cache - need to load
             if (!projectLookup.TryGetValue(projectName, out var project))
             {
-                _logger.LogWarning("Project {ProjectName} not found in solution", projectName);
+                LogProjectNotFound(projectName);
                 compilationCache[projectName] = null;
                 return (null, null);
             }
@@ -303,7 +284,7 @@ public class SymbolResolver
                 await compilationLoadSemaphore.WaitAsync(cancellationToken);
                 try
                 {
-                    _logger.LogDebug("Loading compilation for project {ProjectName}...", projectName);
+                    LogLoadingCompilation(projectName);
 
                     using var timeoutCts = new CancellationTokenSource(compilationTimeout);
                     using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
@@ -316,11 +297,7 @@ public class SymbolResolver
                         var compilation = await project.GetCompilationAsync(linkedCts.Token);
                         compilationCache[projectName] = compilation;
 
-                        _logger.LogDebug(
-                            "Loaded compilation for {ProjectName} ({TypeCount} types)",
-                            projectName,
-                            compilation?.GlobalNamespace.GetTypeMembers().Length ?? 0
-                        );
+                        LogCompilationLoaded(projectName, compilation?.GlobalNamespace.GetTypeMembers().Length ?? 0);
 
                         // CRITICAL OPTIMIZATION: Build Type Dictionary Cache
                         FrozenDictionary<string, INamedTypeSymbol>? typeCache = null;
@@ -334,11 +311,7 @@ public class SymbolResolver
                     }
                     catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
                     {
-                        _logger.LogError(
-                            "Compilation loading for {ProjectName} timed out after {Timeout}",
-                            projectName,
-                            compilationTimeout
-                        );
+                        LogCompilationTimeout(projectName, compilationTimeout);
                         compilationCache[projectName] = null;
                         return (null, null);
                     }
@@ -377,12 +350,7 @@ public class SymbolResolver
             batches.Add(validEntries.Skip(i).Take(batchSize).ToList());
         }
 
-        _logger.LogInformation(
-            "Processing {TotalSymbols} symbols in {BatchCount} batches of {BatchSize}",
-            totalCount,
-            batches.Count,
-            batchSize
-        );
+        LogProcessingBatches(totalCount, batches.Count, batchSize);
 
         // Use all CPU cores for maximum throughput
         var parallelOptions = new ParallelOptions
@@ -423,13 +391,7 @@ public class SymbolResolver
 
         var resultList = results.ToList();
 
-        _logger.LogInformation(
-            "Symbol resolution complete: {Loaded}/{Needed} projects loaded, {Resolved}/{Total} symbols resolved",
-            compilationCache.Count(c => c.Value != null),
-            neededProjects.Count,
-            resultList.Count(r => r.Symbol != null),
-            totalCount
-        );
+        LogResolutionComplete(compilationCache.Count(c => c.Value != null), neededProjects.Count, resultList.Count(r => r.Symbol != null), totalCount);
 
         return resultList;
     }
@@ -448,10 +410,7 @@ public class SymbolResolver
         {
             if (compilation == null || typeCache == null)
             {
-                _logger.LogTrace(
-                    "Compilation or type cache not available for project {ProjectName}",
-                    entry.ProjectName
-                );
+                LogCompilationNotAvailable(entry.ProjectName);
                 return null;
             }
 
@@ -480,7 +439,7 @@ public class SymbolResolver
         }
         catch (Exception ex)
         {
-            _logger.LogTrace(ex, "Error resolving symbol {FQN}", entry.CanonicalFqn);
+            LogSymbolResolveError(ex, entry.CanonicalFqn);
             return null;
         }
     }

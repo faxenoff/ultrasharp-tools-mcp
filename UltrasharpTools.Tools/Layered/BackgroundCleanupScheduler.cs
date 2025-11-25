@@ -6,7 +6,7 @@ namespace UltrasharpTools.Tools.Layered;
 /// Background scheduler for periodic cleanup tasks (delta compaction and orphaned deltas removal).
 /// Phase 6.4: Background Cleanup Task Scheduler
 /// </summary>
-public class BackgroundCleanupScheduler : IDisposable
+public class BackgroundCleanupScheduler : IDisposable, IAsyncDisposable
 {
     private readonly DeltaCompactionService _compactionService;
     private readonly OrphanedDeltaCleanupService _cleanupService;
@@ -264,6 +264,22 @@ public class BackgroundCleanupScheduler : IDisposable
     /// </summary>
     public bool IsRunning => _isRunning;
 
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+
+        if (_isRunning)
+        {
+            await StopAsync();
+        }
+
+        _cts?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -273,9 +289,11 @@ public class BackgroundCleanupScheduler : IDisposable
 
         if (_isRunning)
         {
-            StopAsync().GetAwaiter().GetResult();
+            // Fire-and-forget for sync disposal (prefer DisposeAsync when possible)
+            _ = StopAsync();
         }
 
         _cts?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

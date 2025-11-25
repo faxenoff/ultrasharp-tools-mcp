@@ -8,7 +8,7 @@ using UltrasharpTools.Tools.Mcp;
 
 namespace UltrasharpTools.Tools.Services
 {
-    public class FuzzyFqnLookupService(ILogger<FuzzyFqnLookupService> logger)
+    public partial class FuzzyFqnLookupService(ILogger<FuzzyFqnLookupService> logger)
         : IFuzzyFqnLookupService
     {
         private readonly ILogger<FuzzyFqnLookupService> _logger =
@@ -27,13 +27,15 @@ namespace UltrasharpTools.Tools.Services
         private const double ParametersContentMismatchScore = 0.7; // Base name matches, but params differ
         private const double MinScoreThreshold = 0.7; // Minimum score to be considered a match
 
-        // Regex patterns for normalization
-        private static readonly Regex ParamsRegex = new(
-            @"\s*\([\s\S]*\)\s*$",
-            RegexOptions.Compiled
-        );
-        private static readonly Regex ArityRegex = new(@"`\d+", RegexOptions.Compiled);
-        private static readonly Regex GenericArgsRegex = new(@"<[^<>]+>", RegexOptions.Compiled); // Simplistic: removes <...>
+        // Regex patterns for normalization (source-generated)
+        [GeneratedRegex(@"\s*\([\s\S]*\)\s*$")]
+        private static partial Regex ParamsRegex();
+
+        [GeneratedRegex(@"`\d+")]
+        private static partial Regex ArityRegex();
+
+        [GeneratedRegex(@"<[^<>]+>")] // Simplistic: removes <...>
+        private static partial Regex GenericArgsRegex();
 
         // SearchValues for fast character search in FQN parsing (nested type separators)
         private static readonly SearchValues<char> FqnSeparators = SearchValues.Create(".+");
@@ -65,7 +67,7 @@ namespace UltrasharpTools.Tools.Services
             _solutionManager = solutionManager;
             if (!solutionManager.IsSolutionLoaded)
             {
-                _logger.LogWarning("Cannot perform fuzzy FQN lookup: No solution loaded.");
+                LogNoSolutionLoaded();
                 return [];
             }
 
@@ -105,10 +107,7 @@ namespace UltrasharpTools.Tools.Services
                                                 );
                                             if (semanticModel == null)
                                             {
-                                                _logger.LogWarning(
-                                                    "Could not get semantic model for document {DocumentPath}",
-                                                    document.FilePath
-                                                );
+                                                LogSemanticModelFailed(document.FilePath);
                                                 return;
                                             }
 
@@ -140,10 +139,7 @@ namespace UltrasharpTools.Tools.Services
             );
 
             await Task.WhenAll(projectTasks);
-            _logger.LogDebug(
-                "Collected {SymbolCount} symbols from solution documents (parallel mode)",
-                allRelevantSymbols.Count
-            );
+            LogSymbolsCollected(allRelevantSymbols.Count);
             int prefilter = allRelevantSymbols.Count;
 
             // Convert to list for processing
@@ -160,11 +156,7 @@ namespace UltrasharpTools.Tools.Services
                 .Except(partialTypes.SelectMany(g => g.Skip(1)), SymbolEqualityComparer.Default)
                 .ToList(); // Remove all but one from each group
 
-            _logger.LogDebug(
-                "Filtered {PrefilterCount} symbols to {SymbolCount} after removing duplicates",
-                prefilter,
-                symbolsList.Count
-            );
+            LogSymbolsFiltered(prefilter, symbolsList.Count);
 
             // Match symbols against the fuzzy FQN in parallel
             const int MaxResults = 20; // Limit results for performance
@@ -200,10 +192,7 @@ namespace UltrasharpTools.Tools.Services
                                     && Interlocked.CompareExchange(ref foundPerfectMatch, 1, 0) == 0
                                 )
                                 {
-                                    _logger.LogDebug(
-                                        "Perfect match found for '{FuzzyFqn}', stopping search early",
-                                        fuzzyFqnInput
-                                    );
+                                    LogPerfectMatchFound(fuzzyFqnInput);
                                     earlyStopCts.Cancel();
                                 }
                                 // If we have enough results, we can also stop early
@@ -229,9 +218,7 @@ namespace UltrasharpTools.Tools.Services
             catch (OperationCanceledException)
             {
                 // Early termination - this is expected
-                _logger.LogDebug(
-                    "Symbol matching stopped early (perfect match or enough results found)"
-                );
+                LogSearchStoppedEarly();
             }
 
             // Check cancellation before sorting results
@@ -243,11 +230,7 @@ namespace UltrasharpTools.Tools.Services
                 .ThenBy(m => m.CanonicalFqn)
                 .ToList();
 
-            _logger.LogDebug(
-                "Found {MatchCount} matches for fuzzy FQN '{FuzzyFqn}'",
-                results.Count,
-                fuzzyFqnInput
-            );
+            LogMatchesFound(results.Count, fuzzyFqnInput);
 
             // If multiple matches are found, but one is perfect, filter to that one
             if (results.Count > 1)
@@ -257,10 +240,7 @@ namespace UltrasharpTools.Tools.Services
                     .ToList();
                 if (perfectMatches.Count == 1)
                 {
-                    _logger.LogDebug(
-                        "Filtered to single perfect match for '{FuzzyFqn}'",
-                        fuzzyFqnInput
-                    );
+                    LogFilteredToPerfect(fuzzyFqnInput);
                     return perfectMatches;
                 }
             }
@@ -766,12 +746,7 @@ namespace UltrasharpTools.Tools.Services
             // Log ambiguity when we have multiple high-scoring matches
             if (highScoreMatches.Count > 1)
             {
-                _logger.LogWarning(
-                    "Ambiguity detected for input '{FuzzyFqn}': Found {HighScoreCount} high-scoring matches (>= {Threshold})",
-                    fuzzyFqnInput,
-                    highScoreMatches.Count,
-                    HighScoreThreshold
-                );
+                LogAmbiguityDetected(fuzzyFqnInput, highScoreMatches.Count, HighScoreThreshold);
 
                 // Group by project to understand cross-project ambiguity
                 var matchesByProject = highScoreMatches
@@ -780,17 +755,10 @@ namespace UltrasharpTools.Tools.Services
 
                 if (matchesByProject.Count > 1)
                 {
-                    _logger.LogWarning(
-                        "Cross-project ambiguity detected: Matches span {ProjectCount} projects",
-                        matchesByProject.Count
-                    );
+                    LogCrossProjectAmbiguity(matchesByProject.Count);
                     foreach (var projectGroup in matchesByProject)
                     {
-                        _logger.LogInformation(
-                            "Project '{ProjectName}' has {MatchCount} ambiguous matches",
-                            projectGroup.Key,
-                            projectGroup.Count()
-                        );
+                        LogProjectAmbiguousMatches(projectGroup.Key, projectGroup.Count());
                     }
                 }
 
@@ -826,27 +794,19 @@ namespace UltrasharpTools.Tools.Services
                     false
                 );
 
-                _logger.LogWarning(
-                    "Ambiguous Match #{Rank}: Score={Score:F3}, Reason='{Reason}'",
-                    rank,
-                    match.Score,
-                    match.MatchReason
-                );
-                _logger.LogInformation("  Symbol Details:");
-                _logger.LogInformation("    FQN: {CanonicalFqn}", match.CanonicalFqn);
-                _logger.LogInformation(
-                    "    Formatted Signature: {FormattedSignature}",
-                    formattedSignature
-                );
-                _logger.LogInformation("    Symbol Kind: {SymbolKind}", symbolKind);
-                _logger.LogInformation("    Symbol Name: {SymbolName}", symbol.Name);
-                _logger.LogInformation("    Project: {ProjectName}", projectName);
-                _logger.LogInformation("    Assembly: {AssemblyName}", assemblyName);
-                _logger.LogInformation("    Location: {Location}", location);
+                LogAmbiguousMatch(rank, match.Score, match.MatchReason);
+                LogSymbolDetails();
+                LogFqn(match.CanonicalFqn);
+                LogFormattedSignature(formattedSignature);
+                LogSymbolKind(symbolKind);
+                LogSymbolName(symbol.Name);
+                LogProject(projectName);
+                LogAssembly(assemblyName);
+                LogLocation(location);
 
                 if (!string.IsNullOrEmpty(containingType))
                 {
-                    _logger.LogInformation("    Containing Type: {ContainingType}", containingType);
+                    LogContainingType(containingType);
                 }
 
                 // Log additional type-specific information
@@ -855,19 +815,15 @@ namespace UltrasharpTools.Tools.Services
                 // Log accessibility and modifiers
                 var accessibility = symbol.DeclaredAccessibility.ToString();
                 var modifiers = GetSymbolModifiers(symbol);
-                _logger.LogInformation("    Accessibility: {Accessibility}", accessibility);
+                LogAccessibility(accessibility);
                 if (!string.IsNullOrEmpty(modifiers))
                 {
-                    _logger.LogInformation("    Modifiers: {Modifiers}", modifiers);
+                    LogModifiers(modifiers);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Error logging detailed match info for symbol {SymbolName}",
-                    match.Symbol.Name
-                );
+                LogDetailedMatchError(ex, match.Symbol.Name);
             }
         }
 
@@ -876,87 +832,57 @@ namespace UltrasharpTools.Tools.Services
             switch (symbol)
             {
                 case INamedTypeSymbol namedType:
-                    _logger.LogInformation("    Type Kind: {TypeKind}", namedType.TypeKind);
-                    _logger.LogInformation("    Is Generic: {IsGeneric}", namedType.IsGenericType);
-                    _logger.LogInformation("    Arity: {Arity}", namedType.Arity);
-                    _logger.LogInformation(
-                        "    Member Count: {MemberCount}",
-                        namedType.GetMembers().Length
-                    );
+                    LogTypeKind(namedType.TypeKind.ToString());
+                    LogIsGeneric(namedType.IsGenericType);
+                    LogArity(namedType.Arity);
+                    LogMemberCount(namedType.GetMembers().Length);
                     if (namedType.BaseType != null)
                     {
-                        _logger.LogInformation(
-                            "    Base Type: {BaseType}",
-                            namedType.BaseType.ToDisplayString()
-                        );
+                        LogBaseType(namedType.BaseType.ToDisplayString());
                     }
                     if (namedType.Interfaces.Length > 0)
                     {
-                        _logger.LogInformation(
-                            "    Implements: {InterfaceCount} interfaces",
-                            namedType.Interfaces.Length
-                        );
+                        LogImplementsInterfaces(namedType.Interfaces.Length);
                     }
                     break;
 
                 case IMethodSymbol method:
-                    _logger.LogInformation("    Method Kind: {MethodKind}", method.MethodKind);
-                    _logger.LogInformation(
-                        "    Return Type: {ReturnType}",
-                        method.ReturnType.ToDisplayString()
-                    );
-                    _logger.LogInformation(
-                        "    Parameter Count: {ParameterCount}",
-                        method.Parameters.Length
-                    );
-                    _logger.LogInformation("    Is Generic: {IsGeneric}", method.IsGenericMethod);
-                    _logger.LogInformation(
-                        "    Is Extension: {IsExtension}",
-                        method.IsExtensionMethod
-                    );
-                    _logger.LogInformation("    Is Async: {IsAsync}", method.IsAsync);
+                    LogMethodKind(method.MethodKind.ToString());
+                    LogReturnType(method.ReturnType.ToDisplayString());
+                    LogParameterCount(method.Parameters.Length);
+                    LogIsGeneric(method.IsGenericMethod);
+                    LogIsExtension(method.IsExtensionMethod);
+                    LogIsAsync(method.IsAsync);
                     if (method.Parameters.Length > 0)
                     {
                         var parameterTypes = string.Join(
                             ", ",
                             method.Parameters.Select(p => p.Type.ToDisplayString())
                         );
-                        _logger.LogInformation("    Parameters: {ParameterTypes}", parameterTypes);
+                        LogParameters(parameterTypes);
                     }
                     break;
 
                 case IPropertySymbol property:
-                    _logger.LogInformation(
-                        "    Property Type: {PropertyType}",
-                        property.Type.ToDisplayString()
-                    );
-                    _logger.LogInformation("    Is ReadOnly: {IsReadOnly}", property.IsReadOnly);
-                    _logger.LogInformation("    Is WriteOnly: {IsWriteOnly}", property.IsWriteOnly);
-                    _logger.LogInformation("    Is Indexer: {IsIndexer}", property.IsIndexer);
+                    LogPropertyType(property.Type.ToDisplayString());
+                    LogIsReadOnly(property.IsReadOnly);
+                    LogIsWriteOnly(property.IsWriteOnly);
+                    LogIsIndexer(property.IsIndexer);
                     break;
 
                 case IFieldSymbol field:
-                    _logger.LogInformation(
-                        "    Field Type: {FieldType}",
-                        field.Type.ToDisplayString()
-                    );
-                    _logger.LogInformation("    Is Const: {IsConst}", field.IsConst);
-                    _logger.LogInformation("    Is ReadOnly: {IsReadOnly}", field.IsReadOnly);
-                    _logger.LogInformation("    Is Static: {IsStatic}", field.IsStatic);
+                    LogFieldType(field.Type.ToDisplayString());
+                    LogIsConst(field.IsConst);
+                    LogIsReadOnly(field.IsReadOnly);
+                    LogIsStatic(field.IsStatic);
                     if (field.IsConst && field.ConstantValue != null)
                     {
-                        _logger.LogInformation(
-                            "    Constant Value: {ConstantValue}",
-                            field.ConstantValue
-                        );
+                        LogConstantValue(field.ConstantValue);
                     }
                     break;
 
                 case IEventSymbol eventSymbol:
-                    _logger.LogInformation(
-                        "    Event Type: {EventType}",
-                        eventSymbol.Type.ToDisplayString()
-                    );
+                    LogEventType(eventSymbol.Type.ToDisplayString());
                     break;
             }
         }
@@ -968,17 +894,10 @@ namespace UltrasharpTools.Tools.Services
             List<FuzzyMatchResult> perfectMatches
         )
         {
-            _logger.LogInformation("Ambiguity Summary for '{FuzzyFqn}':", fuzzyFqnInput);
-            _logger.LogInformation("  Total matches: {TotalMatches}", allResults.Count);
-            _logger.LogInformation(
-                "  Perfect matches (>= {PerfectThreshold:F3}): {PerfectCount}",
-                PerfectMatchScore - 0.01,
-                perfectMatches.Count
-            );
-            _logger.LogInformation(
-                "  High-scoring matches (>= 0.8): {HighScoreCount}",
-                highScoreMatches.Count
-            );
+            LogAmbiguitySummaryHeader(fuzzyFqnInput);
+            LogTotalMatches(allResults.Count);
+            LogPerfectMatchCount(PerfectMatchScore - 0.01, perfectMatches.Count);
+            LogHighScoreMatchCount(highScoreMatches.Count);
 
             // Score distribution
             (double, double, string)[] scoreRanges =
@@ -994,13 +913,7 @@ namespace UltrasharpTools.Tools.Services
                 var count = allResults.Count(r => r.Score < upper && r.Score >= lower);
                 if (count > 0)
                 {
-                    _logger.LogInformation(
-                        "  {Label} matches ({Lower:F1}-{Upper:F1}): {Count}",
-                        label,
-                        lower,
-                        upper,
-                        count
-                    );
+                    LogScoreRangeCount(label, lower, upper, count);
                 }
             }
 
@@ -1012,10 +925,10 @@ namespace UltrasharpTools.Tools.Services
 
             if (symbolKinds.Count > 0)
             {
-                _logger.LogInformation("  Symbol kinds in high-scoring matches:");
+                LogSymbolKindsHeader();
                 foreach (var kind in symbolKinds)
                 {
-                    _logger.LogInformation("    {SymbolKind}: {Count}", kind.Key, kind.Value);
+                    LogSymbolKindCount(kind.Key, kind.Value);
                 }
             }
 
@@ -1027,14 +940,10 @@ namespace UltrasharpTools.Tools.Services
 
             if (projects.Count > 1)
             {
-                _logger.LogInformation("  Project distribution:");
+                LogProjectDistributionHeader();
                 foreach (var project in projects)
                 {
-                    _logger.LogInformation(
-                        "    {ProjectName}: {Count}",
-                        project.Key,
-                        project.Value
-                    );
+                    LogProjectCount(project.Key, project.Value);
                 }
             }
         }
@@ -1193,10 +1102,10 @@ namespace UltrasharpTools.Tools.Services
         private string StripGenericArgs(string typeName)
         {
             // First, remove Roslyn-style arity indicators like List`1
-            string withoutArity = ArityRegex.Replace(typeName, "");
+            string withoutArity = ArityRegex().Replace(typeName, "");
 
             // Then remove angle bracket content including brackets
-            return GenericArgsRegex.Replace(withoutArity, "");
+            return GenericArgsRegex().Replace(withoutArity, "");
         }
     }
 }

@@ -26,7 +26,7 @@ namespace UltrasharpTools.Droid;
 public static class Program
 {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
-    public const string ApplicationVersion = "3.0.6";
+    public const string ApplicationVersion = "3.2.0";
 
     private static readonly JsonSerializerOptions SemanticConfigJsonOptions =
         new()
@@ -86,7 +86,7 @@ public static class Program
         var embeddingUrlOption = new Option<string?>("--embedding-url")
         {
             Description = "Embedding service URL for hybrid mode (Ollama/TEI)",
-            DefaultValueFactory = _ => "http://localhost:11434",
+            DefaultValueFactory = _ => "http://127.0.0.1:11434",
         };
 
         var embeddingModelOption = new Option<string?>("--embedding-model")
@@ -364,22 +364,17 @@ public static class Program
         );
 
         // Auto-enable semantic RAG if semantic-config.json exists
-        // Check Config\semantic-config.json (recommended) or semantic-config.json (legacy)
-        // Use exe directory instead of current working directory
-        var exeDir =
-            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-            ?? Directory.GetCurrentDirectory();
-        var configDirPath = Path.Combine(exeDir, "Config", "semantic-config.json");
-        var legacyPath = Path.Combine(exeDir, "semantic-config.json");
-        var hasSemanticConfig = File.Exists(configDirPath) || File.Exists(legacyPath);
-        var semanticConfigPath = File.Exists(configDirPath) ? configDirPath : legacyPath;
+        // Use centralized config directory: %LOCALAPPDATA%\UltraSharpTools\config (Windows)
+        // or ~/.ultrasharp/config (Linux/macOS)
+        var centralConfigDir = UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader.CentralConfigDirectory;
+        var semanticConfigPath = Path.Combine(centralConfigDir, "semantic-config.json");
+        var hasSemanticConfig = File.Exists(semanticConfigPath);
 
         // Debug logging (before logger is available)
         File.AppendAllText(
             Path.Combine(logDirPath, "semantic-debug.log"),
-            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - exeDir: {exeDir}\n"
-                + $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - configDirPath: {configDirPath}\n"
-                + $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - configDirPath exists: {File.Exists(configDirPath)}\n"
+            $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - centralConfigDir: {centralConfigDir}\n"
+                + $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - semanticConfigPath: {semanticConfigPath}\n"
                 + $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - hasSemanticConfig: {hasSemanticConfig}\n"
         );
 
@@ -503,6 +498,26 @@ public static class Program
                         }
 
                         semanticEnabled = true;
+
+                        // Start VectorDB process asynchronously (fire-and-forget)
+                        // VectorDB has slow startup, so we start it early
+                        // Note: LoggerFactory not disposed - VectorDBLauncher needs it for async logging
+#pragma warning disable CA2000 // LoggerFactory intentionally not disposed - needed by async task
+                        var vectorDbLoggerFactory = LoggerFactory.Create(b =>
+                        {
+                            if (enableConsoleOutput) b.AddConsole();
+                            b.SetMinimumLevel(LogLevel.Information);
+                        });
+                        var vectorDbLauncher = new UltrasharpTools.Droid.Services.Hybrid.VectorDBLauncher(
+                            vectorDbLoggerFactory.CreateLogger<UltrasharpTools.Droid.Services.Hybrid.VectorDBLauncher>()
+                        );
+                        vectorDbLauncher.StartAsync();
+#pragma warning restore CA2000
+
+                        if (enableConsoleOutput)
+                        {
+                            Console.WriteLine("[Semantic] VectorDB process starting in background...");
+                        }
                     }
                     else
                     {
@@ -608,7 +623,7 @@ public static class Program
                 ProjectName = projectName,
                 RepositoryPath = repositoryPath,
                 ServerUrl = serverUrl!,
-                EmbeddingUrl = embeddingUrl ?? "http://localhost:11434",
+                EmbeddingUrl = embeddingUrl ?? "http://127.0.0.1:11434",
                 EmbeddingModel = embeddingModel ?? "nomic-embed-text",
             };
 
@@ -632,12 +647,8 @@ public static class Program
                 )
                 .SetHandlerLifetime(Timeout.InfiniteTimeSpan); // Prevent handler rotation
 
-            // Embedding service (optional)
-            builder
-                .Services.AddHttpClient<
-                    UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService,
-                    UltrasharpTools.Droid.Services.Hybrid.EmbeddingService
-                >()
+            // Embedding service - explicit registration with IHttpClientFactory
+            builder.Services.AddHttpClient("EmbeddingService")
                 .ConfigurePrimaryHttpMessageHandler(() =>
                     new SocketsHttpHandler
                     {
@@ -649,6 +660,15 @@ public static class Program
                     }
                 )
                 .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
+
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>(sp =>
+            {
+                var factory = sp.GetRequiredService<IHttpClientFactory>();
+                var client = factory.CreateClient("EmbeddingService");
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.EmbeddingService>>();
+                var config = sp.GetRequiredService<UltrasharpTools.Droid.Models.Hybrid.AgentConfig>();
+                return new UltrasharpTools.Droid.Services.Hybrid.EmbeddingService(client, logger, config);
+            });
 
             // Notification client service
             builder
@@ -735,7 +755,7 @@ public static class Program
                     loggerFactory714
                         .CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>()
                 );
-            var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
+            var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync(semanticConfigPath);
 
             // SemanticModeProvider для auto-detection Local/Overlord embedding
             builder.Services.AddSingleton<ISemanticModeProvider>(sp =>
@@ -743,8 +763,25 @@ public static class Program
                 var logger = sp.GetRequiredService<
                     ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>
                 >();
-                var localEmbedding =
-                    sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>();
+
+                // Debug: try to resolve IEmbeddingService
+                UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService? localEmbedding = null;
+                try
+                {
+                    localEmbedding = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>();
+                    File.AppendAllText(
+                        @"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - IEmbeddingService resolved: {localEmbedding != null}\n"
+                    );
+                }
+                catch (Exception ex)
+                {
+                    File.AppendAllText(
+                        @"D:\github\ultrasharp-tools-mcp\.ultrasharp\logs\semantic-debug.log",
+                        $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - IEmbeddingService resolution FAILED: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}\n"
+                    );
+                }
+
                 var serverBridge =
                     sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IServerBridgeService>();
                 return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(
@@ -831,6 +868,48 @@ public static class Program
             // ConfigurationService всегда доступен
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ConfigurationService>();
 
+            // AgentConfig для local mode
+            var projectName = !string.IsNullOrEmpty(solutionPath)
+                ? Path.GetFileNameWithoutExtension(solutionPath)
+                : Path.GetFileName(Directory.GetCurrentDirectory());
+
+            var repositoryPath = !string.IsNullOrEmpty(solutionPath)
+                ? Path.GetDirectoryName(solutionPath) ?? Directory.GetCurrentDirectory()
+                : Directory.GetCurrentDirectory();
+
+            var agentConfig = new UltrasharpTools.Droid.Models.Hybrid.AgentConfig
+            {
+                ProjectName = projectName,
+                RepositoryPath = repositoryPath,
+                ServerUrl = serverUrl ?? "",
+                EmbeddingUrl = embeddingUrl ?? "http://127.0.0.1:11434",
+                EmbeddingModel = embeddingModel ?? "nomic-embed-text",
+            };
+            builder.Services.AddSingleton(agentConfig);
+
+            // EmbeddingService для local mode (нужен для SemanticModeProvider)
+            builder.Services.AddHttpClient("EmbeddingService")
+                .ConfigurePrimaryHttpMessageHandler(() =>
+                    new SocketsHttpHandler
+                    {
+                        PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                        PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                        MaxConnectionsPerServer = 10,
+                        EnableMultipleHttp2Connections = true,
+                        ConnectTimeout = TimeSpan.FromSeconds(10),
+                    }
+                )
+                .SetHandlerLifetime(Timeout.InfiniteTimeSpan);
+
+            builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>(sp =>
+            {
+                var factory = sp.GetRequiredService<IHttpClientFactory>();
+                var client = factory.CreateClient("EmbeddingService");
+                var logger = sp.GetRequiredService<ILogger<UltrasharpTools.Droid.Services.Hybrid.EmbeddingService>>();
+                var config = sp.GetRequiredService<UltrasharpTools.Droid.Models.Hybrid.AgentConfig>();
+                return new UltrasharpTools.Droid.Services.Hybrid.EmbeddingService(client, logger, config);
+            });
+
             // Universal Semantic Mode - Phase 12 (local mode)
             // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
             // LoggerFactory without console output for MCP compatibility
@@ -849,18 +928,8 @@ public static class Program
                     ILogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider>
                 >();
 
-                // Пытаемся получить IEmbeddingProvider (если semantic RAG был зарегистрирован)
-                UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService? localEmbedding = null;
-                var embeddingProvider =
-                    sp.GetService<UltrasharpTools.Tools.Semantic.Embedding.IEmbeddingProvider>();
-                if (embeddingProvider != null)
-                {
-                    // Создаём адаптер IEmbeddingProvider -> IEmbeddingService
-                    localEmbedding =
-                        new UltrasharpTools.Droid.Services.Hybrid.EmbeddingProviderAdapter(
-                            embeddingProvider
-                        );
-                }
+                // Используем IEmbeddingService (зарегистрирован выше через HttpClient)
+                var localEmbedding = sp.GetService<UltrasharpTools.Droid.Services.Hybrid.IEmbeddingService>();
 
                 // В local mode нет serverBridge и Overlord
                 return new UltrasharpTools.Droid.Services.Hybrid.SemanticModeProvider(

@@ -6,7 +6,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Сервис для форматирования C# кода с использованием Roslyn Formatter
 /// </summary>
-public class FormattingService(ILogger<FormattingService> logger) : IFormattingService
+public partial class FormattingService(ILogger<FormattingService> logger) : IFormattingService
 {
     private readonly ILogger<FormattingService> _logger = logger;
     private static readonly string[] SupportedExtensions = [".cs", ".csproj", ".xml"];
@@ -17,11 +17,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation(
-            "Starting formatting for path: {Path}, CheckOnly: {CheckOnly}",
-            path,
-            checkOnly
-        );
+        LogStartingFormat(path, checkOnly);
 
         var filesNeedingFormatting = new List<string>();
         var filesFormatted = new List<string>();
@@ -31,7 +27,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
         var filesToCheck = GetFilesToFormat(path);
         if (filesToCheck.Count == 0)
         {
-            _logger.LogWarning("No files found to format at path: {Path}", path);
+            LogNoFilesFound(path);
             return new FormattingResult
             {
                 FilesNeedingFormatting = [],
@@ -40,7 +36,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
             };
         }
 
-        _logger.LogInformation("Found {Count} files to check", filesToCheck.Count);
+        LogFilesFound(filesToCheck.Count);
 
         // ✅ OPTIMIZATION: Parallel file formatting with Task.WhenAll
         var formatTasks = filesToCheck.Select(async filePath =>
@@ -79,7 +75,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to format file: {FilePath}", filePath);
+                LogFormatFileFailed(ex, filePath);
                 return (
                     FilePath: filePath,
                     NeedsFormatting: false,
@@ -116,27 +112,18 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
                             cancellationToken
                         );
                         filesFormatted.Add(result.FilePath);
-                        _logger.LogInformation("Formatted file: {FilePath}", result.FilePath);
+                        LogFileFormatted(result.FilePath);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(
-                            ex,
-                            "Failed to write formatted file: {FilePath}",
-                            result.FilePath
-                        );
+                        LogWriteFormatFailed(ex, result.FilePath);
                         errors.Add((result.FilePath, $"Write failed: {ex.Message}"));
                     }
                 }
             }
         }
 
-        _logger.LogInformation(
-            "Formatting complete. Total checked: {Total}, Need formatting: {NeedFormatting}, Formatted: {Formatted}",
-            filesToCheck.Count,
-            filesNeedingFormatting.Count,
-            filesFormatted.Count
-        );
+        LogFormatComplete(filesToCheck.Count, filesNeedingFormatting.Count, filesFormatted.Count);
 
         return new FormattingResult
         {
@@ -173,7 +160,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to format C# code with Roslyn, returning original");
+            LogCSharpFormatFailed(ex);
             return code;
         }
     }
@@ -190,7 +177,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to format XML code, returning original");
+            LogXmlFormatFailed(ex);
             return xml;
         }
     }
@@ -206,7 +193,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
             }
             else
             {
-                _logger.LogWarning("Unsupported file extension: {Ext}", ext);
+                LogUnsupportedExtension(ext);
                 return new List<string>();
             }
         }
@@ -236,7 +223,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to enumerate files with extension {Ext}", ext);
+                        LogEnumerateFilesFailed(ex, ext);
                     }
                 }
             );
@@ -245,7 +232,7 @@ public class FormattingService(ILogger<FormattingService> logger) : IFormattingS
         }
         else
         {
-            _logger.LogWarning("Path does not exist: {Path}", path);
+            LogPathNotExists(path);
             return new List<string>();
         }
     }

@@ -34,9 +34,14 @@ public sealed class HybridSemanticSearchService : ISemanticSearchService {
         _config = config ?? SemanticSearchServiceConfig.Default;
         _logger = logger ?? NullLogger<HybridSemanticSearchService>.Instance;
     }
+    // Настройки batch-индексации
+    private const int BatchSize = 250; // Размер batch для отправки в VectorDB (оптимально для IPC)
+    private const int MaxParallelProjects = 4; // Макс параллельных проектов
+
     /// <summary>
     /// Индексировать текущий solution через VectorDB процесс.
     /// Читает код через Roslyn в Droid и отправляет в VectorDB для векторизации.
+    /// Оптимизировано: параллельный сбор + batch-отправка.
     /// </summary>
     public async Task IndexCurrentSolutionAsync(CancellationToken ct = default) {
         if (_solutionManager.CurrentWorkspace?.CurrentSolution == null) {
@@ -67,43 +72,165 @@ public sealed class HybridSemanticSearchService : ISemanticSearchService {
             solution.FilePath ?? "(in-memory)"
         );
 
-        var totalDocuments = 0;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        foreach (var project in solution.Projects) {
-            _logger.LogDebug("[Hybrid] Indexing project: {ProjectName}", project.Name);
+        // Параллельно собираем данные из всех проектов
+        var allItems = new System.Collections.Concurrent.ConcurrentBag<IndexBatchItem>();
 
-            var compilation = await project.GetCompilationAsync(ct);
+        var parallelOptions = new ParallelOptions {
+            MaxDegreeOfParallelism = MaxParallelProjects,
+            CancellationToken = ct
+        };
+
+        await Parallel.ForEachAsync(solution.Projects, parallelOptions, async (project, token) => {
+            _logger.LogDebug("[Hybrid] Collecting from project: {ProjectName}", project.Name);
+
+            var compilation = await project.GetCompilationAsync(token);
             if (compilation == null) {
                 _logger.LogWarning(
                     "[Hybrid] Failed to get compilation for project: {ProjectName}",
                     project.Name
                 );
-                continue;
+                return;
             }
 
-            foreach (var document in project.Documents) {
-                if (!document.SupportsSyntaxTree)
-                    continue;
+            // Параллельно обрабатываем документы в проекте
+            await Parallel.ForEachAsync(
+                project.Documents.Where(d => d.SupportsSyntaxTree),
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = token },
+                async (document, docToken) => {
+                    try {
+                        var items = await CollectDocumentItemsAsync(document, compilation, docToken);
+                        foreach (var item in items) {
+                            allItems.Add(item);
+                        }
+                    } catch (Exception ex) {
+                        _logger.LogWarning(
+                            ex,
+                            "[Hybrid] Error collecting document: {DocumentPath}",
+                            document.FilePath
+                        );
+                    }
+                });
+        });
 
-                try {
-                    await IndexDocumentAsync(document, compilation, ct);
-                    totalDocuments++;
-                } catch (Exception ex) {
-                    _logger.LogError(
-                        ex,
-                        "[Hybrid] Error indexing document: {DocumentPath}",
-                        document.FilePath
-                    );
-                }
+        var collectionTime = sw.ElapsedMilliseconds;
+        _logger.LogInformation(
+            "[Hybrid] Collected {Count} items in {Time}ms, sending to VectorDB...",
+            allItems.Count, collectionTime
+        );
+
+        // Batch-отправка в VectorDB
+        var itemsList = allItems.ToList();
+        var totalIndexed = 0;
+
+        for (var i = 0; i < itemsList.Count; i += BatchSize) {
+            var batch = itemsList.Skip(i).Take(BatchSize).ToList();
+            try {
+                var indexed = await _vectorDBClient.IndexBatchAsync(batch, ct);
+                totalIndexed += indexed;
+
+                _logger.LogDebug(
+                    "[Hybrid] Batch {BatchNum}/{TotalBatches}: indexed {Count} items",
+                    (i / BatchSize) + 1,
+                    (itemsList.Count + BatchSize - 1) / BatchSize,
+                    indexed
+                );
+            } catch (Exception ex) {
+                _logger.LogError(ex, "[Hybrid] Error indexing batch at offset {Offset}", i);
             }
         }
 
+        sw.Stop();
         _isIndexed = true;
 
         _logger.LogInformation(
-            "[Hybrid] Indexing complete: {Documents} documents indexed via VectorDB",
-            totalDocuments
+            "[Hybrid] Indexing complete: {TotalIndexed} items indexed in {TotalTime}ms (collection: {CollectionTime}ms)",
+            totalIndexed, sw.ElapsedMilliseconds, collectionTime
         );
+    }
+
+    /// <summary>
+    /// Собирает все элементы для индексации из документа (без отправки в VectorDB)
+    /// </summary>
+    private async Task<List<IndexBatchItem>> CollectDocumentItemsAsync(
+        Document document,
+        Compilation compilation,
+        CancellationToken ct) {
+        var items = new List<IndexBatchItem>();
+
+        var syntaxTree = await document.GetSyntaxTreeAsync(ct);
+        if (syntaxTree == null)
+            return items;
+
+        var root = await syntaxTree.GetRootAsync(ct);
+        var semanticModel = compilation.GetSemanticModel(syntaxTree);
+
+        // Собираем методы
+        foreach (var methodNode in root.DescendantNodes().OfType<MethodDeclarationSyntax>()) {
+            var item = CreateMethodItem(methodNode, semanticModel, document);
+            if (item != null)
+                items.Add(item);
+        }
+
+        // Собираем классы
+        foreach (var classNode in root.DescendantNodes().OfType<ClassDeclarationSyntax>()) {
+            var item = CreateClassItem(classNode, semanticModel, document);
+            if (item != null)
+                items.Add(item);
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// Создает IndexBatchItem для метода
+    /// </summary>
+    private IndexBatchItem? CreateMethodItem(
+        MethodDeclarationSyntax methodNode,
+        SemanticModel semanticModel,
+        Document document) {
+        var methodSymbol = semanticModel.GetDeclaredSymbol(methodNode);
+        if (methodSymbol == null)
+            return null;
+
+        var methodText = GetMethodText(methodNode);
+        if (string.IsNullOrWhiteSpace(methodText))
+            return null;
+
+        var id = $"method:{methodSymbol.ContainingType.ToDisplayString()}::{methodSymbol.Name}";
+        var metadata = CreateMethodMetadata(methodSymbol, document);
+
+        return new IndexBatchItem {
+            Code = methodText,
+            DocumentPath = id,
+            Metadata = metadata
+        };
+    }
+
+    /// <summary>
+    /// Создает IndexBatchItem для класса
+    /// </summary>
+    private IndexBatchItem? CreateClassItem(
+        ClassDeclarationSyntax classNode,
+        SemanticModel semanticModel,
+        Document document) {
+        var classSymbol = semanticModel.GetDeclaredSymbol(classNode);
+        if (classSymbol == null)
+            return null;
+
+        var classText = GetClassText(classNode);
+        if (string.IsNullOrWhiteSpace(classText))
+            return null;
+
+        var id = $"class:{classSymbol.ToDisplayString()}";
+        var metadata = CreateClassMetadata(classSymbol, document);
+
+        return new IndexBatchItem {
+            Code = classText,
+            DocumentPath = id,
+            Metadata = metadata
+        };
     }    /// <summary>
          /// Индексирует один документ: извлекает методы и классы, отправляет в VectorDB
          /// </summary>

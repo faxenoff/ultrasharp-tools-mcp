@@ -2,9 +2,15 @@ namespace UltrasharpTools.Tools.Config;
 
 /// <summary>
 /// Global embedding configuration (near executable)
+/// Unified config: combines embedding settings + semantic mode settings
 /// </summary>
 public class SemanticEmbeddingConfig
 {
+    /// <summary>
+    /// Enable semantic mode (semantic search, similarity, enrichment)
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
     public EmbeddingSettings Embedding { get; set; } = new();
     public AutoDetectionSettings AutoDetection { get; set; } = new();
 }

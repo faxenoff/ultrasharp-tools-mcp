@@ -61,9 +61,9 @@ public sealed class TEIOptions
     public int TimeoutMs { get; set; } = 30000;
 
     /// <summary>
-    /// Concurrency level for parallel requests
+    /// Concurrency level for parallel requests (higher = faster but more CPU)
     /// </summary>
-    public int Concurrency { get; set; } = 4;
+    public int Concurrency { get; set; } = 8;
 
     /// <summary>
     /// Check server availability on startup
@@ -104,9 +104,9 @@ public sealed class OllamaOptions
     public int TimeoutMs { get; set; } = 10000;
 
     /// <summary>
-    /// Concurrency level for parallel requests
+    /// Concurrency level for parallel requests (higher = faster but more CPU)
     /// </summary>
-    public int Concurrency { get; set; } = 4;
+    public int Concurrency { get; set; } = 8;
 
     /// <summary>
     /// Auto-pull model if not found

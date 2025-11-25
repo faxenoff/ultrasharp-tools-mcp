@@ -7,7 +7,7 @@ using ICSharpCode.Decompiler.TypeSystem;
 
 namespace UltrasharpTools.Tools.Services
 {
-    public class SourceResolutionService(
+    public partial class SourceResolutionService(
         ISolutionManager solutionManager,
         ILogger<SourceResolutionService> logger
     ) : ISourceResolutionService
@@ -25,7 +25,7 @@ namespace UltrasharpTools.Tools.Services
         {
             if (symbol == null)
             {
-                _logger.LogWarning("Cannot resolve source: Symbol is null");
+                LogSymbolNull();
                 return null;
             }
 
@@ -71,20 +71,14 @@ namespace UltrasharpTools.Tools.Services
             CancellationToken cancellationToken
         )
         {
-            _logger.LogInformation(
-                "Attempting to retrieve source via Source Link for {SymbolName}",
-                symbol.Name
-            );
+            LogAttemptingSourceLink(symbol.Name);
             try
             {
                 // Get location of the assembly containing the symbol
                 var assembly = symbol.ContainingAssembly;
                 if (assembly == null)
                 {
-                    _logger.LogWarning(
-                        "No containing assembly found for symbol {SymbolName}",
-                        symbol.Name
-                    );
+                    LogNoContainingAssembly(symbol.Name);
                     return null;
                 }
 
@@ -92,10 +86,7 @@ namespace UltrasharpTools.Tools.Services
                 var metadataReference = GetMetadataReferenceForAssembly(assembly);
                 if (metadataReference == null)
                 {
-                    _logger.LogWarning(
-                        "No metadata reference found for assembly {AssemblyName}",
-                        assembly.Name
-                    );
+                    LogNoMetadataReference(assembly.Name);
                     return null;
                 }
 
@@ -103,18 +94,18 @@ namespace UltrasharpTools.Tools.Services
                 var dllPath = metadataReference.Display;
                 if (string.IsNullOrEmpty(dllPath) || !File.Exists(dllPath))
                 {
-                    _logger.LogWarning("Assembly file not found: {DllPath}", dllPath);
+                    LogAssemblyNotFound(dllPath);
                     return null;
                 }
 
                 var pdbPath = Path.ChangeExtension(dllPath, ".pdb");
                 if (!File.Exists(pdbPath))
                 {
-                    _logger.LogWarning("PDB file not found: {PdbPath}", pdbPath);
+                    LogPdbNotFound(pdbPath);
                     return null;
                 }
 
-                _logger.LogInformation("Found PDB file: {PdbPath}", pdbPath);
+                LogFoundPdb(pdbPath);
 
                 // Open the PDB and look for Source Link information
                 using var pdbStream = File.OpenRead(pdbPath);
@@ -145,11 +136,11 @@ namespace UltrasharpTools.Tools.Services
 
                 if (string.IsNullOrEmpty(sourceLinkJson))
                 {
-                    _logger.LogWarning("No Source Link information found in PDB");
+                    LogNoSourceLinkInPdb();
                     return null;
                 }
 
-                _logger.LogInformation("Found Source Link JSON: {Json}", sourceLinkJson);
+                LogFoundSourceLinkJson(sourceLinkJson);
 
                 // Parse the JSON and extract source URLs
                 var sourceLinkDoc = System.Text.Json.JsonDocument.Parse(sourceLinkJson);
@@ -159,10 +150,7 @@ namespace UltrasharpTools.Tools.Services
                 string symbolDocumentPath = GetSymbolDocumentPath(symbol);
                 if (string.IsNullOrEmpty(symbolDocumentPath))
                 {
-                    _logger.LogWarning(
-                        "Could not determine document path for symbol {SymbolName}",
-                        symbol.Name
-                    );
+                    LogCannotDetermineDocumentPath(symbol.Name);
                     return null;
                 }
 
@@ -187,15 +175,12 @@ namespace UltrasharpTools.Tools.Services
 
                 if (string.IsNullOrEmpty(sourceUrl))
                 {
-                    _logger.LogWarning(
-                        "No matching source URL found for document {Path}",
-                        symbolDocumentPath
-                    );
+                    LogNoMatchingSourceUrl(symbolDocumentPath);
                     return null;
                 }
 
                 // Download the source from the URL
-                _logger.LogInformation("Downloading source from URL: {Url}", sourceUrl);
+                LogDownloadingSource(sourceUrl);
                 var sourceCode = await _httpClient.GetStringAsync(sourceUrl, cancellationToken);
 
                 return new SourceResult
@@ -209,11 +194,7 @@ namespace UltrasharpTools.Tools.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Error retrieving source via Source Link for {SymbolName}",
-                    symbol.Name
-                );
+                LogSourceLinkError(ex, symbol.Name);
                 return null;
             }
         }
@@ -223,10 +204,7 @@ namespace UltrasharpTools.Tools.Services
             CancellationToken cancellationToken
         )
         {
-            _logger.LogInformation(
-                "Attempting to retrieve embedded source for {SymbolName}",
-                symbol.Name
-            );
+            LogAttemptingEmbeddedSource(symbol.Name);
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -235,10 +213,7 @@ namespace UltrasharpTools.Tools.Services
                 var assembly = symbol.ContainingAssembly;
                 if (assembly == null)
                 {
-                    _logger.LogWarning(
-                        "No containing assembly found for symbol {SymbolName}",
-                        symbol.Name
-                    );
+                    LogNoContainingAssembly(symbol.Name);
                     return null;
                 }
 
@@ -246,10 +221,7 @@ namespace UltrasharpTools.Tools.Services
                 var metadataReference = GetMetadataReferenceForAssembly(assembly);
                 if (metadataReference == null)
                 {
-                    _logger.LogWarning(
-                        "No metadata reference found for assembly {AssemblyName}",
-                        assembly.Name
-                    );
+                    LogNoMetadataReference(assembly.Name);
                     return null;
                 }
 
@@ -257,23 +229,17 @@ namespace UltrasharpTools.Tools.Services
                 var assemblyPath = metadataReference.Display;
                 if (string.IsNullOrEmpty(assemblyPath) || !File.Exists(assemblyPath))
                 {
-                    _logger.LogWarning("Assembly file not found: {AssemblyPath}", assemblyPath);
+                    LogAssemblyNotFound(assemblyPath);
                     return null;
                 }
 
-                _logger.LogInformation(
-                    "Checking for embedded source in assembly: {AssemblyPath}",
-                    assemblyPath
-                );
+                LogCheckingEmbeddedSource(assemblyPath);
 
                 // Get embedded source information for this symbol
                 var embeddedSourceInfo = EmbeddedSourceReader.GetEmbeddedSourceForSymbol(symbol);
                 if (embeddedSourceInfo == null)
                 {
-                    _logger.LogInformation(
-                        "No embedded source info available for {SymbolName}",
-                        symbol.Name
-                    );
+                    LogNoEmbeddedSourceInfo(symbol.Name);
                     return null;
                 }
 
@@ -288,11 +254,7 @@ namespace UltrasharpTools.Tools.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(
-                        ex,
-                        "Error reading embedded sources from assembly: {AssemblyPath}",
-                        assemblyPath
-                    );
+                    LogEmbeddedSourceReadError(ex, assemblyPath);
                     // Continue to check standalone PDB
                 }
 
@@ -302,7 +264,7 @@ namespace UltrasharpTools.Tools.Services
                     var pdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
                     if (File.Exists(pdbPath))
                     {
-                        _logger.LogInformation("Checking standalone PDB file: {PdbPath}", pdbPath);
+                        LogCheckingStandalonePdb(pdbPath);
 
                         try
                         {
@@ -314,21 +276,14 @@ namespace UltrasharpTools.Tools.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogDebug(
-                                ex,
-                                "Error reading embedded sources from PDB: {PdbPath}",
-                                pdbPath
-                            );
+                            LogPdbSourceReadError(ex, pdbPath);
                         }
                     }
                 }
 
                 if (embeddedSources.Count == 0)
                 {
-                    _logger.LogInformation(
-                        "No embedded sources found in assembly or PDB for {SymbolName}",
-                        symbol.Name
-                    );
+                    LogNoEmbeddedSourcesFound(symbol.Name);
                     return null;
                 }
 
@@ -341,10 +296,7 @@ namespace UltrasharpTools.Tools.Services
                     && embeddedSources.TryGetValue(symbolFileName, out var exactMatch)
                 )
                 {
-                    _logger.LogInformation(
-                        "Found exact matching source file: {FileName}",
-                        symbolFileName
-                    );
+                    LogFoundExactMatch(symbolFileName);
                     return new SourceResult
                     {
                         Source = exactMatch.SourceCode ?? string.Empty,
@@ -368,10 +320,7 @@ namespace UltrasharpTools.Tools.Services
                         )
                     )
                     {
-                        _logger.LogInformation(
-                            "Found matching source file by name: {FileName}",
-                            sourceFileName
-                        );
+                        LogFoundFileNameMatch(sourceFileName);
                         return new SourceResult
                         {
                             Source = source.Value.SourceCode ?? string.Empty,
@@ -398,10 +347,7 @@ namespace UltrasharpTools.Tools.Services
                             )
                         )
                         {
-                            _logger.LogInformation(
-                                "Found source file for containing type: {TypeName}",
-                                symbol.ContainingType.Name
-                            );
+                            LogFoundContainingTypeSource(symbol.ContainingType.Name);
                             return new SourceResult
                             {
                                 Source = source.Value.SourceCode ?? string.Empty,
@@ -419,10 +365,7 @@ namespace UltrasharpTools.Tools.Services
                 if (embeddedSources.Count == 1)
                 {
                     var singleSource = embeddedSources.First();
-                    _logger.LogInformation(
-                        "Using single available source file: {FileName}",
-                        singleSource.Key
-                    );
+                    LogUsingSingleSource(singleSource.Key);
                     return new SourceResult
                     {
                         Source = singleSource.Value.SourceCode ?? string.Empty,
@@ -433,20 +376,12 @@ namespace UltrasharpTools.Tools.Services
                     };
                 }
 
-                _logger.LogWarning(
-                    "No matching embedded source found for symbol {SymbolName} among {Count} available files",
-                    symbol.Name,
-                    embeddedSources.Count
-                );
+                LogNoMatchingEmbeddedSource(symbol.Name, embeddedSources.Count);
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Error retrieving embedded source for {SymbolName}",
-                    symbol.Name
-                );
+                LogEmbeddedSourceError(ex, symbol.Name);
                 return null;
             }
         }
@@ -456,17 +391,14 @@ namespace UltrasharpTools.Tools.Services
             CancellationToken cancellationToken
         )
         {
-            _logger.LogInformation("Attempting decompilation for {SymbolName}", symbol.Name);
+            LogAttemptingDecompilation(symbol.Name);
             try
             {
                 // Get location of the assembly containing the symbol
                 var assembly = symbol.ContainingAssembly;
                 if (assembly == null)
                 {
-                    _logger.LogWarning(
-                        "No containing assembly found for symbol {SymbolName}",
-                        symbol.Name
-                    );
+                    LogNoContainingAssembly(symbol.Name);
                     return null;
                 }
 
@@ -474,21 +406,18 @@ namespace UltrasharpTools.Tools.Services
                 var metadataReference = GetMetadataReferenceForAssembly(assembly);
                 if (metadataReference == null)
                 {
-                    _logger.LogWarning(
-                        "No metadata reference found for assembly {AssemblyName}",
-                        assembly.Name
-                    );
+                    LogNoMetadataReference(assembly.Name);
                     return null;
                 }
 
                 var assemblyPath = metadataReference.Display;
                 if (string.IsNullOrEmpty(assemblyPath) || !File.Exists(assemblyPath))
                 {
-                    _logger.LogWarning("Assembly file not found: {AssemblyPath}", assemblyPath);
+                    LogAssemblyNotFound(assemblyPath);
                     return null;
                 }
 
-                _logger.LogInformation("Decompiling from assembly: {AssemblyPath}", assemblyPath);
+                LogDecompilingFromAssembly(assemblyPath);
 
                 // Create settings for the decompiler
                 var decompilerSettings = new DecompilerSettings
@@ -553,10 +482,7 @@ namespace UltrasharpTools.Tools.Services
 
                             if (string.IsNullOrEmpty(typeFullName))
                             {
-                                _logger.LogWarning(
-                                    "Could not determine type name for symbol {SymbolName}",
-                                    symbol.Name
-                                );
+                                LogCannotDetermineTypeName(symbol.Name);
                                 return null;
                             }
 
@@ -585,10 +511,7 @@ namespace UltrasharpTools.Tools.Services
                                         ?.GetDefinition();
                                     if (typeDef == null)
                                     {
-                                        _logger.LogWarning(
-                                            "Could not find type definition for {TypeName}",
-                                            typeFullName
-                                        );
+                                        LogTypeDefinitionNotFound(typeFullName);
                                         return null;
                                     }
 
@@ -597,11 +520,7 @@ namespace UltrasharpTools.Tools.Services
                                     );
                                     if (memberDef == null)
                                     {
-                                        _logger.LogWarning(
-                                            "Could not find member {MemberName} in type {TypeName}",
-                                            memberName,
-                                            typeFullName
-                                        );
+                                        LogMemberNotFound(memberName, typeFullName);
                                         return null;
                                     }
 
@@ -621,11 +540,7 @@ namespace UltrasharpTools.Tools.Services
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogWarning(
-                                    ex,
-                                    "Error during specific decompilation for {SymbolName}, falling back to full type decompilation",
-                                    symbol.Name
-                                );
+                                LogDecompilationFallback(ex, symbol.Name);
 
                                 // Fallback: try to decompile just the containing type
                                 try
@@ -658,11 +573,7 @@ namespace UltrasharpTools.Tools.Services
                                 }
                                 catch (Exception innerEx)
                                 {
-                                    _logger.LogError(
-                                        innerEx,
-                                        "Fallback decompilation failed for {SymbolName}",
-                                        symbol.Name
-                                    );
+                                    LogFallbackDecompilationFailed(innerEx, symbol.Name);
                                 }
                             }
 
@@ -670,11 +581,7 @@ namespace UltrasharpTools.Tools.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(
-                                ex,
-                                "Error during decompilation for {SymbolName}",
-                                symbol.Name
-                            );
+                            LogDecompilationError(ex, symbol.Name);
                             return null;
                         }
                     },
@@ -683,7 +590,7 @@ namespace UltrasharpTools.Tools.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during decompilation for {SymbolName}", symbol.Name);
+                LogDecompilationError(ex, symbol.Name);
                 return null;
             }
         }
@@ -696,7 +603,7 @@ namespace UltrasharpTools.Tools.Services
         {
             if (!_solutionManager.IsSolutionLoaded)
             {
-                _logger.LogWarning("Cannot get metadata reference: Solution not loaded");
+                LogSolutionNotLoaded();
                 return null;
             }
 

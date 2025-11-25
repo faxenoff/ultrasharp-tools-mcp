@@ -4,7 +4,7 @@ using UltrasharpTools.Tools.Mcp;
 
 namespace UltrasharpTools.Tools.Services;
 
-public class CodeModificationService(
+public partial class CodeModificationService(
     ISolutionManager solutionManager,
     IGitService gitService,
     IQuickLintService quickLintService,
@@ -56,11 +56,7 @@ public class CodeModificationService(
             );
         }
 
-        _logger.LogInformation(
-            "Adding member to type {TypeName} in document {DocumentPath}",
-            targetTypeSymbol.Name,
-            document.FilePath
-        );
+        LogAddingMember(targetTypeSymbol.Name, document.FilePath);
 
         NormalizeMemberDeclarationTrivia(newMember);
 
@@ -130,11 +126,7 @@ public class CodeModificationService(
                 nameof(documentId)
             );
 
-        _logger.LogInformation(
-            "Adding statement to method {MethodName} in document {DocumentPath}",
-            targetMethodNode.Identifier.Text,
-            document.FilePath
-        );
+        LogAddingStatement(targetMethodNode.Identifier.Text, document.FilePath);
         var editor = await DocumentEditor.CreateAsync(document, cancellationToken);
 
         if (targetMethodNode.Body != null)
@@ -247,7 +239,7 @@ public class CodeModificationService(
                 nameof(documentId)
             );
 
-        _logger.LogInformation("Replacing node in document {DocumentPath}", document.FilePath);
+        LogReplacingNode(document.FilePath);
 
         // Check if this is a deletion operation (newNode is an EmptyStatement with a delete comment)
         bool isDeleteOperation =
@@ -262,10 +254,7 @@ public class CodeModificationService(
 
         if (isDeleteOperation)
         {
-            _logger.LogInformation(
-                "Detected deletion operation for node {NodeKind}",
-                oldNode.Kind()
-            );
+            LogDeletionOperation(oldNode.Kind().ToString());
 
             // For deletion, we need to remove the node from its parent
             var root = await document.GetSyntaxRootAsync(cancellationToken);
@@ -374,11 +363,7 @@ public class CodeModificationService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogInformation(
-            "Renaming symbol {SymbolName} to {NewName}",
-            symbol.ToDisplayString(),
-            newName
-        );
+        LogRenamingSymbol(symbol.ToDisplayString(), newName);
 
         var options = solution.Workspace.Options;
 
@@ -405,11 +390,7 @@ public class CodeModificationService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogInformation(
-            "Replacing all references to symbol {SymbolName} with text '{ReplacementText}'",
-            symbol.ToDisplayString(),
-            replacementText
-        );
+        LogReplacingReferences(symbol.ToDisplayString(), replacementText);
 
         // Find all references to the symbol
         var referencedSymbols = await SymbolFinder.FindReferencesAsync(
@@ -438,10 +419,7 @@ public class CodeModificationService(
                 // Apply filter if provided
                 if (predicateFilter != null && !predicateFilter(node))
                 {
-                    _logger.LogDebug(
-                        "Skipping replacement for node at {Location} due to filter predicate",
-                        location.Location.GetLineSpan()
-                    );
+                    LogSkippingReplacement(location.Location.GetLineSpan().ToString());
                     continue;
                 }
 
@@ -473,11 +451,7 @@ public class CodeModificationService(
     )
     {
         var solution = GetCurrentSolutionOrThrow();
-        _logger.LogInformation(
-            "Performing find and replace with regex '{RegexPattern}' on target '{TargetString}'",
-            regexPattern,
-            targetString
-        );
+        LogFindAndReplace(regexPattern, targetString);
 
         // OPTIMIZATION: Compiled regex для 30-50% ускорения
         var regex = new Regex(regexPattern, options | RegexOptions.Compiled);
@@ -495,10 +469,7 @@ public class CodeModificationService(
                 );
                 if (symbol != null)
                 {
-                    _logger.LogInformation(
-                        "Target is a valid symbol: {SymbolName}",
-                        symbol.ToDisplayString()
-                    );
+                    LogValidSymbol(symbol.ToDisplayString());
 
                     // For a symbol, we'll get its defining document and limit replacements to the symbol's span
                     var syntaxReferences = symbol.DeclaringSyntaxReferences;
@@ -549,10 +520,7 @@ public class CodeModificationService(
                                 );
                                 resultSolution = formattedDocument.Project.Solution;
 
-                                _logger.LogInformation(
-                                    "Symbol replaced in {DocumentPath}",
-                                    document.FilePath
-                                );
+                                LogSymbolReplaced(document.FilePath);
                             }
                         }
 
@@ -562,7 +530,7 @@ public class CodeModificationService(
             }
             catch (Exception ex)
             {
-                _logger.LogInformation("Target string is not a valid symbol: {Error}", ex.Message);
+                LogNotValidSymbol(ex.Message);
                 // Fall through to file-based search
             }
         }
@@ -571,7 +539,7 @@ public class CodeModificationService(
         var documentIds = new List<DocumentId>();
 
         // Log the pattern we're using
-        _logger.LogInformation("Treating '{Target}' as a file path pattern", targetString);
+        LogFilePathPattern(targetString);
 
         // Normalize path separators in the target pattern to use forward slashes consistently
         string normalizedTarget = targetString.Replace('\\', '/');
@@ -591,20 +559,13 @@ public class CodeModificationService(
                 // Use wildcard matching
                 if (matcher.Match(root, document.FilePath).HasMatches)
                 {
-                    _logger.LogInformation(
-                        "Document matched pattern: {DocumentPath}",
-                        document.FilePath
-                    );
+                    LogDocumentMatched(document.FilePath);
                     documentIds.Add(document.Id);
                 }
             }
         }
 
-        _logger.LogInformation(
-            "Found {Count} documents matching pattern '{Pattern}'",
-            documentIds.Count,
-            targetString
-        );
+        LogDocumentsFound(documentIds.Count, targetString);
 
         // OPTIMIZATION: Параллельная обработка документов (2-4x ускорение на многоядерных CPU)
         // Сначала обрабатываем все документы параллельно, затем применяем изменения последовательно
@@ -653,11 +614,7 @@ public class CodeModificationService(
             }
         }
 
-        _logger.LogInformation(
-            "Processed {TotalDocuments} documents, {ChangedDocuments} changed",
-            documentIds.Count,
-            changedCount
-        );
+        LogDocumentsProcessed(documentIds.Count, changedCount);
 
         return resultSolution;
     }
@@ -682,19 +639,14 @@ public class CodeModificationService(
         TextSpan? changedSpan
     )
     {
-        _logger.LogDebug("Formatting document: {DocumentPath}", document.FilePath);
+        LogFormattingDocument(document.FilePath);
 
         var formattingOptions = await document.GetOptionsAsync(cancellationToken);
 
         // OPTIMIZATION 1: Partial formatting - форматируем только измененный span
         if (changedSpan.HasValue)
         {
-            _logger.LogDebug(
-                "Partial formatting span [{Start}..{End}] in {DocumentPath}",
-                changedSpan.Value.Start,
-                changedSpan.Value.End,
-                document.FilePath
-            );
+            LogPartialFormatting(changedSpan.Value.Start, changedSpan.Value.End, document.FilePath);
 
             var formattedDocument = await Formatter.FormatAsync(
                 document,
@@ -703,7 +655,7 @@ public class CodeModificationService(
                 cancellationToken
             );
 
-            _logger.LogDebug("Document partially formatted: {DocumentPath}", document.FilePath);
+            LogDocumentPartiallyFormatted(document.FilePath);
             return formattedDocument;
         }
 
@@ -711,7 +663,7 @@ public class CodeModificationService(
         var sourceText = await document.GetTextAsync(cancellationToken);
         if (sourceText.Length < 100) // Очень маленький файл - skip
         {
-            _logger.LogDebug("Skipping formatting (file too small): {DocumentPath}", document.FilePath);
+            LogSkippingFormattingSmallFile(document.FilePath);
             return document;
         }
 
@@ -722,7 +674,7 @@ public class CodeModificationService(
             cancellationToken
         );
 
-        _logger.LogDebug("Document fully formatted: {DocumentPath}", document.FilePath);
+        LogDocumentFullyFormatted(document.FilePath);
         return fullFormattedDocument;
     }
 
@@ -735,9 +687,7 @@ public class CodeModificationService(
     {
         if (_solutionManager.CurrentWorkspace is not MSBuildWorkspace workspace)
         {
-            _logger.LogError(
-                "Cannot apply changes: Workspace is not an MSBuildWorkspace or is null."
-            );
+            LogCannotApplyWorkspaceNull();
             throw new InvalidOperationException("Workspace is not suitable for applying changes.");
         }
 
@@ -762,10 +712,7 @@ public class CodeModificationService(
                 var documentToFormat = finalSolutionToApply.GetDocument(changedDocumentId);
                 if (documentToFormat != null)
                 {
-                    _logger.LogDebug(
-                        "Pre-apply formatting for changed document: {DocumentPath}",
-                        documentToFormat.FilePath
-                    );
+                    LogPreApplyFormattingChanged(documentToFormat.FilePath);
                     var formattedDocument = await FormatDocumentAsync(
                         documentToFormat,
                         cancellationToken
@@ -785,10 +732,7 @@ public class CodeModificationService(
                 var addedDocument = finalSolutionToApply.GetDocument(addedDocumentId);
                 if (addedDocument != null)
                 {
-                    _logger.LogDebug(
-                        "Pre-apply formatting for added document: {DocumentPath}",
-                        addedDocument.FilePath
-                    );
+                    LogPreApplyFormattingAdded(addedDocument.FilePath);
                     var formattedDocument = await FormatDocumentAsync(
                         addedDocument,
                         cancellationToken
@@ -798,10 +742,7 @@ public class CodeModificationService(
                     if (!string.IsNullOrEmpty(addedDocument.FilePath))
                     {
                         changedFilePaths.Add(addedDocument.FilePath);
-                        _logger.LogInformation(
-                            "Added new document for git tracking: {DocumentPath}",
-                            addedDocument.FilePath
-                        );
+                        LogAddedDocumentForGit(addedDocument.FilePath);
                     }
                 }
             }
@@ -813,16 +754,12 @@ public class CodeModificationService(
                 if (removedDocument != null && !string.IsNullOrEmpty(removedDocument.FilePath))
                 {
                     changedFilePaths.Add(removedDocument.FilePath);
-                    _logger.LogInformation(
-                        "Marked removed document for git tracking: {DocumentPath}",
-                        removedDocument.FilePath
-                    );
+                    LogRemovedDocumentForGit(removedDocument.FilePath);
                 }
             }
         }
 
-        _logger.LogInformation(
-            "Applying changes to workspace for {DocumentCount} changed documents across {ProjectCount} projects.",
+        LogApplyingChanges(
             solutionChanges
                 .GetProjectChanges()
                 .SelectMany(pc =>
@@ -836,7 +773,7 @@ public class CodeModificationService(
 
         if (workspace.TryApplyChanges(finalSolutionToApply))
         {
-            _logger.LogInformation("Changes applied successfully to the workspace.");
+            LogChangesApplied();
 
             // If additional file paths are provided, add them to the changed file paths
             if (additionalFilePaths != null)
@@ -859,29 +796,17 @@ public class CodeModificationService(
             var csFiles = changedFilePaths
                 .Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            _logger.LogInformation(
-                "Quick lint check: solutionPath='{SolutionPath}', changedFiles={Count}, csFiles={CsCount}",
-                solutionPath,
-                changedFilePaths.Count,
-                csFiles.Count
-            );
+            LogQuickLintCheck(solutionPath, changedFilePaths.Count, csFiles.Count);
 
             if (csFiles.Count > 0 && !string.IsNullOrEmpty(solutionPath))
             {
-                _logger.LogInformation(
-                    "Running quick lint on {Count} modified C# files",
-                    csFiles.Count
-                );
+                LogRunningQuickLint(csFiles.Count);
                 var lintResult = await _quickLintService.LintFilesAsync(
                     solutionPath,
                     csFiles,
                     cancellationToken
                 );
-                _logger.LogInformation(
-                    "Quick lint completed: {Errors} errors, {Warnings} warnings",
-                    lintResult.ErrorCount,
-                    lintResult.WarningCount
-                );
+                LogQuickLintCompleted(lintResult.ErrorCount, lintResult.WarningCount);
 
                 return new LintingResult
                 {
@@ -893,11 +818,7 @@ public class CodeModificationService(
             }
             else
             {
-                _logger.LogWarning(
-                    "Quick lint skipped: csFiles.Any()={HasCsFiles}, solutionPath isEmpty={IsEmpty}",
-                    csFiles.Count > 0,
-                    string.IsNullOrEmpty(solutionPath)
-                );
+                LogQuickLintSkipped(csFiles.Count > 0, string.IsNullOrEmpty(solutionPath));
             }
 
             // No C# files changed, return empty result
@@ -911,7 +832,7 @@ public class CodeModificationService(
         }
         else
         {
-            _logger.LogError("Failed to apply changes to the workspace.");
+            LogChangesApplyFailed();
             throw new InvalidOperationException(
                 "Failed to apply changes to the workspace. Files might have been modified externally."
             );
@@ -935,16 +856,16 @@ public class CodeModificationService(
             // Check if solution is in a git repo
             if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken))
             {
-                _logger.LogDebug("Solution is not in a Git repository, skipping Git operations");
+                LogNotInGitRepo();
                 return;
             }
 
-            _logger.LogDebug("Solution is in a Git repository, processing Git operations");
+            LogInGitRepo();
 
             // Check if already on sharptools branch
             if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken))
             {
-                _logger.LogInformation("Not on a SharpTools branch, creating one");
+                LogCreatingSharpToolsBranch();
                 await _gitService.EnsureSharpToolsBranchAsync(solutionPath, cancellationToken);
             }
 
@@ -955,15 +876,12 @@ public class CodeModificationService(
                 commitMessage,
                 cancellationToken
             );
-            _logger.LogInformation(
-                "Git operations completed successfully with commit message: {CommitMessage}",
-                commitMessage
-            );
+            LogGitOperationsCompleted(commitMessage);
         }
         catch (Exception ex)
         {
             // Log but don't fail the operation if Git operations fail
-            _logger.LogWarning(ex, "Git operations failed but code changes were still applied");
+            LogGitOperationsFailed(ex);
         }
     }
 
@@ -973,9 +891,7 @@ public class CodeModificationService(
     {
         if (_solutionManager.CurrentWorkspace is not MSBuildWorkspace workspace)
         {
-            _logger.LogError(
-                "Cannot undo changes: Workspace is not an MSBuildWorkspace or is null."
-            );
+            LogCannotUndoWorkspaceNull();
             var message = "Error: Workspace is not an MSBuildWorkspace or is null. Cannot undo.";
             return (false, message);
         }
@@ -983,7 +899,7 @@ public class CodeModificationService(
         var currentSolution = _solutionManager.CurrentSolution;
         if (currentSolution?.FilePath == null)
         {
-            _logger.LogError("Cannot undo changes: Current solution or its file path is null.");
+            LogCannotUndoSolutionNull();
             var message = "Error: No solution loaded or solution file path is null. Cannot undo.";
             return (false, message);
         }
@@ -993,7 +909,7 @@ public class CodeModificationService(
         // Check if solution is in a git repository
         if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken))
         {
-            _logger.LogError("Cannot undo changes: Solution is not in a Git repository.");
+            LogCannotUndoNotGitRepo();
             throw new McpException(
                 "Error: Solution is not in a Git repository. Undo functionality requires Git version control."
             );
@@ -1002,13 +918,13 @@ public class CodeModificationService(
         // Check if we're on a sharptools branch
         if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken))
         {
-            _logger.LogError("Cannot undo changes: Not on a SharpTools branch.");
+            LogCannotUndoNotSharpToolsBranch();
             var message =
                 "Error: Not on a SharpTools branch. Undo is only available on SharpTools branches.";
             return (false, message);
         }
 
-        _logger.LogInformation("Attempting to undo last change by reverting last Git commit.");
+        LogAttemptingUndo();
 
         // Perform git revert with diff
         var (revertSuccess, diff) = await _gitService.RevertLastCommitAsync(
@@ -1017,7 +933,7 @@ public class CodeModificationService(
         );
         if (!revertSuccess)
         {
-            _logger.LogError("Git revert operation failed.");
+            LogRevertFailed();
             var message =
                 "Error: Failed to revert the last Git commit. There may be no commits to revert or the operation failed.";
             return (false, message);
@@ -1026,7 +942,7 @@ public class CodeModificationService(
         // Reload the solution from disk to reflect the reverted changes
         await _solutionManager.ReloadSolutionFromDiskAsync(cancellationToken);
 
-        _logger.LogInformation("Successfully reverted the last change using Git.");
+        LogRevertSucceeded();
         var successMessage =
             "Successfully reverted the last change by reverting the last Git commit. Solution reloaded from disk.";
 

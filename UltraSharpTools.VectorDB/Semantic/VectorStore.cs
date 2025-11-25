@@ -9,7 +9,7 @@ namespace UltraSharpTools.VectorDB.Semantic;
 /// Vector store facade с автоматическим выбором backend (SqliteVec или Vectorlite).
 /// Предоставляет единый API для хранения и поиска vector embeddings.
 /// </summary>
-public sealed class VectorStore : IAsyncDisposable
+public sealed partial class VectorStore : IAsyncDisposable
 {
     private readonly VectorStoreConfig _config;
     private readonly BackendSelector _backendSelector;
@@ -35,11 +35,7 @@ public sealed class VectorStore : IAsyncDisposable
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation(
-            "Initializing VectorStore with dimension={Dimension}, backend={BackendType}",
-            dimension,
-            _config.PreferredBackend
-        );
+        LogInitializing(dimension, _config.PreferredBackend);
 
         // Создать начальный backend
         var initialBackendType =
@@ -54,10 +50,7 @@ public sealed class VectorStore : IAsyncDisposable
 
         _initialized = true;
 
-        _logger.LogInformation(
-            "VectorStore initialized with {BackendType} backend",
-            _currentBackendType
-        );
+        LogInitialized(_currentBackendType);
     }
 
     /// <summary>
@@ -208,21 +201,11 @@ public sealed class VectorStore : IAsyncDisposable
 
         var newBackendType = _backendSelector.SelectBackend(currentCount);
 
-        _logger.LogInformation(
-            "Switching backend from {OldBackend} to {NewBackend} (vector count: {Count})",
-            _currentBackendType,
-            newBackendType,
-            currentCount
-        );
+        LogBackendSwitching(_currentBackendType, newBackendType, currentCount);
 
         // TODO: Миграция данных между backend (будет реализовано позже)
         // Пока просто логируем предупреждение
-        _logger.LogWarning(
-            "Backend switching detected but data migration not yet implemented. "
-                + "Manual reindexing required after switching from {OldBackend} to {NewBackend}.",
-            _currentBackendType,
-            newBackendType
-        );
+        LogMigrationRequired(_currentBackendType, newBackendType);
 
         // Можно добавить здесь автоматическую миграцию:
         // 1. Экспортировать все embeddings из старого backend

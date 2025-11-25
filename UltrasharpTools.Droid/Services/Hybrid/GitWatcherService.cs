@@ -7,7 +7,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// <summary>
 /// Фоновый сервис для отслеживания Git изменений
 /// </summary>
-public sealed class GitWatcherService : BackgroundService
+public sealed partial class GitWatcherService : BackgroundService
 {
     private static readonly char[] newLineSeparator = new[] { '\r', '\n' };
     private readonly AgentConfig _config;
@@ -29,20 +29,13 @@ public sealed class GitWatcherService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation(
-            "GitWatcherService starting for repository: {Path}",
-            _config.RepositoryPath
-        );
+        LogStarting(_config.RepositoryPath);
 
         // Инициализация текущего состояния
         _currentBranch = GetCurrentBranch();
         _lastCommitSha = GetLastCommitSha();
 
-        _logger.LogInformation(
-            "Initial Git state: branch={Branch}, commit={Commit}",
-            _currentBranch ?? "unknown",
-            _lastCommitSha ?? "unknown"
-        );
+        LogInitialState(_currentBranch ?? "unknown", _lastCommitSha ?? "unknown");
 
         try
         {
@@ -54,11 +47,11 @@ public sealed class GitWatcherService : BackgroundService
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInformation("GitWatcherService stopping");
+            LogStopping();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "GitWatcherService error");
+            LogServiceError(ex);
         }
     }
 
@@ -70,11 +63,7 @@ public sealed class GitWatcherService : BackgroundService
             var newBranch = GetCurrentBranch();
             if (newBranch != _currentBranch && newBranch != null && _currentBranch != null)
             {
-                _logger.LogInformation(
-                    "Branch switched: {OldBranch} -> {NewBranch}",
-                    _currentBranch,
-                    newBranch
-                );
+                LogBranchSwitched(_currentBranch, newBranch);
 
                 var evt = new BranchSwitchEvent
                 {
@@ -91,11 +80,7 @@ public sealed class GitWatcherService : BackgroundService
             var newCommitSha = GetLastCommitSha();
             if (newCommitSha != _lastCommitSha && newCommitSha != null && _lastCommitSha != null)
             {
-                _logger.LogInformation(
-                    "New commit detected: {OldSha} -> {NewSha}",
-                    _lastCommitSha[..7],
-                    newCommitSha[..7]
-                );
+                LogNewCommit(_lastCommitSha[..7], newCommitSha[..7]);
 
                 var changedFiles = GetChangedFilesInCommit(newCommitSha);
 
@@ -113,7 +98,7 @@ public sealed class GitWatcherService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check Git changes");
+            LogCheckFailed(ex);
         }
     }
 
@@ -138,7 +123,7 @@ public sealed class GitWatcherService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to get current branch");
+            LogGetBranchFailed(ex);
             return null;
         }
     }
@@ -188,7 +173,7 @@ public sealed class GitWatcherService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to get last commit SHA");
+            LogGetCommitFailed(ex);
             return null;
         }
     }
@@ -212,7 +197,7 @@ public sealed class GitWatcherService : BackgroundService
             using var process = System.Diagnostics.Process.Start(startInfo);
             if (process == null)
             {
-                _logger.LogWarning("Failed to start git process");
+                LogGitProcessFailed();
                 return Array.Empty<string>();
             }
 
@@ -222,7 +207,7 @@ public sealed class GitWatcherService : BackgroundService
             if (process.ExitCode != 0)
             {
                 var error = process.StandardError.ReadToEnd();
-                _logger.LogWarning("git diff-tree failed: {Error}", error);
+                LogDiffTreeFailed(error);
                 return Array.Empty<string>();
             }
 
@@ -234,18 +219,14 @@ public sealed class GitWatcherService : BackgroundService
 
             if (files.Length > 0)
             {
-                _logger.LogDebug(
-                    "Found {FileCount} changed files in commit {CommitSha}",
-                    files.Length,
-                    commitSha[..7]
-                );
+                LogFoundChangedFiles(files.Length, commitSha[..7]);
             }
 
             return files;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to get changed files for commit {CommitSha}", commitSha);
+            LogGetChangedFilesFailed(ex, commitSha);
             return Array.Empty<string>();
         }
     }

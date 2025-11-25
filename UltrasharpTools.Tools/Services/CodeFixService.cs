@@ -5,7 +5,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Сервис для применения автоматических исправлений кода
 /// </summary>
-public class CodeFixService(
+public partial class CodeFixService(
     ILogger<CodeFixService> logger,
     ISolutionManager solutionManager,
     IGitService gitService
@@ -22,12 +22,7 @@ public class CodeFixService(
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation(
-            "Starting code fix application for solution: {SolutionPath}, DiagnosticId: {DiagnosticId}, Preview: {Preview}",
-            solutionPath,
-            diagnosticId,
-            preview
-        );
+        LogStartingCodeFix(solutionPath, diagnosticId, preview);
 
         var appliedFixes = new List<string>();
         var errors = new List<(string Location, string Error)>();
@@ -92,20 +87,13 @@ public class CodeFixService(
                                         {
                                             // В реальном сценарии нужно применить изменения через workspace
                                             // Для упрощения пока только логируем
-                                            _logger.LogInformation(
-                                                "Would apply fix: {ActionTitle}",
-                                                firstAction.Title
-                                            );
+                                            LogWouldApplyFix(firstAction.Title);
                                         }
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogWarning(
-                                        ex,
-                                        "Failed to apply fix for diagnostic: {DiagnosticId}",
-                                        diagnostic.Id
-                                    );
+                                    LogApplyFixFailed(ex, diagnostic.Id);
                                 }
                             }
                         }
@@ -113,11 +101,7 @@ public class CodeFixService(
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(
-                        ex,
-                        "Failed to process project: {ProjectName}",
-                        project.Name
-                    );
+                    LogProcessProjectFailed(ex, project.Name);
                 }
 
                 return projectFixes;
@@ -127,11 +111,7 @@ public class CodeFixService(
         var projectFixResults = await Task.WhenAll(fixTasks);
         var fixes = projectFixResults.SelectMany(x => x).ToList();
 
-        _logger.LogInformation(
-            "Code fix application complete. Total fixes found: {Count}, Preview: {Preview}",
-            fixes.Count,
-            preview
-        );
+        LogCodeFixComplete(fixes.Count, preview);
 
         // Note: Git commit is not implemented yet because we need to track which files were actually modified
         // by the code fixes. This would require implementing ApplyChangesOperation properly.

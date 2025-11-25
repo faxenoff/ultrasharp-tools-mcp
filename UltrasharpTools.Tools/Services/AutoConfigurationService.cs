@@ -6,7 +6,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Automatically selects best embedding configuration on first run
 /// </summary>
-public class AutoConfigurationService
+public partial class AutoConfigurationService
 {
     private readonly ILogger<AutoConfigurationService> _logger;
     private readonly EmbeddingServiceHealthChecker _healthChecker;
@@ -37,9 +37,9 @@ public class AutoConfigurationService
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation("=== Auto-Configuring Embedding Platform ===");
-        _logger.LogInformation("Detecting best available platform...");
-        _logger.LogInformation("");
+        LogAutoConfigHeader();
+        LogDetectingPlatform();
+        LogEmptyLine();
 
         var result = new AutoConfigResult { Config = CreateDefaultConfig() };
 
@@ -48,13 +48,13 @@ public class AutoConfigurationService
         result.SelectedArchitecture = architecture;
         result.Config.Embedding.Architecture = architecture;
 
-        _logger.LogInformation("✓ GPU Architecture: {Arch}", architecture);
-        _logger.LogInformation("");
+        LogGpuArchitecture(architecture);
+        LogEmptyLine();
 
         // Step 2: Try platforms in order of preference
         // Priority: Ollama (easiest) > TEI (high performance) > Memory (fallback)
 
-        _logger.LogInformation("Checking available platforms...");
+        LogCheckingPlatforms();
 
         // Try Ollama first (most user-friendly)
         var ollamaHealth = await _healthChecker.CheckOllamaHealthAsync(
@@ -77,8 +77,8 @@ public class AutoConfigurationService
                 result.Reason = "Ollama is available with granite-embedding model";
                 result.RequiresSetup = false;
 
-                _logger.LogInformation("✓ Ollama: Available with granite-embedding model");
-                _logger.LogInformation("  Selected: Ollama (recommended for ease of use)");
+                LogOllamaAvailableWithModel();
+                LogOllamaSelectedRecommended();
                 return result;
             }
             else
@@ -91,15 +91,15 @@ public class AutoConfigurationService
                 result.SetupInstructions =
                     "Install embedding model:\n  ollama pull granite-embedding";
 
-                _logger.LogWarning("⚠ Ollama: Available but model not installed");
-                _logger.LogInformation("  Selected: Ollama (requires model installation)");
+                LogOllamaNoModel();
+                LogOllamaSelectedRequiresModel();
                 return result;
             }
         }
         else
         {
-            _logger.LogWarning("✗ Ollama: Not available");
-            _logger.LogDebug("  {Details}", ollamaHealth.ErrorMessage);
+            LogOllamaNotAvailable();
+            LogDetails(ollamaHealth.ErrorMessage);
         }
 
         // Try TEI
@@ -115,14 +115,14 @@ public class AutoConfigurationService
             result.Reason = "TEI is available and ready";
             result.RequiresSetup = false;
 
-            _logger.LogInformation("✓ TEI: Available and ready");
-            _logger.LogInformation("  Selected: TEI (high performance)");
+            LogTeiAvailable();
+            LogTeiSelected();
             return result;
         }
         else
         {
-            _logger.LogWarning("✗ TEI: Not available");
-            _logger.LogDebug("  {Details}", teiHealth.ErrorMessage);
+            LogTeiNotAvailable();
+            LogDetails(teiHealth.ErrorMessage);
         }
 
         // Fallback to Memory (requires setup)
@@ -142,10 +142,10 @@ Alternative (TEI - High Performance):
   2. Restart MCP server
 ";
 
-        _logger.LogWarning("✗ No embedding platform available");
-        _logger.LogInformation("");
-        _logger.LogInformation("Recommendation: Install Ollama for easy setup");
-        _logger.LogInformation("  Visit: https://ollama.ai");
+        LogNoPlatformAvailable();
+        LogEmptyLine();
+        LogRecommendOllama();
+        LogOllamaUrl();
 
         return result;
     }
@@ -157,7 +157,7 @@ Alternative (TEI - High Performance):
             var scriptPath = FindGpuDetectionScript();
             if (scriptPath == null)
             {
-                _logger.LogWarning("GPU detection script not found, defaulting to CPU");
+                LogGpuScriptNotFound();
                 return "cpu";
             }
 
@@ -174,7 +174,7 @@ Alternative (TEI - High Performance):
             using var process = Process.Start(startInfo);
             if (process == null)
             {
-                _logger.LogWarning("Failed to start GPU detection script");
+                LogGpuScriptStartFailed();
                 return "cpu";
             }
 
@@ -187,12 +187,12 @@ Alternative (TEI - High Performance):
                 return architecture;
             }
 
-            _logger.LogWarning("GPU detection script failed, defaulting to CPU");
+            LogGpuScriptFailed();
             return "cpu";
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error detecting GPU architecture, defaulting to CPU");
+            LogGpuDetectionError(ex);
             return "cpu";
         }
     }
@@ -211,7 +211,7 @@ Alternative (TEI - High Performance):
         {
             if (File.Exists(location))
             {
-                _logger.LogDebug("Found GPU detection script: {Path}", location);
+                LogGpuScriptFound(location);
                 return location;
             }
         }

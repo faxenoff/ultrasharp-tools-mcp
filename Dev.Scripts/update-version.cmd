@@ -13,8 +13,9 @@ REM   - Program.cs files (4): Droid, Overlord, Comm, VectorDB
 REM   - AgentController.cs (1): health endpoint version
 REM   - Helm Chart (2): Chart.yaml version + appVersion
 REM   - Deployment docs (1): README.md Docker examples
-REM   - Markdown docs (5): ARCHITECTURE.md, ROADMAP.md, USAGE_GUIDE.md,
-REM                        OVERLORD_README.md, Dev.Docs/README.md
+REM   - Markdown docs (5): Dev.Docs/Architecture/ARCHITECTURE.md, ROADMAP.md,
+REM                        Dev.Docs/USAGE_GUIDE.md, Run.Docs/OVERLORD_README.md,
+REM                        Dev.Docs/README.md
 REM   - CHANGELOG.md (1): special handling for new version entries
 REM
 REM USAGE:

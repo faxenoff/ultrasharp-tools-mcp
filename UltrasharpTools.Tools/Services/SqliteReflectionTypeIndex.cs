@@ -11,7 +11,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Replaces in-memory FrozenDictionary to reduce memory from ~50MB to ~2MB.
 /// Type metadata stored on disk, actual Type objects loaded on-demand with LRU cache.
 /// </summary>
-public sealed class SqliteReflectionTypeIndex : IAsyncDisposable {
+public sealed partial class SqliteReflectionTypeIndex : IAsyncDisposable {
     private readonly ILogger _logger;
     private readonly string _dbPath;
     private SqliteConnection? _connection;
@@ -61,7 +61,7 @@ public sealed class SqliteReflectionTypeIndex : IAsyncDisposable {
 
         await CreateSchemaAsync(cancellationToken);
 
-        _logger.LogInformation("SQLite reflection type index initialized at {DbPath}", _dbPath);
+        LogInitialized(_dbPath);
     }
 
     private async Task CreateSchemaAsync(CancellationToken cancellationToken) {
@@ -126,15 +126,13 @@ CREATE INDEX IF NOT EXISTS idx_rt_solution ON reflection_types(solution_hash);
             throw new InvalidOperationException("Index not initialized");
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        _logger.LogInformation("Populating SQLite reflection type index...");
+        LogPopulating();
 
         // Check if data is current
         var existingHash = await GetStoredSolutionHashAsync(cancellationToken);
         if (existingHash == solutionHash) {
             TotalTypes = await GetCountAsync(cancellationToken);
-            _logger.LogInformation(
-            "SQLite reflection type index is up-to-date with {Count} types",
-            TotalTypes);
+            LogUpToDate(TotalTypes);
             return;
         }
 
@@ -174,8 +172,7 @@ CREATE INDEX IF NOT EXISTS idx_rt_solution ON reflection_types(solution_hash);
                     }
                 }
             } catch (Exception ex) {
-                _logger.LogTrace("Error loading types from {Path}: {Message}",
-                    assemblyPath, ex.Message);
+                LogTypeLoadError(assemblyPath, ex.Message);
             }
         }
 
@@ -188,11 +185,7 @@ CREATE INDEX IF NOT EXISTS idx_rt_solution ON reflection_types(solution_hash);
         TotalTypes = totalInserted;
 
         sw.Stop();
-        _logger.LogInformation(
-        "SQLite reflection type index populated: {Count} types in {ElapsedMs}ms. DB size: {Size}",
-        TotalTypes,
-        sw.ElapsedMilliseconds,
-        GetDbSizeFormatted());
+        LogPopulated(TotalTypes, sw.ElapsedMilliseconds, GetDbSizeFormatted());
     }
 
     private IEnumerable<Type> ExtractTypesFromAssembly(string assemblyPath) {

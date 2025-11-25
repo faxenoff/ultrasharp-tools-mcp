@@ -2,18 +2,19 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using UltrasharpTools.Droid.Models.Hybrid;
+using UltrasharpTools.Droid.Services;
 
 namespace UltrasharpTools.Droid.Services.Hybrid;
 
 /// <summary>
 /// Фоновый сервис для отслеживания изменений файлов
 /// </summary>
-public sealed class FileWatcherService : BackgroundService
-{
+public sealed partial class FileWatcherService : BackgroundService {
     private readonly AgentConfig _config;
     private readonly IServerBridgeService _bridge;
     private readonly IEmbeddingService? _embedding;
     private readonly ILogger<FileWatcherService> _logger;
+    private readonly PowerManagementService? _powerManagement;
     private readonly ConcurrentDictionary<string, DateTime> _pendingChanges = new();
     private FileSystemWatcher? _watcher;
 
@@ -21,26 +22,21 @@ public sealed class FileWatcherService : BackgroundService
         AgentConfig config,
         IServerBridgeService bridge,
         ILogger<FileWatcherService> logger,
-        IEmbeddingService? embedding = null
-    )
-    {
+        IEmbeddingService? embedding = null,
+        PowerManagementService? powerManagement = null
+    ) {
         _config = config;
         _bridge = bridge;
         _embedding = embedding;
         _logger = logger;
+        _powerManagement = powerManagement;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        _logger.LogInformation(
-            "FileWatcherService starting for path: {Path}",
-            _config.RepositoryPath
-        );
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+        LogStarting(_config.RepositoryPath);
 
-        try
-        {
-            _watcher = new FileSystemWatcher(_config.RepositoryPath)
-            {
+        try {
+            _watcher = new FileSystemWatcher(_config.RepositoryPath) {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName,
                 IncludeSubdirectories = true,
             };
@@ -52,96 +48,89 @@ public sealed class FileWatcherService : BackgroundService
             _watcher.Renamed += OnFileRenamed;
 
             // Установка фильтров
-            foreach (var pattern in _config.WatchPatterns)
-            {
+            foreach (var pattern in _config.WatchPatterns) {
                 _watcher.Filters.Add(pattern);
             }
 
             _watcher.EnableRaisingEvents = true;
 
-            _logger.LogInformation(
-                "FileWatcher started. Monitoring patterns: {Patterns}",
-                string.Join(", ", _config.WatchPatterns)
-            );
+            LogStarted(string.Join(", ", _config.WatchPatterns));
 
             // Debounce loop - обрабатываем накопленные изменения
-            while (!stoppingToken.IsCancellationRequested)
-            {
+            while (!stoppingToken.IsCancellationRequested) {
                 await Task.Delay(_config.FileWatcherDebounceMs, stoppingToken);
                 await ProcessPendingChanges(stoppingToken);
             }
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("FileWatcherService stopping");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "FileWatcherService error");
-        }
-        finally
-        {
-            if (_watcher != null)
-            {
+        } catch (OperationCanceledException) {
+            LogStopping();
+        } catch (Exception ex) {
+            LogServiceError(ex);
+        } finally {
+            if (_watcher != null) {
                 _watcher.EnableRaisingEvents = false;
                 _watcher.Dispose();
             }
         }
     }
 
-    private void OnFileChanged(object sender, FileSystemEventArgs e)
-    {
-        if (ShouldIgnoreFile(e.FullPath))
-        {
+    private void OnFileChanged(object sender, FileSystemEventArgs e) {
+        if (ShouldIgnoreFile(e.FullPath)) {
             return;
         }
 
-        _logger.LogDebug("File {ChangeType}: {Path}", e.ChangeType, e.FullPath);
+        LogFileChange(e.ChangeType, e.FullPath);
 
         // Добавляем в очередь с debounce
         _pendingChanges.AddOrUpdate(e.FullPath, DateTime.UtcNow, (_, _) => DateTime.UtcNow);
     }
 
-    private void OnFileRenamed(object sender, RenamedEventArgs e)
-    {
-        if (ShouldIgnoreFile(e.FullPath))
-        {
+    private void OnFileRenamed(object sender, RenamedEventArgs e) {
+        if (ShouldIgnoreFile(e.FullPath)) {
             return;
         }
 
-        _logger.LogDebug("File renamed: {OldPath} -> {NewPath}", e.OldFullPath, e.FullPath);
+        LogFileRenamed(e.OldFullPath, e.FullPath);
 
         _pendingChanges.AddOrUpdate(e.FullPath, DateTime.UtcNow, (_, _) => DateTime.UtcNow);
     }
-
-    private async Task ProcessPendingChanges(CancellationToken cancellationToken)
-    {
+    private async Task ProcessPendingChanges(CancellationToken cancellationToken) {
         var now = DateTime.UtcNow;
         var debounceThreshold = TimeSpan.FromMilliseconds(_config.FileWatcherDebounceMs);
 
-        foreach (var kvp in _pendingChanges.ToArray())
-        {
+        // Собираем файлы готовые к обработке
+        var readyFiles = new List<string>();
+        foreach (var kvp in _pendingChanges.ToArray()) {
             var filePath = kvp.Key;
             var lastChangeTime = kvp.Value;
 
             // Проверяем, прошло ли достаточно времени с последнего изменения
-            if (now - lastChangeTime < debounceThreshold)
-            {
-                continue;
+            if (now - lastChangeTime >= debounceThreshold) {
+                // Удаляем из очереди
+                if (_pendingChanges.TryRemove(filePath, out _)) {
+                    readyFiles.Add(filePath);
+                }
             }
-
-            // Удаляем из очереди
-            _pendingChanges.TryRemove(filePath, out _);
-
-            // Обрабатываем изменение
-            await ProcessFileChange(filePath, cancellationToken);
         }
-    }
 
-    private async Task ProcessFileChange(string fullPath, CancellationToken cancellationToken)
-    {
-        try
-        {
+        if (readyFiles.Count == 0) {
+            return;
+        }
+
+        // Регистрируем активность - есть работа, выходим из idle режима
+        _powerManagement?.RecordActivity();
+
+        // Параллельная обработка файлов (CPU + I/O bound)
+        var parallelOptions = new ParallelOptions {
+            MaxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 8), // Не больше 8 параллельных
+            CancellationToken = cancellationToken
+        };
+
+        await Parallel.ForEachAsync(readyFiles, parallelOptions, async (filePath, ct) => {
+            await ProcessFileChange(filePath, ct);
+        });
+    }
+    private async Task ProcessFileChange(string fullPath, CancellationToken cancellationToken) {
+        try {
             // Определяем относительный путь
             var relativePath = Path.GetRelativePath(_config.RepositoryPath, fullPath);
 
@@ -150,8 +139,7 @@ public sealed class FileWatcherService : BackgroundService
 
             // Читаем содержимое (если файл существует и не слишком большой)
             string? content = null;
-            if (action == "modified")
-            {
+            if (action == "modified") {
                 var fileInfo = new FileInfo(fullPath);
                 if (fileInfo.Length < 1024 * 1024) // < 1 MB
                 {
@@ -164,25 +152,14 @@ public sealed class FileWatcherService : BackgroundService
 
             // Векторизация контента (если доступен embedding service и есть контент)
             float[]? vectors = null;
-            if (_config.AutoVectorizeEnabled && _embedding != null && content != null)
-            {
-                try
-                {
+            if (_config.AutoVectorizeEnabled && _embedding != null && content != null) {
+                try {
                     vectors = await _embedding.GetEmbeddingAsync(content, cancellationToken);
-                    if (vectors != null)
-                    {
-                        _logger.LogDebug(
-                            "Generated embedding: {Dimensions} dimensions",
-                            vectors.Length
-                        );
+                    if (vectors != null) {
+                        LogGeneratedEmbedding(vectors.Length);
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(
-                        ex,
-                        "Failed to generate embedding, continuing without vectors"
-                    );
+                } catch (Exception ex) {
+                    LogEmbeddingFailed(ex);
                 }
             }
 
@@ -192,33 +169,19 @@ public sealed class FileWatcherService : BackgroundService
                 action == "modified"
                 && content != null
                 && fullPath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-            )
-            {
-                try
-                {
+            ) {
+                try {
                     symbols = SymbolExtractor.ExtractSymbols(content, relativePath);
-                    if (symbols.Length > 0)
-                    {
-                        _logger.LogDebug(
-                            "Extracted {SymbolCount} symbols from {File}",
-                            symbols.Length,
-                            relativePath
-                        );
+                    if (symbols.Length > 0) {
+                        LogExtractedSymbols(symbols.Length, relativePath);
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(
-                        ex,
-                        "Failed to extract symbols from {File}, continuing without symbols",
-                        relativePath
-                    );
+                } catch (Exception ex) {
+                    LogSymbolExtractionFailed(ex, relativePath);
                 }
             }
 
             // Создаем событие
-            var evt = new FileChangedEvent
-            {
+            var evt = new FileChangedEvent {
                 Project = _config.ProjectName,
                 Branch = branch,
                 File = relativePath.Replace('\\', '/'),
@@ -231,40 +194,25 @@ public sealed class FileWatcherService : BackgroundService
             // Отправляем на сервер
             await _bridge.SendFileChangedEventAsync(evt, cancellationToken);
 
-            _logger.LogInformation(
-                "Processed file change: {Project}/{Branch}/{File} ({Action})",
-                evt.Project,
-                evt.Branch,
-                evt.File,
-                evt.Action
-            );
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to process file change: {Path}", fullPath);
+            LogProcessedChange(evt.Project, evt.Branch, evt.File, evt.Action);
+        } catch (Exception ex) {
+            LogProcessFileFailed(ex, fullPath);
         }
     }
 
-    private bool ShouldIgnoreFile(string path)
-    {
+    private bool ShouldIgnoreFile(string path) {
         var relativePath = Path.GetRelativePath(_config.RepositoryPath, path);
 
-        foreach (var pattern in _config.IgnorePatterns)
-        {
+        foreach (var pattern in _config.IgnorePatterns) {
             // Простая проверка паттернов (можно улучшить с glob matching)
-            if (pattern.Contains("**"))
-            {
+            if (pattern.Contains("**")) {
                 var dir = pattern.Replace("**", "").TrimEnd('/');
-                if (relativePath.StartsWith(dir, StringComparison.OrdinalIgnoreCase))
-                {
+                if (relativePath.StartsWith(dir, StringComparison.OrdinalIgnoreCase)) {
                     return true;
                 }
-            }
-            else if (pattern.StartsWith("*."))
-            {
+            } else if (pattern.StartsWith("*.")) {
                 var ext = pattern[1..];
-                if (path.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
-                {
+                if (path.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) {
                     return true;
                 }
             }
@@ -273,26 +221,20 @@ public sealed class FileWatcherService : BackgroundService
         return false;
     }
 
-    private string? GetCurrentBranch()
-    {
-        try
-        {
+    private string? GetCurrentBranch() {
+        try {
             var gitHeadPath = Path.Combine(_config.RepositoryPath, ".git", "HEAD");
-            if (!File.Exists(gitHeadPath))
-            {
+            if (!File.Exists(gitHeadPath)) {
                 return null;
             }
 
             var headContent = File.ReadAllText(gitHeadPath).Trim();
-            if (headContent.StartsWith("ref: refs/heads/"))
-            {
+            if (headContent.StartsWith("ref: refs/heads/")) {
                 return headContent["ref: refs/heads/".Length..];
             }
 
             return null;
-        }
-        catch
-        {
+        } catch {
             return null;
         }
     }

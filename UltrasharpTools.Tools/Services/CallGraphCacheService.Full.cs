@@ -52,13 +52,13 @@ LIMIT 1
                 );
 
                 Interlocked.Increment(ref _hitCount);
-                _logger.LogDebug("Full cache HIT for method: {Method}", methodFqn);
+                LogFullCacheHit(methodFqn);
 
                 return callers;
             }
 
             Interlocked.Increment(ref _missCount);
-            _logger.LogDebug("Full cache MISS for method: {Method}", methodFqn);
+            LogFullCacheMiss(methodFqn);
 
             return null;
         }
@@ -107,11 +107,7 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
 
             await cmd.ExecuteNonQueryAsync(cancellationToken);
 
-            _logger.LogDebug(
-                "Cached full callers for method: {Method}, count: {Count}",
-                methodFqn,
-                callers.Count
-            );
+            LogCachedFullCallers(methodFqn, callers.Count);
         }
         finally
         {
@@ -164,7 +160,7 @@ CREATE INDEX idx_timestamp_full ON CallGraphFull(Timestamp);
             await createCmd.ExecuteNonQueryAsync();
 
             _fullCacheTableExists = true;
-            _logger.LogInformation("Created CallGraphFull table for full caller caching");
+            LogFullTableCreated();
         }
         finally
         {

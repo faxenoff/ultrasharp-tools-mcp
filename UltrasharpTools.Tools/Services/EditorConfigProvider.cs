@@ -1,6 +1,6 @@
 namespace UltrasharpTools.Tools.Services;
 
-public class EditorConfigProvider : IEditorConfigProvider
+public partial class EditorConfigProvider : IEditorConfigProvider
 {
     private readonly ILogger<EditorConfigProvider> _logger;
     private string? _solutionDirectory;
@@ -19,13 +19,11 @@ public class EditorConfigProvider : IEditorConfigProvider
 
         if (_rootEditorConfigPath != null)
         {
-            _logger.LogInformation("Root .editorconfig found at: {Path}", _rootEditorConfigPath);
+            LogEditorConfigFound(_rootEditorConfigPath);
         }
         else
         {
-            _logger.LogInformation(
-                ".editorconfig not found in solution directory or parent directories up to repository root."
-            );
+            LogEditorConfigNotFound();
         }
         return Task.CompletedTask;
     }

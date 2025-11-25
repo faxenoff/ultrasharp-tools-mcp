@@ -7,7 +7,7 @@ namespace UltrasharpTools.Overlord.Services;
 /// <summary>
 /// Реализация embedding сервиса через Ollama или TEI
 /// </summary>
-public sealed class EmbeddingService : IEmbeddingService
+public sealed partial class EmbeddingService : IEmbeddingService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<EmbeddingService> _logger;
@@ -59,11 +59,7 @@ public sealed class EmbeddingService : IEmbeddingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Failed to get embedding for text (length: {Length})",
-                text.Length
-            );
+            LogEmbeddingError(ex, text.Length);
             return null;
         }
     }
@@ -78,13 +74,13 @@ public sealed class EmbeddingService : IEmbeddingService
             var response = await _httpClient.GetAsync(healthUrl, cancellationToken);
             var isAvailable = response.IsSuccessStatusCode;
 
-            _logger.LogDebug("Embedding service availability: {IsAvailable}", isAvailable);
+            LogAvailability(isAvailable);
 
             return isAvailable;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Embedding service health check failed");
+            LogHealthCheckFailed(ex);
             return false;
         }
     }
@@ -113,15 +109,11 @@ public sealed class EmbeddingService : IEmbeddingService
 
         if (result?.Embedding == null || result.Embedding.Length == 0)
         {
-            _logger.LogWarning("Ollama returned empty embedding");
+            LogOllamaEmptyEmbedding();
             return null;
         }
 
-        _logger.LogDebug(
-            "Generated embedding via Ollama (model: {Model}): {Dimensions} dimensions",
-            _embeddingModel,
-            result.Embedding.Length
-        );
+        LogOllamaEmbedding(_embeddingModel, result.Embedding.Length);
 
         return result.Embedding;
     }
@@ -150,11 +142,11 @@ public sealed class EmbeddingService : IEmbeddingService
 
         if (result == null || result.Length == 0 || result[0].Length == 0)
         {
-            _logger.LogWarning("TEI returned empty embedding");
+            LogTeiEmptyEmbedding();
             return null;
         }
 
-        _logger.LogDebug("Generated embedding via TEI: {Dimensions} dimensions", result[0].Length);
+        LogTeiEmbedding(result[0].Length);
 
         return result[0];
     }

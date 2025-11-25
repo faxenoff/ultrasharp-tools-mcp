@@ -8,7 +8,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// <summary>
 /// Реализация сервиса для отправки событий на Overlord
 /// </summary>
-public sealed class ServerBridgeService : IServerBridgeService
+public sealed partial class ServerBridgeService : IServerBridgeService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<ServerBridgeService> _logger;
@@ -54,16 +54,11 @@ public sealed class ServerBridgeService : IServerBridgeService
                 .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            _logger.LogDebug("Sent file changed event: {Project}/{File}", evt.Project, evt.File);
+            LogFileSent(evt.Project, evt.File);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Failed to send file changed event: {Project}/{File}",
-                evt.Project,
-                evt.File
-            );
+            LogFileEventFailed(ex, evt.Project, evt.File);
         }
     }
 
@@ -80,16 +75,11 @@ public sealed class ServerBridgeService : IServerBridgeService
                 .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            _logger.LogInformation(
-                "Sent branch switch event: {Project} {From} -> {To}",
-                evt.Project,
-                evt.FromBranch,
-                evt.ToBranch
-            );
+            LogBranchSwitchSent(evt.Project, evt.FromBranch, evt.ToBranch);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send branch switch event: {Project}", evt.Project);
+            LogBranchEventFailed(ex, evt.Project);
         }
     }
 
@@ -106,16 +96,11 @@ public sealed class ServerBridgeService : IServerBridgeService
                 .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            _logger.LogInformation(
-                "Sent git commit event: {Project}/{Branch} {Sha}",
-                evt.Project,
-                evt.Branch,
-                evt.CommitSha
-            );
+            LogCommitEventSent(evt.Project, evt.Branch, evt.CommitSha);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send git commit event: {Project}", evt.Project);
+            LogCommitEventFailed(ex, evt.Project);
         }
     }
 
@@ -155,11 +140,7 @@ public sealed class ServerBridgeService : IServerBridgeService
                         context = new { project = projectContext },
                     };
 
-                    _logger.LogDebug(
-                        "Calling MCP proxy: tool={ToolName}, project={Project}",
-                        toolName,
-                        projectContext
-                    );
+                    LogMcpProxyCall(toolName, projectContext);
 
                     var response = await _httpClient
                         .PostAsJsonAsync(url, request, _jsonOptions, ct)
@@ -168,7 +149,7 @@ public sealed class ServerBridgeService : IServerBridgeService
 
                     var result = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
-                    _logger.LogDebug("MCP proxy call succeeded: tool={ToolName}", toolName);
+                    LogMcpProxySuccess(toolName);
 
                     return result;
                 },

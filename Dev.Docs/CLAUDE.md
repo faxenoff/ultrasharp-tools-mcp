@@ -4,11 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Обзор проекта
 
-SharpTools — это MCP-сервер, предоставляющий AI-агентам возможности анализа и модификации C# кодовых баз с использованием Roslyn. Проект состоит из трёх основных компонентов:
+UltrasharpTools — это MCP-сервер, предоставляющий AI-агентам возможности анализа и модификации C# кодовых баз с использованием Roslyn. Проект состоит из пяти основных компонентов:
 
-- **UltrasharpTools.Tools** — библиотека с MCP инструментами и сервисами для работы с C# кодом
-- **UltrasharpTools.Overlord** — HTTP-сервер (SSE) для удалённого доступа
-- **UltrasharpTools.Droid** — Stdio-сервер для локальной интеграции с MCP-клиентами
+- **UltrasharpTools.Tools** — библиотека с MCP инструментами и сервисами для работы с C# кодом (268 файлов)
+- **UltrasharpTools.Droid** — Stdio-сервер для локальной интеграции с MCP-клиентами (51 файл)
+- **UltrasharpTools.Overlord** — HTTP-сервер (SSE) для удалённого доступа (30 файлов)
+- **UltraSharpTools.Comm** — коммуникационная библиотека для IPC (6 файлов)
+- **UltraSharpTools.VectorDB** — внешний процесс для semantic операций (Indexer) (33 файла)
+
+**Target Framework:** .NET 10.0
+**Version:** 3.2.0
 
 ## Команды разработки
 
@@ -16,43 +21,69 @@ SharpTools — это MCP-сервер, предоставляющий AI-аге
 
 ```
 ultrasharp-tools-mcp/
-├── Dev.Scripts/           # Скрипты разработки (.ps1, .py, .sh)
-├── Dev.Docs/              # Техническая документация
-├── Run.Config/            # Конфигурационные файлы
-├── Run.Publish/           # Артефакты сборки (git ignore)
-└── Run.Logs/              # Логи (git ignore)
+├── UltrasharpTools.Tools/      # Ядро: MCP инструменты, Roslyn сервисы
+├── UltrasharpTools.Droid/      # Stdio MCP сервер
+├── UltrasharpTools.Overlord/   # HTTP SSE сервер
+├── UltraSharpTools.Comm/       # IPC коммуникация
+├── UltraSharpTools.VectorDB/   # Внешний Indexer процесс
+├── UltrasharpTools.Benchmarks/ # BenchmarkDotNet тесты
+├── UltrasharpTools.Test/       # Тестовые проекты
+│
+├── Dev.Scripts/                # Скрипты разработки (.ps1, .py, .sh)
+├── Dev.Docs/                   # Техническая документация
+├── Dev.Archive/                # Архив старой документации
+│
+├── Run.Config/                 # Конфигурационные файлы
+├── Run.Docs/                   # Документация для пользователей
+├── Run.Publish/                # Артефакты сборки (git ignore)
+└── Run.Logs/                   # Логи (git ignore)
 ```
 
-**Dev.Scripts/** содержит:
-- `publish-mcp.ps1` — оптимизированная сборка Droid
-- `setup-semantic-embedding.ps1` — настройка semantic embedding
-- `detect-gpu-architecture.ps1` — определение GPU архитектуры
-- `convert-tokenizer-to-fast.ps1/.py` — конвертация токенизаторов
-- `setup-tei.ps1/.sh` — запуск TEI Docker контейнера
-- `validate-semantic-config.ps1` — валидация конфигурации
+### Dev.Scripts/ — Скрипты разработки
 
-**Run.Config/** содержит:
-- `semantic-config.json` — рабочий конфиг (git ignore)
-- `semantic-config.yaml` — пример конфига
-- `validate-semantic-config.cmd` — Windows launcher
+**Сборка:**
+- `build-debug.ps1` / `build-release.ps1` — базовая сборка
+- `build-all.ps1` — сборка всех проектов
+- `build-hybrid.ps1` — сборка Droid + VectorDB
+- `build-releases.ps1` — сборка для релиза
+
+**Публикация:**
+- `publish-mcp.ps1` — оптимизированная сборка Droid (R2R + PGO)
+- `publish-vectordb.ps1` — публикация VectorDB
+- `publish-hybrid.ps1` — публикация Droid + VectorDB
+- `publish-comm.ps1` — публикация Comm
+- `organize-publish.ps1` — организация артефактов
+
+**Semantic Embedding:**
+- `setup-tei.ps1` / `setup-tei.sh` — запуск TEI Docker контейнера
+- `convert-tokenizer-to-fast.ps1/.py` — конвертация токенизаторов
+- `setup-nvidia-container-toolkit.ps1` — настройка NVIDIA для Docker
+
+**Утилиты:**
+- `update-version.ps1` — обновление версии во всех файлах
+- `training-client.ps1` — клиент для обучения
 
 ### Сборка
 
 **Оптимизированная публикация Droid:**
 ```bash
 # Windows
-publish-droid.cmd
+build-release.cmd
 
-# Linux/macOS
+# Или напрямую
 pwsh Dev.Scripts/publish-mcp.ps1
 ```
 
 Особенности:
-- ✅ ReadyToRun (R2R) + Dynamic PGO
-- ✅ Удаление PDB файлов (~34 MB)
-- ✅ Удаление BuildHost директорий
-- ✅ Организация Scripts/ и Config/
-- 📦 Результат: `Run.Publish/Droid/` (~103 MB)
+- ReadyToRun (R2R) + Dynamic PGO
+- Удаление PDB файлов (~34 MB)
+- Организация Scripts/ и Config/
+- Результат: `Run.Publish/Droid/` (~103 MB)
+
+**Hybrid публикация (Droid + VectorDB):**
+```bash
+pwsh Dev.Scripts/publish-hybrid.ps1
+```
 
 **Обычная сборка для разработки:**
 ```bash
@@ -62,147 +93,230 @@ dotnet build UltrasharpTools.sln -c Release
 
 ### Запуск серверов
 
-**SSE Server (HTTP):**
-```bash
-cd UltrasharpTools.Overlord
-dotnet run -- --port 3001 --log-level Information
-dotnet run -- --port 3001 --log-file ./logs/server.log --log-level Debug --build-configuration Debug
-```
-
-**Stdio Server:**
+**Stdio Server (Droid):**
 ```bash
 cd UltrasharpTools.Droid
 dotnet run -- --log-directory ./logs --log-level Information
 ```
 
-### Semantic Embedding
-
-**Первая настройка:**
+**SSE Server (Overlord):**
 ```bash
-# Windows (двойной клик)
-setup-semantic-embedding.cmd
-
-# Или напрямую
-pwsh Dev.Scripts/setup-semantic-embedding.ps1
+cd UltrasharpTools.Overlord
+dotnet run -- --port 3001 --log-level Information
 ```
 
-**Валидация конфигурации:**
+**VectorDB (Indexer):**
 ```bash
-validate-semantic-config.cmd
-# или
-pwsh Dev.Scripts/validate-semantic-config.ps1
+cd UltraSharpTools.VectorDB
+dotnet run -- --port 11435
 ```
 
-**Запуск TEI сервера:**
-```bash
-pwsh Dev.Scripts/setup-tei.ps1    # Windows
-./Dev.Scripts/setup-tei.sh        # Linux
-```
+### Опции командной строки
 
-Опции командной строки (обоим серверам):
-- `--log-level <level>` — уровень логирования (Verbose, Debug, Information, Warning, Error, Fatal)
-- `--load-solution <path>` — путь к .sln файлу для загрузки при старте (опционально, лучше использовать load_solution)
-- `--build-configuration <config>` — конфигурация сборки (Debug/Release)
+Общие для Droid и Overlord:
+- `--log-level <level>` — Verbose, Debug, Information, Warning, Error, Fatal
+- `--load-solution <path>` — путь к .sln для загрузки при старте
+- `--build-configuration <config>` — Debug/Release
 - `--disable-git` — отключить Git интеграцию
 
 ## Архитектура
 
-### Слоистая структура
+### Основные компоненты
 
-**Уровень интерфейсов** (`UltrasharpTools.Tools/Interfaces/`):
-- Определяют контракты для основных сервисов
-- Ключевые интерфейсы: `ISolutionManager`, `ICodeAnalysisService`, `ICodeModificationService`, `IGitService`, `ISemanticSimilarityService`
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     MCP Clients                             │
+│              (Claude Desktop, VS Code, etc.)                │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+          ▼                         ▼
+┌─────────────────┐       ┌─────────────────┐
+│  Droid (Stdio)  │       │ Overlord (SSE)  │
+│   Local MCP     │       │   Remote MCP    │
+└────────┬────────┘       └────────┬────────┘
+         │                         │
+         └────────────┬────────────┘
+                      │
+                      ▼
+         ┌────────────────────────┐
+         │   UltrasharpTools.Tools │
+         │   (Roslyn Services)     │
+         │   - CodeAnalysis        │
+         │   - CodeModification    │
+         │   - FastSymbolIndex     │
+         │   - GitService          │
+         └────────────┬────────────┘
+                      │
+         ┌────────────┴────────────┐
+         │                         │
+         ▼                         ▼
+┌─────────────────┐       ┌─────────────────┐
+│  UltraSharpTools│       │ MSBuildWorkspace│
+│     VectorDB    │       │    (Roslyn)     │
+│  (Indexer/IPC)  │       │                 │
+└─────────────────┘       └─────────────────┘
+```
 
-**Уровень сервисов** (`UltrasharpTools.Tools/Services/`):
-- `SolutionManager` — управление MSBuildWorkspace, загрузка .sln файлов, поиск символов
-- `CodeAnalysisService` — анализ кода: поиск членов, референсов, определений
+### Слоистая структура Tools
+
+**Уровень интерфейсов** (`Interfaces/`):
+- `ISolutionManager`, `ICodeAnalysisService`, `ICodeModificationService`
+- `IGitService`, `ISemanticSimilarityService`, `IFastSymbolIndex`
+
+**Уровень сервисов** (`Services/`):
+- `SolutionManager` — управление MSBuildWorkspace, загрузка .sln
+- `FastSymbolIndex` — O(1) поиск символов (Bloom filter + FrozenDictionary)
+- `CodeAnalysisService` — анализ кода: члены, референсы, определения
 - `CodeModificationService` — модификация кода через Roslyn API
-- `GitService` / `NoOpGitService` — автоматическая работа с Git (создание веток `sharptools/*`, коммиты изменений)
-- `SemanticSimilarityService` — поиск семантически похожих методов/классов
-- `ComplexityAnalysisService` — анализ цикломатической и когнитивной сложности
-- `SourceResolutionService` — получение исходного кода из SourceLink, embedded PDB, декомпиляции
-- **`FormattingService`** — форматирование кода через CSharpier
-- **`DiagnosticService`** — анализ через Roslyn analyzers
-- **`CodeFixService`** — автоматическое применение code fixes
-- **Semantic Embedding сервисы:**
-  - `SemanticConfigManager` — управление конфигурацией (global + project)
-  - `AutoConfigurationService` — автоопределение платформы (Ollama/TEI/Memory)
-  - `EmbeddingConfigValidator` — валидация с health checks
-  - `CodebaseLanguageDetector` — определение языка кодовой базы (english/multilingual)
-  - `CodebaseSizeDetector` — определение размера (small/medium/large)
-  - `EmbeddingServiceHealthChecker` — проверка доступности TEI/Ollama
+- `CallGraphIndexer` — индексация графа вызовов
+- `SemanticSimilarityService` — семантический поиск (требует VectorDB)
+- `GitCliService` — автоматическая работа с Git
+- `FormattingService` — форматирование через CSharpier
+- `DiagnosticService` — Roslyn analyzers
+- `CodeFixService` — автоматическое применение code fixes
 
-**Уровень MCP инструментов** (`UltrasharpTools.Tools/Mcp/Tools/`):
-- `SolutionTools` — `load_solution`, `load_project`
-- `AnalysisTools` — `get_members`, `view_definition`, `find_references`, `search_definitions`, `analyze_complexity`
-- `ModificationTools` — `add_member`, `modify_code`, `rename_symbol`, `find_and_replace`, `move_member`, `undo`
-- `DocumentTools` — `read_file`, `create_file`, `overwrite_file`
-- **`QualityTools`** — `format_code`, `analyze_code_style`, `apply_code_fixes` (новое)
+**Уровень MCP инструментов** (`Mcp/Tools/`):
+| Файл | Назначение |
+|------|------------|
+| `SolutionTools.cs` | load_solution, load_project |
+| `AnalysisTools.cs` | get_members, view_definition, find_references, view_call_graph |
+| `ModificationTools.cs` | add_member, modify_code, rename_symbol, move_member |
+| `PatternSearchTools.cs` | search_definitions, pattern_search, replace_references |
+| `SemanticAnalysisTools.cs` | semantic_search, semantic_diff, detect_code_clones |
+| `QualityTools.cs` | format_code, analyze_code_style, apply_code_fixes |
+| `TraceTools.cs` | trace_execution, trace_backwards, analyze_path_feasibility |
+| `LogTools.cs` | analyze_logs |
+| `DocumentTools.cs` | read_file, create_file, overwrite_file |
+| `FileOperationTools.cs` | split_file, synthesize_files, manage_usings |
+| `ValidationTools.cs` | validate_file, validate_directory |
+| `SnapshotTools.cs` | create_snapshot, rollback_snapshot, list_snapshots |
+| `PackageTools.cs` | add_package |
+| `TechnologyDetectionTools.cs` | detect_technology_stack |
+| `SystemTools.cs` | get_capabilities, undo |
+| `MiscTools.cs` | request_new_tool |
+
+### Паттерн логирования
+
+Все сервисы используют паттерн partial class для логирования:
+
+```csharp
+// MyService.cs
+public sealed partial class MyService
+{
+    private readonly ILogger<MyService> _logger;
+
+    public void DoWork()
+    {
+        LogOperationStarted("test");
+        // ...
+        LogOperationCompleted(100, 50);
+    }
+}
+
+// MyService.Logging.cs
+public sealed partial class MyService
+{
+    [LoggerMessage(EventId = 1000, Level = LogLevel.Information,
+        Message = "Operation started: {Name}")]
+    private partial void LogOperationStarted(string name);
+
+    [LoggerMessage(EventId = 1001, Level = LogLevel.Information,
+        Message = "Operation completed: {Count} items in {ElapsedMs}ms")]
+    private partial void LogOperationCompleted(int count, long elapsedMs);
+}
+```
+
+### Droid Hybrid Services
+
+**Services/Hybrid/** — сервисы для работы с внешним VectorDB:
+- `VectorDBLauncher` — запуск VectorDB процесса
+- `SemanticModeProvider` — управление semantic режимом
+- `SemanticModeConfigurationLoader` — загрузка конфигурации
+- `EmbeddingService` — работа с embeddings
+- `ServerBridgeService` — мост к VectorDB
+- `ToolRouter` — маршрутизация инструментов
+- `ToolEnricher` — обогащение результатов
+- `ConfigurationService` — конфигурация
+- `FileWatcherService` / `GitWatcherService` — отслеживание изменений
+- `HealthCheckHostedService` — health checks
+- `NotificationClientService` — уведомления
+- `RetryPolicy` — политика повторов
+- `RequestBatchingService` — батчинг запросов
+
+**Services/**:
+- `PowerManagementService` — управление энергопотреблением
+
+### VectorDB (Indexer)
+
+Внешний процесс для semantic операций:
+
+```
+UltraSharpTools.VectorDB/
+├── Semantic/
+│   ├── Backends/
+│   │   └── SqliteVecBackend.cs    # SQLite-vec хранилище
+│   ├── Embedding/
+│   │   └── Providers/
+│   │       └── TEIProvider.cs     # Text Embeddings Inference
+│   ├── EmbeddingGenerator.cs      # Генерация embeddings
+│   ├── VectorStore.cs             # Хранилище векторов
+│   └── VectorDBSemanticService.cs # Главный сервис
+├── VectorDBService.cs             # IPC сервис
+├── PowerManagementService.cs      # Энергосбережение
+└── Program.cs                     # Entry point
+```
 
 ### Поток работы
 
-1. **Инициализация**: AI вызывает `load_solution` с путём к .sln файлу
-2. **Навигация**: `load_project` возвращает карту проекта (namespaces → types), адаптивную по сложности
-3. **Анализ**: Используя FQN, AI читает определения (`view_definition`), члены типов (`get_members`), референсы (`find_references`)
-4. **Модификация**: `add_member`, `modify_code`, `rename_symbol` — каждое изменение коммитится в Git
-5. **Откат**: `undo` откатывает последнее изменение через Git
+1. **Инициализация**: AI вызывает `load_solution` с путём к .sln
+2. **Навигация**: `load_project` возвращает карту типов (namespaces → types)
+3. **Анализ**: `view_definition`, `get_members`, `find_references` по FQN
+4. **Модификация**: `add_member`, `modify_code`, `rename_symbol` — автокоммит в Git
+5. **Откат**: `undo` откатывает последнее изменение
 
 ### Особенности реализации
 
 **FQN Fuzzy Matching** (`FuzzyFqnLookupService`):
 - AI может передавать неточные или неполные FQN
-- Сервис находит наиболее подходящий символ через Levenshtein distance и Roslyn APIs
+- Сервис находит наиболее подходящий символ через Levenshtein distance
+
+**FastSymbolIndex** (O(1) поиск):
+- Bloom filter для быстрого отклонения
+- FrozenDictionary для O(1) lookup
+- Параллельная индексация по уровням зависимостей (Phase 5)
 
 **Token Efficiency**:
-- Весь код возвращается без отступов (экономия ~10% токенов)
+- Код возвращается без отступов (~10% экономия токенов)
 - Навигация по FQN вместо полного чтения файлов
-- Адаптивный уровень детализации в `load_project` (DetailLevel enum)
+- Адаптивный уровень детализации
 
 **Git Integration**:
-- Каждое изменение создаёт ветку `sharptools/YYYYMMDD-HHMMSS`
-- Автоматические коммиты с описанием изменения
+- Автоматические ветки `sharptools/YYYYMMDD-HHMMSS`
+- Автокоммиты с описанием
 - `undo` откатывает последний коммит
-- Можно отключить через `--disable-git`
-
-**Source Resolution**:
-- Приоритет: Local files → SourceLink → Embedded PDB → ILSpy decompilation
-- Поддержка legacy и SDK-style проектов
-- Работа с любыми версиями .NET (Framework, Core, 5+)
+- Отключение: `--disable-git`
 
 ### Dependency Injection
 
-Регистрация сервисов в `ServiceCollectionExtensions.cs`:
 ```csharp
+// Регистрация сервисов
 services.WithSharpToolsServices(enableGit: true, buildConfiguration: "Debug");
-```
 
-Для MCP:
-```csharp
+// Для MCP
 services.AddDroid()
-    .WithHttpTransport() // или .WithDroidTransport()
+    .WithStdioTransport()  // или .WithHttpTransport()
     .WithSharpTools();
-```
 
-Для Semantic Merge:
-```csharp
-// Сначала зарегистрировать Semantic RAG сервисы (требуется для embeddings)
+// Для Semantic Merge
 services.WithSemanticRag(
     databasePath: "./data/vectors.db",
     dimension: 768,
-    configureEmbedding: opts => { /* настройка embedding провайдера */ }
+    configureEmbedding: opts => { /* настройка */ }
 );
-
-// Затем зарегистрировать Semantic Merge сервисы
 services.WithSemanticMerge();
 ```
-
-Semantic Merge автоматически регистрирует:
-- **Parsing**: ContentNormalizer, StructuralFingerprint, CSharpParser, JsonParser, CodeUnitExtractor
-- **Indexing**: MultiVersionIndexer, LazyEmbeddingGenerator
-- **Matching**: FastPathMatcher, SemanticMatcher, MovementDetector, StructuralAligner
-- **Merge Engine**: ThreeWayMerger
-- **Analysis**: IntentClassifier
-- **Service**: SemanticMergeService
 
 ## Подход к разработке
 
@@ -211,119 +325,64 @@ Semantic Merge автоматически регистрирует:
 1. Создать метод в соответствующем классе Tools с атрибутами `[DroidTool]` и `[Description]`
 2. Использовать dependency injection для сервисов
 3. Обернуть логику в `ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync`
-4. Регистрировать в `ServiceCollectionExtensions.WithSharpTools()` (если нужно)
+4. Добавить logging методы в отдельный `.Logging.cs` файл
+
+### Добавление новых сервисов
+
+1. Создать интерфейс в `Interfaces/`
+2. Реализовать сервис в `Services/`
+3. Создать `.Logging.cs` partial class для логирования
+4. Зарегистрировать в `ServiceCollectionExtensions`
 
 ### Тестирование
 
-- Запустить сервер с `--load-solution <path>` для ручного тестирования
-- Использовать `--log-level Debug` для детальной диагностики
-- Проверять Git ветки после модификаций (если Git включён)
+```bash
+# Запуск с решением
+dotnet run --project UltrasharpTools.Droid -- --load-solution ./MyProject.sln --log-level Debug
 
-### Важные зависимости
+# Тесты
+dotnet test UltrasharpTools.Test/
+```
+
+### Обновление версии
+
+```bash
+# Dry run (предпросмотр)
+Dev.Scripts\update-version.cmd 3.3.0 --dry-run
+
+# Применить
+Dev.Scripts\update-version.cmd 3.3.0
+```
+
+Обновляются 21 место: .csproj, Dockerfile, Program.cs, Chart.yaml, README.md и др.
+
+## Важные зависимости
 
 **Основные:**
-- **Microsoft.CodeAnalysis.Workspaces.MSBuild** (5.0.0-2.final) — загрузка .sln файлов
-- **ICSharpCode.Decompiler** (10.0.0.8079-preview1) — декомпиляция при отсутствии исходников
-- **LibGit2Sharp** (0.31.0) — автоматизация Git
+- **Microsoft.CodeAnalysis.Workspaces.MSBuild** (5.0.0) — загрузка .sln
+- **ICSharpCode.Decompiler** (10.0.0.8079-preview1) — декомпиляция
 - **ModelContextProtocol** (0.4.0-preview.3) — MCP SDK
+- **Microsoft.Z3** (4.12.2) — SMT solver для path feasibility
 
-**Quality Tools:**
-- **CSharpier.Core** (1.2.1) — форматирование C# кода
+**Quality:**
+- **CSharpier.Core** — форматирование C#
 
-**Semantic Embedding:**
-- **Microsoft.SemanticKernel** — векторные операции и embedding
-- **Microsoft.Data.Sqlite** — хранение векторов (sqlite-vec/vectorlite)
-- Поддержка провайдеров:
-  - TEI (Text Embeddings Inference) — HuggingFace, Docker
-  - Ollama — локальный inference (granite-embedding, mxbai-embed-large)
-  - Memory — in-process embedding (экспериментально)
+**Semantic:**
+- **Microsoft.Data.Sqlite** (10.0.0) — sqlite-vec хранилище
+- **System.IO.Hashing** (10.0.0) — xxHash
 
-## Новые возможности: Quality Tools
+## Производительность
 
-### format_code — Форматирование кода
-Использует **CSharpier** для автоматического форматирования C# кода согласно единому стилю.
+| Метрика | Улучшение | Описание |
+|---------|-----------|----------|
+| Symbol Indexing | 10-100x | O(1) вместо O(N) через FastSymbolIndex |
+| Parallel Indexing | 2-4x | Параллельная компиляция по уровням зависимостей |
+| Log Analysis | 109x | SIMD + Span<T> оптимизации |
+| N+1 Fix | 20-30x | Батчинг запросов |
 
-**Возможности:**
-- Форматирование `.cs`, `.csproj`, `.xml` файлов
-- Режим проверки (`checkOnly=true`) — только анализ без изменений
-- Параллельная обработка файлов для высокой производительности
-- Рекурсивное форматирование директорий
+## Ограничения
 
-**Пример использования:**
-```
-format_code(
-    path: "D:/MyProject/src",
-    checkOnly: true  // Сначала проверяем
-)
-// Затем применяем:
-format_code(
-    path: "D:/MyProject/src",
-    checkOnly: false  // Применяет форматирование
-)
-```
-
-### AnalyzeCodeStyle — Анализ качества кода
-Использует **Roslyn Analyzers** для поиска проблем в коде: code style issues, warnings, errors.
-
-**Возможности:**
-- Запуск всех Roslyn analyzers (CA, IDE, CS диагностики)
-- Фильтрация по уровню серьезности (Hidden/Info/Warning/Error)
-- Пагинация для больших результатов
-- Группировка результатов по severity
-
-**Пример использования:**
-```
-analyze_code_style(
-    solutionPath: "D:/MyProject/MyProject.sln",
-    severityFilter: "Warning",  // Info, Warning, Error
-    skip: 0,
-    take: 100
-)
-```
-
-### ApplyCodeFixes — Автоматическое исправление
-Автоматически применяет code fixes для распространённых проблем.
-
-**Поддерживаемые диагностики:**
-- `IDE0005` — Remove unnecessary using
-- `CS8019` — Unnecessary using directive
-- Легко расширяется для других диагностик
-
-**Возможности:**
-- Режим preview (`preview=true`) — показывает что будет исправлено
-- Автоматический git commit при применении изменений
-- Параллельная обработка проектов
-
-**Пример использования:**
-```
-// Сначала preview:
-apply_code_fixes(
-    solutionPath: "D:/MyProject/MyProject.sln",
-    diagnosticId: "IDE0005",  // или "all"
-    preview: true
-)
-// Затем применяем:
-apply_code_fixes(
-    solutionPath: "D:/MyProject/MyProject.sln",
-    diagnosticId: "IDE0005",
-    preview: false  // Создаст git commit
-)
-```
-
-### Workflow с Quality Tools
-
-Типичный workflow для улучшения качества кода:
-
-1. **Анализ**: `analyze_code_style` — находим проблемы
-2. **Автоисправление**: `apply_code_fixes` — исправляем что возможно автоматически
-3. **Форматирование**: `format_code` — приводим код к единому стилю
-4. **Повторный анализ**: `analyze_code_style` — проверяем результат
-
-Все изменения автоматически коммитятся в Git (если не отключено).
-
-## Ограничения и особенности
-
-- MSBuildWorkspace требует соответствующий .NET SDK для целевых проектов
-- Сервер не перезагружает решение автоматически при изменении файлов (нужен `ReloadSolutionFromDiskAsync`)
-- GitService создаёт новую ветку для каждого изменения — может потребоваться периодическая очистка
-- EditorConfig используется для форматирования кода при модификациях
+- MSBuildWorkspace требует соответствующий .NET SDK
+- Сервер не перезагружает решение автоматически при изменении файлов
+- GitService создаёт ветку для каждого изменения — может потребоваться очистка
+- Semantic operations требуют запущенный VectorDB или TEI/Ollama

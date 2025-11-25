@@ -5,7 +5,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Сервис для быстрого линтинга измененных файлов
 /// </summary>
-public class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager solutionManager)
+public partial class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager solutionManager)
     : IQuickLintService
 {
     private readonly ILogger<QuickLintService> _logger = logger;
@@ -17,7 +17,7 @@ public class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogDebug("Starting quick lint for {Count} files", filePaths.Count());
+        LogStartingLint(filePaths.Count());
 
         if (filePaths.Count() == 0)
         {
@@ -40,7 +40,7 @@ public class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager
             var solution = _solutionManager.CurrentSolution;
             if (solution == null)
             {
-                _logger.LogWarning("Solution not loaded, cannot perform quick lint");
+                LogSolutionNotLoaded();
                 return new QuickLintResult
                 {
                     ErrorCount = 0,
@@ -122,11 +122,7 @@ public class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(
-                            ex,
-                            "Failed to lint project: {ProjectName}",
-                            project.Name
-                        );
+                        LogLintProjectFailed(ex, project.Name);
                     }
                 });
 
@@ -153,11 +149,7 @@ public class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager
                 })
                 .ToList();
 
-            _logger.LogDebug(
-                "Quick lint completed: {Errors} errors, {Warnings} warnings",
-                errorCount,
-                warningCount
-            );
+            LogLintCompleted(errorCount, warningCount);
 
             return new QuickLintResult
             {
@@ -168,7 +160,7 @@ public class QuickLintService(ILogger<QuickLintService> logger, ISolutionManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Quick lint failed");
+            LogLintFailed(ex);
             return new QuickLintResult
             {
                 ErrorCount = 0,

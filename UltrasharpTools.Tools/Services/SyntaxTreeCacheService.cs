@@ -6,7 +6,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Cache для parsed SyntaxTree instances
 /// Снижает overhead re-parsing для frequently accessed files
 /// </summary>
-public sealed class SyntaxTreeCacheService
+public sealed partial class SyntaxTreeCacheService
 {
     private readonly ILogger<SyntaxTreeCacheService> _logger;
     private readonly LruCache<string, CachedSyntaxTree> _cache;
@@ -27,11 +27,7 @@ public sealed class SyntaxTreeCacheService
         _cache = new LruCache<string, CachedSyntaxTree>(capacity);
         _ttl = ttl ?? TimeSpan.FromMinutes(10);
 
-        _logger.LogInformation(
-            "SyntaxTreeCache initialized: capacity={Capacity}, TTL={TtlMinutes}m",
-            capacity,
-            _ttl.TotalMinutes
-        );
+        LogInitialized(capacity, _ttl.TotalMinutes);
     }
 
     /// <summary>
@@ -55,7 +51,7 @@ public sealed class SyntaxTreeCacheService
             if (DateTimeOffset.UtcNow - cached.CreatedAt < _ttl)
             {
                 Interlocked.Increment(ref _hitCount);
-                _logger.LogDebug("SyntaxTree cache HIT: {FilePath}", filePath);
+                LogCacheHit(filePath);
                 return cached.SyntaxTree;
             }
 
@@ -64,7 +60,7 @@ public sealed class SyntaxTreeCacheService
         }
 
         Interlocked.Increment(ref _missCount);
-        _logger.LogDebug("SyntaxTree cache MISS: {FilePath}", filePath);
+        LogCacheMiss(filePath);
 
         // Parse SyntaxTree
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -86,11 +82,7 @@ public sealed class SyntaxTreeCacheService
                 }
             );
 
-            _logger.LogDebug(
-                "SyntaxTree parsed and cached: {FilePath} ({ElapsedMs}ms)",
-                filePath,
-                sw.ElapsedMilliseconds
-            );
+            LogParsedAndCached(filePath, sw.ElapsedMilliseconds);
         }
 
         return syntaxTree;
@@ -111,7 +103,7 @@ public sealed class SyntaxTreeCacheService
             _cache.Remove(key);
         }
 
-        _logger.LogDebug("Invalidated SyntaxTree cache for file: {FilePath}", filePath);
+        LogInvalidatedFile(filePath);
     }
 
     /// <summary>
@@ -120,7 +112,7 @@ public sealed class SyntaxTreeCacheService
     public void InvalidateAll()
     {
         _cache.Clear();
-        _logger.LogInformation("Invalidated entire SyntaxTree cache");
+        LogInvalidatedAll();
     }
 
     /// <summary>
@@ -149,14 +141,7 @@ public sealed class SyntaxTreeCacheService
     public void LogStats()
     {
         var stats = GetStats();
-        _logger.LogInformation(
-            "SyntaxTreeCache Stats: Hit={HitCount}, Miss={MissCount}, HitRate={HitRate:F1}%, Entries={CachedEntries}, ParseTime={ParseTimeMs}ms",
-            stats.HitCount,
-            stats.MissCount,
-            stats.HitRate,
-            stats.CachedEntries,
-            stats.TotalParseTimeMs
-        );
+        LogStats(stats.HitCount, stats.MissCount, stats.HitRate, stats.CachedEntries, stats.TotalParseTimeMs);
     }
 }
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Pipes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -7,24 +8,31 @@ using UltraSharpTools.VectorDB.Semantic;
 using UltraSharpTools.VectorDB.Semantic.Embedding;
 using UltraSharpTools.VectorDB.Semantic.GPU;
 
-public class Program
-{
+public class Program {
     public const string ApplicationName = "UltraSharpTools.VectorDB";
-    public const string ApplicationVersion = "3.0.7";
+    public const string ApplicationVersion = "3.2.0";
 
     // VectorDB: отдельный процесс для векторизации и семантического поиска
     // Принимает запросы от Droid через Named Pipe IPC
 
     private const string PipeName = "UltraSharpTools_VectorDB";
+    private const int ConnectionTimeoutMinutes = 5;
+    private const int ParentCheckIntervalMs = 2000;
 
-    public static async Task Main(string[] args)
-    {
+    public static async Task Main(string[] args) {
+        // Парсим аргументы
+        int? parentPid = null;
+        for (int i = 0; i < args.Length; i++) {
+            if (args[i] == "--parent-pid" && i + 1 < args.Length && int.TryParse(args[i + 1], out var pid)) {
+                parentPid = pid;
+            }
+        }
+
         // Настройка DI контейнера
         var services = new ServiceCollection();
 
         // Логирование
-        services.AddLogging(builder =>
-        {
+        services.AddLogging(builder => {
             builder.AddConsole();
             builder.SetMinimumLevel(LogLevel.Debug);
         });
@@ -33,8 +41,7 @@ public class Program
         services.AddHttpClient();
 
         // Конфигурация для embeddings
-        services.Configure<EmbeddingOptions>(options =>
-        {
+        services.Configure<EmbeddingOptions>(options => {
             // Используем Ollama по умолчанию
             options.Provider = "ollama";
             options.Enabled = true;
@@ -54,103 +61,233 @@ public class Program
         // Embedding provider factory
         services.AddSingleton<EmbeddingProviderFactory>();
 
-        // Все semantic сервисы (VectorStore, EmbeddingGenerator, VectorDBSemanticService, VectorDBService)
-        // будут созданы вручную после асинхронной инициализации embedding provider
-
         // Создаем ServiceProvider
         var serviceProvider = services.BuildServiceProvider();
 
         // Инициализация сервисов (асинхронная часть)
         var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
-        logger.LogInformation("[VectorDB] Starting semantic indexing service...");
+        logger.LogInformation("[VectorDB] Starting semantic indexing service v{Version}...", ApplicationVersion);
 
-        try
-        {
-            // 1. Создаем embedding provider
-            logger.LogInformation("[VectorDB] Initializing embedding provider...");
-            var providerFactory = serviceProvider.GetRequiredService<EmbeddingProviderFactory>();
-            var embeddingProvider = await providerFactory.CreateAsync();
-            logger.LogInformation(
-                "[VectorDB] Embedding provider ready: {Provider} (dimension: {Dimension})",
-                embeddingProvider.Name,
-                embeddingProvider.Dimension
-            );
+        // Создаем CancellationTokenSource для graceful shutdown
+        using var cts = new CancellationTokenSource();
 
-            // 2. Создаем EmbeddingGenerator с provider
-            var embeddingGeneratorLogger = serviceProvider.GetRequiredService<ILogger<EmbeddingGenerator>>();
-#pragma warning disable CA2000 // EmbeddingGenerator живет до завершения приложения
-            var embeddingGenerator = new EmbeddingGenerator(
-                embeddingProvider,
-                EmbeddingGeneratorConfig.Default,
-                embeddingGeneratorLogger
-            );
-#pragma warning restore CA2000
+        // Запускаем мониторинг родительского процесса
+        if (parentPid.HasValue) {
+            _ = MonitorParentProcessAsync(parentPid.Value, cts, logger);
+            logger.LogInformation("[VectorDB] Monitoring parent process PID: {ParentPid}", parentPid.Value);
+        } else {
+            logger.LogWarning("[VectorDB] No parent PID specified - will not auto-terminate when orphaned");
+        }
 
-            // 3. Создаем и инициализируем VectorStore
-            logger.LogInformation("[VectorDB] Initializing vector store...");
-            var dimension = embeddingProvider.Dimension ?? 384;
+        // Создаем PowerManagementService (idle timeout 3 минуты)
+        var powerLogger = serviceProvider.GetRequiredService<ILogger<PowerManagementService>>();
+        using var powerManagement = new PowerManagementService(
+        powerLogger,
+        idleTimeout: TimeSpan.FromMinutes(3)
+        );
 
-            var vectorStoreConfig = VectorStoreConfig.ForProduction(
-                databasePath: Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "UltraSharpTools",
-                    "indexer.db"
-                ),
-                dimension: dimension
-            );
+        // Пытаемся инициализировать semantic сервисы
+        VectorDBService indexerService;
+        string? providerError = null;
 
-            var vectorStoreLogger = serviceProvider.GetRequiredService<ILogger<VectorStore>>();
-            var vectorStore = new VectorStore(vectorStoreConfig, vectorStoreLogger);
+        try {
+            indexerService = await InitializeFullServiceAsync(serviceProvider, powerManagement, logger);
+            logger.LogInformation("[VectorDB] All services initialized successfully - running in FULL mode");
+        } catch (Exception ex) {
+            // Graceful degradation: запускаем в degraded режиме
+            providerError = ex.Message;
+            logger.LogWarning(ex, "[VectorDB] Failed to initialize embedding provider. Starting in DEGRADED mode.");
 
-            await vectorStore.InitializeAsync(
-                vectorStoreConfig.ConnectionString,
-                dimension,
-                CancellationToken.None
-            );
-
-            logger.LogInformation("[VectorDB] Vector store ready (backend: {Backend})", vectorStore.GetCurrentBackend());
-
-            // 4. Создаем VectorDBSemanticService с инициализированными зависимостями
-            var semanticLogger = serviceProvider.GetRequiredService<ILogger<VectorDBSemanticService>>();
-#pragma warning disable CA2000 // VectorDBSemanticService живет до завершения приложения
-            var semanticService = new VectorDBSemanticService(
-                vectorStore,
-                embeddingGenerator,
-                semanticLogger
-            );
-#pragma warning restore CA2000
-
-            // 5. Создаем VectorDBService
             var indexerLogger = serviceProvider.GetRequiredService<ILogger<VectorDBService>>();
-            var indexerService = new VectorDBService(semanticService, indexerLogger);
+            indexerService = new VectorDBService(indexerLogger, powerManagement, providerError);
 
-            logger.LogInformation("[VectorDB] All services initialized successfully");
+            logger.LogWarning("[VectorDB] Running in DEGRADED mode - semantic operations will return errors");
+        }
 
-            // Создаем Named Pipe сервер
-            using var pipeServer = new NamedPipeServerStream(
+        // Основной цикл обработки подключений
+        await RunConnectionLoopAsync(indexerService, cts, logger);
+    }
+
+    /// <summary>
+    /// Инициализирует все сервисы в полном режиме
+    /// </summary>
+    private static async Task<VectorDBService> InitializeFullServiceAsync(
+    ServiceProvider serviceProvider,
+    PowerManagementService powerManagement,
+    ILogger logger) {
+        // 1. Создаем embedding provider
+        logger.LogInformation("[VectorDB] Initializing embedding provider...");
+        var providerFactory = serviceProvider.GetRequiredService<EmbeddingProviderFactory>();
+        var embeddingProvider = await providerFactory.CreateAsync();
+        logger.LogInformation(
+        "[VectorDB] Embedding provider ready: {Provider} (dimension: {Dimension})",
+        embeddingProvider.Name,
+        embeddingProvider.Dimension
+        );
+
+        // 2. Создаем EmbeddingGenerator с provider
+        var embeddingGeneratorLogger = serviceProvider.GetRequiredService<ILogger<EmbeddingGenerator>>();
+#pragma warning disable CA2000 // EmbeddingGenerator живет до завершения приложения
+        var embeddingGenerator = new EmbeddingGenerator(
+        embeddingProvider,
+        EmbeddingGeneratorConfig.Default,
+        embeddingGeneratorLogger
+        );
+#pragma warning restore CA2000
+
+        // 3. Создаем и инициализируем VectorStore
+        logger.LogInformation("[VectorDB] Initializing vector store...");
+        var dimension = embeddingProvider.Dimension ?? 384;
+
+        var vectorStoreConfig = VectorStoreConfig.ForProduction(
+        databasePath: Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "UltraSharpTools",
+        "indexer.db"
+        ),
+        dimension: dimension
+        );
+
+        var vectorStoreLogger = serviceProvider.GetRequiredService<ILogger<VectorStore>>();
+#pragma warning disable CA2000 // VectorStore живет до завершения приложения
+        var vectorStore = new VectorStore(vectorStoreConfig, vectorStoreLogger);
+#pragma warning restore CA2000
+
+        await vectorStore.InitializeAsync(
+        vectorStoreConfig.ConnectionString,
+        dimension,
+        CancellationToken.None
+        );
+
+        logger.LogInformation("[VectorDB] Vector store ready (backend: {Backend})", vectorStore.GetCurrentBackend());
+
+        // 4. Создаем VectorDBSemanticService с инициализированными зависимостями
+        var semanticLogger = serviceProvider.GetRequiredService<ILogger<VectorDBSemanticService>>();
+#pragma warning disable CA2000 // VectorDBSemanticService живет до завершения приложения
+        var semanticService = new VectorDBSemanticService(
+        vectorStore,
+        embeddingGenerator,
+        semanticLogger
+        );
+#pragma warning restore CA2000
+
+        // 5. Создаем VectorDBService
+        var indexerLogger = serviceProvider.GetRequiredService<ILogger<VectorDBService>>();
+        return new VectorDBService(semanticService, indexerLogger, powerManagement, embeddingProvider.Name);
+    }
+
+    /// <summary>
+    /// Основной цикл обработки подключений
+    /// </summary>
+    private static async Task RunConnectionLoopAsync(
+    VectorDBService indexerService,
+    CancellationTokenSource cts,
+    ILogger logger) {
+        bool firstConnection = true;
+
+        try {
+            while (!cts.Token.IsCancellationRequested) {
+                // Создаем Named Pipe сервер для каждого подключения
+                using var pipeServer = new NamedPipeServerStream(
                 PipeName,
                 PipeDirection.InOut,
-                1, // Только одно подключение (от Droid)
+                1, // Только одно подключение за раз
                 PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous
-            );
+                );
 
-            logger.LogInformation("[VectorDB] Waiting for Droid connection on pipe: {PipeName}", PipeName);
+                logger.LogInformation("[VectorDB] Waiting for Droid connection on pipe: {PipeName}", PipeName);
 
-            await pipeServer.WaitForConnectionAsync();
+                try {
+                    if (firstConnection) {
+                        // Первое подключение - с таймаутом
+                        using var connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                        connectionCts.CancelAfter(TimeSpan.FromMinutes(ConnectionTimeoutMinutes));
 
-            logger.LogInformation("[VectorDB] Droid connected. Processing requests...");
+                        try {
+                            await pipeServer.WaitForConnectionAsync(connectionCts.Token);
+                        } catch (OperationCanceledException) when (!cts.Token.IsCancellationRequested) {
+                            logger.LogWarning("[VectorDB] No client connected within {Timeout} minutes. Shutting down.", ConnectionTimeoutMinutes);
+                            return;
+                        }
 
-            // Обрабатываем запросы от Droid
-            await indexerService.ProcessRequestsAsync(pipeServer);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "[VectorDB] Fatal error during initialization or processing");
+                        firstConnection = false;
+                    } else {
+                        // Последующие подключения - без таймаута, только по cancellation
+                        await pipeServer.WaitForConnectionAsync(cts.Token);
+                    }
+
+                    if (cts.Token.IsCancellationRequested) {
+                        logger.LogInformation("[VectorDB] Shutdown requested during connection wait");
+                        return;
+                    }
+
+                    logger.LogInformation("[VectorDB] Droid connected. Processing requests...");
+
+                    // Обрабатываем запросы от Droid
+                    await indexerService.ProcessRequestsAsync(pipeServer, cts.Token);
+
+                    logger.LogInformation("[VectorDB] Client disconnected. Waiting for new connection...");
+                } catch (OperationCanceledException) {
+                    // Родитель умер или запрошено завершение
+                    break;
+                } catch (IOException ex) {
+                    // Ошибка pipe (клиент резко отключился)
+                    logger.LogWarning("[VectorDB] Pipe error: {Message}. Restarting listener...", ex.Message);
+                }
+            }
+
+            logger.LogInformation("[VectorDB] Shutting down gracefully.");
+        } catch (OperationCanceledException) {
+            logger.LogInformation("[VectorDB] Shutdown requested. Exiting gracefully.");
+        } catch (Exception ex) {
+            logger.LogError(ex, "[VectorDB] Fatal error during connection processing");
             Console.Error.WriteLine($"[VectorDB] Fatal error: {ex.Message}");
             Console.Error.WriteLine(ex.StackTrace);
             Environment.Exit(1);
+        }
+    }
+
+    /// <summary>
+    /// Мониторит родительский процесс и инициирует завершение при его смерти
+    /// </summary>
+    private static async Task MonitorParentProcessAsync(int parentPid, CancellationTokenSource cts, ILogger logger) {
+        try {
+            while (!cts.Token.IsCancellationRequested) {
+                await Task.Delay(ParentCheckIntervalMs, cts.Token);
+
+                // Проверяем существование процесса каждую итерацию
+                // (не кэшируем Process объект - он может устареть)
+                if (!IsProcessRunning(parentPid)) {
+                    logger.LogInformation("[VectorDB] Parent process (PID: {ParentPid}) has exited. Initiating shutdown.", parentPid);
+                    await cts.CancelAsync();
+                    return;
+                }
+            }
+        } catch (OperationCanceledException) {
+            // Нормальное завершение
+        } catch (Exception ex) {
+            logger.LogError(ex, "[VectorDB] Error monitoring parent process. Continuing without parent monitoring.");
+            // НЕ завершаемся при ошибке мониторинга - продолжаем работать
+        }
+    }
+
+    /// <summary>
+    /// Проверяет, запущен ли процесс с указанным PID
+    /// </summary>
+    private static bool IsProcessRunning(int pid) {
+        try {
+            using var process = Process.GetProcessById(pid);
+            // Refresh для получения актуального состояния
+            process.Refresh();
+            return !process.HasExited;
+        } catch (ArgumentException) {
+            // Процесс не существует
+            return false;
+        } catch (InvalidOperationException) {
+            // Процесс завершился между GetProcessById и HasExited
+            return false;
         }
     }
 }

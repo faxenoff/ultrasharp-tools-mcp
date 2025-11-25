@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>3.0.6</Version>
+    <Version>3.2.0</Version>
 
     <!-- Копирование всех зависимостей NuGet в выходную директорию -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
@@ -36,6 +36,7 @@
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="10.0.0" />
+    <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
     <PackageReference Include="Microsoft.Z3" Version="4.12.2" />
     <PackageReference Include="ModelContextProtocol" Version="0.4.0-preview.3" />
     <PackageReference Include="System.IO.Hashing" Version="10.0.0" />
@@ -44,10 +45,6 @@
   </ItemGroup>
   <!-- Vectorlite native library для HNSW ANN vector search (для больших кодовых баз >10K символов) -->
   <ItemGroup>
-    <None
-      Include="Native\vectorlite\vectorlite.dll"
-      CopyToOutputDirectory="PreserveNewest"
-      Link="vectorlite.dll"
-    />
+    <None Include="Native\vectorlite\vectorlite.dll" CopyToOutputDirectory="PreserveNewest" Link="vectorlite.dll" />
   </ItemGroup>
 </Project>

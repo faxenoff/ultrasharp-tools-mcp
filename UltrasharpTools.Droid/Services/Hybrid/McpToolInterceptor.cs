@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using UltrasharpTools.Droid.Services;
 
 namespace UltrasharpTools.Droid.Services.Hybrid;
 
@@ -7,12 +8,13 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// Global interceptor для всех MCP tool calls с routing и semantic enrichment
 /// Использует Decorator Pattern для интеграции с MCP SDK
 /// </summary>
-public sealed class McpToolInterceptor : IMcpToolExecutor
+public sealed partial class McpToolInterceptor : IMcpToolExecutor
 {
     private readonly ILogger<McpToolInterceptor> _logger;
     private readonly IToolRouter _router;
     private readonly IToolEnricher _enricher;
     private readonly IServerBridgeService? _serverBridge;
+    private readonly PowerManagementService? _powerManagement;
 
     // Локальные инструменты будут выполняться через делегаты
     // (регистрируются через RegisterLocalToolExecutor)
@@ -25,20 +27,22 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
         ILogger<McpToolInterceptor> logger,
         IToolRouter router,
         IToolEnricher enricher,
-        IServerBridgeService? serverBridge = null
+        IServerBridgeService? serverBridge = null,
+        PowerManagementService? powerManagement = null
     )
     {
         _logger = logger;
         _router = router;
         _enricher = enricher;
         _serverBridge = serverBridge;
+        _powerManagement = powerManagement;
         _localToolExecutors =
             new Dictionary<
                 string,
                 Func<Dictionary<string, object>, CancellationToken, Task<object>>
             >();
 
-        _logger.LogInformation("McpToolInterceptor initialized");
+        LogInitialized();
     }
 
     /// <summary>
@@ -50,7 +54,7 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
     )
     {
         _localToolExecutors[toolName] = executor;
-        _logger.LogDebug("Registered local executor for {Tool}", toolName);
+        LogRegisteredExecutor(toolName);
     }
 
     /// <inheritdoc/>
@@ -60,19 +64,18 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
         CancellationToken ct = default
     )
     {
+        // Регистрируем активность - выходим из idle режима при необходимости
+        _powerManagement?.RecordActivity();
+
         var sw = Stopwatch.StartNew();
 
-        _logger.LogDebug(
-            "Executing MCP tool: {Tool} with {ArgCount} arguments",
-            toolName,
-            arguments?.Count ?? 0
-        );
+        LogExecutingTool(toolName, arguments?.Count ?? 0);
 
         try
         {
             // 1. Determine routing decision
             var routingDecision = _router.DetermineRouting(toolName, arguments);
-            _logger.LogDebug("Routing decision for {Tool}: {Decision}", toolName, routingDecision);
+            LogRoutingDecision(toolName, routingDecision);
 
             // 2. Execute based on routing
             arguments ??= new Dictionary<string, object>();
@@ -95,7 +98,7 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
             var wasEnriched = false;
             if (_enricher.SupportsEnrichment(toolName))
             {
-                _logger.LogTrace("Applying semantic enrichment for {Tool}", toolName);
+                LogApplyingEnrichment(toolName);
                 var enrichedResult = await _enricher.EnrichAsync(toolName, result, arguments, ct);
                 result = enrichedResult;
                 wasEnriched = enrichedResult.Semantic != null;
@@ -103,13 +106,7 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
 
             sw.Stop();
 
-            _logger.LogInformation(
-                "Tool {Tool} executed successfully in {Time}ms (routing: {Routing}, enriched: {Enriched})",
-                toolName,
-                sw.ElapsedMilliseconds,
-                routingDecision,
-                wasEnriched
-            );
+            LogToolExecuted(toolName, sw.ElapsedMilliseconds, routingDecision, wasEnriched);
 
             return new McpToolExecutionResult
             {
@@ -123,12 +120,7 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
         catch (Exception ex)
         {
             sw.Stop();
-            _logger.LogError(
-                ex,
-                "Tool {Tool} execution failed after {Time}ms",
-                toolName,
-                sw.ElapsedMilliseconds
-            );
+            LogToolFailed(ex, toolName, sw.ElapsedMilliseconds);
 
             return new McpToolExecutionResult
             {
@@ -159,7 +151,7 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
         CancellationToken ct
     )
     {
-        _logger.LogTrace("Executing {Tool} locally", toolName);
+        LogExecutingLocally(toolName);
 
         if (!_localToolExecutors.TryGetValue(toolName, out var executor))
         {
@@ -177,7 +169,7 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
         CancellationToken ct
     )
     {
-        _logger.LogTrace("Executing {Tool} on Overlord", toolName);
+        LogExecutingOnOverlord(toolName);
 
         if (_serverBridge == null)
         {
@@ -195,7 +187,7 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
         CancellationToken ct
     )
     {
-        _logger.LogTrace("Executing {Tool} with Overlord fallback", toolName);
+        LogExecutingWithFallback(toolName);
 
         // Сначала пытаемся Overlord
         if (_serverBridge != null)
@@ -205,22 +197,18 @@ public sealed class McpToolInterceptor : IMcpToolExecutor
                 var isAvailable = await _router.IsOverlordAvailableAsync(ct);
                 if (isAvailable)
                 {
-                    _logger.LogDebug("Overlord available - executing {Tool} remotely", toolName);
+                    LogOverlordExecuting(toolName);
                     return await _serverBridge.CallMcpProxyAsync(toolName, arguments, null, ct);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(
-                    ex,
-                    "Overlord execution failed for {Tool} - falling back to LOCAL",
-                    toolName
-                );
+                LogOverlordFallback(ex, toolName);
             }
         }
 
         // Fallback на локальное выполнение
-        _logger.LogDebug("Falling back to LOCAL execution for {Tool}", toolName);
+        LogFallingBackToLocal(toolName);
         return await ExecuteLocalAsync(toolName, arguments, ct);
     }
 }

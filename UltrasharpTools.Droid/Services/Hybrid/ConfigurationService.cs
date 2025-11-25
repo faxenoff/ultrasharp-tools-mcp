@@ -7,7 +7,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// <summary>
 /// Сервис для загрузки и управления конфигурацией routing
 /// </summary>
-public sealed class ConfigurationService
+public sealed partial class ConfigurationService
 {
     private readonly ILogger<ConfigurationService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -45,37 +45,23 @@ public sealed class ConfigurationService
                 {
                     if (config.Validate(out var errorMessage))
                     {
-                        _logger.LogInformation(
-                            "Loaded routing configuration from {ConfigPath}",
-                            configPath
-                        );
+                        LogConfigLoaded(configPath);
                         return config;
                     }
                     else
                     {
-                        _logger.LogWarning(
-                            "Invalid configuration in {ConfigPath}: {Error}. Using default.",
-                            configPath,
-                            errorMessage
-                        );
+                        LogInvalidConfig(configPath, errorMessage ?? "Unknown validation error");
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Failed to load configuration from {ConfigPath}. Using default.",
-                    configPath
-                );
+                LogLoadConfigFailed(ex, configPath);
             }
         }
         else
         {
-            _logger.LogInformation(
-                "Configuration file not found at {ConfigPath}. Using default configuration.",
-                configPath
-            );
+            LogConfigNotFound(configPath);
         }
 
         // Создаём default конфигурацию
@@ -85,15 +71,11 @@ public sealed class ConfigurationService
         try
         {
             SaveConfig(defaultConfig, configPath);
-            _logger.LogInformation("Created default configuration at {ConfigPath}", configPath);
+            LogDefaultConfigCreated(configPath);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(
-                ex,
-                "Failed to save default configuration to {ConfigPath}",
-                configPath
-            );
+            LogSaveDefaultFailed(ex, configPath);
         }
 
         return defaultConfig;
@@ -118,7 +100,7 @@ public sealed class ConfigurationService
         var json = JsonSerializer.Serialize(config, _jsonOptions);
         File.WriteAllText(configPath, json);
 
-        _logger.LogInformation("Saved configuration to {ConfigPath}", configPath);
+        LogConfigSaved(configPath);
     }
 
     /// <summary>

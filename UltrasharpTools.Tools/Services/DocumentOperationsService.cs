@@ -4,7 +4,7 @@ using UltrasharpTools.Tools.Infrastructure.HighPerformanceIO;
 
 namespace UltrasharpTools.Tools.Services;
 
-public class DocumentOperationsService(
+public partial class DocumentOperationsService(
     ISolutionManager solutionManager,
     ICodeModificationService modificationService,
     IGitService gitService,
@@ -100,11 +100,7 @@ public class DocumentOperationsService(
 
         if (!pathInfo.IsWritable)
         {
-            _logger.LogWarning(
-                "Path is not writable: {FilePath}. Reason: {Reason}",
-                filePath,
-                pathInfo.WriteRestrictionReason
-            );
+            LogPathNotWritable(filePath, pathInfo.WriteRestrictionReason);
             throw new UnauthorizedAccessException(
                 $"Writing to this path is not allowed: {filePath}. {pathInfo.WriteRestrictionReason}"
             );
@@ -112,10 +108,7 @@ public class DocumentOperationsService(
 
         if (File.Exists(filePath) && !overwriteIfExists)
         {
-            _logger.LogWarning(
-                "File already exists and overwrite not allowed: {FilePath}",
-                filePath
-            );
+            LogFileExistsNoOverwrite(filePath);
             return false;
         }
 
@@ -128,11 +121,7 @@ public class DocumentOperationsService(
 
         // Write the content to the file
         await OptimizedFileIO.WriteAllTextAsync(filePath, content, null, cancellationToken);
-        _logger.LogInformation(
-            "File {Operation} at {FilePath}",
-            File.Exists(filePath) ? "overwritten" : "created",
-            filePath
-        );
+        LogFileOperation(File.Exists(filePath) ? "overwritten" : "created", filePath);
 
         // Find the most appropriate project for this file path
         var bestProject = FindMostAppropriateProject(filePath);
@@ -142,7 +131,7 @@ public class DocumentOperationsService(
             || string.IsNullOrWhiteSpace(bestProject.FilePath)
         )
         {
-            _logger.LogWarning("Added non-code file: {FilePath}", filePath);
+            LogNonCodeFileAdded(filePath);
             if (string.IsNullOrEmpty(commitMessage))
             {
                 return true; // No commit message provided, don't commit, just return
@@ -159,10 +148,7 @@ public class DocumentOperationsService(
         );
         if (isSdkStyleProject)
         {
-            _logger.LogInformation(
-                "File added to SDK-style project: {ProjectPath}. Reloading Solution to pick up changes.",
-                bestProject.FilePath
-            );
+            LogFileAddedToSdkProject(bestProject.FilePath);
             await _solutionManager.ReloadSolutionFromDiskAsync(cancellationToken);
         }
         else
@@ -177,24 +163,24 @@ public class DocumentOperationsService(
         var documentId = newSolution?.GetDocumentIdsWithFilePath(filePath).FirstOrDefault();
         if (documentId is null)
         {
-            _logger.LogWarning("Mystery file was not added to any project: {FilePath}", filePath);
+            LogMysteryFileNotAdded(filePath);
             return false;
         }
         var document = newSolution?.GetDocument(documentId);
         if (document is null)
         {
-            _logger.LogWarning("Document not found in solution: {FilePath}", filePath);
+            LogDocumentNotFound(filePath);
             return false;
         }
         // If it's a code file, try to format it, which will also commit it
         if (await TryFormatAndCommitFileAsync(document, cancellationToken, commitMessage))
         {
-            _logger.LogInformation("File formatted and committed: {FilePath}", filePath);
+            LogFileFormattedAndCommitted(filePath);
             return true;
         }
         else
         {
-            _logger.LogWarning("Failed to format file: {FilePath}", filePath);
+            LogFormatFailed(filePath);
         }
         return true;
     }
@@ -220,7 +206,7 @@ public class DocumentOperationsService(
             // If the document is already in the solution, no need to add it again
             if (documentId != null)
             {
-                _logger.LogInformation("File is already part of project: {FilePath}", filePath);
+                LogFileAlreadyInProject(filePath);
                 return null;
             }
 
@@ -246,11 +232,7 @@ public class DocumentOperationsService(
                 }
             }
 
-            _logger.LogInformation(
-                "Adding file to {ProjectName}: {FilePath}",
-                project.Name,
-                filePath
-            );
+            LogAddingFileToProject(project.Name, filePath);
 
             // Create SourceText from file content
             var fileContent = await OptimizedFileIO.ReadAllTextAsync(filePath, null, cancellationToken);
@@ -261,7 +243,7 @@ public class DocumentOperationsService(
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to add file {FilePath} to project", filePath);
+            LogAddFileFailed(ex, filePath);
             return null;
         }
     }
@@ -284,10 +266,7 @@ public class DocumentOperationsService(
             // Primary check - Look for Sdk attribute on Project element
             if (projectNode?.Attributes?["Sdk"] != null)
             {
-                _logger.LogDebug(
-                    "Project {ProjectPath} is SDK-style (has Sdk attribute)",
-                    projectFilePath
-                );
+                LogProjectSdkStyleAttribute(projectFilePath);
                 return true;
             }
 
@@ -295,26 +274,16 @@ public class DocumentOperationsService(
             var targetFrameworkNode = xmlDoc.SelectSingleNode("//TargetFramework");
             if (targetFrameworkNode != null)
             {
-                _logger.LogDebug(
-                    "Project {ProjectPath} is SDK-style (uses TargetFramework)",
-                    projectFilePath
-                );
+                LogProjectSdkStyleFramework(projectFilePath);
                 return true;
             }
 
-            _logger.LogDebug(
-                "Project {ProjectPath} is classic-style (no SDK indicators found)",
-                projectFilePath
-            );
+            LogProjectClassicStyle(projectFilePath);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(
-                ex,
-                "Error determining project style for {ProjectPath}, assuming classic format",
-                projectFilePath
-            );
+            LogProjectStyleError(ex, projectFilePath);
             return false;
         }
     }
@@ -533,12 +502,12 @@ public class DocumentOperationsService(
                 commitMessage
             );
 
-            _logger.LogInformation("Document {FilePath} formatted successfully", document.FilePath);
+            LogDocumentFormatted(document.FilePath);
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to format file {FilePath}", document.FilePath);
+            LogDocumentFormatFailed(ex, document.FilePath);
             return false;
         }
     }
@@ -572,26 +541,23 @@ public class DocumentOperationsService(
             var solutionPath = _solutionManager.CurrentSolution?.FilePath;
             if (string.IsNullOrEmpty(solutionPath))
             {
-                _logger.LogDebug("Solution path is not available, skipping Git operations");
+                LogSolutionPathNotAvailable();
                 return;
             }
 
             // Check if solution is in a git repo
             if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken))
             {
-                _logger.LogDebug("Solution is not in a Git repository, skipping Git operations");
+                LogNotInGitRepo();
                 return;
             }
 
-            _logger.LogDebug(
-                "Solution is in a Git repository, processing Git operations for {Count} files",
-                filesList.Count
-            );
+            LogProcessingGitOperations(filesList.Count);
 
             // Check if already on sharptools branch
             if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken))
             {
-                _logger.LogInformation("Not on a SharpTools branch, creating one");
+                LogCreatingSharpToolsBranch();
                 await _gitService.EnsureSharpToolsBranchAsync(solutionPath, cancellationToken);
             }
 
@@ -602,20 +568,12 @@ public class DocumentOperationsService(
                 commitMessage,
                 cancellationToken
             );
-            _logger.LogInformation(
-                "Git operations completed successfully for {Count} files with commit message: {CommitMessage}",
-                filesList.Count,
-                commitMessage
-            );
+            LogGitOperationsCompleted(filesList.Count, commitMessage);
         }
         catch (Exception ex)
         {
             // Log but don't fail the operation if Git operations fail
-            _logger.LogWarning(
-                ex,
-                "Git operations failed for {Count} files but file operations were still applied",
-                filesList.Count
-            );
+            LogGitOperationsFailed(ex, filesList.Count);
         }
     }
 }

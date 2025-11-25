@@ -6,7 +6,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Service for automatic import/using statement updates after file operations.
 /// Analyzes code dependencies and updates using directives intelligently.
 /// </summary>
-public class ImportUpdateService
+public partial class ImportUpdateService
 {
     private readonly ISolutionManager _solutionManager;
     private readonly ILogger<ImportUpdateService> _logger;
@@ -29,12 +29,12 @@ public class ImportUpdateService
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogDebug("Analyzing required usings for: {FilePath}", filePath);
+        LogAnalyzingUsings(filePath);
 
         var document = await GetDocumentByPathAsync(filePath, cancellationToken);
         if (document == null)
         {
-            _logger.LogWarning("Document not found in solution: {FilePath}", filePath);
+            LogDocumentNotFound(filePath);
             return new List<string>();
         }
 
@@ -81,11 +81,7 @@ public class ImportUpdateService
             requiredNamespaces.RemoveWhere(ns => ns == "System");
         }
 
-        _logger.LogDebug(
-            "Found {Count} required namespaces for {FilePath}",
-            requiredNamespaces.Count,
-            filePath
-        );
+        LogNamespacesFound(requiredNamespaces.Count, filePath);
 
         return [.. requiredNamespaces.Order()];
     }
@@ -100,12 +96,7 @@ public class ImportUpdateService
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation(
-            "Updating usings for: {FilePath} (removeUnused={Remove}, addMissing={Add})",
-            filePath,
-            removeUnused,
-            addMissing
-        );
+        LogUpdatingUsings(filePath, removeUnused, addMissing);
 
         var document = await GetDocumentByPathAsync(filePath, cancellationToken);
         if (document == null)
@@ -151,7 +142,7 @@ public class ImportUpdateService
         // Nothing to do
         if (usingsToAdd.Count == 0 && usingsToRemove.Count == 0)
         {
-            _logger.LogDebug("No using changes needed for {FilePath}", filePath);
+            LogNoChangesNeeded(filePath);
             return new ImportUpdateResult
             {
                 Success = true,
@@ -182,12 +173,7 @@ public class ImportUpdateService
         var newCode = newRoot.NormalizeWhitespace().ToFullString();
         await OptimizedFileIO.WriteAllTextAsync(filePath, newCode, null, cancellationToken);
 
-        _logger.LogInformation(
-            "Updated usings for {FilePath}: +{Added} -{Removed}",
-            filePath,
-            usingsToAdd.Count,
-            usingsToRemove.Count
-        );
+        LogUsingsUpdated(filePath, usingsToAdd.Count, usingsToRemove.Count);
 
         return new ImportUpdateResult
         {
@@ -211,7 +197,7 @@ public class ImportUpdateService
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation("Batch updating usings for {Count} files", filePaths.Length);
+        LogBatchUpdating(filePaths.Length);
 
         var results = new List<ImportUpdateResult>();
 
@@ -229,7 +215,7 @@ public class ImportUpdateService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to update usings for {FilePath}", filePath);
+                LogUpdateFailed(ex, filePath);
                 results.Add(
                     new ImportUpdateResult
                     {
@@ -242,11 +228,7 @@ public class ImportUpdateService
         }
 
         var successCount = results.Count(r => r.Success);
-        _logger.LogInformation(
-            "Batch update complete: {Success}/{Total} files updated",
-            successCount,
-            results.Count
-        );
+        LogBatchComplete(successCount, results.Count);
 
         return results;
     }
@@ -260,11 +242,7 @@ public class ImportUpdateService
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogDebug(
-            "Analyzing import changes: {Original} -> {Count} new files",
-            originalFile,
-            newFiles.Length
-        );
+        LogAnalyzingImportChanges(originalFile, newFiles.Length);
 
         var originalUsings = await AnalyzeRequiredUsingsAsync(originalFile, cancellationToken);
 

@@ -9,7 +9,7 @@ using UltrasharpTools.Tools.Mcp;
 
 namespace UltrasharpTools.Tools.Services
 {
-    public class SemanticSimilarityService(
+    public partial class SemanticSimilarityService(
         ISolutionManager solutionManager,
         ICodeAnalysisService codeAnalysisService,
         ILogger<SemanticSimilarityService> logger,
@@ -218,11 +218,7 @@ namespace UltrasharpTools.Tools.Services
                 nameof(FindSimilarMethodsAsync),
                 cancellationToken
             );
-            _logger.LogInformation(
-                "Starting semantic similarity analysis with threshold {Threshold}, MaxDOP: {MaxDop}",
-                similarityThreshold,
-                Tuning.MaxDegreesOfParallelism
-            );
+            LogStartingMethodAnalysis(similarityThreshold, Tuning.MaxDegreesOfParallelism);
 
             var allMethodFeatures =
                 new System.Collections.Concurrent.ConcurrentBag<MethodSemanticFeatures>();
@@ -242,21 +238,15 @@ namespace UltrasharpTools.Tools.Services
                 {
                     if (ct.IsCancellationRequested)
                     {
-                        _logger.LogInformation(
-                            "Semantic similarity analysis cancelled during project iteration for {ProjectName}.",
-                            project.Name
-                        );
+                        LogMethodAnalysisCancelledForProject(project.Name);
                         return;
                     }
 
-                    _logger.LogDebug("Analyzing project: {ProjectName}", project.Name);
+                    LogAnalyzingProject(project.Name);
                     var compilation = await project.GetCompilationAsync(ct);
                     if (compilation == null)
                     {
-                        _logger.LogWarning(
-                            "Could not get compilation for project {ProjectName}",
-                            project.Name
-                        );
+                        LogCompilationFailed(project.Name);
                         return;
                     }
                     var documents = project.Documents.ToList(); // Materialize documents for the current project
@@ -271,10 +261,7 @@ namespace UltrasharpTools.Tools.Services
                             if (!document.SupportsSyntaxTree || !document.SupportsSemanticModel)
                                 return;
 
-                            _logger.LogTrace(
-                                "Analyzing document: {DocumentFilePath}",
-                                document.FilePath
-                            );
+                            LogAnalyzingDocument(document.FilePath);
                             var syntaxTree = await document.GetSyntaxTreeAsync(docCt);
                             var semanticModel = await document.GetSemanticModelAsync(docCt);
                             if (syntaxTree == null || semanticModel == null)
@@ -320,20 +307,11 @@ namespace UltrasharpTools.Tools.Services
                                 }
                                 catch (OperationCanceledException)
                                 {
-                                    _logger.LogInformation(
-                                        "Feature extraction cancelled for method {MethodName} in {FilePath}",
-                                        methodSymbol?.Name ?? "Unknown",
-                                        document.FilePath
-                                    );
+                                    LogMethodExtractionCancelled(methodSymbol?.Name ?? "Unknown", document.FilePath);
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogWarning(
-                                        ex,
-                                        "Failed to extract features for method {MethodName} in {FilePath}",
-                                        methodSymbol?.Name ?? "Unknown",
-                                        document.FilePath
-                                    );
+                                    LogMethodExtractionFailed(ex, methodSymbol?.Name ?? "Unknown", document.FilePath);
                                 }
                             }
                         }
@@ -343,16 +321,11 @@ namespace UltrasharpTools.Tools.Services
 
             if (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation(
-                    "Semantic similarity analysis was cancelled before comparison."
-                );
+                LogMethodAnalysisCancelledBeforeComparison();
                 throw new OperationCanceledException("Semantic similarity analysis was cancelled.");
             }
 
-            _logger.LogInformation(
-                "Extracted features for {MethodCount} methods. Starting similarity comparison.",
-                allMethodFeatures.Count
-            );
+            LogMethodFeaturesExtracted(allMethodFeatures.Count);
             return CompareFeatures(
                 allMethodFeatures.ToList(),
                 similarityThreshold,
@@ -376,13 +349,7 @@ namespace UltrasharpTools.Tools.Services
 
             if (lineCount < Tuning.MethodLineCountFilter)
             {
-                _logger.LogDebug(
-                    "Method {MethodName} in {FilePath} has {LineCount} lines, which is less than the filter of {FilterCount}. Skipping.",
-                    methodSymbol.Name,
-                    filePath,
-                    lineCount,
-                    Tuning.MethodLineCountFilter
-                );
+                LogMethodTooShort(methodSymbol.Name, filePath, lineCount, Tuning.MethodLineCountFilter);
                 return null;
             }
 
@@ -438,21 +405,11 @@ namespace UltrasharpTools.Tools.Services
                     {
                         basicBlockCount = controlFlowGraph.Blocks.Length;
                     }
-                    _logger.LogDebug(
-                        "ControlFlowGraph created for method {MethodName} in {FilePath}. BasicBlockCount: {BasicBlockCount}",
-                        methodName,
-                        filePath,
-                        basicBlockCount
-                    );
+                    LogCfgCreated(methodName, filePath, basicBlockCount);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(
-                        ex,
-                        "Failed to create ControlFlowGraph for method {MethodName} in {FilePath}. CFG-based features will be zero.",
-                        methodName,
-                        filePath
-                    );
+                    LogCfgCreationFailed(ex, methodName, filePath);
                 }
 
                 var operation = semanticModel.GetOperation(bodyOrExpressionBody, cancellationToken);
@@ -534,10 +491,7 @@ namespace UltrasharpTools.Tools.Services
                 int,
                 byte
             >();
-            _logger.LogInformation(
-                "Starting parallel similarity comparison for {MethodCount} methods.",
-                allMethodFeatures.Count
-            );
+            LogStartingParallelMethodComparison(allMethodFeatures.Count);
 
             // Process comparisons in parallel using Parallel.For
             var parallelOptions = new ParallelOptions
@@ -568,11 +522,7 @@ namespace UltrasharpTools.Tools.Services
                     processedIndices.TryAdd(i, 0);
                     double groupTotalScore = 0;
                     int comparisonsMade = 0;
-                    _logger.LogDebug(
-                        "Comparing method {MethodName} ({FQN}) with other methods (parallel mode).",
-                        currentMethod.MethodName,
-                        currentMethod.FullyQualifiedMethodName
-                    );
+                    LogComparingMethod(currentMethod.MethodName, currentMethod.FullyQualifiedMethodName);
 
                     for (int j = i + 1; j < allMethodFeatures.Count; j++)
                     {
@@ -598,13 +548,11 @@ namespace UltrasharpTools.Tools.Services
                             )
                         )
                         {
-                            _logger.LogDebug(
-                                "Skipping comparison between overloads: {Method1FQN} ({Params1}) and {Method2FQN} ({Params2})",
+                            LogSkippingOverloads(
                                 currentMethod.FullyQualifiedMethodName,
                                 string.Join(", ", currentMethod.ParameterTypeNames),
                                 otherMethod.FullyQualifiedMethodName,
-                                string.Join(", ", otherMethod.ParameterTypeNames)
-                            );
+                                string.Join(", ", otherMethod.ParameterTypeNames));
                             continue;
                         }
 
@@ -616,14 +564,12 @@ namespace UltrasharpTools.Tools.Services
                             processedIndices.TryAdd(j, 0);
                             groupTotalScore += similarity;
                             comparisonsMade++;
-                            _logger.LogDebug(
-                                "Method {OtherMethodName} ({OtherFQN}) is similar to {CurrentMethodName} ({CurrentFQN}) with score {SimilarityScore}",
+                            LogMethodSimilarityFound(
                                 otherMethod.MethodName,
                                 otherMethod.FullyQualifiedMethodName,
                                 currentMethod.MethodName,
                                 currentMethod.FullyQualifiedMethodName,
-                                similarity
-                            );
+                                similarity);
                         }
                     }
 
@@ -632,21 +578,16 @@ namespace UltrasharpTools.Tools.Services
                         double averageScore =
                             comparisonsMade > 0 ? groupTotalScore / comparisonsMade : 1.0; // Avoid division by zero if only self-comparison
                         results.Add(new MethodSimilarityResult(similarGroup, averageScore));
-                        _logger.LogInformation(
-                            "Found similarity group of {GroupSize} methods, starting with {MethodName} ({FQN}), Avg Score: {Score:F2}",
+                        LogSimilarityGroupFound(
                             similarGroup.Count,
                             currentMethod.MethodName,
                             currentMethod.FullyQualifiedMethodName,
-                            averageScore
-                        );
+                            averageScore);
                     }
                 }
             );
 
-            _logger.LogInformation(
-                "Parallel similarity analysis complete. Found {GroupCount} groups.",
-                results.Count
-            );
+            LogParallelMethodAnalysisComplete(results.Count);
             return results.OrderByDescending(r => r.AverageSimilarityScore).ToList();
         }
 
@@ -922,11 +863,7 @@ namespace UltrasharpTools.Tools.Services
                 nameof(FindSimilarClassesAsync),
                 cancellationToken
             );
-            _logger.LogInformation(
-                "Starting class semantic similarity analysis with threshold {Threshold}, MaxDOP: {MaxDop}",
-                similarityThreshold,
-                Tuning.MaxDegreesOfParallelism
-            );
+            LogStartingClassAnalysis(similarityThreshold, Tuning.MaxDegreesOfParallelism);
 
             var allClassFeatures =
                 new System.Collections.Concurrent.ConcurrentBag<ClassSemanticFeatures>();
@@ -946,21 +883,15 @@ namespace UltrasharpTools.Tools.Services
                 {
                     if (ct.IsCancellationRequested)
                     {
-                        _logger.LogInformation(
-                            "Class semantic similarity analysis cancelled during project iteration for {ProjectName}.",
-                            project.Name
-                        );
+                        LogClassAnalysisCancelledForProject(project.Name);
                         return;
                     }
 
-                    _logger.LogDebug("Analyzing project for classes: {ProjectName}", project.Name);
+                    LogAnalyzingProjectForClasses(project.Name);
                     var compilation = await project.GetCompilationAsync(ct);
                     if (compilation == null)
                     {
-                        _logger.LogWarning(
-                            "Could not get compilation for project {ProjectName}",
-                            project.Name
-                        );
+                        LogClassCompilationFailed(project.Name);
                         return;
                     }
                     var documents = project.Documents.ToList(); // Materialize
@@ -975,10 +906,7 @@ namespace UltrasharpTools.Tools.Services
                             if (!document.SupportsSyntaxTree || !document.SupportsSemanticModel)
                                 return;
 
-                            _logger.LogTrace(
-                                "Analyzing document for classes: {DocumentFilePath}",
-                                document.FilePath
-                            );
+                            LogAnalyzingDocumentForClasses(document.FilePath);
                             var syntaxTree = await document.GetSyntaxTreeAsync(docCt);
                             var semanticModel = await document.GetSemanticModelAsync(docCt);
                             if (syntaxTree == null || semanticModel == null)
@@ -1033,20 +961,11 @@ namespace UltrasharpTools.Tools.Services
                                 }
                                 catch (OperationCanceledException)
                                 {
-                                    _logger.LogInformation(
-                                        "Feature extraction cancelled for class {ClassName} in {FilePath}",
-                                        classSymbol?.Name ?? "Unknown",
-                                        document.FilePath
-                                    );
+                                    LogClassExtractionCancelled(classSymbol?.Name ?? "Unknown", document.FilePath);
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogWarning(
-                                        ex,
-                                        "Failed to extract features for class {ClassName} in {FilePath}",
-                                        classSymbol?.Name ?? "Unknown",
-                                        document.FilePath
-                                    );
+                                    LogClassExtractionFailed(ex, classSymbol?.Name ?? "Unknown", document.FilePath);
                                 }
                             }
                         }
@@ -1056,18 +975,13 @@ namespace UltrasharpTools.Tools.Services
 
             if (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation(
-                    "Class semantic similarity analysis was cancelled before comparison."
-                );
+                LogClassAnalysisCancelledBeforeComparison();
                 throw new OperationCanceledException(
                     "Class semantic similarity analysis was cancelled."
                 );
             }
 
-            _logger.LogInformation(
-                "Extracted features for {ClassCount} classes. Starting similarity comparison.",
-                allClassFeatures.Count
-            );
+            LogClassFeaturesExtracted(allClassFeatures.Count);
             return CompareClassFeatures(
                 allClassFeatures.ToList(),
                 similarityThreshold,
@@ -1091,13 +1005,7 @@ namespace UltrasharpTools.Tools.Services
 
             if (totalLinesOfCode < Tuning.ClassLineCountFilter)
             {
-                _logger.LogDebug(
-                    "Class {ClassName} in {FilePath} has {LineCount} lines, less than filter {FilterCount}. Skipping.",
-                    classSymbol.Name,
-                    filePath,
-                    totalLinesOfCode,
-                    Tuning.ClassLineCountFilter
-                );
+                LogClassTooShort(classSymbol.Name, filePath, totalLinesOfCode, Tuning.ClassLineCountFilter);
                 return null;
             }
 
@@ -1479,10 +1387,7 @@ namespace UltrasharpTools.Tools.Services
                 int,
                 byte
             >();
-            _logger.LogInformation(
-                "Starting parallel class similarity comparison for {ClassCount} classes.",
-                allClassFeatures.Count
-            );
+            LogStartingParallelClassComparison(allClassFeatures.Count);
 
             // Process comparisons in parallel using Parallel.For
             var parallelOptions = new ParallelOptions
@@ -1544,20 +1449,12 @@ namespace UltrasharpTools.Tools.Services
                         double averageScore =
                             comparisonsMade > 0 ? groupTotalScore / comparisonsMade : 1.0;
                         results.Add(new ClassSimilarityResult(similarGroup, averageScore));
-                        _logger.LogInformation(
-                            "Found class similarity group of {GroupSize}, starting with {ClassName}, Avg Score: {Score:F2}",
-                            similarGroup.Count,
-                            currentClass.ClassName,
-                            averageScore
-                        );
+                        LogClassSimilarityGroupFound(similarGroup.Count, currentClass.ClassName, averageScore);
                     }
                 }
             );
 
-            _logger.LogInformation(
-                "Parallel class similarity analysis complete. Found {GroupCount} groups.",
-                results.Count
-            );
+            LogParallelClassAnalysisComplete(results.Count);
             return results.OrderByDescending(r => r.AverageSimilarityScore).ToList();
         }
 

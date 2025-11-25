@@ -10,8 +10,7 @@ namespace UltraSharpTools.VectorDB.Semantic.Embedding.Providers;
 /// Supports 8192 tokens context with ibm-granite models
 /// Requires Docker container running
 /// </summary>
-public sealed class TEIProvider : IEmbeddingProvider
-{
+public sealed class TEIProvider : IEmbeddingProvider {
     private readonly TEIOptions _options;
     private readonly ILogger<TEIProvider> _logger;
     private readonly HttpClient _httpClient;
@@ -22,8 +21,7 @@ public sealed class TEIProvider : IEmbeddingProvider
     public int? Dimension => _dimension;
 
     public ProviderInfo Info =>
-        new()
-        {
+        new() {
             Name = "tei",
             Model = _options.Model,
             Dimension = _dimension ?? 0,
@@ -36,8 +34,7 @@ public sealed class TEIProvider : IEmbeddingProvider
         TEIOptions options,
         ILogger<TEIProvider> logger,
         IHttpClientFactory httpClientFactory
-    )
-    {
+    ) {
         _options = options;
         _logger = logger;
         _httpClient = httpClientFactory.CreateClient("TEI");
@@ -45,29 +42,23 @@ public sealed class TEIProvider : IEmbeddingProvider
         _httpClient.Timeout = TimeSpan.FromMilliseconds(_options.TimeoutMs);
     }
 
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
-    {
+    public async Task InitializeAsync(CancellationToken cancellationToken = default) {
         _logger.LogInformation("[TEI] Initializing with model: {Model}", _options.Model);
 
-        if (_options.CheckServer)
-        {
+        if (_options.CheckServer) {
             var available = await CheckServerAsync(cancellationToken);
-            if (!available && _options.AutoStart)
-            {
+            if (!available && _options.AutoStart) {
                 _logger.LogInformation("[TEI] Server not available, attempting auto-start...");
                 await TryStartDockerContainerAsync(cancellationToken);
             }
         }
 
         // Warmup: generate test embedding to determine dimension
-        try
-        {
+        try {
             var testEmbedding = await EmbedAsync("test", cancellationToken);
             _dimension = testEmbedding.Length;
             _logger.LogInformation("[TEI] Initialized successfully (dimension: {Dim})", _dimension);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogError(ex, "[TEI] Initialization failed");
             throw new InvalidOperationException(
                 "TEI provider initialization failed. Is Docker container running?",
@@ -79,10 +70,8 @@ public sealed class TEIProvider : IEmbeddingProvider
     public async Task<float[]> EmbedAsync(
         string text,
         CancellationToken cancellationToken = default
-    )
-    {
-        try
-        {
+    ) {
+        try {
             var request = new TEIRequest { Inputs = text };
             var response = await _httpClient.PostAsJsonAsync(
                 "/embed",
@@ -96,28 +85,22 @@ public sealed class TEIProvider : IEmbeddingProvider
                 EmbeddingJsonContext.GetSingleArrayTypeInfo(),
                 cancellationToken
             );
-            if (embedding == null || embedding.Length == 0)
-            {
+            if (embedding == null || embedding.Length == 0) {
                 throw new InvalidOperationException("TEI returned empty embedding");
             }
 
             return embedding;
-        }
-        catch (HttpRequestException ex)
-        {
+        } catch (HttpRequestException ex) {
             _logger.LogError(ex, "[TEI] HTTP request failed");
             throw new InvalidOperationException($"TEI request failed: {ex.Message}", ex);
         }
     }
-
     public async Task<float[][]> EmbedBatchAsync(
         IReadOnlyList<string> texts,
         CancellationToken cancellationToken = default
-    )
-    {
+    ) {
         // TEI supports batch embedding
-        try
-        {
+        try {
             var request = new TEIBatchRequest { Inputs = texts.ToArray() };
             var response = await _httpClient.PostAsJsonAsync(
                 "/embed",
@@ -131,74 +114,63 @@ public sealed class TEIProvider : IEmbeddingProvider
                 EmbeddingJsonContext.GetDoubleArrayTypeInfo(),
                 cancellationToken
             );
-            if (embeddings == null || embeddings.Length != texts.Count)
-            {
+            if (embeddings == null || embeddings.Length != texts.Count) {
                 throw new InvalidOperationException(
                     $"TEI batch response mismatch: expected {texts.Count}, got {embeddings?.Length ?? 0}"
                 );
             }
 
             return embeddings;
-        }
-        catch (HttpRequestException ex)
-        {
+        } catch (HttpRequestException ex) {
             _logger.LogError(ex, "[TEI] Batch request failed");
 
-            // Fallback: process one-by-one
-            _logger.LogWarning("[TEI] Falling back to sequential processing");
-            var results = new List<float[]>();
-            foreach (var text in texts)
-            {
-                var embedding = await EmbedAsync(text, cancellationToken);
-                results.Add(embedding);
-            }
-            return results.ToArray();
+            // Fallback: параллельная обработка с ограничением concurrency
+            _logger.LogWarning("[TEI] Falling back to parallel processing (concurrency: {Concurrency})", _options.Concurrency);
+
+            using var semaphore = new SemaphoreSlim(_options.Concurrency);
+            var tasks = texts.Select(async text => {
+                await semaphore.WaitAsync(cancellationToken);
+                try {
+                    return await EmbedAsync(text, cancellationToken);
+                } finally {
+                    semaphore.Release();
+                }
+            });
+
+            return await Task.WhenAll(tasks);
         }
     }
-
-    public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
-    {
+    public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default) {
         return await CheckServerAsync(cancellationToken);
     }
 
-    private async Task<bool> CheckServerAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
+    private async Task<bool> CheckServerAsync(CancellationToken cancellationToken) {
+        try {
             var response = await _httpClient.GetAsync("/health", cancellationToken);
             var isHealthy = response.IsSuccessStatusCode;
 
-            if (isHealthy)
-            {
+            if (isHealthy) {
                 _logger.LogDebug("[TEI] Server is healthy");
-            }
-            else
-            {
+            } else {
                 _logger.LogWarning("[TEI] Server returned {StatusCode}", response.StatusCode);
             }
 
             return isHealthy;
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogDebug(ex, "[TEI] Server check failed");
             return false;
         }
     }
 
-    private async Task TryStartDockerContainerAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
+    private async Task TryStartDockerContainerAsync(CancellationToken cancellationToken) {
+        try {
             _logger.LogInformation(
                 "[TEI] Starting Docker container: {Container}",
                 _options.ContainerName
             );
 
-            using var process = new System.Diagnostics.Process
-            {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
+            using var process = new System.Diagnostics.Process {
+                StartInfo = new System.Diagnostics.ProcessStartInfo {
                     FileName = "docker",
                     Arguments = $"start {_options.ContainerName}",
                     RedirectStandardOutput = true,
@@ -210,37 +182,29 @@ public sealed class TEIProvider : IEmbeddingProvider
             process.Start();
             await process.WaitForExitAsync(cancellationToken);
 
-            if (process.ExitCode == 0)
-            {
+            if (process.ExitCode == 0) {
                 _logger.LogInformation("[TEI] Docker container started successfully");
 
                 // Wait for server to become ready
-                for (int i = 0; i < 30; i++)
-                {
+                for (int i = 0; i < 30; i++) {
                     await Task.Delay(1000, cancellationToken);
-                    if (await CheckServerAsync(cancellationToken))
-                    {
+                    if (await CheckServerAsync(cancellationToken)) {
                         _logger.LogInformation("[TEI] Server is ready");
                         return;
                     }
                 }
 
                 _logger.LogWarning("[TEI] Server did not become ready after 30 seconds");
-            }
-            else
-            {
+            } else {
                 var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
                 _logger.LogError("[TEI] Docker start failed: {Error}", stderr);
             }
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             _logger.LogError(ex, "[TEI] Failed to start Docker container");
         }
     }
 
-    public ValueTask DisposeAsync()
-    {
+    public ValueTask DisposeAsync() {
         _httpClient?.Dispose();
         return ValueTask.CompletedTask;
     }

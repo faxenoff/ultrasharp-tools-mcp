@@ -175,7 +175,7 @@ $filesToUpdate = @(
 
     # Markdown documentation
     @{
-        Path = "ARCHITECTURE.md"
+        Path = "Dev.Docs\Architecture\ARCHITECTURE.md"
         Pattern = '\*\*Версия:\*\* [\d\.]+(-[a-zA-Z0-9\.\-]+)?'
         Replacement = "**Версия:** $Version"
         Description = "ARCHITECTURE.md"
@@ -187,7 +187,7 @@ $filesToUpdate = @(
         Description = "ROADMAP.md"
     },
     @{
-        Path = "USAGE_GUIDE.md"
+        Path = "Dev.Docs\USAGE_GUIDE.md"
         Pattern = '\*\*Версия:\*\* [\d\.]+(-[a-zA-Z0-9\.\-]+)?'
         Replacement = "**Версия:** $Version"
         Description = "USAGE_GUIDE.md"

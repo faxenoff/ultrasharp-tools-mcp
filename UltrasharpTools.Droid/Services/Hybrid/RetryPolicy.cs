@@ -5,7 +5,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// <summary>
 /// Retry policy с exponential backoff для Overlord calls
 /// </summary>
-public sealed class RetryPolicy
+public sealed partial class RetryPolicy
 {
     private readonly ILogger _logger;
     private readonly int _maxRetries;
@@ -53,23 +53,11 @@ public sealed class RetryPolicy
             {
                 if (attempt == _maxRetries)
                 {
-                    _logger.LogError(
-                        ex,
-                        "Operation {OperationName} failed after {Attempts} attempts",
-                        operationName,
-                        attempt
-                    );
+                    LogOperationFailed(ex, operationName, attempt);
                     throw;
                 }
 
-                _logger.LogWarning(
-                    ex,
-                    "Operation {OperationName} failed (attempt {Attempt}/{MaxRetries}). Retrying in {Delay}ms...",
-                    operationName,
-                    attempt,
-                    _maxRetries,
-                    delay.TotalMilliseconds
-                );
+                LogRetrying(ex, operationName, attempt, _maxRetries, delay.TotalMilliseconds);
 
                 await Task.Delay(delay, cancellationToken);
 

@@ -341,13 +341,16 @@ public static partial class TechnologyDetectionTools
         // Default .NET build tool
         var primary = tools.Contains("dotnet CLI") ? "dotnet CLI" : "MSBuild";
 
+        var ext = Path.GetExtension(solutionPath)?.ToLowerInvariant();
         return new
         {
             detected = tools,
             primary,
-            solutionFormat = Path.GetExtension(solutionPath)?.ToLowerInvariant() == ".sln"
-                ? "Visual Studio Solution"
-                : "Unknown",
+            solutionFormat = ext switch {
+                ".sln" => "Visual Studio Solution",
+                ".slnx" => "Visual Studio Solution (XML)",
+                _ => "Unknown"
+            },
         };
     }
 

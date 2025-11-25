@@ -5,7 +5,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Wrapper around Microsoft Z3 SMT solver for constraint solving.
 /// </summary>
-public sealed class Z3ConstraintSolver : IDisposable
+public sealed partial class Z3ConstraintSolver : IDisposable
 {
     private readonly ILogger<Z3ConstraintSolver> _logger;
     private readonly Context _context;
@@ -54,16 +54,13 @@ public sealed class Z3ConstraintSolver : IDisposable
                 var model = solver.Model;
                 var exampleInputs = ExtractModelValues(model);
 
-                _logger.LogDebug(
-                    "Constraints satisfiable. Example: {Example}",
-                    string.Join(", ", exampleInputs.Select(kv => $"{kv.Key}={kv.Value}"))
-                );
+                LogSatisfiable(string.Join(", ", exampleInputs.Select(kv => $"{kv.Key}={kv.Value}")));
 
                 return new SolverResult { IsSatisfiable = true, ExampleInputs = exampleInputs };
             }
             else if (status == Status.UNSATISFIABLE)
             {
-                _logger.LogDebug("Constraints unsatisfiable");
+                LogUnsatisfiable();
 
                 return new SolverResult
                 {
@@ -73,7 +70,7 @@ public sealed class Z3ConstraintSolver : IDisposable
             }
             else
             {
-                _logger.LogWarning("Z3 solver returned UNKNOWN");
+                LogUnknown();
 
                 return new SolverResult
                 {
@@ -84,7 +81,7 @@ public sealed class Z3ConstraintSolver : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during constraint solving");
+            LogSolverError(ex);
 
             return new SolverResult
             {
@@ -184,12 +181,12 @@ public sealed class Z3ConstraintSolver : IDisposable
                 // Similar pattern
             }
 
-            _logger.LogWarning("Could not parse Z3 expression: {Expr}", sexpr);
+            LogParseWarning(sexpr);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing Z3 expression: {Expr}", sexpr);
+            LogParseError(ex, sexpr);
             return null;
         }
     }

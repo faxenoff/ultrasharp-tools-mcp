@@ -1,8 +1,28 @@
 #!/bin/bash
 # TEI (Text Embeddings Inference) Setup Script
 # Installs and configures HuggingFace TEI with GPU support
+# Usage: ./setup-tei.sh [--model-id MODEL_ID] [--architecture ARCH]
 
 set -e
+
+# Parse arguments
+model_id=""
+architecture=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --model-id)
+            model_id="$2"
+            shift 2
+            ;;
+        --architecture)
+            architecture="$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
 
 # Colors
 RED='\033[0;31m'
@@ -18,7 +38,8 @@ echo ""
 
 # Configuration
 container_name="tei-server"
-model="ibm-granite/granite-embedding-125m-english"
+# Use provided model or default (All-MiniLM - works on CPU and GPU)
+model="${model_id:-sentence-transformers/all-MiniLM-L6-v2}"
 port=8080
 base_image="ghcr.io/huggingface/text-embeddings-inference"
 version="1.8.3"
@@ -64,62 +85,132 @@ if docker ps -a --filter "name=$container_name" --format "{{.Names}}" | grep -q 
     esac
 fi
 
-# Architecture selection
-echo "========================================"
-echo "GPU Architecture Selection"
-echo "========================================"
-echo ""
-echo "Select your GPU architecture:"
-echo "  1) CPU only (slowest, but works everywhere)"
-echo "  2) NVIDIA Turing (RTX 2000 series, T4)"
-echo "  3) NVIDIA Ampere A100/A30 (default, best compatibility)"
-echo "  4) NVIDIA Ampere A10/A40"
-echo "  5) NVIDIA Ada Lovelace (RTX 4000 series)"
-echo "  6) NVIDIA Hopper (H100)"
-echo "  7) NVIDIA Blackwell (RTX 5000 series) - experimental"
-echo ""
-read -p "Enter choice [1-7] (default: 3): " architecture
-architecture=${architecture:-3}
-
+# Architecture selection - use parameter if provided, otherwise ask
 use_gpu=true
-case $architecture in
-    1)
-        image_tag="${base_image}:cpu-${version}"
-        arch_name="CPU"
-        use_gpu=false
-        ;;
-    2)
-        image_tag="${base_image}:turing-${version}"
-        arch_name="Turing (RTX 2000/T4)"
-        ;;
-    3)
-        image_tag="${base_image}:${version}"
-        arch_name="Ampere A100/A30"
-        ;;
-    4)
-        image_tag="${base_image}:86-${version}"
-        arch_name="Ampere A10/A40"
-        ;;
-    5)
-        image_tag="${base_image}:89-${version}"
-        arch_name="Ada Lovelace (RTX 4000)"
-        ;;
-    6)
-        image_tag="${base_image}:hopper-${version}"
-        arch_name="Hopper (H100)"
-        ;;
-    7)
-        image_tag="${base_image}:${version}"
-        arch_name="Blackwell (RTX 5000) - trying default image"
-        echo ""
-        echo -e "${YELLOW}[WARNING] Blackwell not officially supported yet (PR #735 pending)${NC}"
-        echo -e "          Using default image - if it fails, try option 1 (CPU) or 5 (Ada)"
-        ;;
-    *)
-        echo -e "${RED}[ERROR] Invalid choice${NC}"
-        exit 1
-        ;;
-esac
+arch_name=""
+image_tag=""
+
+if [ -n "$architecture" ]; then
+    # Use provided architecture
+    echo -e "${CYAN}[INFO] Using architecture: $architecture${NC}"
+
+    case "$architecture" in
+        cpu)
+            image_tag="${base_image}:cpu-${version}"
+            arch_name="CPU"
+            use_gpu=false
+            ;;
+        turing)
+            image_tag="${base_image}:turing-${version}"
+            arch_name="Turing (RTX 2000/T4)"
+            ;;
+        ampere-80)
+            image_tag="${base_image}:${version}"
+            arch_name="Ampere A100/A30"
+            ;;
+        ampere-86)
+            image_tag="${base_image}:86-${version}"
+            arch_name="Ampere A10/A40"
+            ;;
+        ada)
+            image_tag="${base_image}:89-${version}"
+            arch_name="Ada Lovelace (RTX 4000)"
+            ;;
+        hopper)
+            image_tag="${base_image}:hopper-${version}"
+            arch_name="Hopper (H100)"
+            ;;
+        blackwell)
+            # Blackwell not supported by official TEI - fallback to CPU
+            image_tag="${base_image}:cpu-${version}"
+            arch_name="CPU (Blackwell not supported)"
+            use_gpu=false
+            echo ""
+            echo -e "${YELLOW}[WARNING] Blackwell GPU not supported by official TEI. Using CPU mode.${NC}"
+            echo -e "          Consider using 'blackwell-patch' architecture or Ollama for RTX 50xx GPUs."
+            ;;
+        blackwell-patch)
+            # Alternative TEI with Blackwell patch from hotchpotch
+            image_tag="hotchpotch/tei-blackwell-testing:latest"
+            arch_name="Blackwell (RTX 5000) - patched TEI"
+            use_gpu=true
+            echo ""
+            echo -e "${CYAN}[INFO] Using alternative TEI with Blackwell patch (hotchpotch/tei-blackwell-testing)${NC}"
+            echo -e "       This is a community build, not official HuggingFace release."
+            ;;
+        *)
+            echo -e "${YELLOW}[WARNING] Unknown architecture '$architecture', using default (Ampere)${NC}"
+            image_tag="${base_image}:${version}"
+            arch_name="Ampere A100/A30 (default)"
+            ;;
+    esac
+else
+    # Interactive architecture selection
+    echo "========================================"
+    echo "GPU Architecture Selection"
+    echo "========================================"
+    echo ""
+    echo "Select your GPU architecture:"
+    echo "  1) CPU only (slowest, but works everywhere)"
+    echo "  2) NVIDIA Turing (RTX 2000 series, T4)"
+    echo "  3) NVIDIA Ampere A100/A30 (default, best compatibility)"
+    echo "  4) NVIDIA Ampere A10/A40"
+    echo "  5) NVIDIA Ada Lovelace (RTX 4000 series)"
+    echo "  6) NVIDIA Hopper (H100)"
+    echo "  7) NVIDIA Blackwell (RTX 5000 series) - NOT SUPPORTED, uses CPU"
+    echo "  8) NVIDIA Blackwell with TEI patch (RTX 5000 series) - EXPERIMENTAL"
+    echo ""
+    read -p "Enter choice [1-8] (default: 3): " arch_choice
+    arch_choice=${arch_choice:-3}
+
+    case $arch_choice in
+        1)
+            image_tag="${base_image}:cpu-${version}"
+            arch_name="CPU"
+            use_gpu=false
+            ;;
+        2)
+            image_tag="${base_image}:turing-${version}"
+            arch_name="Turing (RTX 2000/T4)"
+            ;;
+        3)
+            image_tag="${base_image}:${version}"
+            arch_name="Ampere A100/A30"
+            ;;
+        4)
+            image_tag="${base_image}:86-${version}"
+            arch_name="Ampere A10/A40"
+            ;;
+        5)
+            image_tag="${base_image}:89-${version}"
+            arch_name="Ada Lovelace (RTX 4000)"
+            ;;
+        6)
+            image_tag="${base_image}:hopper-${version}"
+            arch_name="Hopper (H100)"
+            ;;
+        7)
+            image_tag="${base_image}:cpu-${version}"
+            arch_name="CPU (Blackwell not supported)"
+            use_gpu=false
+            echo ""
+            echo -e "${YELLOW}[WARNING] Blackwell not supported by official TEI. Using CPU mode.${NC}"
+            echo -e "          Consider option 8 (TEI with Blackwell patch) or Ollama for RTX 50xx GPUs."
+            ;;
+        8)
+            image_tag="hotchpotch/tei-blackwell-testing:latest"
+            arch_name="Blackwell (RTX 5000) - patched TEI"
+            use_gpu=true
+            echo ""
+            echo -e "${CYAN}[INFO] Using alternative TEI with Blackwell patch (hotchpotch/tei-blackwell-testing)${NC}"
+            echo -e "       This is a community build, not official HuggingFace release."
+            ;;
+        *)
+            echo -e "${RED}[ERROR] Invalid choice${NC}"
+            exit 1
+            ;;
+    esac
+fi
 
 echo ""
 echo -e "${CYAN}[INFO] Selected: $arch_name${NC}"

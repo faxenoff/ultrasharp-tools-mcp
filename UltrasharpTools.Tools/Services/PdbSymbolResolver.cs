@@ -8,7 +8,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Resolves symbols using PDB debug information.
 /// Provides accurate mapping between source locations and compiled methods.
 /// </summary>
-public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
+public sealed partial class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
 {
     private readonly ILogger<PdbSymbolResolver> _logger;
     private readonly ConcurrentDictionary<string, PdbInfo?> _pdbCache = new();
@@ -34,7 +34,7 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
     {
         if (!File.Exists(assemblyPath))
         {
-            _logger.LogWarning("Assembly not found: {Path}", assemblyPath);
+            LogAssemblyNotFound(assemblyPath);
             return null;
         }
 
@@ -116,7 +116,7 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to load PDB for assembly: {Path}", path);
+                    LogPdbLoadFailed(ex, path);
                     return null;
                 }
             }
@@ -140,7 +140,7 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
             pdbReaderProvider = peReader.ReadEmbeddedPortablePdbDebugDirectoryData(
                 embeddedPdbEntry
             );
-            _logger.LogDebug("Loaded embedded PDB for: {Path}", assemblyPath);
+            LogEmbeddedPdbLoaded(assemblyPath);
         }
         else
         {
@@ -148,7 +148,7 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
             var pdbPath = Path.ChangeExtension(assemblyPath, ".pdb");
             if (!File.Exists(pdbPath))
             {
-                _logger.LogWarning("PDB file not found: {Path}", pdbPath);
+                LogPdbNotFound(pdbPath);
                 return null;
             }
 
@@ -157,7 +157,7 @@ public sealed class PdbSymbolResolver : IPdbSymbolResolver, IDisposable
                 File.OpenRead(pdbPath)
             );
 #pragma warning restore CA2000
-            _logger.LogDebug("Loaded external PDB for: {Path}", assemblyPath);
+            LogExternalPdbLoaded(assemblyPath);
         }
 
         using (pdbReaderProvider)

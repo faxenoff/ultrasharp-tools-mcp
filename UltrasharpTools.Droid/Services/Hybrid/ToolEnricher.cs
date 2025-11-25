@@ -7,7 +7,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// <summary>
 /// Реализация обогащения результатов инструментов семантическими данными
 /// </summary>
-public sealed class ToolEnricher : IToolEnricher
+public sealed partial class ToolEnricher : IToolEnricher
 {
     private readonly ILogger<ToolEnricher> _logger;
     private readonly ISemanticModeProvider _semanticProvider;
@@ -46,8 +46,7 @@ public sealed class ToolEnricher : IToolEnricher
             new ApplyCodeFixesEnrichmentStrategy(),
         };
 
-        _logger.LogInformation(
-            "ToolEnricher initialized: strategies={Count}, timeout={Timeout}s, maxConcurrency={Concurrency}, gracefulDegradation={Graceful}",
+        LogInitialized(
             _strategies.Count,
             _config.Enrichment.TimeoutSeconds,
             _config.Enrichment.MaxConcurrency,
@@ -69,10 +68,7 @@ public sealed class ToolEnricher : IToolEnricher
         var availability = await _semanticProvider.CheckAvailabilityAsync(ct);
         if (!availability.IsAvailable)
         {
-            _logger.LogTrace(
-                "Semantic mode not available - returning original result for {Tool}",
-                toolName
-            );
+            LogSemanticNotAvailable(toolName);
             return new EnrichedToolResult
             {
                 OriginalResult = originalResult,
@@ -92,7 +88,7 @@ public sealed class ToolEnricher : IToolEnricher
             && !toolSettings.Enabled
         )
         {
-            _logger.LogTrace("Enrichment disabled for {Tool} by configuration", toolName);
+            LogEnrichmentDisabled(toolName);
             return new EnrichedToolResult
             {
                 OriginalResult = originalResult,
@@ -110,7 +106,7 @@ public sealed class ToolEnricher : IToolEnricher
         var strategy = _strategies.FirstOrDefault(s => s.SupportedTools.Contains(toolName));
         if (strategy == null)
         {
-            _logger.LogTrace("No enrichment strategy found for {Tool}", toolName);
+            LogNoStrategy(toolName);
             return new EnrichedToolResult
             {
                 OriginalResult = originalResult,
@@ -124,7 +120,7 @@ public sealed class ToolEnricher : IToolEnricher
             };
         }
 
-        _logger.LogDebug("Enriching {Tool} with {Strategy}", toolName, strategy.Name);
+        LogEnriching(toolName, strategy.Name);
 
         try
         {
@@ -150,12 +146,7 @@ public sealed class ToolEnricher : IToolEnricher
                 matchCount += enrichment.SimilarStructures?.Count ?? 0;
             }
 
-            _logger.LogInformation(
-                "Enriched {Tool} with {Matches} semantic matches in {Time}ms",
-                toolName,
-                matchCount,
-                sw.ElapsedMilliseconds
-            );
+            LogEnriched(toolName, matchCount, sw.ElapsedMilliseconds);
 
             return new EnrichedToolResult
             {
@@ -174,11 +165,7 @@ public sealed class ToolEnricher : IToolEnricher
         catch (OperationCanceledException)
         {
             sw.Stop();
-            _logger.LogWarning(
-                "Enrichment for {Tool} timed out after {Timeout}s",
-                toolName,
-                _config.Enrichment.TimeoutSeconds
-            );
+            LogEnrichmentTimeout(toolName, _config.Enrichment.TimeoutSeconds);
 
             return new EnrichedToolResult
             {
@@ -197,7 +184,7 @@ public sealed class ToolEnricher : IToolEnricher
         catch (Exception ex)
         {
             sw.Stop();
-            _logger.LogError(ex, "Enrichment failed for {Tool}", toolName);
+            LogEnrichmentFailed(ex, toolName);
 
             return new EnrichedToolResult
             {

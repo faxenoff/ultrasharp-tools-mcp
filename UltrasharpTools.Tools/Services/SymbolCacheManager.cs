@@ -9,7 +9,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Manages persistent caching of FastSymbolIndex to disk
 /// Provides 10x faster solution loading (33s → 3-5s)
 /// </summary>
-public class SymbolCacheManager
+public partial class SymbolCacheManager
 {
     private readonly ILogger _logger;
     private const int CacheFormatVersion = 1;
@@ -25,7 +25,7 @@ public class SymbolCacheManager
         if (!Directory.Exists(_cacheDirectory))
         {
             Directory.CreateDirectory(_cacheDirectory);
-            _logger.LogInformation("Created symbol cache directory: {Directory}", _cacheDirectory);
+            LogCacheDirectoryCreated(_cacheDirectory);
         }
     }
 
@@ -53,7 +53,7 @@ public class SymbolCacheManager
         {
             if (string.IsNullOrEmpty(solution.FilePath))
             {
-                _logger.LogDebug("Solution has no file path, cannot load cache");
+                LogNoSolutionPathForLoad();
                 return (false, null, null);
             }
 
@@ -61,48 +61,41 @@ public class SymbolCacheManager
 
             if (!File.Exists(cacheFilePath))
             {
-                _logger.LogDebug("No cache file found at {Path}", cacheFilePath);
+                LogNoCacheFile(cacheFilePath);
                 return (false, null, null);
             }
 
-            _logger.LogInformation("Loading symbol cache from {Path}...", cacheFilePath);
+            LogLoadingCache(cacheFilePath);
 
             var json = await OptimizedFileIO.ReadAllTextAsync(cacheFilePath, null, cancellationToken);
             var cacheData = JsonSerializer.Deserialize<SymbolCacheData>(json);
 
             if (cacheData == null)
             {
-                _logger.LogWarning("Failed to deserialize cache file");
+                LogDeserializationFailed();
                 return (false, null, null);
             }
 
             // Validate cache version
             if (cacheData.Metadata.Version != CacheFormatVersion)
             {
-                _logger.LogWarning(
-                    "Cache version mismatch: expected {Expected}, got {Actual}. Cache invalidated.",
-                    CacheFormatVersion,
-                    cacheData.Metadata.Version
-                );
+                LogVersionMismatch(CacheFormatVersion, cacheData.Metadata.Version);
                 return (false, null, null);
             }
 
             // Validate solution hasn't changed
             if (!await ValidateSolutionAsync(solution, cacheData.Metadata, cancellationToken))
             {
-                _logger.LogInformation("Solution has changed, cache invalidated");
+                LogSolutionChanged();
                 return (false, null, null);
             }
 
-            _logger.LogInformation(
-                "Successfully loaded {Count} symbols from cache",
-                cacheData.Symbols.Count
-            );
+            LogSymbolsLoaded(cacheData.Symbols.Count);
             return (true, cacheData.Symbols, cacheData.Metadata);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading symbol cache");
+            LogLoadError(ex);
             return (false, null, null);
         }
     }
@@ -120,17 +113,13 @@ public class SymbolCacheManager
         {
             if (string.IsNullOrEmpty(solution.FilePath))
             {
-                _logger.LogWarning("Solution has no file path, cannot save cache");
+                LogNoSolutionPathForSave();
                 return;
             }
 
             var cacheFilePath = GetCacheFilePath(solution.FilePath);
 
-            _logger.LogInformation(
-                "Saving {Count} symbols to cache at {Path}...",
-                entries.Count,
-                cacheFilePath
-            );
+            LogSavingCache(entries.Count, cacheFilePath);
 
             var metadata = await BuildMetadataAsync(solution, entries.Count, cancellationToken);
             var serializableEntries = await ConvertToSerializableAsync(
@@ -155,11 +144,11 @@ public class SymbolCacheManager
 
             await OptimizedFileIO.WriteAllTextAsync(cacheFilePath, json, null, cancellationToken);
 
-            _logger.LogInformation("Successfully saved symbol cache ({Size} bytes)", json.Length);
+            LogCacheSaved(json.Length);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error saving symbol cache");
+            LogSaveError(ex);
         }
     }
 
@@ -278,18 +267,14 @@ public class SymbolCacheManager
         var currentSolutionHash = ComputeFileHash(solution.FilePath);
         if (currentSolutionHash != metadata.SolutionHash)
         {
-            _logger.LogDebug("Solution file hash mismatch");
+            LogSolutionHashMismatch();
             return false;
         }
 
         // Check project count
         if (solution.Projects.Count() != metadata.Projects.Count)
         {
-            _logger.LogDebug(
-                "Project count mismatch: expected {Expected}, got {Actual}",
-                metadata.Projects.Count,
-                solution.Projects.Count()
-            );
+            LogProjectCountMismatch(metadata.Projects.Count, solution.Projects.Count());
             return false;
         }
 
@@ -304,7 +289,7 @@ public class SymbolCacheManager
             var cachedProject = metadata.Projects.FirstOrDefault(p => p.Name == project.Name);
             if (cachedProject == null)
             {
-                _logger.LogDebug("Project {ProjectName} not found in cache metadata", project.Name);
+                LogProjectNotInCache(project.Name);
                 return false;
             }
 
@@ -312,10 +297,7 @@ public class SymbolCacheManager
             var currentLastWrite = File.GetLastWriteTimeUtc(project.FilePath);
             if (currentLastWrite != cachedProject.LastWriteTime)
             {
-                _logger.LogDebug(
-                    "Project {ProjectName} file modified (timestamp changed)",
-                    project.Name
-                );
+                LogProjectModified(project.Name);
                 return false;
             }
 
@@ -323,7 +305,7 @@ public class SymbolCacheManager
             var currentHash = ComputeFileHash(project.FilePath);
             if (currentHash != cachedProject.Hash)
             {
-                _logger.LogDebug("Project {ProjectName} file hash mismatch", project.Name);
+                LogProjectHashMismatch(project.Name);
                 return false;
             }
         }
@@ -367,17 +349,17 @@ public class SymbolCacheManager
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to delete cache file {File}", file);
+                            LogDeleteFailed(ex, file);
                         }
                     }
                 );
 
-                _logger.LogInformation("Cleared {Count} cache files (parallel)", deletedCount);
+                LogCacheCleared(deletedCount);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing cache files");
+            LogClearError(ex);
         }
     }
 }

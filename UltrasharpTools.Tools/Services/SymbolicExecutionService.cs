@@ -8,7 +8,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Performs symbolic execution analysis using Roslyn CFG and Z3 SMT solver.
 /// Simplified implementation for proof-of-concept.
 /// </summary>
-public sealed class SymbolicExecutionService : ISymbolicExecutionService
+public sealed partial class SymbolicExecutionService : ISymbolicExecutionService
 {
     private readonly ISolutionManager _solutionManager;
     private readonly ILogger<SymbolicExecutionService> _logger;
@@ -82,7 +82,7 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not create CFG for {Method}", entryPointFqn);
+                LogCfgCreationFailed(ex, entryPointFqn);
                 return CreateErrorResult(
                     entryPointFqn,
                     exitPointFqn,
@@ -104,7 +104,7 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
             // Check if CFG is valid before accessing
             if (cfg == null || cfg.Blocks == null || cfg.Blocks.Length == 0)
             {
-                _logger.LogWarning("CFG for {EntryPoint} is null or has no blocks", entryPointFqn);
+                LogCfgNullOrEmpty(entryPointFqn);
                 return new SymbolicExecutionResult
                 {
                     EntryPointFqn = entryPointFqn,
@@ -151,18 +151,13 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
                 MaxDepthReached = paths.Count > 0 ? paths.Max(p => p.Depth) : 0,
             };
 
-            _logger.LogInformation(
-                "Symbolic execution completed: {Feasible}/{Total} paths feasible, {Issues} issues found",
-                result.FeasiblePaths,
-                result.TotalPaths,
-                result.Issues.Count
-            );
+            LogExecutionCompleted(result.FeasiblePaths, result.TotalPaths, result.Issues.Count);
 
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during symbolic execution for {Entry}", entryPointFqn);
+            LogExecutionError(ex, entryPointFqn);
             return CreateErrorResult(entryPointFqn, exitPointFqn, $"Execution error: {ex.Message}");
         }
     }
@@ -800,7 +795,7 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
             var reasonProp = pathType.GetProperty(nameof(SymbolicPath.InfeasibilityReason))!;
             reasonProp.SetValue(path, result.Reason ?? "Unsatisfiable constraints");
 
-            _logger.LogDebug("Path {PathId} is INFEASIBLE: {Reason}", path.PathId, result.Reason);
+            LogPathInfeasible(path.PathId, result.Reason);
         }
         else if (result.ExampleInputs != null && result.ExampleInputs.Count > 0)
         {
@@ -808,11 +803,7 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
             var exampleProp = pathType.GetProperty(nameof(SymbolicPath.ExampleInputs))!;
             exampleProp.SetValue(path, result.ExampleInputs);
 
-            _logger.LogDebug(
-                "Path {PathId} is FEASIBLE. Example inputs: {Inputs}",
-                path.PathId,
-                string.Join(", ", result.ExampleInputs.Select(kv => $"{kv.Key}={kv.Value}"))
-            );
+            LogPathFeasible(path.PathId, string.Join(", ", result.ExampleInputs.Select(kv => $"{kv.Key}={kv.Value}")));
         }
     }
 
@@ -870,12 +861,12 @@ public sealed class SymbolicExecutionService : ISymbolicExecutionService
                 return new NullCheckConstraint { Variable = variable, IsNull = false };
             }
 
-            _logger.LogWarning("Could not parse constraint: {Constraint}", constraintStr);
+            LogConstraintParseWarning(constraintStr);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing constraint: {Constraint}", constraintStr);
+            LogConstraintParseError(ex, constraintStr);
             return null;
         }
     }

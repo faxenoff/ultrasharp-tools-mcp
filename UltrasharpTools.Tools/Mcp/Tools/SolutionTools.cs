@@ -77,16 +77,17 @@ public static class SolutionTools
                     throw new McpException($"Solution file does not exist at path: {solutionPath}");
                 }
 
+                var extension = Path.GetExtension(solutionPath);
                 if (
-                    !Path.GetExtension(solutionPath)
-                        .Equals(".sln", StringComparison.OrdinalIgnoreCase)
+                    !extension.Equals(".sln", StringComparison.OrdinalIgnoreCase) &&
+                    !extension.Equals(".slnx", StringComparison.OrdinalIgnoreCase)
                 )
                 {
                     logger.LogError(
                         "File is not a valid solution file: {SolutionPath}",
                         solutionPath
                     );
-                    throw new McpException($"File at path '{solutionPath}' is not a .sln file.");
+                    throw new McpException($"File at path '{solutionPath}' is not a .sln or .slnx file.");
                 }
 
                 // Get solution directory for validation
@@ -928,12 +929,7 @@ public static class SolutionTools
                             + output
                             + "\n</typeTree>";
 
-                        // Start background call graph indexing (fire-and-forget)
-                        // Use CancellationToken.None so indexing continues even if the tool request is cancelled
-                        logger.LogInformation(
-                            "Starting background call graph indexing for project {ProjectName}",
-                            project.Name
-                        );
+                        // Background call graph indexing - now safe with auto-detection of analyzer issues
                         _ = callGraphIndexer.StartBackgroundIndexingAsync(CancellationToken.None);
 
                         return result;

@@ -5,7 +5,8 @@
 <LangVersion>13.0</LangVersion>
 <ImplicitUsings>enable</ImplicitUsings>
 <Nullable>enable</Nullable>
-<Version>3.0.6</Version>
+<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+<Version>3.2.0</Version>
 <AssemblyName>UltraSharpTools.Comm</AssemblyName>
 <RootNamespace>UltraSharpTools.Comm</RootNamespace>
 
@@ -16,27 +17,23 @@
 
 <!-- Self-contained for Debug (without trimming for faster builds) -->
 <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-<SelfContained>true</SelfContained>
-<RuntimeIdentifier>win-x64</RuntimeIdentifier>
-<PublishSingleFile>true</PublishSingleFile>
+<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 </PropertyGroup>
 
-<!-- Self-contained with trimming for Release (minimal size) -->
+<!-- Native AOT для Release сборки -->
 <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-<!-- Self-contained: includes .NET runtime (needed since Comm starts independently) -->
-<SelfContained>true</SelfContained>
-<RuntimeIdentifier>win-x64</RuntimeIdentifier>
-<PublishSingleFile>true</PublishSingleFile>
+<PublishAot>true</PublishAot>
+<OptimizationPreference>Speed</OptimizationPreference>
+<IlcOptimizationPreference>Speed</IlcOptimizationPreference>
 
-<!-- Trimming: remove unused code -->
 <PublishTrimmed>true</PublishTrimmed>
 <TrimMode>full</TrimMode>
 <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
 
-<!-- Size optimizations -->
-<DebugType>none</DebugType>
-<DebugSymbols>false</DebugSymbols>
-<Optimize>true</Optimize>
+<SelfContained>true</SelfContained>
+<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
+<StripSymbols>true</StripSymbols>
 </PropertyGroup>
 
 <!-- System.IO.Pipelines и System.Text.Json включены в .NET 10 -->

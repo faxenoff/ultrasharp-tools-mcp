@@ -6,8 +6,7 @@ namespace UltrasharpTools.Droid.Models.Hybrid;
 /// Конфигурация для Universal Semantic Mode (Phase 12)
 /// Настройки semantic enrichment для всех 52 инструментов
 /// </summary>
-public sealed class SemanticModeConfig
-{
+public sealed class SemanticModeConfig {
     /// <summary>
     /// Включить Universal Semantic Mode
     /// </summary>
@@ -35,10 +34,8 @@ public sealed class SemanticModeConfig
     /// <summary>
     /// Создаёт конфигурацию по умолчанию
     /// </summary>
-    public static SemanticModeConfig CreateDefault()
-    {
-        return new SemanticModeConfig
-        {
+    public static SemanticModeConfig CreateDefault() {
+        return new SemanticModeConfig {
             Enabled = true,
             Availability = AvailabilitySettings.CreateDefault(),
             Enrichment = EnrichmentSettings.CreateDefault(),
@@ -49,29 +46,23 @@ public sealed class SemanticModeConfig
     /// <summary>
     /// Валидация конфигурации
     /// </summary>
-    public bool Validate(out string? errorMessage)
-    {
-        if (!Availability.Validate(out errorMessage))
-        {
+    public bool Validate(out string? errorMessage) {
+        if (!Availability.Validate(out errorMessage)) {
             return false;
         }
 
-        if (!Enrichment.Validate(out errorMessage))
-        {
+        if (!Enrichment.Validate(out errorMessage)) {
             return false;
         }
 
         // Валидация tool settings
-        foreach (var (toolName, settings) in ToolSettings)
-        {
-            if (string.IsNullOrWhiteSpace(toolName))
-            {
+        foreach (var (toolName, settings) in ToolSettings) {
+            if (string.IsNullOrWhiteSpace(toolName)) {
                 errorMessage = "Tool name cannot be empty";
                 return false;
             }
 
-            if (!settings.Validate(out errorMessage))
-            {
+            if (!settings.Validate(out errorMessage)) {
                 errorMessage = $"Invalid settings for tool '{toolName}': {errorMessage}";
                 return false;
             }
@@ -81,10 +72,8 @@ public sealed class SemanticModeConfig
         return true;
     }
 
-    private static Dictionary<string, ToolEnrichmentSettings> CreateDefaultToolSettings()
-    {
-        return new Dictionary<string, ToolEnrichmentSettings>
-        {
+    private static Dictionary<string, ToolEnrichmentSettings> CreateDefaultToolSettings() {
+        return new Dictionary<string, ToolEnrichmentSettings> {
             // Phase 12.1 - Core strategies (5)
             ["view_definition"] = new() { TopK = 5, Threshold = 0.7 },
             ["find_references"] = new() { TopK = 10, Threshold = 0.65 },
@@ -105,13 +94,64 @@ public sealed class SemanticModeConfig
             ["apply_code_fixes"] = new() { TopK = 5, Threshold = 0.75 },
         };
     }
-}
+    /// <summary>
+    /// Embedding provider settings (читается из semantic-config.json)
+    /// </summary>
+    [JsonPropertyName("embedding")]
+    public EmbeddingProviderSettings? Embedding { get; set; }
+
+/// <summary>
+/// Настройки embedding provider
+/// </summary>
+public sealed class EmbeddingProviderSettings
+{
+    [JsonPropertyName("platform")]
+    public string Platform { get; set; } = "ollama";
+
+    [JsonPropertyName("tei")]
+    public TeiSettings? Tei { get; set; }
+
+    [JsonPropertyName("ollama")]
+    public OllamaSettings? Ollama { get; set; }
+
+    [JsonPropertyName("architecture")]
+    public string? Architecture { get; set; }
+
+    public sealed class TeiSettings
+    {
+        [JsonPropertyName("endpoint")]
+        public string Endpoint { get; set; } = "http://127.0.0.1:8080";
+
+        [JsonPropertyName("selected_model")]
+        public string? SelectedModel { get; set; }
+
+        [JsonPropertyName("models")]
+        public List<ModelInfo>? Models { get; set; }
+    }
+
+    public sealed class OllamaSettings
+    {
+        [JsonPropertyName("endpoint")]
+        public string Endpoint { get; set; } = "http://127.0.0.1:11434";
+
+        [JsonPropertyName("selected_model")]
+        public string? SelectedModel { get; set; }
+    }
+
+    public sealed class ModelInfo
+    {
+        [JsonPropertyName("id")]
+        public string? Id { get; set; }
+
+        [JsonPropertyName("vector_size")]
+        public int VectorSize { get; set; }
+    }
+}}
 
 /// <summary>
 /// Настройки availability check
 /// </summary>
-public sealed class AvailabilitySettings
-{
+public sealed class AvailabilitySettings {
     /// <summary>
     /// Интервал validity кэша (в секундах)
     /// </summary>
@@ -146,36 +186,30 @@ public sealed class AvailabilitySettings
 
     public static AvailabilitySettings CreateDefault() => new();
 
-    public bool Validate(out string? errorMessage)
-    {
-        if (CacheValiditySeconds <= 0)
-        {
+    public bool Validate(out string? errorMessage) {
+        if (CacheValiditySeconds <= 0) {
             errorMessage = "CacheValiditySeconds must be positive";
             return false;
         }
 
-        if (LocalCheckTimeoutSeconds <= 0)
-        {
+        if (LocalCheckTimeoutSeconds <= 0) {
             errorMessage = "LocalCheckTimeoutSeconds must be positive";
             return false;
         }
 
-        if (OverlordCheckTimeoutSeconds <= 0)
-        {
+        if (OverlordCheckTimeoutSeconds <= 0) {
             errorMessage = "OverlordCheckTimeoutSeconds must be positive";
             return false;
         }
 
         var validPreferences = new[] { "local", "overlord", "auto" };
-        if (!validPreferences.Contains(EmbeddingSourcePreference.ToLowerInvariant()))
-        {
+        if (!validPreferences.Contains(EmbeddingSourcePreference.ToLowerInvariant())) {
             errorMessage =
                 $"Invalid EmbeddingSourcePreference: {EmbeddingSourcePreference}. Must be one of: {string.Join(", ", validPreferences)}";
             return false;
         }
 
-        if (!validPreferences.Contains(SearchSourcePreference.ToLowerInvariant()))
-        {
+        if (!validPreferences.Contains(SearchSourcePreference.ToLowerInvariant())) {
             errorMessage =
                 $"Invalid SearchSourcePreference: {SearchSourcePreference}. Must be one of: {string.Join(", ", validPreferences)}";
             return false;
@@ -189,8 +223,7 @@ public sealed class AvailabilitySettings
 /// <summary>
 /// Настройки enrichment
 /// </summary>
-public sealed class EnrichmentSettings
-{
+public sealed class EnrichmentSettings {
     /// <summary>
     /// Таймаут для enrichment операций (в секундах)
     /// </summary>
@@ -229,22 +262,18 @@ public sealed class EnrichmentSettings
 
     public static EnrichmentSettings CreateDefault() => new();
 
-    public bool Validate(out string? errorMessage)
-    {
-        if (TimeoutSeconds <= 0)
-        {
+    public bool Validate(out string? errorMessage) {
+        if (TimeoutSeconds <= 0) {
             errorMessage = "TimeoutSeconds must be positive";
             return false;
         }
 
-        if (MaxConcurrency <= 0)
-        {
+        if (MaxConcurrency <= 0) {
             errorMessage = "MaxConcurrency must be positive";
             return false;
         }
 
-        if (MinMatchesForEnrichment < 0)
-        {
+        if (MinMatchesForEnrichment < 0) {
             errorMessage = "MinMatchesForEnrichment cannot be negative";
             return false;
         }
@@ -257,8 +286,7 @@ public sealed class EnrichmentSettings
 /// <summary>
 /// Настройки enrichment для конкретного инструмента
 /// </summary>
-public sealed class ToolEnrichmentSettings
-{
+public sealed class ToolEnrichmentSettings {
     /// <summary>
     /// Включить enrichment для этого инструмента
     /// </summary>
@@ -284,16 +312,13 @@ public sealed class ToolEnrichmentSettings
     [JsonPropertyName("queryTemplate")]
     public string? QueryTemplate { get; set; }
 
-    public bool Validate(out string? errorMessage)
-    {
-        if (TopK <= 0)
-        {
+    public bool Validate(out string? errorMessage) {
+        if (TopK <= 0) {
             errorMessage = "TopK must be positive";
             return false;
         }
 
-        if (Threshold < 0 || Threshold > 1)
-        {
+        if (Threshold < 0 || Threshold > 1) {
             errorMessage = "Threshold must be between 0 and 1";
             return false;
         }

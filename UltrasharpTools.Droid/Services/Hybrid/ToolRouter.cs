@@ -6,7 +6,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// Реализация маршрутизатора инструментов для Hybrid Mode
 /// Определяет какие инструменты должны выполняться локально, а какие на Overlord
 /// </summary>
-public sealed class ToolRouter : IToolRouter
+public sealed partial class ToolRouter : IToolRouter
 {
     private readonly ILogger<ToolRouter> _logger;
     private readonly IServerBridgeService? _serverBridge;
@@ -59,24 +59,21 @@ public sealed class ToolRouter : IToolRouter
         // 1. Если не hybrid mode - всё локально
         if (!_isHybridMode || _serverBridge == null)
         {
-            _logger.LogTrace("Local mode: routing {ToolName} to LOCAL", toolName);
+            LogLocalRouting(toolName);
             return ToolRoutingDecision.Local;
         }
 
         // 2. Semantic tools → всегда Overlord
         if (SemanticTools.Contains(toolName))
         {
-            _logger.LogDebug("Semantic tool {ToolName}: routing to OVERLORD", toolName);
+            LogSemanticRouting(toolName);
             return ToolRoutingDecision.Overlord;
         }
 
         // 3. Resource-intensive tools → Overlord с fallback
         if (ResourceIntensiveTools.Contains(toolName))
         {
-            _logger.LogDebug(
-                "Resource-intensive tool {ToolName}: routing to OVERLORD with fallback",
-                toolName
-            );
+            LogResourceIntensiveRouting(toolName);
             return ToolRoutingDecision.OverlordWithFallback;
         }
 
@@ -84,17 +81,13 @@ public sealed class ToolRouter : IToolRouter
         if (HybridTools.Contains(toolName) && arguments != null)
         {
             var decision = AnalyzeHybridTool(toolName, arguments);
-            _logger.LogDebug(
-                "Hybrid tool {ToolName}: routing to {Decision} based on arguments",
-                toolName,
-                decision
-            );
+            LogHybridRouting(toolName, decision);
             return decision;
         }
 
         // 5. По умолчанию → Local (быстрые Roslyn операции + batch analysis tools)
         // Includes: detect_code_clones (requires loaded solution + SemanticSearchService)
-        _logger.LogTrace("Default routing for {ToolName}: LOCAL", toolName);
+        LogDefaultRouting(toolName);
         return ToolRoutingDecision.Local;
     }
 
@@ -108,12 +101,12 @@ public sealed class ToolRouter : IToolRouter
         try
         {
             var isAvailable = await _serverBridge.IsServerAvailableAsync(cancellationToken);
-            _logger.LogDebug("Overlord availability check: {IsAvailable}", isAvailable);
+            LogAvailabilityCheck(isAvailable);
             return isAvailable;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to check Overlord availability");
+            LogAvailabilityCheckFailed(ex);
             return false;
         }
     }

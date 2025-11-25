@@ -10,7 +10,7 @@ namespace UltrasharpTools.Overlord.Services;
 /// Реализация MultiProjectVectorStoreService для hybrid архитектуры
 /// Управляет векторными хранилищами для ВСЕХ проектов команды
 /// </summary>
-public sealed class MultiProjectVectorStoreService
+public sealed partial class MultiProjectVectorStoreService
     : IMultiProjectVectorStoreService,
         IAsyncDisposable
 {
@@ -35,11 +35,7 @@ public sealed class MultiProjectVectorStoreService
         // Создаем базовую директорию если не существует
         Directory.CreateDirectory(_basePath);
 
-        _logger.LogInformation(
-            "MultiProjectVectorStore initialized: BasePath={BasePath}, Dimension={Dimension}",
-            _basePath,
-            _dimension
-        );
+        LogInitialized(_basePath, _dimension);
     }
 
     public async Task StoreVectorsAsync(
@@ -73,7 +69,7 @@ public sealed class MultiProjectVectorStoreService
 
         await store.InsertAsync(embedding, cancellationToken);
 
-        _logger.LogDebug("Stored vectors: {Project}/{Branch}/{File}", project, branch, filePath);
+        LogStoredVectors(project, branch, filePath);
     }
 
     public async Task DeleteVectorsAsync(
@@ -88,12 +84,7 @@ public sealed class MultiProjectVectorStoreService
         {
             // TODO: Реализовать удаление в VectorStore
             // Сейчас VectorStore не имеет метода Delete
-            _logger.LogWarning(
-                "Delete not implemented yet: {Project}/{Branch}/{File}",
-                project,
-                branch,
-                filePath
-            );
+            LogDeleteNotImplemented(project, branch, filePath);
         }
     }
 
@@ -145,7 +136,7 @@ public sealed class MultiProjectVectorStoreService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to search in vector store");
+                LogSearchFailed(ex);
                 return new List<VectorMatch>();
             }
         });
@@ -275,7 +266,7 @@ public sealed class MultiProjectVectorStoreService
 
         _stores[key] = store;
 
-        _logger.LogInformation("Created new VectorStore: {Project}/{Branch}", project, branch);
+        LogStoreCreated(project, branch);
 
         return store;
     }

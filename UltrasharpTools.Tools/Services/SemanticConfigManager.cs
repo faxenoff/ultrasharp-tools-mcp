@@ -7,7 +7,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Manages semantic embedding configuration with ENV override support, validation, and auto-configuration
 /// </summary>
-public class SemanticConfigManager
+public partial class SemanticConfigManager
 {
     private readonly ILogger<SemanticConfigManager> _logger;
     private readonly CodebaseLanguageDetector _languageDetector;
@@ -49,39 +49,39 @@ public class SemanticConfigManager
         // First run: no config exists - auto-configure
         if (!File.Exists(configPath))
         {
-            _logger.LogWarning("═══════════════════════════════════════════════════════════");
-            _logger.LogWarning("No configuration found - running first-time setup");
-            _logger.LogWarning("═══════════════════════════════════════════════════════════");
-            _logger.LogInformation("");
+            LogSeparator();
+            LogFirstTimeSetup();
+            LogSeparator();
+            LogEmptyLine();
 
             var autoConfigResult = await _autoConfig.AutoConfigureAsync(cancellationToken);
             _globalConfig = autoConfigResult.Config;
 
             await SaveGlobalConfigAsync(_globalConfig, configPath);
 
-            _logger.LogInformation("");
-            _logger.LogInformation("Configuration saved to: {Path}", configPath);
-            _logger.LogInformation("");
+            LogEmptyLine();
+            LogConfigSaved(configPath);
+            LogEmptyLine();
 
             // Print auto-config results
             if (autoConfigResult.RequiresSetup)
             {
-                _logger.LogWarning("⚠ SETUP REQUIRED");
-                _logger.LogWarning("");
-                _logger.LogWarning(autoConfigResult.SetupInstructions);
+                LogSetupRequired();
+                LogWarningEmptyLine();
+                LogSetupInstructions(autoConfigResult.SetupInstructions);
             }
             else
             {
-                _logger.LogInformation("✓ Ready to use!");
+                LogReadyToUse();
             }
 
-            _logger.LogInformation("═══════════════════════════════════════════════════════════");
-            _logger.LogInformation("");
+            LogInfoSeparator();
+            LogEmptyLine();
         }
         else
         {
             // Config exists - load and validate
-            _logger.LogInformation("Loading global config from: {Path}", configPath);
+            LogLoadingGlobalConfig(configPath);
             var json = await OptimizedFileIO.ReadAllTextAsync(configPath, null, cancellationToken);
             _globalConfig =
                 JsonSerializer.Deserialize<SemanticEmbeddingConfig>(json)
@@ -91,7 +91,7 @@ public class SemanticConfigManager
             ApplyEnvironmentOverrides(_globalConfig);
 
             // Validate configuration
-            _logger.LogInformation("Validating configuration...");
+            LogValidating();
             var validation = await _validator.ValidateGlobalConfigAsync(
                 _globalConfig,
                 cancellationToken
@@ -99,15 +99,13 @@ public class SemanticConfigManager
 
             if (!validation.IsValid || validation.HasWarnings)
             {
-                _logger.LogWarning("");
+                LogWarningEmptyLine();
                 _validator.PrintValidationResults(validation);
 
                 if (!validation.IsValid)
                 {
-                    _logger.LogError("Configuration is invalid and cannot be used!");
-                    _logger.LogError(
-                        "Please fix the issues above or run: .\\setup-semantic-embedding.ps1"
-                    );
+                    LogConfigInvalid();
+                    LogFixInstructions();
                     throw new InvalidOperationException(
                         "Invalid embedding configuration - see logs for details"
                     );
@@ -115,7 +113,7 @@ public class SemanticConfigManager
             }
             else
             {
-                _logger.LogInformation("✓ Configuration is valid");
+                LogConfigValid();
             }
         }
 
@@ -137,9 +135,7 @@ public class SemanticConfigManager
 
         if (!File.Exists(configPath) || forceAutoDetect)
         {
-            _logger.LogInformation(
-                "Project config not found or force auto-detect, analyzing codebase..."
-            );
+            LogAnalyzingCodebase();
             config = await CreateProjectConfigWithAutoDetectionAsync(solution);
 
             Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
@@ -147,7 +143,7 @@ public class SemanticConfigManager
         }
         else
         {
-            _logger.LogInformation("Loading project config from: {Path}", configPath);
+            LogLoadingProjectConfig(configPath);
             var json = await OptimizedFileIO.ReadAllTextAsync(configPath);
             config =
                 JsonSerializer.Deserialize<ProjectSemanticConfig>(json)
@@ -156,7 +152,7 @@ public class SemanticConfigManager
             // Auto-detect if config says "auto"
             if (config.Codebase.Size == "auto" || config.Codebase.Language == "auto")
             {
-                _logger.LogInformation("Config has 'auto' values, performing detection...");
+                LogAutoDetecting();
                 config = await CreateProjectConfigWithAutoDetectionAsync(solution);
                 await SaveProjectConfigAsync(config, configPath);
             }
@@ -198,17 +194,11 @@ public class SemanticConfigManager
                 NonEnglishPercentage = langStats.NonEnglishPercentage,
             };
 
-            _logger.LogInformation(
-                "Auto-detection complete: Size={Size}, Files={Files}, Language={Lang} ({NonEnglish:F1}% non-English)",
-                config.Codebase.Size,
-                sizeStats.TotalFiles,
-                config.Codebase.Language,
-                langStats.NonEnglishPercentage
-            );
+            LogAutoDetectionComplete(config.Codebase.Size, sizeStats.TotalFiles, config.Codebase.Language, langStats.NonEnglishPercentage);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Auto-detection failed, using defaults");
+            LogAutoDetectionFailed(ex);
         }
 
         return config;
@@ -221,7 +211,7 @@ public class SemanticConfigManager
         if (!string.IsNullOrEmpty(platform))
         {
             config.Embedding.Platform = platform;
-            _logger.LogInformation("ENV override: Platform = {Platform}", platform);
+            LogEnvPlatformOverride(platform);
         }
 
         // SEMANTIC_ARCHITECTURE override
@@ -229,7 +219,7 @@ public class SemanticConfigManager
         if (!string.IsNullOrEmpty(arch))
         {
             config.Embedding.Architecture = arch;
-            _logger.LogInformation("ENV override: Architecture = {Arch}", arch);
+            LogEnvArchOverride(arch);
         }
 
         // TEI_ENDPOINT override
@@ -237,7 +227,7 @@ public class SemanticConfigManager
         if (!string.IsNullOrEmpty(teiEndpoint))
         {
             config.Embedding.Tei.Endpoint = teiEndpoint;
-            _logger.LogInformation("ENV override: TEI Endpoint = {Endpoint}", teiEndpoint);
+            LogEnvTeiEndpointOverride(teiEndpoint);
         }
 
         // OLLAMA_ENDPOINT override
@@ -245,7 +235,7 @@ public class SemanticConfigManager
         if (!string.IsNullOrEmpty(ollamaEndpoint))
         {
             config.Embedding.Ollama.Endpoint = ollamaEndpoint;
-            _logger.LogInformation("ENV override: Ollama Endpoint = {Endpoint}", ollamaEndpoint);
+            LogEnvOllamaEndpointOverride(ollamaEndpoint);
         }
     }
 
@@ -256,7 +246,7 @@ public class SemanticConfigManager
             new JsonSerializerOptions { WriteIndented = true }
         );
         await OptimizedFileIO.WriteAllTextAsync(path, json);
-        _logger.LogInformation("Global config saved to: {Path}", path);
+        LogGlobalConfigSaved(path);
     }
 
     private async Task SaveProjectConfigAsync(ProjectSemanticConfig config, string path)
@@ -266,7 +256,7 @@ public class SemanticConfigManager
             new JsonSerializerOptions { WriteIndented = true }
         );
         await OptimizedFileIO.WriteAllTextAsync(path, json);
-        _logger.LogInformation("Project config saved to: {Path}", path);
+        LogProjectConfigSaved(path);
     }
 
     /// <summary>

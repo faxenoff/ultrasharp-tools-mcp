@@ -325,6 +325,6 @@ MIT License - see [LICENSE](https://github.com/faxenoff/ultrasharp-tools-mcp/blo
 
 ---
 
-**Версия:** 3.0.6
+**Версия:** 3.2.0
 **Последнее обновление:** 2025-11-18
 **Maintainers:** UltrasharpTools Team

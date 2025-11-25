@@ -10,7 +10,7 @@ namespace UltrasharpTools.Overlord.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/agent")]
-public class AgentController : ControllerBase
+public partial class AgentController : ControllerBase
 {
     private readonly ILogger<AgentController> _logger;
     private readonly IMultiProjectVectorStoreService _vectorStore;
@@ -41,13 +41,7 @@ public class AgentController : ControllerBase
     {
         try
         {
-            _logger.LogInformation(
-                "File changed: {Project}/{Branch}/{File} ({Action})",
-                evt.Project,
-                evt.Branch,
-                evt.File,
-                evt.Action
-            );
+            LogFileChanged(evt.Project, evt.Branch, evt.File, evt.Action);
 
             // Сохраняем векторы в multi-project хранилище
             if (evt.Vectors != null && evt.Action != "deleted")
@@ -102,7 +96,7 @@ public class AgentController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process file changed event");
+            LogFileChangedFailed(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -115,12 +109,7 @@ public class AgentController : ControllerBase
     {
         try
         {
-            _logger.LogInformation(
-                "Branch switched: {Project} {From} → {To}",
-                evt.Project,
-                evt.FromBranch,
-                evt.ToBranch
-            );
+            LogBranchSwitched(evt.Project, evt.FromBranch, evt.ToBranch);
 
             // TODO: Обновить контекст для этого Agent'а
             // Например, переключить активную branch для поиска
@@ -129,7 +118,7 @@ public class AgentController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process branch switch event");
+            LogBranchSwitchFailed(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -142,13 +131,7 @@ public class AgentController : ControllerBase
     {
         try
         {
-            _logger.LogInformation(
-                "Git commit: {Project}/{Branch} {Sha} ({Files} files)",
-                evt.Project,
-                evt.Branch,
-                evt.CommitSha,
-                evt.FilesChanged.Length
-            );
+            LogGitCommit(evt.Project, evt.Branch, evt.CommitSha, evt.FilesChanged.Length);
 
             // TODO: Обновить метаданные проекта
             // Можно сохранять историю коммитов для аналитики
@@ -157,7 +140,7 @@ public class AgentController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process git commit event");
+            LogGitCommitFailed(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -170,7 +153,7 @@ public class AgentController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("MCP proxy request: {Tool}", request.Tool);
+            LogMcpProxyRequest(request.Tool);
 
             var result = await _mcpProxy.ExecuteToolCallAsync(
                 request.Tool,
@@ -183,7 +166,7 @@ public class AgentController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to proxy MCP request");
+            LogMcpProxyFailed(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -201,7 +184,7 @@ public class AgentController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get MCP tools");
+            LogGetMcpToolsFailed(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -227,7 +210,7 @@ public class AgentController : ControllerBase
             {
                 status = "healthy",
                 timestamp = DateTime.UtcNow,
-                version = "3.0.6",
+                version = "3.2.0",
                 activeClients = _notificationService.GetActiveClientsCount(),
             }
         );
@@ -249,11 +232,7 @@ public class AgentController : ControllerBase
 
         var id = clientId ?? Guid.NewGuid().ToString();
 
-        _logger.LogInformation(
-            "SSE connection established: {ClientId}, project: {Project}",
-            id,
-            project ?? "all"
-        );
+        LogSseConnectionEstablished(id, project ?? "all");
 
         try
         {
@@ -270,11 +249,11 @@ public class AgentController : ControllerBase
         }
         catch (OperationCanceledException)
         {
-            _logger.LogDebug("SSE connection closed for client {ClientId}", id);
+            LogSseConnectionClosed(id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "SSE connection error for client {ClientId}", id);
+            LogSseConnectionError(ex, id);
         }
     }
 }

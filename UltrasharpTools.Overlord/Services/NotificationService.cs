@@ -8,7 +8,7 @@ namespace UltrasharpTools.Overlord.Services;
 /// <summary>
 /// Реализация сервиса уведомлений через Server-Sent Events (SSE)
 /// </summary>
-public sealed class NotificationService : INotificationService
+public sealed partial class NotificationService : INotificationService
 {
     private readonly ILogger<NotificationService> _logger;
     private readonly ConcurrentDictionary<string, ClientConnection> _clients = new();
@@ -34,11 +34,7 @@ public sealed class NotificationService : INotificationService
 
         if (_clients.TryAdd(clientId, connection))
         {
-            _logger.LogInformation(
-                "Client {ClientId} registered for project {Project}",
-                clientId,
-                project ?? "all"
-            );
+            LogClientRegistered(clientId, project ?? "all");
 
             try
             {
@@ -60,7 +56,7 @@ public sealed class NotificationService : INotificationService
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("Client {ClientId} connection cancelled", clientId);
+                LogClientConnectionCancelled(clientId);
             }
             finally
             {
@@ -69,7 +65,7 @@ public sealed class NotificationService : INotificationService
         }
         else
         {
-            _logger.LogWarning("Client {ClientId} already registered", clientId);
+            LogClientAlreadyRegistered(clientId);
         }
     }
 
@@ -77,7 +73,7 @@ public sealed class NotificationService : INotificationService
     {
         if (_clients.TryRemove(clientId, out var connection))
         {
-            _logger.LogInformation("Client {ClientId} unregistered", clientId);
+            LogClientUnregistered(clientId);
             connection.Dispose();
         }
     }
@@ -87,11 +83,7 @@ public sealed class NotificationService : INotificationService
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation(
-            "Broadcasting notification type {Type} to {Count} clients",
-            notification.Type,
-            _clients.Count
-        );
+        LogBroadcasting(notification.Type, _clients.Count);
 
         var tasks = _clients
             .Values.Select(client =>
@@ -108,11 +100,7 @@ public sealed class NotificationService : INotificationService
         CancellationToken cancellationToken = default
     )
     {
-        _logger.LogInformation(
-            "Sending notification type {Type} to project {Project}",
-            notification.Type,
-            project
-        );
+        LogSendingToProject(notification.Type, project);
 
         var tasks = _clients
             .Values.Where(c => c.Project == null || c.Project == project)
@@ -123,7 +111,7 @@ public sealed class NotificationService : INotificationService
 
         if (tasks.Count == 0)
         {
-            _logger.LogDebug("No clients found for project {Project}", project);
+            LogNoClientsForProject(project);
             return;
         }
 
@@ -144,11 +132,7 @@ public sealed class NotificationService : INotificationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Failed to send notification to client {ClientId}",
-                client.ClientId
-            );
+            LogSendNotificationFailed(ex, client.ClientId);
 
             // Отключаем проблемного клиента
             UnregisterClient(client.ClientId);

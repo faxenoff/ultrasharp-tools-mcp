@@ -6,8 +6,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// <summary>
 /// Реализация провайдера семантического режима с автоматическим определением доступности
 /// </summary>
-public sealed class SemanticModeProvider : ISemanticModeProvider
-{
+public sealed partial class SemanticModeProvider : ISemanticModeProvider {
     private readonly ILogger<SemanticModeProvider> _logger;
     private readonly IEmbeddingService? _localEmbedding;
     private readonly IServerBridgeService? _serverBridge;
@@ -23,16 +22,14 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
         IServerBridgeService? serverBridge = null,
         string? overlordUrl = null,
         SemanticModeConfig? config = null
-    )
-    {
+    ) {
         _logger = logger;
         _localEmbedding = localEmbedding;
         _serverBridge = serverBridge;
         _overlordUrl = overlordUrl;
         _config = config ?? SemanticModeConfig.CreateDefault();
 
-        _logger.LogDebug(
-            "SemanticModeProvider initialized: enabled={Enabled}, cacheValidity={CacheSeconds}s, localTimeout={LocalTimeout}s, overlordTimeout={OverlordTimeout}s",
+        LogProviderInitialized(
             _config.Enabled,
             _config.Availability.CacheValiditySeconds,
             _config.Availability.LocalCheckTimeoutSeconds,
@@ -43,14 +40,11 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
     /// <inheritdoc/>
     public async Task<SemanticModeAvailability> CheckAvailabilityAsync(
         CancellationToken ct = default
-    )
-    {
+    ) {
         // Проверяем, включён ли semantic mode
-        if (!_config.Enabled)
-        {
-            _logger.LogDebug("Semantic mode is DISABLED by configuration");
-            return new SemanticModeAvailability
-            {
+        if (!_config.Enabled) {
+            LogSemanticModeDisabled();
+            return new SemanticModeAvailability {
                 IsAvailable = false,
                 Source = SemanticModeSource.None,
                 ModelName = null,
@@ -62,44 +56,32 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
 
         // Проверяем кэш
         var cacheValidity = TimeSpan.FromSeconds(_config.Availability.CacheValiditySeconds);
-        if (_cachedAvailability != null && DateTime.UtcNow - _lastCheck < cacheValidity)
-        {
-            _logger.LogTrace(
-                "Returning cached semantic mode availability: {Source}",
-                _cachedAvailability.Source
-            );
+        if (_cachedAvailability != null && DateTime.UtcNow - _lastCheck < cacheValidity) {
+            LogCachedAvailability(_cachedAvailability.Source);
             return _cachedAvailability;
         }
 
-        _logger.LogDebug("Checking semantic mode availability...");
+        LogCheckingAvailability();
 
         var hasLocal = await CheckLocalAvailabilityAsync(ct);
         var hasOverlord = await CheckOverlordAvailabilityAsync(ct);
 
         SemanticModeSource source;
-        if (hasLocal && hasOverlord)
-        {
+        if (hasLocal && hasOverlord) {
             source = SemanticModeSource.Both;
-            _logger.LogInformation("Semantic mode available from BOTH sources (Local + Overlord)");
-        }
-        else if (hasLocal)
-        {
+            LogBothSourcesAvailable();
+        } else if (hasLocal) {
             source = SemanticModeSource.Local;
-            _logger.LogInformation("Semantic mode available from LOCAL embedding service");
-        }
-        else if (hasOverlord)
-        {
+            LogLocalSourceAvailable();
+        } else if (hasOverlord) {
             source = SemanticModeSource.Overlord;
-            _logger.LogInformation("Semantic mode available from OVERLORD");
-        }
-        else
-        {
+            LogOverlordSourceAvailable();
+        } else {
             source = SemanticModeSource.None;
-            _logger.LogWarning("Semantic mode is NOT available - no embedding services detected");
+            LogNoSourcesAvailable();
         }
 
-        _cachedAvailability = new SemanticModeAvailability
-        {
+        _cachedAvailability = new SemanticModeAvailability {
             IsAvailable = source != SemanticModeSource.None,
             Source = source,
             ModelName = await GetModelNameAsync(source, ct),
@@ -113,32 +95,26 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
     }
 
     /// <inheritdoc/>
-    public async Task<float[]?> GetEmbeddingAsync(string text, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            _logger.LogWarning("Cannot get embedding for empty text");
+    public async Task<float[]?> GetEmbeddingAsync(string text, CancellationToken ct = default) {
+        if (string.IsNullOrWhiteSpace(text)) {
+            LogEmptyTextEmbedding();
             return null;
         }
 
         var availability = await CheckAvailabilityAsync(ct);
-        if (!availability.IsAvailable)
-        {
-            _logger.LogWarning("Semantic mode not available - cannot generate embedding");
+        if (!availability.IsAvailable) {
+            LogEmbeddingNotAvailable();
             return null;
         }
 
-        try
-        {
+        try {
             // Prefer Local для меньшей latency
             if (
                 availability.Source == SemanticModeSource.Local
                 || availability.Source == SemanticModeSource.Both
-            )
-            {
-                if (_localEmbedding != null)
-                {
-                    _logger.LogTrace("Getting embedding from LOCAL service");
+            ) {
+                if (_localEmbedding != null) {
+                    LogGettingLocalEmbedding();
                     return await _localEmbedding.GetEmbeddingAsync(text, ct);
                 }
             }
@@ -147,11 +123,9 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
             if (
                 availability.Source == SemanticModeSource.Overlord
                 || availability.Source == SemanticModeSource.Both
-            )
-            {
-                if (_serverBridge != null)
-                {
-                    _logger.LogTrace("Getting embedding from OVERLORD");
+            ) {
+                if (_serverBridge != null) {
+                    LogGettingOverlordEmbedding();
                     // Вызываем MCP proxy tool на Overlord
                     var result = await _serverBridge.CallMcpProxyAsync(
                         "get_embedding",
@@ -160,27 +134,17 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
                         ct
                     );
 
-                    if (result is float[] vector)
-                    {
+                    if (result is float[] vector) {
                         return vector;
                     }
 
-                    _logger.LogWarning(
-                        "Unexpected result type from Overlord embedding: {Type}",
-                        result?.GetType()
-                    );
+                    LogUnexpectedEmbeddingType(result?.GetType()?.ToString());
                 }
             }
 
             return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed to get embedding for text (length: {Length})",
-                text.Length
-            );
+        } catch (Exception ex) {
+            LogEmbeddingFailed(ex, text.Length);
             return null;
         }
     }
@@ -191,40 +155,29 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
         int topK = 10,
         double threshold = 0.7,
         CancellationToken ct = default
-    )
-    {
-        if (queryVector == null || queryVector.Length == 0)
-        {
-            _logger.LogWarning("Cannot search with empty query vector");
+    ) {
+        if (queryVector == null || queryVector.Length == 0) {
+            LogEmptyQueryVector();
             return Array.Empty<SemanticMatch>();
         }
 
         var availability = await CheckAvailabilityAsync(ct);
-        if (!availability.IsAvailable)
-        {
-            _logger.LogWarning("Semantic mode not available - cannot perform search");
+        if (!availability.IsAvailable) {
+            LogSearchNotAvailable();
             return Array.Empty<SemanticMatch>();
         }
 
-        try
-        {
+        try {
             // Prefer Overlord для cross-project search
             if (
                 availability.Source == SemanticModeSource.Overlord
                 || availability.Source == SemanticModeSource.Both
-            )
-            {
-                if (_serverBridge != null)
-                {
-                    _logger.LogTrace(
-                        "Performing semantic search via OVERLORD (topK: {TopK}, threshold: {Threshold})",
-                        topK,
-                        threshold
-                    );
+            ) {
+                if (_serverBridge != null) {
+                    LogOverlordSearch(topK, threshold);
                     var result = await _serverBridge.CallMcpProxyAsync(
                         "semantic_search_by_vector",
-                        new Dictionary<string, object>
-                        {
+                        new Dictionary<string, object> {
                             ["queryVector"] = queryVector,
                             ["topK"] = topK,
                             ["threshold"] = threshold,
@@ -233,37 +186,23 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
                         ct
                     );
 
-                    if (result is IEnumerable<SemanticMatch> matches)
-                    {
+                    if (result is IEnumerable<SemanticMatch> matches) {
                         return matches;
                     }
 
-                    _logger.LogWarning(
-                        "Unexpected result type from Overlord search: {Type}",
-                        result?.GetType()
-                    );
+                    LogUnexpectedSearchType(result?.GetType()?.ToString());
                 }
             }
 
             // Fallback на Local (если доступен)
-            if (availability.Source == SemanticModeSource.Local)
-            {
-                _logger.LogDebug(
-                    "Local-only semantic search not implemented yet - returning empty results"
-                );
+            if (availability.Source == SemanticModeSource.Local) {
+                LogLocalSearchNotImplemented();
                 // TODO: Implement local vector store search
             }
 
             return Array.Empty<SemanticMatch>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Semantic search failed (vector dim: {Dim}, topK: {TopK})",
-                queryVector.Length,
-                topK
-            );
+        } catch (Exception ex) {
+            LogSearchFailed(ex, queryVector.Length, topK);
             return Array.Empty<SemanticMatch>();
         }
     }
@@ -274,24 +213,18 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
         int topK = 10,
         double threshold = 0.7,
         CancellationToken ct = default
-    )
-    {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            _logger.LogWarning("Cannot search with empty query text");
+    ) {
+        if (string.IsNullOrWhiteSpace(query)) {
+            LogEmptyQueryText();
             return Array.Empty<SemanticMatch>();
         }
 
-        _logger.LogDebug(
-            "Converting query to vector: {Query}",
-            query.Length > 50 ? query[..50] + "..." : query
-        );
+        LogConvertingQuery(query.Length > 50 ? query[..50] + "..." : query);
 
         // Получаем вектор для запроса
         var queryVector = await GetEmbeddingAsync(query, ct);
-        if (queryVector == null)
-        {
-            _logger.LogWarning("Failed to vectorize query - cannot perform search");
+        if (queryVector == null) {
+            LogVectorizeFailed();
             return Array.Empty<SemanticMatch>();
         }
 
@@ -301,11 +234,9 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
 
     // === Private Helper Methods ===
 
-    private async Task<bool> CheckLocalAvailabilityAsync(CancellationToken ct)
-    {
-        if (_localEmbedding == null)
-        {
-            _logger.LogTrace("Local embedding service not registered");
+    private async Task<bool> CheckLocalAvailabilityAsync(CancellationToken ct) {
+        if (_localEmbedding == null) {
+            LogLocalNotRegistered();
             return false;
         }
 
@@ -313,10 +244,8 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
         var maxRetries = 3;
         var baseDelay = TimeSpan.FromSeconds(1);
 
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
                 // Проверяем доступность через тестовый запрос с timeout из конфига
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(
@@ -326,67 +255,30 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
                 var testVector = await _localEmbedding.GetEmbeddingAsync("test", cts.Token);
                 var isAvailable = testVector != null && testVector.Length > 0;
 
-                if (isAvailable)
-                {
-                    _logger.LogTrace(
-                        "Local embedding available (attempt {Attempt}/{MaxRetries})",
-                        attempt,
-                        maxRetries
-                    );
+                if (isAvailable) {
+                    LogLocalAvailable(attempt, maxRetries);
                     return true;
                 }
 
                 // Not available but no exception - don't retry
-                _logger.LogTrace(
-                    "Local embedding not available (no exception, attempt {Attempt}/{MaxRetries})",
-                    attempt,
-                    maxRetries
-                );
+                LogLocalNotAvailableNoException(attempt, maxRetries);
                 return false;
-            }
-            catch (OperationCanceledException)
-            {
-                if (attempt < maxRetries)
-                {
+            } catch (OperationCanceledException) {
+                if (attempt < maxRetries) {
                     var delay = baseDelay * Math.Pow(2, attempt - 1);
-                    _logger.LogTrace(
-                        "Local embedding check timed out (attempt {Attempt}/{MaxRetries}), retrying in {Delay}s...",
-                        attempt,
-                        maxRetries,
-                        delay.TotalSeconds
-                    );
+                    LogLocalTimeout(attempt, maxRetries, delay.TotalSeconds);
                     await Task.Delay(delay, ct);
-                }
-                else
-                {
-                    _logger.LogTrace(
-                        "Local embedding service check timed out after {Attempts} attempts",
-                        maxRetries
-                    );
+                } else {
+                    LogLocalTimeoutFinal(maxRetries);
                     return false;
                 }
-            }
-            catch (Exception ex)
-            {
-                if (attempt < maxRetries)
-                {
+            } catch (Exception ex) {
+                if (attempt < maxRetries) {
                     var delay = baseDelay * Math.Pow(2, attempt - 1);
-                    _logger.LogTrace(
-                        ex,
-                        "Local embedding check failed (attempt {Attempt}/{MaxRetries}), retrying in {Delay}s...",
-                        attempt,
-                        maxRetries,
-                        delay.TotalSeconds
-                    );
+                    LogLocalCheckFailed(ex, attempt, maxRetries, delay.TotalSeconds);
                     await Task.Delay(delay, ct);
-                }
-                else
-                {
-                    _logger.LogTrace(
-                        ex,
-                        "Local embedding service check failed after {Attempts} attempts",
-                        maxRetries
-                    );
+                } else {
+                    LogLocalCheckFailedFinal(ex, maxRetries);
                     return false;
                 }
             }
@@ -395,11 +287,9 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
         return false;
     }
 
-    private async Task<bool> CheckOverlordAvailabilityAsync(CancellationToken ct)
-    {
-        if (_serverBridge == null || string.IsNullOrEmpty(_overlordUrl))
-        {
-            _logger.LogTrace("Overlord not configured");
+    private async Task<bool> CheckOverlordAvailabilityAsync(CancellationToken ct) {
+        if (_serverBridge == null || string.IsNullOrEmpty(_overlordUrl)) {
+            LogOverlordNotConfigured();
             return false;
         }
 
@@ -407,10 +297,8 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
         var maxRetries = 3;
         var baseDelay = TimeSpan.FromSeconds(1);
 
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
                 // Проверяем доступность с timeout из конфига
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(
@@ -419,67 +307,30 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
 
                 var isAvailable = await _serverBridge.IsServerAvailableAsync(cts.Token);
 
-                if (isAvailable)
-                {
-                    _logger.LogTrace(
-                        "Overlord available (attempt {Attempt}/{MaxRetries})",
-                        attempt,
-                        maxRetries
-                    );
+                if (isAvailable) {
+                    LogOverlordAvailable(attempt, maxRetries);
                     return true;
                 }
 
                 // Not available but no exception - don't retry
-                _logger.LogTrace(
-                    "Overlord not available (no exception, attempt {Attempt}/{MaxRetries})",
-                    attempt,
-                    maxRetries
-                );
+                LogOverlordNotAvailableNoException(attempt, maxRetries);
                 return false;
-            }
-            catch (OperationCanceledException)
-            {
-                if (attempt < maxRetries)
-                {
+            } catch (OperationCanceledException) {
+                if (attempt < maxRetries) {
                     var delay = baseDelay * Math.Pow(2, attempt - 1);
-                    _logger.LogTrace(
-                        "Overlord check timed out (attempt {Attempt}/{MaxRetries}), retrying in {Delay}s...",
-                        attempt,
-                        maxRetries,
-                        delay.TotalSeconds
-                    );
+                    LogOverlordTimeout(attempt, maxRetries, delay.TotalSeconds);
                     await Task.Delay(delay, ct);
-                }
-                else
-                {
-                    _logger.LogTrace(
-                        "Overlord availability check timed out after {Attempts} attempts",
-                        maxRetries
-                    );
+                } else {
+                    LogOverlordTimeoutFinal(maxRetries);
                     return false;
                 }
-            }
-            catch (Exception ex)
-            {
-                if (attempt < maxRetries)
-                {
+            } catch (Exception ex) {
+                if (attempt < maxRetries) {
                     var delay = baseDelay * Math.Pow(2, attempt - 1);
-                    _logger.LogTrace(
-                        ex,
-                        "Overlord check failed (attempt {Attempt}/{MaxRetries}), retrying in {Delay}s...",
-                        attempt,
-                        maxRetries,
-                        delay.TotalSeconds
-                    );
+                    LogOverlordCheckFailed(ex, attempt, maxRetries, delay.TotalSeconds);
                     await Task.Delay(delay, ct);
-                }
-                else
-                {
-                    _logger.LogTrace(
-                        ex,
-                        "Overlord availability check failed after {Attempts} attempts",
-                        maxRetries
-                    );
+                } else {
+                    LogOverlordCheckFailedFinal(ex, maxRetries);
                     return false;
                 }
             }
@@ -487,60 +338,67 @@ public sealed class SemanticModeProvider : ISemanticModeProvider
 
         return false;
     }
-
-    private async Task<string?> GetModelNameAsync(SemanticModeSource source, CancellationToken ct)
-    {
-        try
-        {
-            if (source == SemanticModeSource.Local || source == SemanticModeSource.Both)
-            {
-                // TODO: Get model name from local embedding service
-                return "nomic-embed-text"; // Default для Ollama/TEI
+    private async Task<string?> GetModelNameAsync(SemanticModeSource source, CancellationToken ct) {
+        try {
+            if (source == SemanticModeSource.Local || source == SemanticModeSource.Both) {
+                // Get model name from config
+                if (_config.Embedding != null) {
+                    if (_config.Embedding.Platform == "tei" && _config.Embedding.Tei != null) {
+                        return _config.Embedding.Tei.SelectedModel ?? "unknown-tei-model";
+                    }
+                    if (_config.Embedding.Platform == "ollama" && _config.Embedding.Ollama != null) {
+                        return _config.Embedding.Ollama.SelectedModel ?? "nomic-embed-text";
+                    }
+                }
+                return "nomic-embed-text"; // Default fallback
             }
 
-            if (source == SemanticModeSource.Overlord)
-            {
-                // TODO: Get model name from Overlord
+            if (source == SemanticModeSource.Overlord) {
                 return "nomic-embed-text";
             }
 
             return null;
-        }
-        catch
-        {
+        } catch {
             return null;
         }
     }
-
-    private async Task<int> GetVectorDimensionAsync(SemanticModeSource source, CancellationToken ct)
-    {
-        try
-        {
-            if (source == SemanticModeSource.Local || source == SemanticModeSource.Both)
-            {
+    private async Task<int> GetVectorDimensionAsync(SemanticModeSource source, CancellationToken ct) {
+        try {
+            if (source == SemanticModeSource.Local || source == SemanticModeSource.Both) {
                 // Test embedding для определения размерности
-                if (_localEmbedding != null)
-                {
+                if (_localEmbedding != null) {
                     var testVector = await _localEmbedding.GetEmbeddingAsync("test", ct);
-                    if (testVector != null)
-                    {
+                    if (testVector != null) {
                         return testVector.Length;
                     }
                 }
             }
 
-            // Default для nomic-embed-text
+            // Fallback: get from config
+            if (_config.Embedding != null) {
+                if (_config.Embedding.Platform == "tei" && _config.Embedding.Tei?.Models != null) {
+                    var selectedModel = _config.Embedding.Tei.SelectedModel;
+                    var modelInfo = _config.Embedding.Tei.Models.Find(m => m.Id == selectedModel);
+                    if (modelInfo != null && modelInfo.VectorSize > 0) {
+                        return modelInfo.VectorSize;
+                    }
+                }
+            }
+
+            return 768; // Default dimension
+        } catch {
             return 768;
         }
-        catch
-        {
-            return 768; // Default dimension
-        }
     }
-
-    private string? GetLocalEmbeddingUrl()
-    {
-        // TODO: Get from AgentConfig или configuration
+    private string? GetLocalEmbeddingUrl() {
+        if (_config.Embedding != null) {
+            if (_config.Embedding.Platform == "tei" && _config.Embedding.Tei != null) {
+                return _config.Embedding.Tei.Endpoint;
+            }
+            if (_config.Embedding.Platform == "ollama" && _config.Embedding.Ollama != null) {
+                return _config.Embedding.Ollama.Endpoint;
+            }
+        }
         return "http://localhost:11434"; // Default Ollama URL
     }
 }

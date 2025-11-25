@@ -17,8 +17,8 @@ public class SolutionReloadOptions
     public int DebounceDelayMs { get; set; } = 2000;
 
     /// <summary>
-    /// Files to watch for automatic reload (.csproj, .sln by default)
+    /// Files to watch for automatic reload (.csproj, .sln, .slnx by default)
     /// </summary>
     public string[] WatchedExtensions { get; set; } =
-        new[] { ".csproj", ".sln", ".props", ".targets" };
+        new[] { ".csproj", ".sln", ".slnx", ".props", ".targets" };
 }

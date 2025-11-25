@@ -8,7 +8,7 @@ namespace UltrasharpTools.Overlord.Services;
 /// Реализация Symbol Resolution для MCP proxy
 /// Использует существующие ISolutionManager и IFuzzyFqnLookupService
 /// </summary>
-public sealed class SymbolResolutionService : ISymbolResolutionService
+public sealed partial class SymbolResolutionService : ISymbolResolutionService
 {
     private readonly ILogger<SymbolResolutionService> _logger;
     private readonly ISolutionManager _solutionManager;
@@ -34,7 +34,7 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
     {
         if (!_solutionManager.IsSolutionLoaded)
         {
-            _logger.LogWarning("Cannot find symbol {Fqn}: no solution loaded", fullyQualifiedName);
+            LogNoSolutionLoaded(fullyQualifiedName);
             return null;
         }
 
@@ -48,15 +48,12 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
 
             if (symbol != null)
             {
-                _logger.LogDebug("Found symbol {Fqn} via SolutionManager", fullyQualifiedName);
+                LogFoundSymbol(fullyQualifiedName);
                 return symbol;
             }
 
             // Fallback: попытка через fuzzy lookup
-            _logger.LogDebug(
-                "Symbol {Fqn} not found via SolutionManager, trying fuzzy lookup",
-                fullyQualifiedName
-            );
+            LogTryingFuzzyLookup(fullyQualifiedName);
             var matches = await _fuzzyLookup.FindMatchesAsync(
                 fullyQualifiedName,
                 _solutionManager,
@@ -66,21 +63,16 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
 
             if (bestMatch != null)
             {
-                _logger.LogInformation(
-                    "Found symbol {Fqn} via fuzzy lookup (score: {Score}, reason: {Reason})",
-                    bestMatch.CanonicalFqn,
-                    bestMatch.Score,
-                    bestMatch.MatchReason
-                );
+                LogFoundViaFuzzy(bestMatch.CanonicalFqn, bestMatch.Score, bestMatch.MatchReason);
                 return bestMatch.Symbol;
             }
 
-            _logger.LogWarning("Symbol {Fqn} not found in solution", fullyQualifiedName);
+            LogSymbolNotFound(fullyQualifiedName);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error finding symbol {Fqn}", fullyQualifiedName);
+            LogFindSymbolError(ex, fullyQualifiedName);
             return null;
         }
     }
@@ -92,10 +84,7 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
     {
         if (!_solutionManager.IsSolutionLoaded)
         {
-            _logger.LogWarning(
-                "Cannot find type {Fqn}: no solution loaded",
-                fullyQualifiedTypeName
-            );
+            LogNoSolutionLoadedForType(fullyQualifiedTypeName);
             return null;
         }
 
@@ -109,15 +98,12 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
 
             if (symbol != null)
             {
-                _logger.LogDebug("Found named type symbol {Fqn}", fullyQualifiedTypeName);
+                LogFoundNamedType(fullyQualifiedTypeName);
                 return symbol;
             }
 
             // Fallback: попытка через fuzzy lookup
-            _logger.LogDebug(
-                "Type {Fqn} not found via SolutionManager, trying fuzzy lookup",
-                fullyQualifiedTypeName
-            );
+            LogTryingFuzzyLookupForType(fullyQualifiedTypeName);
             var matches = await _fuzzyLookup.FindMatchesAsync(
                 fullyQualifiedTypeName,
                 _solutionManager,
@@ -130,20 +116,16 @@ public sealed class SymbolResolutionService : ISymbolResolutionService
 
             if (bestMatch != null)
             {
-                _logger.LogInformation(
-                    "Found type {Fqn} via fuzzy lookup (score: {Score})",
-                    bestMatch.CanonicalFqn,
-                    bestMatch.Score
-                );
+                LogFoundTypeViaFuzzy(bestMatch.CanonicalFqn, bestMatch.Score);
                 return (INamedTypeSymbol)bestMatch.Symbol;
             }
 
-            _logger.LogWarning("Type {Fqn} not found in solution", fullyQualifiedTypeName);
+            LogTypeNotFound(fullyQualifiedTypeName);
             return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error finding type {Fqn}", fullyQualifiedTypeName);
+            LogFindTypeError(ex, fullyQualifiedTypeName);
             return null;
         }
     }

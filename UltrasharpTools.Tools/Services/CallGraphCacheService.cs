@@ -30,7 +30,7 @@ public sealed partial class CallGraphCacheService : ICallGraphCacheService, IDis
         var cacheDir = ProjectPathHelper.GetCallGraphCachePath();
 
         _cacheDbPath = Path.Combine(cacheDir, "callgraph.db");
-        _logger.LogInformation("CallGraphCache database path: {DbPath}", _cacheDbPath);
+        LogCacheDbPath(_cacheDbPath);
 
         InitializeDatabaseAsync().GetAwaiter().GetResult();
     }
@@ -72,7 +72,7 @@ Value TEXT NOT NULL
             // Set version
             await SetMetadataAsync("Version", "1");
 
-            _logger.LogInformation("CallGraphCache database initialized successfully");
+            LogCacheDbInitialized();
         }
         finally
         {
@@ -113,13 +113,13 @@ LIMIT 1
                 );
 
                 Interlocked.Increment(ref _hitCount);
-                _logger.LogDebug("Cache HIT for method: {Method}", methodFqn);
+                LogCacheHit(methodFqn);
 
                 return callers;
             }
 
             Interlocked.Increment(ref _missCount);
-            _logger.LogDebug("Cache MISS for method: {Method}", methodFqn);
+            LogCacheMiss(methodFqn);
 
             return null;
         }
@@ -162,11 +162,7 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
 
             await cmd.ExecuteNonQueryAsync(cancellationToken);
 
-            _logger.LogDebug(
-                "Cached callers for method: {Method}, count: {Count}",
-                methodFqn,
-                callerFqns.Count
-            );
+            LogCachedCallers(methodFqn, callerFqns.Count);
         }
         finally
         {
@@ -202,7 +198,7 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
             }
 
             var deleted = await cmd.ExecuteNonQueryAsync(cancellationToken);
-            _logger.LogInformation("Invalidated {Count} cache entries for modified files", deleted);
+            LogInvalidatedByFiles(deleted);
         }
         finally
         {
@@ -220,10 +216,7 @@ VALUES (@methodFqn, @solutionHash, @json, @timestamp, @filePath)
             cmd.CommandText = sql;
 
             var deleted = await cmd.ExecuteNonQueryAsync(cancellationToken);
-            _logger.LogInformation(
-                "Invalidated entire call graph cache ({Count} entries)",
-                deleted
-            );
+            LogInvalidatedAll(deleted);
 
             // Reset stats
             _hitCount = 0;
@@ -298,7 +291,7 @@ FROM CallGraph
             cmd.CommandText = sql;
             await cmd.ExecuteNonQueryAsync(cancellationToken);
 
-            _logger.LogInformation("Compacted call graph cache database");
+            LogCompacted();
         }
         finally
         {

@@ -7,7 +7,7 @@ namespace UltrasharpTools.Tools.Services;
 /// SemanticModel is expensive to compute (~50-200ms per file)
 /// Caching provides 10-50x speedup для repeated symbol lookups
 /// </summary>
-public sealed class SemanticModelCacheService
+public sealed partial class SemanticModelCacheService
 {
     private readonly ILogger<SemanticModelCacheService> _logger;
     private readonly LruCache<string, CachedSemanticModel> _cache;
@@ -28,11 +28,7 @@ public sealed class SemanticModelCacheService
         _cache = new LruCache<string, CachedSemanticModel>(capacity);
         _ttl = ttl ?? TimeSpan.FromMinutes(5);
 
-        _logger.LogInformation(
-            "SemanticModelCache initialized: capacity={Capacity}, TTL={TtlMinutes}m",
-            capacity,
-            _ttl.TotalMinutes
-        );
+        LogInitialized(capacity, _ttl.TotalMinutes);
     }
 
     /// <summary>
@@ -56,7 +52,7 @@ public sealed class SemanticModelCacheService
             if (DateTimeOffset.UtcNow - cached.CreatedAt < _ttl)
             {
                 Interlocked.Increment(ref _hitCount);
-                _logger.LogDebug("SemanticModel cache HIT: {FilePath}", filePath);
+                LogCacheHit(filePath);
                 return cached.SemanticModel;
             }
 
@@ -65,7 +61,7 @@ public sealed class SemanticModelCacheService
         }
 
         Interlocked.Increment(ref _missCount);
-        _logger.LogDebug("SemanticModel cache MISS: {FilePath}", filePath);
+        LogCacheMiss(filePath);
 
         // Compute SemanticModel
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -89,11 +85,7 @@ public sealed class SemanticModelCacheService
                 }
             );
 
-            _logger.LogDebug(
-                "SemanticModel computed and cached: {FilePath} ({ElapsedMs}ms)",
-                filePath,
-                sw.ElapsedMilliseconds
-            );
+            LogComputedAndCached(filePath, sw.ElapsedMilliseconds);
         }
 
         return semanticModel;
@@ -114,7 +106,7 @@ public sealed class SemanticModelCacheService
             _cache.Remove(key);
         }
 
-        _logger.LogDebug("Invalidated SemanticModel cache for file: {FilePath}", filePath);
+        LogInvalidatedFile(filePath);
     }
 
     /// <summary>
@@ -131,11 +123,7 @@ public sealed class SemanticModelCacheService
             _cache.Remove(key);
         }
 
-        _logger.LogInformation(
-            "Invalidated SemanticModel cache for project: {ProjectName} ({Count} entries)",
-            projectName,
-            keysToRemove.Count
-        );
+        LogInvalidatedProject(projectName, keysToRemove.Count);
     }
 
     /// <summary>
@@ -144,7 +132,7 @@ public sealed class SemanticModelCacheService
     public void InvalidateAll()
     {
         _cache.Clear();
-        _logger.LogInformation("Invalidated entire SemanticModel cache");
+        LogInvalidatedAll();
     }
 
     /// <summary>
@@ -175,15 +163,7 @@ public sealed class SemanticModelCacheService
     public void LogStats()
     {
         var stats = GetStats();
-        _logger.LogInformation(
-            "SemanticModelCache Stats: Hit={HitCount}, Miss={MissCount}, HitRate={HitRate:F1}%, Entries={CachedEntries}, ComputeTime={ComputeTimeMs}ms, AvgCompute={AvgComputeMs:F1}ms",
-            stats.HitCount,
-            stats.MissCount,
-            stats.HitRate,
-            stats.CachedEntries,
-            stats.TotalComputeTimeMs,
-            stats.AverageComputeTimeMs
-        );
+        LogStats(stats.HitCount, stats.MissCount, stats.HitRate, stats.CachedEntries, stats.TotalComputeTimeMs, stats.AverageComputeTimeMs);
     }
 }
 

@@ -7,7 +7,7 @@ namespace UltrasharpTools.Tools.Services;
 /// Git service implementation using direct git CLI calls instead of LibGit2Sharp.
 /// Saves ~3-4 MB by removing native dependencies and improves cross-platform compatibility.
 /// </summary>
-public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions = null)
+public partial class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions = null)
     : IGitService
 {
     private readonly ILogger<GitCliService> _logger =
@@ -39,7 +39,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogDebug("Error checking if path is a Git repository: {Error}", ex.Message);
+            LogRepositoryCheckError(ex.Message);
             return false;
         }
     }
@@ -74,17 +74,13 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 StringComparison.OrdinalIgnoreCase
             );
 
-            _logger.LogDebug(
-                "Current branch: {BranchName}, IsSharpToolsBranch: {IsSharpToolsBranch}",
-                currentBranch,
-                isOnSharpToolsBranch
-            );
+            LogCurrentBranchCheck(currentBranch, isOnSharpToolsBranch);
 
             return isOnSharpToolsBranch;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Error checking current branch: {Error}", ex.Message);
+            LogBranchCheckError(ex.Message);
             return false;
         }
     }
@@ -99,10 +95,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning(
-                    "No Git repository found for solution at {SolutionPath}",
-                    solutionPath
-                );
+                LogNoRepository(solutionPath);
                 return;
             }
 
@@ -126,7 +119,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                     )
                 )
                 {
-                    _logger.LogDebug("Already on SharpTools branch: {BranchName}", currentBranch);
+                    LogAlreadyOnSharpToolsBranch(currentBranch);
                     return;
                 }
             }
@@ -141,28 +134,17 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             );
             if (!createResult.Success)
             {
-                _logger.LogError(
-                    "Failed to create and checkout branch {BranchName}: {Error}",
-                    branchName,
-                    createResult.Error
-                );
+                LogBranchCreateFailed(branchName, createResult.Error);
                 throw new InvalidOperationException(
                     $"Failed to create git branch: {createResult.Error}"
                 );
             }
 
-            _logger.LogInformation(
-                "Created and switched to SharpTools branch: {BranchName}",
-                branchName
-            );
+            LogBranchCreated(branchName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error ensuring SharpTools branch for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogEnsureBranchError(ex, solutionPath);
             throw;
         }
 
@@ -180,7 +162,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Auto cleanup of old branches failed, but continuing");
+                LogAutoCleanupFailed(ex);
             }
         }
     }
@@ -197,10 +179,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning(
-                    "No Git repository found for solution at {SolutionPath}",
-                    solutionPath
-                );
+                LogNoRepository(solutionPath);
                 return;
             }
 
@@ -223,30 +202,22 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                     if (stageResult.Success)
                     {
                         stagedFiles.Add(relativePath);
-                        _logger.LogDebug("Staged file: {FilePath}", relativePath);
+                        LogStagedFile(relativePath);
                     }
                     else
                     {
-                        _logger.LogWarning(
-                            "Failed to stage file {FilePath}: {Error}",
-                            filePath,
-                            stageResult.Error
-                        );
+                        LogStageFileFailed(filePath, stageResult.Error);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(
-                        "Failed to stage file {FilePath}: {Error}",
-                        filePath,
-                        ex.Message
-                    );
+                    LogStageFileFailed(filePath, ex.Message);
                 }
             }
 
             if (stagedFiles.Count == 0)
             {
-                _logger.LogWarning("No files were staged for commit");
+                LogNoFilesStaged();
                 return;
             }
 
@@ -260,7 +231,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             );
             if (!commitResult.Success)
             {
-                _logger.LogError("Failed to create commit: {Error}", commitResult.Error);
+                LogCommitFailed(commitResult.Error);
                 throw new InvalidOperationException(
                     $"Failed to create git commit: {commitResult.Error}"
                 );
@@ -275,20 +246,11 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             );
             var commitSha = shaResult.Success ? shaResult.Output.Trim()[..8] : "unknown";
 
-            _logger.LogInformation(
-                "Created commit {CommitSha} with {FileCount} files: {CommitMessage}",
-                commitSha,
-                stagedFiles.Count,
-                commitMessage
-            );
+            LogCommitCreated(commitSha, stagedFiles.Count, commitMessage);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error committing changes for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogCommitError(ex, solutionPath);
             throw;
         }
     }
@@ -329,10 +291,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning(
-                    "No Git repository found for solution at {SolutionPath}",
-                    solutionPath
-                );
+                LogNoRepository(solutionPath);
                 return string.Empty;
             }
 
@@ -348,11 +307,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             );
             if (!createResult.Success)
             {
-                _logger.LogError(
-                    "Failed to create undo branch {BranchName}: {Error}",
-                    branchName,
-                    createResult.Error
-                );
+                LogUndoBranchFailed(branchName, createResult.Error);
                 return string.Empty;
             }
 
@@ -365,21 +320,13 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             );
             var commitSha = shaResult.Success ? shaResult.Output.Trim()[..8] : "unknown";
 
-            _logger.LogInformation(
-                "Created undo branch: {BranchName} at commit {CommitSha}",
-                branchName,
-                commitSha
-            );
+            LogUndoBranchCreated(branchName, commitSha);
 
             return branchName;
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error creating undo branch for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogUndoBranchError(ex, solutionPath);
             return string.Empty;
         }
     }
@@ -396,10 +343,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning(
-                    "No Git repository found for solution at {SolutionPath}",
-                    solutionPath
-                );
+                LogNoRepository(solutionPath);
                 return string.Empty;
             }
 
@@ -412,12 +356,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             );
             if (!diffResult.Success)
             {
-                _logger.LogWarning(
-                    "Could not get diff between {OldSha} and {NewSha}: {Error}",
-                    oldCommitSha?[..8] ?? "null",
-                    newCommitSha?[..8] ?? "null",
-                    diffResult.Error
-                );
+                LogDiffFailed(oldCommitSha?[..8] ?? "null", newCommitSha?[..8] ?? "null", diffResult.Error);
                 return string.Empty;
             }
 
@@ -425,7 +364,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting diff for solution at {SolutionPath}", solutionPath);
+            LogGetDiffError(ex, solutionPath);
             return $"Error generating diff: {ex.Message}";
         }
     }
@@ -440,10 +379,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning(
-                    "No Git repository found for solution at {SolutionPath}",
-                    solutionPath
-                );
+                LogNoRepository(solutionPath);
                 return (false, string.Empty);
             }
 
@@ -469,10 +405,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 )
             )
             {
-                _logger.LogWarning(
-                    "Not on a SharpTools branch, cannot revert. Current branch: {BranchName}",
-                    currentBranch
-                );
+                LogNotOnSharpToolsBranch(currentBranch);
                 return (false, string.Empty);
             }
 
@@ -492,24 +425,20 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
 
             if (!currentShaResult.Success || !parentShaResult.Success)
             {
-                _logger.LogWarning("Could not get commit SHAs for revert");
+                LogRevertShasFailed();
                 return (false, string.Empty);
             }
 
             var currentCommitSha = currentShaResult.Output.Trim();
             var parentCommitSha = parentShaResult.Output.Trim();
 
-            _logger.LogInformation(
-                "Reverting from commit {CurrentSha} to parent {ParentSha}",
-                currentCommitSha[..8],
-                parentCommitSha[..8]
-            );
+            LogReverting(currentCommitSha[..8], parentCommitSha[..8]);
 
             // First, create an undo branch at the current commit
             var undoBranchName = await CreateUndoBranchAsync(solutionPath, cancellationToken);
             if (string.IsNullOrEmpty(undoBranchName))
             {
-                _logger.LogWarning("Failed to create undo branch");
+                LogUndoBranchCreateFailed();
             }
 
             // Get the diff before we reset
@@ -530,14 +459,11 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             );
             if (!resetResult.Success)
             {
-                _logger.LogError("Failed to reset to parent commit: {Error}", resetResult.Error);
+                LogResetFailed(resetResult.Error);
                 return (false, $"Error: {resetResult.Error}");
             }
 
-            _logger.LogInformation(
-                "Successfully reverted to commit {CommitSha}",
-                parentCommitSha[..8]
-            );
+            LogRevertSuccess(parentCommitSha[..8]);
 
             var resultMessage = !string.IsNullOrEmpty(undoBranchName)
                 ? $"The changes have been preserved in branch '{undoBranchName}' for future reference."
@@ -547,11 +473,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error reverting last commit for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogRevertError(ex, solutionPath);
             return (false, $"Error: {ex.Message}");
         }
     }
@@ -566,10 +488,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogWarning(
-                    "No Git repository found for solution at {SolutionPath}",
-                    solutionPath
-                );
+                LogNoRepository(solutionPath);
                 return string.Empty;
             }
 
@@ -595,7 +514,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 )
             )
             {
-                _logger.LogDebug("Not on a SharpTools branch: {BranchName}", currentBranch);
+                LogNotOnSharpToolsBranchDebug(currentBranch);
                 return string.Empty;
             }
 
@@ -619,21 +538,13 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var lines = reflogResult.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var originCommitSha = lines[^1].Trim();
 
-            _logger.LogDebug(
-                "Origin commit for branch {BranchName}: {CommitSha}",
-                currentBranch,
-                originCommitSha[..8]
-            );
+            LogBranchOriginCommit(currentBranch, originCommitSha[..8]);
 
             return originCommitSha;
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error getting branch origin commit for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogBranchOriginError(ex, solutionPath);
             return string.Empty;
         }
     }
@@ -661,11 +572,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error getting current branch for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogGetCurrentBranchError(ex, solutionPath);
             return string.Empty;
         }
     }
@@ -693,11 +600,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error getting current commit SHA for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogGetCommitShaError(ex, solutionPath);
             return string.Empty;
         }
     }
@@ -728,12 +631,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error getting merge base for branches {Branch1} and {Branch2}",
-                branch1,
-                branch2
-            );
+            LogMergeBaseError(ex, branch1, branch2);
             return null;
         }
     }
@@ -794,12 +692,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error getting changed files between {From} and {To}",
-                fromCommitSha,
-                toCommitSha
-            );
+            LogGetChangedFilesError(ex, fromCommitSha, toCommitSha);
         }
 
         return changedFiles;
@@ -841,11 +734,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error getting all branches for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogGetBranchesError(ex, solutionPath);
         }
 
         return branches;
@@ -865,10 +754,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             var repositoryPath = await GetRepositoryPathAsync(solutionPath, cancellationToken);
             if (repositoryPath == null)
             {
-                _logger.LogDebug(
-                    "No Git repository found for solution at {SolutionPath}, skipping cleanup",
-                    solutionPath
-                );
+                LogNoRepositoryForCleanup(solutionPath);
                 return deletedBranches;
             }
 
@@ -910,7 +796,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                 .OrderByDescending(b => b.Date)
                 .ToList();
 
-            _logger.LogDebug("Found {Count} SharpTools branches", branches.Count);
+            LogFoundBranches(branches.Count);
 
             var effectiveRetentionCount = retentionCount ?? _gitOptions.RetentionCount;
             var effectiveRetentionDays = retentionDays ?? _gitOptions.RetentionDays;
@@ -947,38 +833,23 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
                     if (deleteResult.Success)
                     {
                         deletedBranches.Add(branchName);
-                        _logger.LogInformation(
-                            "Deleted old SharpTools branch: {BranchName} (age: {AgeDays:F1} days)",
-                            branchName,
-                            age.TotalDays
-                        );
+                        LogBranchDeleted(branchName, age.TotalDays);
                     }
                     else
                     {
-                        _logger.LogWarning(
-                            "Failed to delete branch {BranchName}: {Error}",
-                            branchName,
-                            deleteResult.Error
-                        );
+                        LogBranchDeleteFailed(branchName, deleteResult.Error);
                     }
                 }
             }
 
             if (deletedBranches.Count > 0)
             {
-                _logger.LogInformation(
-                    "Cleanup complete: deleted {Count} old branches",
-                    deletedBranches.Count
-                );
+                LogCleanupComplete(deletedBranches.Count);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error cleaning up old branches for solution at {SolutionPath}",
-                solutionPath
-            );
+            LogCleanupError(ex, solutionPath);
         }
 
         return deletedBranches;
@@ -1049,10 +920,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
             {
                 // Timeout - убиваем процесс
-                _logger.LogWarning(
-                    "Git command timed out after 10 seconds: {Arguments}",
-                    string.Join(" ", arguments)
-                );
+                LogGitTimeout(string.Join(" ", arguments));
                 try
                 {
                     process.Kill(entireProcessTree: true);
@@ -1072,11 +940,7 @@ public class GitCliService(ILogger<GitCliService> logger, GitOptions? gitOptions
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Error running git command: {Arguments}",
-                string.Join(" ", arguments)
-            );
+            LogGitCommandError(ex, string.Join(" ", arguments));
             return (false, string.Empty, ex.Message);
         }
     }

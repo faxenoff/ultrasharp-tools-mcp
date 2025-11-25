@@ -1,21 +1,19 @@
+using System.Text.RegularExpressions;
+
 namespace UltrasharpTools.Tools.Services;
 
 /// <summary>
 /// Detects the primary language used in codebase comments/strings
 /// </summary>
-public class CodebaseLanguageDetector
+public partial class CodebaseLanguageDetector
 {
     // ASCII printable range (English and basic symbols)
-    private static readonly Regex EnglishWordPattern = new(
-        @"\b[a-zA-Z]{2,}\b",
-        RegexOptions.Compiled
-    );
+    [GeneratedRegex(@"\b[a-zA-Z]{2,}\b")]
+    private static partial Regex EnglishWordPattern();
 
     // Non-ASCII letters (Cyrillic, Chinese, Japanese, etc.)
-    private static readonly Regex NonAsciiPattern = new(
-        @"[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF]+",
-        RegexOptions.Compiled
-    );
+    [GeneratedRegex(@"[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF]+")]
+    private static partial Regex NonAsciiPattern();
     private static readonly char[] separator = new[] { ' ', '\t', '\n', '\r' };
 
     public class LanguageStats
@@ -113,7 +111,7 @@ public class CodebaseLanguageDetector
             return;
 
         // Count English words (ASCII letters only)
-        var englishMatches = EnglishWordPattern.Matches(text);
+        var englishMatches = EnglishWordPattern().Matches(text);
         foreach (Match match in englishMatches)
         {
             // Filter out very common code keywords
@@ -125,7 +123,7 @@ public class CodebaseLanguageDetector
         }
 
         // Count non-ASCII words (Cyrillic, CJK, etc.)
-        var nonAsciiMatches = NonAsciiPattern.Matches(text);
+        var nonAsciiMatches = NonAsciiPattern().Matches(text);
         foreach (Match match in nonAsciiMatches)
         {
             var nonAsciiText = match.Value;

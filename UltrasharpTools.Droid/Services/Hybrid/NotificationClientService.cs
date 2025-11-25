@@ -7,7 +7,7 @@ namespace UltrasharpTools.Droid.Services.Hybrid;
 /// <summary>
 /// Клиент для получения real-time уведомлений от Overlord через SSE
 /// </summary>
-public sealed class NotificationClientService : INotificationClientService, IDisposable
+public sealed partial class NotificationClientService : INotificationClientService, IDisposable
 {
     private readonly ILogger<NotificationClientService> _logger;
     private readonly HttpClient _httpClient;
@@ -44,7 +44,7 @@ public sealed class NotificationClientService : INotificationClientService, IDis
         var url =
             $"{_config.ServerUrl}/api/agent/notifications?project={Uri.EscapeDataString(_config.ProjectName)}";
 
-        _logger.LogInformation("Connecting to SSE: {Url}", url);
+        LogConnecting(url);
 
         _ = Task.Run(
             async () =>
@@ -70,11 +70,11 @@ public sealed class NotificationClientService : INotificationClientService, IDis
                 }
                 catch (OperationCanceledException)
                 {
-                    _logger.LogDebug("SSE connection cancelled");
+                    LogConnectionCancelled();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "SSE connection error");
+                    LogConnectionError(ex);
                 }
                 finally
                 {
@@ -126,7 +126,7 @@ public sealed class NotificationClientService : INotificationClientService, IDis
     {
         try
         {
-            _logger.LogDebug("Received SSE event: {Type}", eventType);
+            LogReceivedEvent(eventType);
 
             switch (eventType)
             {
@@ -204,7 +204,7 @@ public sealed class NotificationClientService : INotificationClientService, IDis
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process SSE event");
+            LogProcessEventFailed(ex);
         }
     }
 

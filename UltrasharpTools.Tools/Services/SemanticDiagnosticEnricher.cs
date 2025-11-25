@@ -10,7 +10,7 @@ namespace UltrasharpTools.Tools.Services;
 /// - LEVEL 1: Statistical Analysis + Heuristic Rules
 /// - LEVEL 2: Semantic Clustering + Pattern Detection + Relevance Scoring
 /// </summary>
-public class SemanticDiagnosticEnricher(
+public partial class SemanticDiagnosticEnricher(
     ISemanticModeProvider? semanticModeProvider,
     ILogger<SemanticDiagnosticEnricher> logger
 ) : ISemanticDiagnosticEnricher
@@ -70,11 +70,7 @@ public class SemanticDiagnosticEnricher(
         }
 
         sw.Stop();
-        _logger.LogInformation(
-            "Analyzed statistics for {Count} diagnostics in {ElapsedMs}ms",
-            diagnostics.Count,
-            sw.ElapsedMilliseconds
-        );
+        LogStatisticsAnalyzed(diagnostics.Count, sw.ElapsedMilliseconds);
 
         return statistics;
     }
@@ -197,7 +193,7 @@ public class SemanticDiagnosticEnricher(
             clusters.Add(cluster);
         }
 
-        _logger.LogInformation("Applied heuristic rules to {Count} clusters", clusters.Count);
+        LogHeuristicRulesApplied(clusters.Count);
         return clusters;
     }
 
@@ -333,7 +329,7 @@ public class SemanticDiagnosticEnricher(
     {
         if (_semanticModeProvider == null)
         {
-            _logger.LogWarning("Semantic mode provider not available, skipping clustering");
+            LogSemanticProviderNotAvailable();
             return;
         }
 
@@ -345,19 +341,11 @@ public class SemanticDiagnosticEnricher(
             );
             if (!availability.IsAvailable)
             {
-                _logger.LogWarning(
-                    "Semantic mode not available, skipping clustering. Source: {Source}",
-                    availability.Source
-                );
+                LogSemanticModeNotAvailable(availability.Source.ToString());
                 return;
             }
 
-            _logger.LogInformation(
-                "Semantic mode available: {Source}, Model: {Model}, Dimension: {Dimension}",
-                availability.Source,
-                availability.ModelName,
-                availability.VectorDimension
-            );
+            LogSemanticModeAvailable(availability.Source.ToString(), availability.ModelName, availability.VectorDimension);
 
             // Шаг 1: Собираем все уникальные сообщения диагностик
             var messagesToEmbed = new Dictionary<string, List<string>>(); // DiagnosticId -> List<Message>
@@ -377,15 +365,11 @@ public class SemanticDiagnosticEnricher(
 
             if (messagesToEmbed.Count == 0)
             {
-                _logger.LogWarning("No messages to embed for clustering");
+                LogNoMessagesToEmbed();
                 return;
             }
 
-            _logger.LogInformation(
-                "Generating embeddings for {ClusterCount} diagnostic types with {MessageCount} unique messages",
-                messagesToEmbed.Count,
-                messagesToEmbed.Values.Sum(m => m.Count)
-            );
+            LogGeneratingEmbeddings(messagesToEmbed.Count, messagesToEmbed.Values.Sum(m => m.Count));
 
             // Шаг 2: Генерируем embeddings для всех сообщений
             var embeddingCache = new Dictionary<string, float[]>(); // Message -> Embedding
@@ -412,23 +396,16 @@ public class SemanticDiagnosticEnricher(
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(
-                            ex,
-                            "Failed to generate embedding for message: {Message}",
-                            message.Length > 50 ? string.Concat(message.AsSpan(0, 50), "...") : message
-                        );
+                        LogEmbeddingGenerationFailed(ex, message.Length > 50 ? string.Concat(message.AsSpan(0, 50), "...") : message);
                     }
                 }
             }
 
-            _logger.LogInformation(
-                "Generated {EmbeddingCount} embeddings successfully",
-                embeddingCache.Count
-            );
+            LogEmbeddingsGenerated(embeddingCache.Count);
 
             if (embeddingCache.Count == 0)
             {
-                _logger.LogWarning("No embeddings generated, skipping clustering");
+                LogNoEmbeddingsGenerated();
                 return;
             }
 
@@ -452,10 +429,7 @@ public class SemanticDiagnosticEnricher(
                 }
             }
 
-            _logger.LogInformation(
-                "Computed {CentroidCount} cluster centroids",
-                clusterCentroids.Count
-            );
+            LogCentroidsComputed(clusterCentroids.Count);
 
             // Шаг 4: Находим семантически похожие кластеры
             var similarClusters = FindSimilarClusters(
@@ -465,11 +439,7 @@ public class SemanticDiagnosticEnricher(
 
             if (similarClusters.Count > 0)
             {
-                _logger.LogInformation(
-                    "Found {PairCount} pairs of similar clusters (threshold: {Threshold:F2})",
-                    similarClusters.Count,
-                    similarityThreshold
-                );
+                LogSimilarClustersFound(similarClusters.Count, similarityThreshold);
 
                 // Обновляем confidence и pattern для похожих кластеров
                 foreach (var (id1, id2, similarity) in similarClusters)
@@ -491,12 +461,7 @@ public class SemanticDiagnosticEnricher(
                                 cluster2.ConfidenceScore + 0.05
                             );
 
-                            _logger.LogDebug(
-                                "Increased confidence for similar clusters: {Id1} <-> {Id2} (similarity: {Similarity:F2})",
-                                id1,
-                                id2,
-                                similarity
-                            );
+                            LogConfidenceIncreased(id1, id2, similarity);
                         }
                     }
                 }
@@ -548,11 +513,11 @@ public class SemanticDiagnosticEnricher(
                 }
             }
 
-            _logger.LogInformation("Semantic clustering complete");
+            LogSemanticClusteringComplete();
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to enrich with semantic clustering");
+            LogSemanticEnrichmentFailed(ex);
         }
     }
 

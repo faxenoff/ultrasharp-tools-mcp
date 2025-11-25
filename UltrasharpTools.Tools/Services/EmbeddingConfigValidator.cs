@@ -5,7 +5,7 @@ namespace UltrasharpTools.Tools.Services;
 /// <summary>
 /// Validates embedding configuration and provides detailed error messages
 /// </summary>
-public class EmbeddingConfigValidator
+public partial class EmbeddingConfigValidator
 {
     private readonly ILogger<EmbeddingConfigValidator> _logger;
     private readonly EmbeddingServiceHealthChecker _healthChecker;
@@ -57,7 +57,7 @@ public class EmbeddingConfigValidator
     {
         var result = new ValidationResult { IsValid = true };
 
-        _logger.LogInformation("Validating global embedding configuration...");
+        LogValidatingConfig();
 
         // Validate platform
         ValidatePlatform(config, result);
@@ -100,21 +100,15 @@ public class EmbeddingConfigValidator
         if (result.HasCriticalIssues)
         {
             result.IsValid = false;
-            _logger.LogError(
-                "✗ Configuration validation FAILED with {Count} critical issue(s)",
-                result.Issues.Count(i => i.Severity == IssueSeverity.Critical)
-            );
+            LogValidationFailed(result.Issues.Count(i => i.Severity == IssueSeverity.Critical));
         }
         else if (result.HasWarnings)
         {
-            _logger.LogWarning(
-                "⚠ Configuration is valid but has {Count} warning(s)",
-                result.Issues.Count(i => i.Severity == IssueSeverity.Warning)
-            );
+            LogValidationWarnings(result.Issues.Count(i => i.Severity == IssueSeverity.Warning));
         }
         else
         {
-            _logger.LogInformation("✓ Configuration is valid");
+            LogValidationPassed();
         }
 
         return result;
@@ -225,7 +219,7 @@ public class EmbeddingConfigValidator
         }
         else
         {
-            _logger.LogInformation("✓ {Details}", health.Details);
+            LogHealthDetails(health.Details);
         }
 
         // Check models
@@ -304,7 +298,7 @@ public class EmbeddingConfigValidator
         }
         else
         {
-            _logger.LogInformation("✓ {Details}", health.Details);
+            LogHealthDetails(health.Details);
 
             // Check if selected model exists
             if (!string.IsNullOrWhiteSpace(ollamaConfig.SelectedModel))
