@@ -101,6 +101,31 @@ public static class ProjectPathHelper
     }
 
     /// <summary>
+    /// Gets path for branch cache (semantic merge) within .ultrasharp directory.
+    /// Each solution gets its own subdirectory based on a hash of the solution path.
+    /// </summary>
+    public static string GetBranchCachePath(string solutionPath)
+    {
+        var ultrasharpDir = GetProjectUltrasharpDir(solutionPath);
+        var solutionHash = ComputeSolutionHash(solutionPath);
+        var solutionName = Path.GetFileNameWithoutExtension(solutionPath);
+        var cachePath = Path.Combine(ultrasharpDir, "cache", "branches", $"{solutionName}_{solutionHash}");
+        Directory.CreateDirectory(cachePath);
+        return cachePath;
+    }
+
+    /// <summary>
+    /// Computes a short hash of the solution path for unique identification.
+    /// </summary>
+    private static string ComputeSolutionHash(string solutionPath)
+    {
+        var normalizedPath = Path.GetFullPath(solutionPath).ToUpperInvariant();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(normalizedPath);
+        var hash = System.Security.Cryptography.SHA256.HashData(bytes);
+        return Convert.ToHexString(hash)[..16]; // Первые 16 символов хэша
+    }
+
+    /// <summary>
     /// Gets path for configuration files within .ultrasharp directory.
     /// </summary>
     public static string GetConfigPath(string? solutionPath = null)

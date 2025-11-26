@@ -8,8 +8,7 @@ namespace UltrasharpTools.Tools.Merge.Matching;
 /// Slow Path: Semantic matching через embeddings.
 /// Используется когда Fast Path не смог найти match.
 /// </summary>
-public sealed class SemanticMatcher
-{
+public sealed class SemanticMatcher {
     private readonly ILogger<SemanticMatcher> _logger;
 
     // Пороги similarity для разных типов matches
@@ -17,8 +16,7 @@ public sealed class SemanticMatcher
     private const float MediumSimilarityThreshold = 0.75f; // Возможно тот же код
     private const float LowSimilarityThreshold = 0.60f; // Сомнительное совпадение
 
-    public SemanticMatcher(ILogger<SemanticMatcher>? logger = null)
-    {
+    public SemanticMatcher(ILogger<SemanticMatcher>? logger = null) {
         _logger = logger ?? NullLogger<SemanticMatcher>.Instance;
     }
 
@@ -29,10 +27,8 @@ public sealed class SemanticMatcher
         CodeUnit sourceUnit,
         VersionedIndex targetVersion,
         CancellationToken ct = default
-    )
-    {
-        if (sourceUnit.Embedding == null)
-        {
+    ) {
+        if (sourceUnit.Embedding == null) {
             _logger.LogWarning(
                 "Source unit {Id} has no embedding, cannot perform semantic matching",
                 sourceUnit.Id
@@ -48,8 +44,7 @@ public sealed class SemanticMatcher
             cancellationToken: ct
         );
 
-        if (similarUnits.Count == 0)
-        {
+        if (similarUnits.Count == 0) {
             _logger.LogDebug("No semantic matches found for {Id}", sourceUnit.Id);
             return null;
         }
@@ -60,7 +55,7 @@ public sealed class SemanticMatcher
         if (bestMatch == null)
             return null;
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "Semantic match found: {SourceId} -> {TargetId} (similarity: {Similarity:F3})",
             sourceUnit.Id,
             bestMatch.TargetUnit.Id,
@@ -77,26 +72,23 @@ public sealed class SemanticMatcher
         List<CodeUnit> sourceUnits,
         VersionedIndex targetVersion,
         CancellationToken ct = default
-    )
-    {
-        _logger.LogInformation(
+    ) {
+        _logger.LogDebug(
             "Performing batch semantic matching for {Count} units",
             sourceUnits.Count
         );
 
         var matches = new Dictionary<string, SemanticMatchResult>();
 
-        foreach (var sourceUnit in sourceUnits)
-        {
+        foreach (var sourceUnit in sourceUnits) {
             var match = await FindSemanticMatchAsync(sourceUnit, targetVersion, ct);
 
-            if (match != null)
-            {
+            if (match != null) {
                 matches[sourceUnit.Id] = match;
             }
         }
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "Semantic matching: {Matched}/{Total} units matched",
             matches.Count,
             sourceUnits.Count
@@ -112,13 +104,11 @@ public sealed class SemanticMatcher
         CodeUnit sourceUnit,
         List<SimilarityResult> candidates,
         VersionedIndex targetVersion
-    )
-    {
+    ) {
         SemanticMatchResult? bestMatch = null;
         float bestScore = 0f;
 
-        foreach (var candidate in candidates)
-        {
+        foreach (var candidate in candidates) {
             if (!targetVersion.Units.TryGetValue(candidate.Id, out var candidateUnit))
                 continue;
 
@@ -127,14 +117,12 @@ public sealed class SemanticMatcher
             // Вычислить composite score (similarity + type match + name similarity)
             var score = ComputeMatchScore(sourceUnit, candidateUnit, similarity);
 
-            if (score > bestScore && score >= LowSimilarityThreshold)
-            {
+            if (score > bestScore && score >= LowSimilarityThreshold) {
                 bestScore = score;
 
                 var confidence = ComputeConfidence(similarity);
 
-                bestMatch = new SemanticMatchResult
-                {
+                bestMatch = new SemanticMatchResult {
                     SourceUnit = sourceUnit,
                     TargetUnit = candidateUnit,
                     Similarity = similarity,
@@ -155,13 +143,11 @@ public sealed class SemanticMatcher
         CodeUnit sourceUnit,
         CodeUnit candidateUnit,
         float baseSimilarity
-    )
-    {
+    ) {
         float score = baseSimilarity;
 
         // Bonus: одинаковый тип
-        if (sourceUnit.Type == candidateUnit.Type)
-        {
+        if (sourceUnit.Type == candidateUnit.Type) {
             score += 0.05f;
         }
 
@@ -175,8 +161,7 @@ public sealed class SemanticMatcher
             (float)Math.Min(sourceUnit.Content.Length, candidateUnit.Content.Length)
             / Math.Max(sourceUnit.Content.Length, candidateUnit.Content.Length);
 
-        if (lengthRatio < 0.5f)
-        {
+        if (lengthRatio < 0.5f) {
             score -= 0.1f;
         }
 
@@ -186,8 +171,7 @@ public sealed class SemanticMatcher
     /// <summary>
     /// Вычислить similarity имён (Levenshtein-based).
     /// </summary>
-    private float ComputeNameSimilarity(string name1, string name2)
-    {
+    private float ComputeNameSimilarity(string name1, string name2) {
         if (string.Equals(name1, name2, StringComparison.OrdinalIgnoreCase))
             return 1.0f;
 
@@ -203,8 +187,7 @@ public sealed class SemanticMatcher
     /// <summary>
     /// Levenshtein distance между строками.
     /// </summary>
-    private int LevenshteinDistance(string s1, string s2)
-    {
+    private int LevenshteinDistance(string s1, string s2) {
         var len1 = s1.Length;
         var len2 = s2.Length;
         var matrix = new int[len1 + 1, len2 + 1];
@@ -215,10 +198,8 @@ public sealed class SemanticMatcher
         for (int j = 0; j <= len2; j++)
             matrix[0, j] = j;
 
-        for (int i = 1; i <= len1; i++)
-        {
-            for (int j = 1; j <= len2; j++)
-            {
+        for (int i = 1; i <= len1; i++) {
+            for (int j = 1; j <= len2; j++) {
                 var cost = s1[i - 1] == s2[j - 1] ? 0 : 1;
 
                 matrix[i, j] = Math.Min(
@@ -234,8 +215,7 @@ public sealed class SemanticMatcher
     /// <summary>
     /// Классифицировать тип match по similarity.
     /// </summary>
-    private SemanticMatchType ClassifyMatchType(float similarity)
-    {
+    private SemanticMatchType ClassifyMatchType(float similarity) {
         if (similarity >= HighSimilarityThreshold)
             return SemanticMatchType.HighSimilarity;
 
@@ -248,8 +228,7 @@ public sealed class SemanticMatcher
     /// <summary>
     /// Вычислить confidence score.
     /// </summary>
-    private float ComputeConfidence(float similarity)
-    {
+    private float ComputeConfidence(float similarity) {
         // Нормализовать similarity в confidence [0..1]
         if (similarity >= HighSimilarityThreshold)
             return 0.90f + (similarity - HighSimilarityThreshold) * 1.0f;
@@ -267,8 +246,7 @@ public sealed class SemanticMatcher
 /// <summary>
 /// Результат semantic matching.
 /// </summary>
-public sealed record SemanticMatchResult
-{
+public sealed record SemanticMatchResult {
     public required CodeUnit SourceUnit { get; init; }
     public required CodeUnit TargetUnit { get; init; }
     public required float Similarity { get; init; }
@@ -280,8 +258,7 @@ public sealed record SemanticMatchResult
 /// <summary>
 /// Тип semantic match.
 /// </summary>
-public enum SemanticMatchType
-{
+public enum SemanticMatchType {
     HighSimilarity, // >= 0.90 - очень похожий код
     MediumSimilarity, // >= 0.75 - вероятно тот же код
     LowSimilarity, // >= 0.60 - сомнительное совпадение

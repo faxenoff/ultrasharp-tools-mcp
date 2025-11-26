@@ -1,15 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>13.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>3.2.0</Version>
-
+    <Version>3.2.1</Version>
     <!-- Копирование всех зависимостей NuGet в выходную директорию -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-
     <!-- Оптимизации производительности -->
     <TieredCompilation>true</TieredCompilation>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
@@ -18,7 +16,6 @@
     <TieredPGO>true</TieredPGO>
     <!-- Dynamic PGO: Continuous optimization based on runtime behavior -->
     <DynamicPGO>true</DynamicPGO>
-
     <!-- Отключение глобализации временно закомментировано - может ломать Roslyn JsonSettings -->
     <!-- <InvariantGlobalization>true</InvariantGlobalization> -->
     <!-- Отключение сателитных сборок локализации (для NuGet пакетов типа Roslyn) -->

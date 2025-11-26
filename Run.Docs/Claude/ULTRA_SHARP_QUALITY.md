@@ -13,6 +13,7 @@
 | **FormatCode** | CSharpier | Consistent code style | ✅ Yes |
 | **AnalyzeCodeStyle** | Roslyn Analyzers | Find issues (warnings, errors) | ❌ No |
 | **ApplyCodeFixes** | Roslyn Code Fixes | Automatic fixes | ✅ Yes |
+| **CleanupUsings** | Roslyn + GlobalUsings | Remove redundant usings | ✅ Yes |
 
 ---
 
@@ -633,6 +634,127 @@ diagnosticId: "all"
 
 ---
 
+## cleanup_usings
+
+**Remove redundant global usings** — scans solution for using directives that duplicate global usings declared in `GlobalUsings.cs` files. Removes redundant usings to keep code clean.
+
+### Usage
+
+```javascript
+// Preview mode (see what will be removed)
+cleanup_usings(
+    path: "D:/MyProject",
+    preview: true
+)
+
+// Apply mode (remove redundant usings)
+cleanup_usings(
+    path: "D:/MyProject",
+    preview: false
+)
+```
+
+### Parameters
+
+- **path** (required): Path to solution directory
+- **preview** (default: true): `true` — preview only, `false` — apply changes
+
+### What It Does
+
+1. 🔍 **Scans for GlobalUsings.cs files** in all projects
+2. 📋 **Collects global using directives** (e.g., `global using System;`)
+3. 🔎 **Scans all .cs files** for matching regular usings
+4. 🗑️ **Removes redundant usings** that duplicate global usings
+5. 💾 **Saves changes** (if not preview mode)
+6. 🌳 **Creates Git commit** (if files changed)
+
+### When to Use
+
+✅ **After adding GlobalUsings.cs:**
+- Migrated to C# 10 implicit usings
+- Added new global using directives
+- Want to clean up redundant usings
+
+✅ **For code cleanup:**
+- Reduce using statement clutter
+- Enforce global using pattern
+- Standardize namespace imports
+
+✅ **During migration:**
+- Upgrading from older .NET versions
+- Consolidating common usings
+- Preparing for code review
+
+### Example
+
+**GlobalUsings.cs:**
+```csharp
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using Microsoft.Extensions.Logging;
+```
+
+**Before cleanup (UserService.cs):**
+```csharp
+using System;                           // ❌ Redundant (in GlobalUsings)
+using System.Collections.Generic;       // ❌ Redundant (in GlobalUsings)
+using System.Linq;                      // ❌ Redundant (in GlobalUsings)
+using System.Threading.Tasks;           // ✅ Keep (not in GlobalUsings)
+using Microsoft.Extensions.Logging;     // ❌ Redundant (in GlobalUsings)
+using MyProject.Domain;                 // ✅ Keep (not in GlobalUsings)
+
+namespace MyProject.Services;
+public class UserService { ... }
+```
+
+**After cleanup:**
+```csharp
+using System.Threading.Tasks;
+using MyProject.Domain;
+
+namespace MyProject.Services;
+public class UserService { ... }
+```
+
+### Best Practices
+
+1. **Always preview first:**
+   ```javascript
+   cleanup_usings(path: "D:/MyProject", preview: true)
+   // Output: "Found 47 redundant usings in 23 files"
+
+   cleanup_usings(path: "D:/MyProject", preview: false)
+   // Apply
+   ```
+
+2. **Use with FormatCode:**
+   ```javascript
+   cleanup_usings(path: "D:/MyProject", preview: false)
+   format_code(path: "D:/MyProject/src", checkOnly: false)
+   ```
+
+3. **Combine with other quality tools:**
+   ```javascript
+   // Full quality workflow
+   cleanup_usings(path: "D:/MyProject", preview: false)
+   apply_code_fixes(diagnosticId: "IDE0005", preview: false)
+   format_code(path: "src/", checkOnly: false)
+   ```
+
+### Performance
+
+- **Preview:** 2-5 sec (scans all files)
+- **Apply:** 3-10 sec (modifies files + Git commit)
+
+### Related Tools
+
+- ➡️ [**ApplyCodeFixes**](#apply_code_fixes) — remove unused usings (IDE0005)
+- ➡️ [**FormatCode**](#format_code) — format after cleanup
+- ⬅️ [**ManageUsings**](./ULTRA_SHARP_ANALYSIS.md#manage_usings) — manual using management
+
+---
+
 ## Workflow: Comprehensive Quality Improvement
 
 ### Standard Workflow
@@ -776,6 +898,7 @@ analyze_code_style(severityFilter: "Warning")
 | **FormatCode** | Consistent code style | ✅ Yes | ✅ Yes | Fast (1-5 sec) |
 | **AnalyzeCodeStyle** | Finds issues | ❌ No | ❌ No | Medium (15-90 sec) |
 | **ApplyCodeFixes** | Fixes issues | ✅ Yes | ✅ Yes | Medium (10-30 sec) |
+| **CleanupUsings** | Remove redundant usings | ✅ Yes | ✅ Yes | Fast (3-10 sec) |
 
 ---
 

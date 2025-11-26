@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Options;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Infrastructure.Cache;
 using UltrasharpTools.Tools.Ipc;
 using UltrasharpTools.Tools.Layered;
 using UltrasharpTools.Tools.Merge;
 using UltrasharpTools.Tools.Merge.Analysis;
 using UltrasharpTools.Tools.Merge.Engine;
+using UltrasharpTools.Tools.Merge.Git;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Matching;
 using UltrasharpTools.Tools.Merge.Parsing;
@@ -183,6 +185,13 @@ public static class ServiceCollectionExtensions {
             var factory = sp.GetRequiredService<EmbeddingProviderFactory>();
             // Create provider synchronously (in production use IHostedService)
             return factory.CreateAsync().GetAwaiter().GetResult();
+        });
+
+        // Register EmbeddingGenerator (wrapper with caching, used by SemanticMerge)
+        services.AddSingleton<Semantic.EmbeddingGenerator>(sp => {
+            var provider = sp.GetRequiredService<IEmbeddingProvider>();
+            var logger = sp.GetService<ILogger<Semantic.EmbeddingGenerator>>();
+            return new Semantic.EmbeddingGenerator(provider, null, logger);
         });
 
         return services;
@@ -420,16 +429,31 @@ public static class ServiceCollectionExtensions {
         });
 
         // Indexing services
-        services.AddSingleton(sp => {
-            var extractor = sp.GetRequiredService<CodeUnitExtractor>();
-            var logger = sp.GetService<ILogger<MultiVersionIndexer>>();
-            return new MultiVersionIndexer(extractor, logger);
+        // CacheIntegrationService - фабрика для ленивого создания когда solution загружен
+        services.AddSingleton<Func<CacheIntegrationService?>>(sp => () => {
+            var solutionManager = sp.GetService<ISolutionManager>();
+            var solutionPath = solutionManager?.CurrentSolution?.FilePath;
+            if (!string.IsNullOrEmpty(solutionPath))
+            {
+                var cacheLogger = sp.GetService<ILogger<CacheIntegrationService>>();
+                return new CacheIntegrationService(solutionPath, null, cacheLogger);
+            }
+            return null;
         });
 
         services.AddSingleton(sp => {
-            var embeddingGenerator = sp.GetRequiredService<EmbeddingGenerator>();
+            var extractor = sp.GetRequiredService<CodeUnitExtractor>();
+            var logger = sp.GetService<ILogger<MultiVersionIndexer>>();
+            // CacheIntegrationService создаётся лениво через фабрику внутри MultiVersionIndexer
+            var cacheFactory = sp.GetService<Func<CacheIntegrationService?>>();
+            return new MultiVersionIndexer(extractor, logger, cacheFactory);
+        });
+
+        services.AddSingleton(sp => {
+            // EmbeddingGenerator is optional - may not be available if Semantic RAG is not configured
+            var embeddingGenerator = sp.GetService<EmbeddingGenerator>();
             var logger = sp.GetService<ILogger<LazyEmbeddingGenerator>>();
-            return new LazyEmbeddingGenerator(embeddingGenerator, logger);
+            return new LazyEmbeddingGenerator(embeddingGenerator!, logger);
         });
 
         // Matching services
@@ -453,18 +477,27 @@ public static class ServiceCollectionExtensions {
             return new StructuralAligner(logger);
         });
 
+        // Semantic Conflict Resolver
+        services.AddSingleton(sp => {
+            var embeddingGenerator = sp.GetRequiredService<LazyEmbeddingGenerator>();
+            var logger = sp.GetService<ILogger<SemanticConflictResolver>>();
+            return new SemanticConflictResolver(embeddingGenerator, logger);
+        });
+
         // Merge engine
         services.AddSingleton(sp => {
             var fastPathMatcher = sp.GetRequiredService<FastPathMatcher>();
             var semanticMatcher = sp.GetRequiredService<SemanticMatcher>();
             var movementDetector = sp.GetRequiredService<MovementDetector>();
             var embeddingGenerator = sp.GetRequiredService<LazyEmbeddingGenerator>();
+            var conflictResolver = sp.GetRequiredService<SemanticConflictResolver>();
             var logger = sp.GetService<ILogger<ThreeWayMerger>>();
             return new ThreeWayMerger(
                 fastPathMatcher,
                 semanticMatcher,
                 movementDetector,
                 embeddingGenerator,
+                conflictResolver,
                 logger
             );
         });
@@ -481,6 +514,22 @@ public static class ServiceCollectionExtensions {
             var merger = sp.GetRequiredService<ThreeWayMerger>();
             var logger = sp.GetService<ILogger<SemanticMergeService>>();
             return new SemanticMergeService(indexer, merger, logger);
+        });
+
+        // Branch Merge service (simplified API for merging git branches)
+        services.AddSingleton(sp => {
+            var mergeService = sp.GetRequiredService<SemanticMergeService>();
+            var loggerFactory = sp.GetService<ILoggerFactory>();
+            var logger = sp.GetService<ILogger<BranchMergeService>>();
+            return new BranchMergeService(mergeService, loggerFactory, logger);
+        });
+
+        // MCP Tools for Semantic Merge (explicit registration for nullable dependency support)
+        services.AddSingleton(sp => {
+            var branchMergeService = sp.GetService<BranchMergeService>();
+            var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var logger = sp.GetRequiredService<ILogger<Mcp.Tools.SemanticMergeTools>>();
+            return new Mcp.Tools.SemanticMergeTools(branchMergeService, solutionManager, logger);
         });
 
         return services;

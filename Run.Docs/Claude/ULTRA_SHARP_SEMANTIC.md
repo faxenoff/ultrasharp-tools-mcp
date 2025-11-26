@@ -13,6 +13,9 @@
 | **semantic_search** | Find semantically similar code | ✅ Yes | Find similar patterns, discover existing utilities |
 | **semantic_diff** | Compare semantic changes | ✅ Yes | Verify refactorings, detect breaking changes |
 | **detect_code_clones** | Find duplicate code | ✅ Yes | Identify consolidation opportunities |
+| **semantic_merge** | AI-powered branch merge | ⚠️ Optional | Merge branches with natural language instructions |
+| **get_semantic_merge_info** | Show merge system info | ❌ No | Understand merge capabilities |
+| **reindex_changed_files** | Update semantic index | ✅ Yes | Refresh index after file changes |
 
 ---
 
@@ -364,6 +367,233 @@ detect_code_clones(minSimilarity: 0.80, membersOnly: false)
 - ➡️ [**semantic_diff**](#semantic_diff) — verify refactoring preserved behavior
 - ➡️ [**view_definition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — examine clone code
 - ➡️ [**modify_code**](./ULTRA_SHARP_MODIFICATION.md#modify_code) — consolidate clones
+
+---
+
+## semantic_merge
+
+**AI-powered semantic branch merge** — specify branch names and optional natural language instructions. Automatically finds merge-base, performs 3-way semantic merge, and applies results as unstaged changes.
+
+### Usage
+
+```javascript
+semantic_merge(
+    sourceBranch: "feature/caching",
+    targetBranch: "main",           // optional, defaults to current branch
+    instructions: "ignore swagger files; prefer source for caching",
+    filePatterns: "*.cs",
+    apply: true                     // false for preview mode
+)
+```
+
+### Parameters
+
+- **sourceBranch** (required): Source branch name (where changes come from), e.g. `"feature/caching"`
+- **targetBranch** (optional): Target branch name (where to merge), defaults to current branch
+- **instructions** (optional): Natural language merge instructions
+- **filePatterns** (default: "*.cs"): File patterns to merge (comma-separated)
+- **apply** (default: true): `true` to write changes as unstaged files, `false` for preview only
+
+### Natural Language Instructions
+
+Supports both **Russian** and **English** instructions:
+
+**Exclude files:**
+```
+"ignore swagger files"
+"swagger файлы не мержить"
+"исключить appsettings"
+"skip config files"
+```
+
+**Branch priority:**
+```
+"prefer source for caching"
+"кеширование в приоритете на source"
+"take token logic from feature branch"
+"приоритет на ветке release для токенов"
+```
+
+**Combined instructions:**
+```
+"ignore swagger; prefer source for caching; exclude appsettings"
+"swagger не мержить; кеширование с source; сохранить форматирование"
+```
+
+### Parsed Instruction Patterns
+
+| Pattern | Result |
+|---------|--------|
+| `ignore swagger` | Excludes `*.swagger.json`, `**/swagger/**` |
+| `skip appsettings` | Excludes `appsettings*.json` |
+| `exclude json` | Excludes `*.json` |
+| `prefer source for X` | Takes `X`-related code from source branch |
+| `prefer target for X` | Takes `X`-related code from target branch |
+| `preserve formatting` | Maintains target branch formatting |
+
+### What It Does
+
+1. **Validates branches exist** in the repository
+2. **Finds merge-base** (common ancestor commit)
+3. **Lists changed files** in both branches
+4. **Applies instruction filters** (exclude patterns, include patterns)
+5. **Reads file content** from each branch using `git show`
+6. **Performs semantic merge** (Fast Path + Slow Path if available)
+7. **Applies instruction priorities** (auto-resolves conflicts based on instructions)
+8. **Writes results** as unstaged changes (if `apply: true`)
+
+### Output
+
+```
+=== Semantic Branch Merge ===
+
+✅ Merged 15 changes from feature/caching to main
+
+Merge: feature/caching → main
+Base: abc1234
+
+📝 Instructions: ignore swagger; prefer source for caching
+   Excluded: *.swagger.json, **/swagger/**
+   Prefer source: cache, caching
+
+📊 Statistics:
+   Total changes: 15
+   Auto-merged: 14
+   Conflicts: 1
+   Fast path: 12
+   Slow path: 3
+   Time: 2450ms
+
+📁 Actions:
+   Update: Services/CacheService.cs (source, 95%)
+   Update: Controllers/TokenController.cs (source, 90%)
+   Create: Services/NewService.cs (source, 100%)
+   ...
+
+⚠️ Conflicts (require manual resolution):
+   Models/Config.cs: Both branches modified BuildConfiguration method
+```
+
+### Example Workflows
+
+**Simple merge:**
+```javascript
+// Merge feature branch to current branch
+semantic_merge(
+    sourceBranch: "feature/new-api"
+)
+```
+
+**Merge with exclusions:**
+```javascript
+// Merge but skip swagger and config files
+semantic_merge(
+    sourceBranch: "feature/api-update",
+    targetBranch: "develop",
+    instructions: "ignore swagger; skip appsettings"
+)
+```
+
+**Preview before applying:**
+```javascript
+// See what would change without modifying files
+semantic_merge(
+    sourceBranch: "release/v2.0",
+    targetBranch: "main",
+    apply: false
+)
+```
+
+**Merge with priority hints:**
+```javascript
+// Prefer source branch for specific functionality
+semantic_merge(
+    sourceBranch: "feature/caching",
+    targetBranch: "main",
+    instructions: "кеширование в приоритете на source; swagger не мержить"
+)
+```
+
+### When to Use
+
+✅ **For everyday merges:**
+- Feature branch to main/develop
+- Release branches to main
+- Hotfix merges
+
+✅ **For selective merges:**
+- Merge only specific file types
+- Exclude auto-generated files
+- Skip configuration files
+
+✅ **For conflict resolution hints:**
+- Tell the AI which branch to prefer for specific code areas
+- Auto-resolve conflicts based on instructions
+
+### Performance
+
+- **Branch analysis:** 1-2 sec
+- **File reading:** 2-5 sec (depends on file count)
+- **Semantic merge:** 5-30 sec (depends on complexity)
+- **Total:** 10-40 sec for typical merges
+
+---
+
+## get_semantic_merge_info
+
+**Merge system information** — returns capabilities and usage instructions for semantic merge.
+
+### Usage
+
+```javascript
+get_semantic_merge_info()
+```
+
+### What It Shows
+
+- 📋 **Architecture overview** — Fast Path vs Slow Path
+- 🔧 **Features** — code movement, refactoring detection, control flow preservation
+- 📊 **Output format** — MergeActions, SemanticConflicts
+- 💡 **Usage examples**
+
+---
+
+## reindex_changed_files
+
+**Incremental index update** — updates semantic search index for modified files without full reindexing.
+
+### Usage
+
+```javascript
+reindex_changed_files(
+    filePaths: [
+        "D:/project/src/Services/UserService.cs",
+        "D:/project/src/Controllers/UserController.cs"
+    ]
+)
+```
+
+### Parameters
+
+- **filePaths** (required): Array of absolute file paths to reindex
+
+### When to Use
+
+✅ **After editing files:**
+- After modify_code, add_member operations
+- After external file modifications
+- Before semantic_search on recently changed code
+
+✅ **For efficiency:**
+- Faster than full solution reindex
+- Only updates specified files
+- Maintains index freshness
+
+### Performance
+
+- **1-10 files:** 1-3 sec
+- **10-50 files:** 5-15 sec
+- **50+ files:** Consider full reindex
 
 ---
 

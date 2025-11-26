@@ -468,7 +468,9 @@ UltrasharpTools.Droid.exe \
 
 ---
 
-## 🎨 **Полный список инструментов (37 tools)**
+## 🎨 **Полный список инструментов (50 tools)**
+
+> **Легенда**: 🔷 = требует Semantic Mode (проверьте `get_capabilities()`)
 
 ### 🔷 Solution Management (2)
 | Инструмент | Что делает |
@@ -476,21 +478,26 @@ UltrasharpTools.Droid.exe \
 | `load_solution` | Загружает .sln и инициализирует Roslyn workspace |
 | `load_project` | Детальный обзор структуры проекта (namespaces, types) |
 
-### 🔍 Analysis Tools (12)
-| Инструмент | Что делает |
-|------------|------------|
-| `get_members` | Список членов типа с сигнатурами и XML docs |
-| `view_definition` | Показывает source code символа с контекстом |
-| `list_implementations` | Находит реализации интерфейса/производные классы |
-| `find_references` | Все использования символа в solution |
-| `search_definitions` | Regex поиск по декларациям в коде и assemblies |
-| `view_call_graph` | Incoming/outgoing вызовы метода |
-| `view_inheritance_chain` | Цепочка наследования типа |
-| `get_all_subtypes` | Рекурсивный список вложенных членов |
-| `manage_usings` | Чтение/запись using директив |
-| `manage_attributes` | Чтение/запись атрибутов на декларациях |
-| `analyze_complexity` | Метрики сложности (cyclomatic, cognitive, coupling) |
-| `find_duplicates` | Семантический поиск похожего кода |
+### 🔍 Analysis Tools (15)
+| Инструмент | Что делает | Semantic |
+|------------|------------|:--------:|
+| `get_members` | Список членов типа с сигнатурами и XML docs | - |
+| `view_definition` | Показывает source code символа с контекстом | - |
+| `list_implementations` | Находит реализации интерфейса/производные классы | - |
+| `find_references` | Все использования символа в solution | - |
+| `search_definitions` | Regex поиск по декларациям в коде и assemblies | - |
+| `view_call_graph` | Incoming/outgoing вызовы метода | - |
+| `view_inheritance_chain` | Цепочка наследования типа | - |
+| `get_all_subtypes` | Рекурсивный список вложенных членов | - |
+| `manage_usings` | Чтение/запись using директив | - |
+| `manage_attributes` | Чтение/запись атрибутов на декларациях | - |
+| `analyze_complexity` | Метрики сложности (cyclomatic, cognitive, coupling) | - |
+| `pattern_search` | 4 режима поиска: entity, content, semantic, hybrid | 🔷* |
+| `find_duplicates` | Семантический поиск похожего кода | 🔷 |
+| `detect_technology_stack` | Определяет frameworks, languages, dependencies | - |
+| `list_file_entities` | Список types и members в файле | - |
+
+> \* `pattern_search` работает без semantic в режимах `entity` и `content`
 
 ### ✏️ Modification Tools (8)
 | Инструмент | Что делает |
@@ -504,12 +511,20 @@ UltrasharpTools.Droid.exe \
 | `move_member` | Перемещает member между типами/namespaces |
 | `undo` | Откатывает последнее изменение через Git |
 
-### ✨ Quality Tools (3)
+### ✨ Quality Tools (4)
 | Инструмент | Что делает |
 |------------|------------|
 | `format_code` | Форматирование через CSharpier (.cs, .csproj, .xml) |
-| `analyze_code_style` | Анализ через Roslyn analyzers (warnings, errors) |
+| `analyze_code_style` | Анализ через Roslyn analyzers (presets, filters, 5-min cache) |
 | `apply_code_fixes` | Автоприменение code fixes (unused usings и др.) |
+| `cleanup_usings` | Удаляет usings дублирующие GlobalUsings.cs |
+
+### ✅ Validation Tools (3)
+| Инструмент | Что делает |
+|------------|------------|
+| `validate_file` | Валидация C# файла с Roslyn analyzers |
+| `validate_directory` | Batch валидация директории (параллельно) |
+| `compare_validation` | Сравнение результатов до/после изменений |
 
 ### 🐛 Debugging & Tracing (5)
 | Инструмент | Что делает |
@@ -520,13 +535,36 @@ UltrasharpTools.Droid.exe \
 | `export_call_graph` | Экспорт графа (DOT/Mermaid/GraphML) |
 | `analyze_logs` | Анализ логов (ECS/JSON, PlainText, Logcat, XML) |
 
-### 📄 Document Tools (4)
+### 📄 Document Tools (3)
 | Инструмент | Что делает |
 |------------|------------|
 | `read_file` | Читает файл (без indentation для экономии токенов) |
 | `create_file` | Создаёт новый файл с контентом |
 | `overwrite_file` | Перезаписывает существующий файл |
-| `list_file_entities` | Список types и members в файле |
+
+### 📁 File Operations (2)
+| Инструмент | Что делает |
+|------------|------------|
+| `split_file` | Разбивает файл по top-level типам (класс → файл) |
+| `synthesize_files` | Объединяет несколько файлов в один |
+
+### 🧠 Semantic Tools (6) — требуют Semantic Mode 🔷
+| Инструмент | Что делает |
+|------------|------------|
+| `semantic_search` | Поиск кода по смыслу (natural language) |
+| `semantic_diff` | Сравнение semantic изменений (поведение vs текст) |
+| `detect_code_clones` | Обнаружение дубликатов через ML |
+| `reindex_changed_files` | Инкрементальная переиндексация |
+| `SemanticMerge` | 3-way merge с пониманием структуры кода |
+| `GetSemanticMergeInfo` | Статистика индексации для merge |
+
+### 💾 Snapshot Tools (4)
+| Инструмент | Что делает |
+|------------|------------|
+| `create_snapshot` | Создаёт точку восстановления (backup) |
+| `list_snapshots` | Список доступных снимков |
+| `rollback_snapshot` | Откат к предыдущему состоянию ⚠️ |
+| `cleanup_snapshots` | Удаление старых снимков ⚠️ |
 
 ### 📦 Package & Misc (2)
 | Инструмент | Что делает |
@@ -539,7 +577,21 @@ UltrasharpTools.Droid.exe \
 |------------|------------|
 | `get_capabilities` | Проверка возможностей сервера (semantic mode, версия, features) |
 
-**📖 Подробная документация**: [Run.Docs/Tools/](Run.Docs/Tools/) - примеры, best practices, workflows для каждого инструмента.
+---
+
+### 📊 Semantic vs Instrumental
+
+**Работают всегда (без Semantic Mode):**
+- Все Solution, Modification, Quality, Validation, Tracing, Document, File Ops, Snapshot, Package, System инструменты
+- `pattern_search` в режимах `entity` и `content`
+
+**Требуют Semantic Mode (проверка через `get_capabilities()`):**
+- `semantic_search`, `semantic_diff`, `detect_code_clones`
+- `find_duplicates`, `reindex_changed_files`
+- `SemanticMerge`, `GetSemanticMergeInfo`
+- `pattern_search` в режимах `semantic` и `hybrid`
+
+**📖 Подробная документация**: [Run.Docs/Claude/](Run.Docs/Claude/) - примеры, best practices, workflows для каждого инструмента.
 
 ---
 

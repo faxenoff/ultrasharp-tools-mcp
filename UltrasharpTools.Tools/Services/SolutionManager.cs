@@ -33,7 +33,17 @@ public sealed partial class SolutionManager : ISolutionManager {
 
     // Fast symbol index for 10-100x faster lookups
     private readonly FastSymbolIndex _symbolIndex;
-    private readonly SymbolCacheManager? _symbolCacheManager;
+    private readonly ConcurrentBag<string> _workspaceDiagnostics = new();
+
+    /// <summary>
+    /// Получить список диагностик workspace (ошибки загрузки проектов, битые референсы и т.д.)
+    /// </summary>
+    public IReadOnlyList<string> GetWorkspaceDiagnostics() => _workspaceDiagnostics.ToList();
+
+    /// <summary>
+    /// Очистить накопленные диагностики
+    /// </summary>
+    public void ClearWorkspaceDiagnostics() => _workspaceDiagnostics.Clear(); private readonly SymbolCacheManager? _symbolCacheManager;
     public FastSymbolIndex SymbolIndex => _symbolIndex;
 
     // Layered symbol index for branch-aware queries (Phase 1+, optional)
@@ -75,6 +85,11 @@ public sealed partial class SolutionManager : ISolutionManager {
     private readonly SolutionReloadOptions _reloadOptions;
     private System.Threading.Timer? _reloadDebounceTimer;
     private string? _currentSolutionPath;
+
+    // Git branch change detection
+    private FileSystemWatcher? _gitHeadWatcher;
+    private string? _lastKnownBranch;
+    private System.Threading.Timer? _gitBranchDebounceTimer;
 
     // Protection against concurrent solution loading
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _loadingLocks = new();
@@ -273,6 +288,11 @@ public sealed partial class SolutionManager : ISolutionManager {
                     // Initialize project file watcher for auto-reload if enabled
                     if (_reloadOptions.AutoReloadEnabled) {
                         InitializeProjectFileWatcher(solutionDirectory);
+                    }
+
+                    // Initialize git branch watcher if enabled
+                    if (_reloadOptions.WatchGitBranch) {
+                        InitializeGitBranchWatcher(solutionDirectory);
                     }
                 }
 
@@ -787,7 +807,16 @@ public sealed partial class SolutionManager : ISolutionManager {
         _reloadDebounceTimer?.Dispose();
         _reloadDebounceTimer = null;
 
+        // Clear diagnostics from previous load
+
+
+        _workspaceDiagnostics.Clear();
+
+
+
         // Clear mappings
+
+
         _filePathToDocumentId.Clear();
         _documentIdToFilePath.Clear();
 
@@ -854,16 +883,18 @@ public sealed partial class SolutionManager : ISolutionManager {
         await LoadSolutionAsync(_workspace.CurrentSolution.FilePath!, cancellationToken);
         LogSolutionReloaded();
     }
-
     private void OnWorkspaceFailedHandler(WorkspaceDiagnosticEventArgs e) {
         var diagnostic = e.Diagnostic;
+
+        // Собираем диагностику для отображения в MCP ответе
+        _workspaceDiagnostics.Add(diagnostic.Message);
+
         if (diagnostic.Kind == WorkspaceDiagnosticKind.Failure) {
             LogWorkspaceDiagnosticError(diagnostic.Kind, diagnostic.Message);
         } else {
             LogWorkspaceDiagnosticWarning(diagnostic.Kind, diagnostic.Message);
         }
     }
-
     /// <summary>
     /// Handles workspace change events for incremental symbol index updates (Phase 3).
     /// </summary>
@@ -1581,6 +1612,145 @@ public sealed partial class SolutionManager : ISolutionManager {
         }
     }
 
+    /// <summary>
+    /// Initialize FileSystemWatcher for .git/HEAD to detect branch switches
+    /// </summary>
+    private void InitializeGitBranchWatcher(string solutionDirectory) {
+        try {
+            // Find .git directory (could be in solution dir or parent)
+            var gitDir = FindGitDirectory(solutionDirectory);
+            if (gitDir == null) {
+                _logger.LogDebug("No .git directory found, git branch watching disabled");
+                return;
+            }
+
+            var headFile = Path.Combine(gitDir, "HEAD");
+            if (!File.Exists(headFile)) {
+                _logger.LogDebug(".git/HEAD not found at {HeadPath}", headFile);
+                return;
+            }
+
+            // Remember current branch
+            _lastKnownBranch = GetCurrentBranchFromHead(headFile);
+
+            _gitHeadWatcher = new FileSystemWatcher(gitDir) {
+                Filter = "HEAD",
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+                EnableRaisingEvents = true
+            };
+
+            _gitHeadWatcher.Changed += OnGitHeadChanged;
+
+            _logger.LogInformation(
+                "Git branch watcher initialized. Current branch: {Branch}",
+                _lastKnownBranch ?? "unknown"
+            );
+        } catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to initialize git branch watcher");
+            _gitHeadWatcher = null;
+        }
+    }
+
+    private static string? FindGitDirectory(string startDir) {
+        var dir = startDir;
+        while (!string.IsNullOrEmpty(dir)) {
+            var gitDir = Path.Combine(dir, ".git");
+            if (Directory.Exists(gitDir))
+                return gitDir;
+            // .git could also be a file (for worktrees), but we'll skip that for simplicity
+            dir = Path.GetDirectoryName(dir);
+        }
+        return null;
+    }
+
+    private static string? GetCurrentBranchFromHead(string headFilePath) {
+        try {
+            if (!File.Exists(headFilePath))
+                return null;
+
+            var content = File.ReadAllText(headFilePath).Trim();
+            // HEAD format: "ref: refs/heads/branch-name" or direct SHA for detached HEAD
+            if (content.StartsWith("ref: refs/heads/", StringComparison.Ordinal))
+                return content["ref: refs/heads/".Length..];
+            // Detached HEAD - return short SHA
+            return content.Length > 8 ? content[..8] : content;
+        } catch {
+            return null;
+        }
+    }
+
+    private void OnGitHeadChanged(object sender, FileSystemEventArgs e) {
+        // Debounce to handle rapid changes
+        _gitBranchDebounceTimer?.Dispose();
+        _gitBranchDebounceTimer = new System.Threading.Timer(
+            async _ => await CheckBranchChangeAsync(e.FullPath),
+            null,
+            500, // 500ms debounce
+            Timeout.Infinite
+        );
+    }
+
+    private async Task CheckBranchChangeAsync(string headFilePath) {
+        try {
+            var newBranch = GetCurrentBranchFromHead(headFilePath);
+            if (newBranch == null || newBranch == _lastKnownBranch)
+                return;
+
+            var oldBranch = _lastKnownBranch;
+            _lastKnownBranch = newBranch;
+
+            _logger.LogInformation(
+                "Git branch changed: {OldBranch} -> {NewBranch}. Reloading solution...",
+                oldBranch ?? "unknown",
+                newBranch
+            );
+
+            if (string.IsNullOrEmpty(_currentSolutionPath))
+                return;
+
+            // Optionally run dotnet clean
+            if (_reloadOptions.CleanOnBranchSwitch) {
+                await RunDotnetCleanAsync(_currentSolutionPath);
+            }
+
+            // Clear workspace diagnostics before reload
+            _workspaceDiagnostics.Clear();
+
+            // Reload solution
+            await ReloadSolutionFromDiskAsync(CancellationToken.None);
+
+            _logger.LogInformation("Solution reloaded after branch switch to {Branch}", newBranch);
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Failed to reload solution after branch switch");
+        } finally {
+            _gitBranchDebounceTimer?.Dispose();
+            _gitBranchDebounceTimer = null;
+        }
+    }
+
+    private async Task RunDotnetCleanAsync(string solutionPath) {
+        try {
+            _logger.LogInformation("Running 'dotnet clean' before reload...");
+            var psi = new System.Diagnostics.ProcessStartInfo {
+                FileName = "dotnet",
+                Arguments = $"clean \"{solutionPath}\"",
+                WorkingDirectory = Path.GetDirectoryName(solutionPath),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process != null) {
+                await process.WaitForExitAsync();
+                _logger.LogDebug("dotnet clean completed with exit code {ExitCode}", process.ExitCode);
+            }
+        } catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to run dotnet clean");
+        }
+    }
+
     public void Dispose() {
         // Note: Workspace.RegisterWorkspaceChangedHandler doesn't provide unsubscribe mechanism
         // The handler will be disposed when workspace is disposed in UnloadSolution
@@ -1609,9 +1779,19 @@ public sealed partial class SolutionManager : ISolutionManager {
             _projectFileWatcher = null;
         }
 
-        // Dispose debounce timer
+        // Dispose git branch watcher
+        if (_gitHeadWatcher != null) {
+            _gitHeadWatcher.EnableRaisingEvents = false;
+            _gitHeadWatcher.Changed -= OnGitHeadChanged;
+            _gitHeadWatcher.Dispose();
+            _gitHeadWatcher = null;
+        }
+
+        // Dispose debounce timers
         _reloadDebounceTimer?.Dispose();
         _reloadDebounceTimer = null;
+        _gitBranchDebounceTimer?.Dispose();
+        _gitBranchDebounceTimer = null;
 
         // Освобождаем MemoryCache ресурсы
         _compilationCache?.Dispose();

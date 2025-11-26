@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Pipes;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -10,7 +11,7 @@ using UltraSharpTools.VectorDB.Semantic.GPU;
 
 public class Program {
     public const string ApplicationName = "UltraSharpTools.VectorDB";
-    public const string ApplicationVersion = "3.2.0";
+    public const string ApplicationVersion = "3.2.1";
 
     // VectorDB: отдельный процесс для векторизации и семантического поиска
     // Принимает запросы от Droid через Named Pipe IPC
@@ -27,6 +28,9 @@ public class Program {
             }
         }
 
+        // Читаем конфигурацию из semantic-config.json
+        var semanticConfig = LoadSemanticConfig();
+
         // Настройка DI контейнера
         var services = new ServiceCollection();
 
@@ -39,16 +43,19 @@ public class Program {
         // HttpClient для embedding providers
         services.AddHttpClient();
 
-        // Конфигурация для embeddings
+        // Конфигурация для embeddings (читаем из semantic-config.json)
         services.Configure<EmbeddingOptions>(options => {
-            // Используем Ollama по умолчанию
-            options.Provider = "ollama";
+            options.Provider = semanticConfig.Provider;
             options.Enabled = true;
             options.AutoDetectGPU = false; // Отключено в VectorDB
 
+            // TEI настройки
+            options.TEI.BaseUrl = semanticConfig.TeiEndpoint;
+            options.TEI.TimeoutMs = 30000;
+
             // Ollama настройки
-            options.Ollama.BaseUrl = "http://127.0.0.1:11434";
-            options.Ollama.Model = "granite-embedding";
+            options.Ollama.BaseUrl = semanticConfig.OllamaEndpoint;
+            options.Ollama.Model = semanticConfig.OllamaModel;
             options.Ollama.TimeoutMs = 10000;
             options.Ollama.CheckServer = true;
             options.Ollama.AutoPull = true;
@@ -271,5 +278,79 @@ public class Program {
             // Процесс завершился между GetProcessById и HasExited
             return false;
         }
+    }
+
+    /// <summary>
+    /// Загружает конфигурацию из semantic-config.json
+    /// </summary>
+    private static SemanticConfigResult LoadSemanticConfig() {
+        var result = new SemanticConfigResult();
+
+        try {
+            // Централизованная директория конфигурации
+            string configDir;
+            if (OperatingSystem.IsWindows()) {
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                configDir = Path.Combine(localAppData, "UltraSharpTools", "config");
+            } else {
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                configDir = Path.Combine(home, ".ultrasharp", "config");
+            }
+
+            var configPath = Path.Combine(configDir, "semantic-config.json");
+
+            if (!File.Exists(configPath)) {
+                Console.WriteLine($"[VectorDB] Config not found: {configPath}, using defaults (ollama)");
+                return result;
+            }
+
+            var json = File.ReadAllText(configPath);
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+            });
+
+            var root = doc.RootElement;
+
+            // Парсим embedding.platform
+            if (root.TryGetProperty("embedding", out var embedding)) {
+                if (embedding.TryGetProperty("platform", out var platform)) {
+                    result.Provider = platform.GetString()?.ToLowerInvariant() ?? "ollama";
+                }
+
+                // TEI настройки
+                if (embedding.TryGetProperty("tei", out var tei)) {
+                    if (tei.TryGetProperty("endpoint", out var endpoint)) {
+                        result.TeiEndpoint = endpoint.GetString() ?? result.TeiEndpoint;
+                    }
+                }
+
+                // Ollama настройки
+                if (embedding.TryGetProperty("ollama", out var ollama)) {
+                    if (ollama.TryGetProperty("endpoint", out var endpoint)) {
+                        result.OllamaEndpoint = endpoint.GetString() ?? result.OllamaEndpoint;
+                    }
+                    if (ollama.TryGetProperty("selected_model", out var model)) {
+                        result.OllamaModel = model.GetString() ?? result.OllamaModel;
+                    }
+                }
+            }
+
+            Console.WriteLine($"[VectorDB] Config loaded: provider={result.Provider}, tei={result.TeiEndpoint}, ollama={result.OllamaEndpoint}");
+        } catch (Exception ex) {
+            Console.WriteLine($"[VectorDB] Error loading config: {ex.Message}, using defaults");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Результат загрузки конфигурации
+    /// </summary>
+    private sealed class SemanticConfigResult {
+        public string Provider { get; set; } = "ollama";
+        public string TeiEndpoint { get; set; } = "http://127.0.0.1:8080";
+        public string OllamaEndpoint { get; set; } = "http://127.0.0.1:11434";
+        public string OllamaModel { get; set; } = "granite-embedding";
     }
 }

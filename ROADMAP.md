@@ -1,6 +1,6 @@
 # UltrasharpTools - Дорожная карта развития
 
-**Текущая версия:** 3.2.0
+**Текущая версия:** 3.2.1
 **Статус:** Production Ready (Phase 1-12.4 Complete + Phase 7 Performance Optimization Complete)
 **Дата:** 2025-11-24
 

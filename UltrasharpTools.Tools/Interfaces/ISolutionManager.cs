@@ -2,8 +2,7 @@ using UltrasharpTools.Tools.Layered;
 
 namespace UltrasharpTools.Tools.Interfaces;
 
-public interface ISolutionManager : IDisposable
-{
+public interface ISolutionManager : IDisposable {
     [MemberNotNullWhen(true, nameof(CurrentWorkspace), nameof(CurrentSolution))]
     bool IsSolutionLoaded { get; }
     MSBuildWorkspace? CurrentWorkspace { get; }
@@ -55,4 +54,13 @@ public interface ISolutionManager : IDisposable
     );
     Task ReloadSolutionFromDiskAsync(CancellationToken cancellationToken);
     void RefreshCurrentSolution();
+
+
+    /// <summary>
+
+    /// Получить список диагностик workspace (ошибки загрузки проектов, битые референсы и т.д.)
+
+    /// </summary>
+
+    IReadOnlyList<string> GetWorkspaceDiagnostics();
 }

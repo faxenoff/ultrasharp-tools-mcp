@@ -178,12 +178,82 @@ jobs:
 ### Windows
 - PowerShell 7+ (для pwsh)
 - .NET 10 SDK
+- Visual Studio Build Tools с C++ workload (для Native AOT)
+
+### Windows + WSL (для Linux Native AOT)
+
+Скрипт `build-releases.ps1` автоматически использует WSL для сборки Linux Native AOT.
+Это даёт **~60% уменьшение размера** Linux архивов (130MB → 50-60MB).
+
+#### Настройка WSL
+
+1. **Установите WSL2 с Ubuntu:**
+   ```powershell
+   wsl --install -d Ubuntu-24.04
+   ```
+
+2. **Настройте DNS (если используете прокси типа Mihomo/Clash):**
+
+   Добавьте в `%USERPROFILE%\.wslconfig`:
+   ```ini
+   [wsl2]
+   networkingMode=NAT
+
+   [experimental]
+   dnsTunneling=true
+   ```
+
+   Перезапустите WSL:
+   ```powershell
+   wsl --shutdown
+   ```
+
+3. **Установите зависимости в WSL:**
+   ```bash
+   # Build tools
+   sudo apt-get update
+   sudo apt-get install -y clang build-essential zlib1g-dev curl
+
+   # .NET 10 SDK (preview - не в стандартных репозиториях)
+   curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+   chmod +x /tmp/dotnet-install.sh
+   sudo /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet
+   sudo ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet
+
+   # Проверка
+   dotnet --version
+   clang --version
+   ```
+
+4. **Запустите сборку:**
+   ```powershell
+   .\Dev.Scripts\build-releases.ps1
+   ```
+
+   Скрипт автоматически:
+   - Обнаружит WSL
+   - Проверит наличие .NET SDK и clang
+   - Соберёт VectorDB и Comm с Native AOT через WSL
+   - Соберёт Droid как self-contained (Roslyn не поддерживает AOT)
+
+#### Пропуск WSL сборки
+
+Если WSL недоступен или хотите self-contained:
+```powershell
+.\Dev.Scripts\build-releases.ps1 -SkipLinuxAot
+```
 
 ### Linux/macOS
 - Bash
 - PowerShell 7+ (`brew install powershell` или `snap install powershell`)
 - .NET 10 SDK
+- clang, zlib (для Native AOT)
 - `tar` и `zip` (обычно установлены)
+
+Для Native AOT на Linux:
+```bash
+sudo apt install clang build-essential zlib1g-dev
+```
 
 ---
 

@@ -203,15 +203,20 @@ AI-powered code understanding (requires setup):
 ### System & Capabilities
 [→ Detailed docs](./ULTRA_SHARP_SYSTEM.md)
 
-Server capabilities and runtime information:
+Server capabilities, runtime information, and snapshot management:
 - `get_capabilities` - Get server features and semantic mode status
+- `create_snapshot` - Create restore point before risky changes
+- `list_snapshots` - View available snapshots
+- `rollback_snapshot` - Restore code to previous snapshot
+- `cleanup_snapshots` - Delete old snapshots to save disk space
 
 **Use when:**
-- ✅ Startup - check available features
+- ✅ Startup - check available features with `get_capabilities`
 - ✅ Before semantic search - verify availability
-- ✅ Show status to user
+- ✅ Before risky changes - create snapshot
+- ✅ Need to undo multiple changes - use rollback_snapshot
 
-**Returns:** Server info, semantic mode status (Local/Overlord/Both/None), enabled features
+**Returns:** Server info, semantic mode status (Local/Overlord/Both/None), snapshot management
 
 ---
 
@@ -455,11 +460,18 @@ modify_code(fqn, code)
 format_code(path)
 analyze_code_style(solutionPath)
 apply_code_fixes(solutionPath, "all")
+cleanup_usings(path)
 
 # Navigation
 search_definitions(query, symbolKind)
 find_references(fqn)
 list_implementations(interfaceFqn)
+pattern_search(pattern, mode)
+
+# Type hierarchy
+get_all_subtypes(fqn)
+view_inheritance_chain(fqn)
+view_call_graph(methodFqn)
 
 # Debugging
 trace_execution(entryFqn, scenario)
@@ -469,4 +481,15 @@ analyze_logs(logPath, query)
 rename_symbol(fqn, newName)
 move_member(fqn, targetContainerFqn)
 undo()
+
+# Snapshots (safe experimentation)
+create_snapshot(description)
+list_snapshots()
+rollback_snapshot(snapshotId)
+cleanup_snapshots(keepCount)
+
+# Semantic (if enabled)
+semantic_search(query)
+find_duplicates(threshold)
+semantic_merge(sourceBranch, targetBranch, instructions)
 ```

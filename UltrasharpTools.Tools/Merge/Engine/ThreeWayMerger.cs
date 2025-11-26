@@ -16,6 +16,7 @@ public sealed class ThreeWayMerger
     private readonly SemanticMatcher _semanticMatcher;
     private readonly MovementDetector _movementDetector;
     private readonly LazyEmbeddingGenerator _embeddingGenerator;
+    private readonly SemanticConflictResolver _conflictResolver;
     private readonly ILogger<ThreeWayMerger> _logger;
 
     public ThreeWayMerger(
@@ -23,6 +24,7 @@ public sealed class ThreeWayMerger
         SemanticMatcher semanticMatcher,
         MovementDetector movementDetector,
         LazyEmbeddingGenerator embeddingGenerator,
+        SemanticConflictResolver conflictResolver,
         ILogger<ThreeWayMerger>? logger = null
     )
     {
@@ -30,6 +32,7 @@ public sealed class ThreeWayMerger
         _semanticMatcher = semanticMatcher;
         _movementDetector = movementDetector;
         _embeddingGenerator = embeddingGenerator;
+        _conflictResolver = conflictResolver;
         _logger = logger ?? NullLogger<ThreeWayMerger>.Instance;
     }
 
@@ -43,39 +46,47 @@ public sealed class ThreeWayMerger
         CancellationToken ct = default
     )
     {
-        _logger.LogInformation(
-            "Starting 3-way merge: {Base} + {BranchA} + {BranchB}",
+        _logger.LogDebug(
+            "[3WAY] === Starting 3-way merge: {Base} + {BranchA} + {BranchB} ===",
             baseIndex.Version,
             branchAIndex.Version,
             branchBIndex.Version
         );
+        _logger.LogDebug("[3WAY] Base units: {Count}", baseIndex.Units.Count);
+        _logger.LogDebug("[3WAY] BranchA units: {Count}", branchAIndex.Units.Count);
+        _logger.LogDebug("[3WAY] BranchB units: {Count}", branchBIndex.Units.Count);
 
         var sw = Stopwatch.StartNew();
 
         // 1. Fast Path matching
+        _logger.LogDebug("[3WAY] Step 1: Fast Path matching...");
         var fastMatchesA = _fastPathMatcher.BulkMatch(baseIndex, branchAIndex);
         var fastMatchesB = _fastPathMatcher.BulkMatch(baseIndex, branchBIndex);
 
-        _logger.LogInformation(
-            "Fast Path: A={CountA}, B={CountB}",
+        _logger.LogDebug(
+            "[3WAY] Fast Path completed: A={CountA}, B={CountB}",
             fastMatchesA.Count,
             fastMatchesB.Count
         );
 
         // 2. Найти unmatched units
+        _logger.LogDebug("[3WAY] Step 2: Finding unmatched units...");
         var unmatchedA = FindUnmatchedUnits(baseIndex, branchAIndex, fastMatchesA);
         var unmatchedB = FindUnmatchedUnits(baseIndex, branchBIndex, fastMatchesB);
 
-        _logger.LogInformation(
-            "Unmatched units: A={CountA}, B={CountB}",
+        _logger.LogDebug(
+            "[3WAY] Unmatched units: A={CountA}, B={CountB}",
             unmatchedA.Count,
             unmatchedB.Count
         );
 
         // 3. Генерировать embeddings для unmatched (Slow Path)
+        _logger.LogDebug("[3WAY] Step 3: Generating embeddings for unmatched units (Slow Path)...");
         if (unmatchedA.Count > 0)
         {
+            _logger.LogDebug("[3WAY] Generating embeddings for {Count} unmatched units in branch A...", unmatchedA.Count);
             var enrichedA = await _embeddingGenerator.GenerateEmbeddingsAsync(unmatchedA, ct);
+            _logger.LogDebug("[3WAY] Embeddings generated for branch A: {Count} units", enrichedA.Count);
 
             // Обновить в индексе
             foreach (var unit in enrichedA)
@@ -86,7 +97,9 @@ public sealed class ThreeWayMerger
 
         if (unmatchedB.Count > 0)
         {
+            _logger.LogDebug("[3WAY] Generating embeddings for {Count} unmatched units in branch B...", unmatchedB.Count);
             var enrichedB = await _embeddingGenerator.GenerateEmbeddingsAsync(unmatchedB, ct);
+            _logger.LogDebug("[3WAY] Embeddings generated for branch B: {Count} units", enrichedB.Count);
 
             foreach (var unit in enrichedB)
             {
@@ -95,6 +108,7 @@ public sealed class ThreeWayMerger
         }
 
         // 4. Semantic matching для unmatched
+        _logger.LogDebug("[3WAY] Step 4: Semantic matching for unmatched units...");
         var semanticMatchesA = await _semanticMatcher.FindSemanticMatchesBatchAsync(
             unmatchedA,
             branchAIndex,
@@ -107,13 +121,14 @@ public sealed class ThreeWayMerger
             ct
         );
 
-        _logger.LogInformation(
-            "Semantic matches: A={CountA}, B={CountB}",
+        _logger.LogDebug(
+            "[3WAY] Semantic matches completed: A={CountA}, B={CountB}",
             semanticMatchesA.Count,
             semanticMatchesB.Count
         );
 
         // 5. Обнаружить movements
+        _logger.LogDebug("[3WAY] Step 5: Detecting movements...");
         var movementsA = _movementDetector.DetectMovements(
             baseIndex,
             branchAIndex,
@@ -127,13 +142,16 @@ public sealed class ThreeWayMerger
             fastMatchesB,
             semanticMatchesB
         );
+        _logger.LogDebug("[3WAY] Movements detected: A={CountA}, B={CountB}", movementsA.Count, movementsB.Count);
 
         // 6. Анализ изменений и создание actions
+        _logger.LogDebug("[3WAY] Step 6: Processing changes and creating actions...");
         var mergeActions = new List<MergeAction>();
         var conflicts = new List<SemanticConflict>();
 
-        // Обработать matched units
-        ProcessMatchedUnits(
+        // Обработать matched units (с семантическим разрешением конфликтов)
+        _logger.LogDebug("[3WAY] Processing matched units...");
+        await ProcessMatchedUnitsAsync(
             baseIndex,
             branchAIndex,
             branchBIndex,
@@ -142,10 +160,13 @@ public sealed class ThreeWayMerger
             semanticMatchesA,
             semanticMatchesB,
             mergeActions,
-            conflicts
+            conflicts,
+            ct
         );
+        _logger.LogDebug("[3WAY] After matched: {Actions} actions, {Conflicts} conflicts", mergeActions.Count, conflicts.Count);
 
         // Обработать added units (новые в A или B)
+        _logger.LogDebug("[3WAY] Processing added units...");
         ProcessAddedUnits(
             baseIndex,
             branchAIndex,
@@ -154,8 +175,10 @@ public sealed class ThreeWayMerger
             fastMatchesB,
             mergeActions
         );
+        _logger.LogDebug("[3WAY] After added: {Actions} actions", mergeActions.Count);
 
         // Обработать deleted units (удалённые в A или B)
+        _logger.LogDebug("[3WAY] Processing deleted units...");
         ProcessDeletedUnits(
             baseIndex,
             branchAIndex,
@@ -165,10 +188,12 @@ public sealed class ThreeWayMerger
             mergeActions,
             conflicts
         );
+        _logger.LogDebug("[3WAY] After deleted: {Actions} actions, {Conflicts} conflicts", mergeActions.Count, conflicts.Count);
 
         sw.Stop();
 
         // 7. Собрать статистику
+        _logger.LogDebug("[3WAY] Step 7: Collecting statistics...");
         var statistics = new MergeStatistics
         {
             TotalChanges = mergeActions.Count + conflicts.Count,
@@ -179,8 +204,8 @@ public sealed class ThreeWayMerger
             MergeTimeMs = sw.ElapsedMilliseconds,
         };
 
-        _logger.LogInformation(
-            "Merge completed: {Actions} actions, {Conflicts} conflicts in {Time}ms",
+        _logger.LogDebug(
+            "[3WAY] === Merge completed: {Actions} actions, {Conflicts} conflicts in {Time}ms ===",
             mergeActions.Count,
             conflicts.Count,
             sw.ElapsedMilliseconds
@@ -209,7 +234,7 @@ public sealed class ThreeWayMerger
     /// <summary>
     /// Обработать matched units (существуют в обеих ветках).
     /// </summary>
-    private void ProcessMatchedUnits(
+    private async Task ProcessMatchedUnitsAsync(
         VersionedIndex baseIndex,
         VersionedIndex branchAIndex,
         VersionedIndex branchBIndex,
@@ -218,9 +243,12 @@ public sealed class ThreeWayMerger
         Dictionary<string, SemanticMatchResult> semanticMatchesA,
         Dictionary<string, SemanticMatchResult> semanticMatchesB,
         List<MergeAction> actions,
-        List<SemanticConflict> conflicts
+        List<SemanticConflict> conflicts,
+        CancellationToken ct
     )
     {
+        var potentialConflicts = new List<(CodeUnit Base, CodeUnit A, CodeUnit B)>();
+
         foreach (var baseUnit in baseIndex.Units.Values)
         {
             // Найти в обеих ветках
@@ -282,8 +310,42 @@ public sealed class ThreeWayMerger
                 continue;
             }
 
-            // Случай 5: Конфликт - обе ветки изменили по-разному
-            conflicts.Add(CreateConflict(baseUnit, unitA, unitB, ConflictType.ContentConflict));
+            // Случай 5: Потенциальный конфликт - обе ветки изменили по-разному
+            // Собираем для семантического разрешения
+            potentialConflicts.Add((baseUnit, unitA, unitB));
+        }
+
+        // Попытка семантически разрешить конфликты
+        if (potentialConflicts.Count > 0)
+        {
+            _logger.LogDebug("[3WAY] Attempting to resolve {Count} potential conflicts semantically...", potentialConflicts.Count);
+
+            var resolved = 0;
+            foreach (var (baseUnit, unitA, unitB) in potentialConflicts)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var resolution = await _conflictResolver.TryResolveAsync(baseUnit, unitA, unitB, ct);
+
+                if (resolution.IsResolved && resolution.MergedUnit != null)
+                {
+                    actions.Add(CreateMergeAction(
+                        resolution.MergedUnit,
+                        MergeActionType.Update,
+                        $"semantic-merge ({resolution.Resolution})",
+                        0.9f));
+                    resolved++;
+                    _logger.LogDebug("[3WAY] Resolved conflict for {Symbol}: {Resolution}",
+                        baseUnit.FullyQualifiedName, resolution.Resolution);
+                }
+                else
+                {
+                    conflicts.Add(CreateConflict(baseUnit, unitA, unitB, ConflictType.ContentConflict));
+                }
+            }
+
+            _logger.LogDebug("[3WAY] Semantic conflict resolution: {Resolved}/{Total} resolved",
+                resolved, potentialConflicts.Count);
         }
     }
 

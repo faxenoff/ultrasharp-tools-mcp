@@ -149,7 +149,7 @@ _ = Task.Run(async () => {
 - `SnapshotTools` (4): create/rollback/list/cleanup snapshots
 
 **Semantic Tools** (адаптируемо):
-- `SemanticMergeTools` (1): semantic_merge - уже использует свой парсер!
+- `SemanticMergeTools` (2): semantic_merge, get_semantic_merge_info - уже использует свой парсер!
 - `SemanticAnalysisTools` (5): semantic_search, semantic_diff, find_duplicates, detect_code_clones
   - Требует рефакторинг: убрать ISolutionManager, использовать индекс в SQLite
 

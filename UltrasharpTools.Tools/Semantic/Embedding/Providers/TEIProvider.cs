@@ -86,13 +86,14 @@ public sealed class TEIProvider : IEmbeddingProvider
             var response = await _httpClient.PostAsJsonAsync("/embed", request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var embedding = await response.Content.ReadFromJsonAsync<float[]>(cancellationToken);
-            if (embedding == null || embedding.Length == 0)
+            // TEI returns float[][] even for single text input
+            var embeddings = await response.Content.ReadFromJsonAsync<float[][]>(cancellationToken);
+            if (embeddings == null || embeddings.Length == 0 || embeddings[0].Length == 0)
             {
                 throw new InvalidOperationException("TEI returned empty embedding");
             }
 
-            return embedding;
+            return embeddings[0];
         }
         catch (HttpRequestException ex)
         {

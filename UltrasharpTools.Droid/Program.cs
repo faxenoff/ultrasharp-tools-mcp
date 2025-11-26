@@ -2,6 +2,7 @@ using System;
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading;
@@ -27,7 +28,7 @@ namespace UltrasharpTools.Droid;
 public static class Program
 {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
-    public const string ApplicationVersion = "3.2.0";
+    public const string ApplicationVersion = "3.2.1";
 
     private static readonly JsonSerializerOptions SemanticConfigJsonOptions =
         new()
@@ -364,6 +365,9 @@ public static class Program
             lowMemoryMode
         );
 
+        // NOTE: Semantic Merge services are registered later, after Semantic RAG is configured
+        // This ensures EmbeddingGenerator is available for SemanticMerge
+
         // Register PowerManagementService for energy efficiency mode
         // After 3 minutes of inactivity, switches to EcoQoS mode (Windows 11+)
         builder.Services.AddHostedService<PowerManagementService>();
@@ -504,6 +508,33 @@ public static class Program
 
                         semanticEnabled = true;
 
+                        // Register EmbeddingGenerator for SemanticMerge (uses same config as Indexer)
+                        // This enables Slow Path matching in SemanticMerge
+                        builder.Services.WithEmbeddingServices(opts => {
+                            opts.Provider = config.Embedding.Platform;
+                            opts.AutoDetectGPU = false; // Use explicit provider from config
+                            if (config.Embedding.Tei != null) {
+                                opts.TEI.BaseUrl = config.Embedding.Tei.Endpoint ?? "http://127.0.0.1:8080";
+                                // TeiSettings uses Models list, take first model's Id
+                                var teiModel = config.Embedding.Tei.Models?.FirstOrDefault()?.Id;
+                                if (!string.IsNullOrEmpty(teiModel)) opts.TEI.Model = teiModel;
+                            }
+                            if (config.Embedding.Ollama != null) {
+                                opts.Ollama.BaseUrl = config.Embedding.Ollama.Endpoint ?? "http://127.0.0.1:11434";
+                                // OllamaSettings uses Models list, take first model's Id
+                                var ollamaModel = config.Embedding.Ollama.Models?.FirstOrDefault()?.Id;
+                                if (!string.IsNullOrEmpty(ollamaModel)) opts.Ollama.Model = ollamaModel;
+                            }
+                        });
+
+                        // Register Semantic Merge services (requires EmbeddingGenerator)
+                        builder.Services.WithSemanticMerge();
+
+                        if (enableConsoleOutput)
+                        {
+                            Console.WriteLine("[Semantic] Semantic Merge enabled with embedding support");
+                        }
+
                         // Start VectorDB process asynchronously (fire-and-forget)
                         // VectorDB has slow startup, so we start it early
                         // Note: LoggerFactory not disposed - VectorDBLauncher needs it for async logging
@@ -609,6 +640,15 @@ public static class Program
                     );
                 }
             );
+
+            // Register Semantic Merge services in Fast Path only mode (no embeddings)
+            // This still allows structural/fingerprint-based merging
+            builder.Services.WithSemanticMerge();
+
+            if (enableConsoleOutput)
+            {
+                Console.WriteLine("[Semantic] Semantic Merge enabled (Fast Path only, no embeddings)");
+            }
         }
 
         // Register hybrid mode services if enabled

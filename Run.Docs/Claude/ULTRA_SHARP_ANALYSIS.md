@@ -10,14 +10,19 @@
 
 | Tool | Purpose | Primary Use |
 |------|---------|-------------|
-| **GetMembers** | List all type members with signatures | Quick API overview |
-| **ViewDefinition** | Source code of symbol with context | Understand implementation |
-| **ListImplementations** | All interface/base class implementations | Find inheritance, polymorphism |
-| **FindReferences** | All symbol usage locations | Understand where/how used |
-| **SearchDefinitions** | Regex search through definitions | Find patterns, naming violations |
-| **ManageUsings** | Read/write using directives | Add/remove usings |
-| **ManageAttributes** | Read/write attributes | Add/change attributes |
-| **AnalyzeComplexity** | Code complexity metrics | Find complex code for refactoring |
+| **get_members** | List all type members with signatures | Quick API overview |
+| **view_definition** | Source code of symbol with context | Understand implementation |
+| **list_implementations** | All interface/base class implementations | Find inheritance, polymorphism |
+| **find_references** | All symbol usage locations | Understand where/how used |
+| **search_definitions** | Regex search through definitions | Find patterns, naming violations |
+| **get_all_subtypes** | Recursively list nested types | Explore type hierarchy |
+| **view_inheritance_chain** | Show base types and derived types | Understand inheritance |
+| **view_call_graph** | Show incoming/outgoing calls | Analyze method dependencies |
+| **pattern_search** | Multi-mode search (entity/content/semantic/hybrid) | Advanced code search |
+| **find_duplicates** | Find semantically similar methods | Identify refactoring opportunities |
+| **manage_usings** | Read/write using directives | Add/remove usings |
+| **manage_attributes** | Read/write attributes | Add/change attributes |
+| **analyze_complexity** | Code complexity metrics | Find complex code for refactoring |
 
 ---
 
@@ -589,6 +594,293 @@ analyze_complexity(
 
 ---
 
+## get_all_subtypes
+
+**Explore nested types recursively** — lists all nested types, methods, properties, fields, and enums within a parent type. Ideal for gaining a complete mental model of a type hierarchy at a glance.
+
+### Usage
+
+```javascript
+get_all_subtypes(
+    fullyQualifiedParentTypeName: "MyNamespace.MyClass"
+)
+```
+
+### Parameters
+
+- **fullyQualifiedParentTypeName** (required): FQN of the parent type (class, interface, struct)
+
+### What It Shows
+
+For each member:
+- 🏷️ **Kind** (Class, Interface, Struct, Enum, Method, Property, Field, Event)
+- 📝 **Signature** with modifiers
+- 🆔 **FQN** for use with other tools
+- 📍 **Line number** in source file
+- 🔄 **Nested members** (recursive for nested types)
+
+### When to Use
+
+✅ **For understanding complex types:**
+- Explore large class with many nested types
+- Understand enum values and structure
+- See complete type contents at a glance
+
+✅ **Before modifications:**
+- Plan where to add new member
+- Understand existing structure
+- Find conflicts and duplicates
+
+### Related Tools
+
+- ➡️ [**GetMembers**](#get_members) — API surface only (simpler)
+- ➡️ [**ViewInheritanceChain**](#view_inheritance_chain) — base/derived types
+- ➡️ [**ViewDefinition**](#view_definition) — see specific member code
+
+---
+
+## view_inheritance_chain
+
+**Analyze type relationships** — shows the complete inheritance hierarchy for a class or interface (base types and derived types). Essential for understanding type relationships and architecture.
+
+### Usage
+
+```javascript
+view_inheritance_chain(
+    fullyQualifiedTypeName: "MyNamespace.MyClass"
+)
+```
+
+### Parameters
+
+- **fullyQualifiedTypeName** (required): FQN of the type to analyze
+
+### What It Shows
+
+- 📤 **Base types** (parent classes, implemented interfaces)
+- 📥 **Derived types** (classes that inherit from this type)
+- 📍 **Location** of each type
+- 🔗 **Complete hierarchy** visualization
+
+### When to Use
+
+✅ **For understanding architecture:**
+- See inheritance hierarchy
+- Find all types implementing interface
+- Understand polymorphism relationships
+
+✅ **For refactoring:**
+- Check impact of base class changes
+- Find candidates for extracting interface
+- Analyze coupling between types
+
+### Related Tools
+
+- ➡️ [**ListImplementations**](#list_implementations) — find interface implementations
+- ➡️ [**GetAllSubtypes**](#get_all_subtypes) — nested types (different from inheritance)
+- ➡️ [**ViewDefinition**](#view_definition) — see type implementation
+
+---
+
+## view_call_graph
+
+**Analyze method dependencies** — displays methods that call a specific method (incoming) and methods called by it (outgoing). Critical for understanding control flow and method relationships across the codebase.
+
+### Usage
+
+```javascript
+view_call_graph(
+    fullyQualifiedMethodName: "MyNamespace.MyClass.MyMethod"
+)
+```
+
+### Parameters
+
+- **fullyQualifiedMethodName** (required): FQN of the method to analyze
+
+### What It Shows
+
+- 📞 **Callers** (incoming) — methods that call this method
+- 📤 **Callees** (outgoing) — methods called by this method
+- 📍 **Location** of each call
+- 📊 **Call count** and pagination for large graphs
+
+### When to Use
+
+✅ **For understanding control flow:**
+- How does execution reach this method?
+- What does this method trigger?
+- Trace data flow through code
+
+✅ **For impact analysis:**
+- Before changing method signature
+- Before deleting method
+- Understanding dependencies
+
+✅ **For debugging:**
+- Find all paths to problematic code
+- Understand call chains
+- Identify side effects
+
+### Related Tools
+
+- ➡️ [**ViewDefinition**](#view_definition) — includes call graph preview
+- ➡️ [**TraceExecution**](./ULTRA_SHARP_TRACING.md#trace_execution) — detailed execution trace
+- ➡️ [**TraceBackwards**](./ULTRA_SHARP_TRACING.md#trace_backwards) — trace from error point
+
+---
+
+## pattern_search
+
+**Multi-mode advanced search** — searches code using 4 modes: entity (by name/type), content (inside method bodies), semantic (ML-powered similarity), hybrid (combines all with intelligent ranking).
+
+### Usage
+
+```javascript
+// Entity mode - search by name/type
+pattern_search(
+    pattern: ".*Service.*",
+    mode: "entity",
+    entityTypes: ["class", "interface"],
+    limit: 20
+)
+
+// Content mode - search inside method bodies
+pattern_search(
+    pattern: "Console\\.WriteLine",
+    mode: "content",
+    limit: 50
+)
+
+// Semantic mode - natural language search (requires semantic service)
+pattern_search(
+    pattern: "validate email address format",
+    mode: "semantic",
+    minSimilarity: 0.7
+)
+
+// Hybrid mode - combines all modes with ranking
+pattern_search(
+    pattern: "user authentication",
+    mode: "hybrid",
+    limit: 30
+)
+```
+
+### Parameters
+
+- **pattern** (required): Search pattern (regex for entity/content, natural language for semantic/hybrid)
+- **mode** (optional): `"entity"` | `"content"` | `"semantic"` | `"hybrid"` (default: `"hybrid"`)
+- **entityTypes** (optional): Filter by type (`["class", "interface", "method", "property", "field", "enum"]`)
+- **namespaceFilter** (optional): Filter by namespace (e.g., `"MyApp.Services"`)
+- **limit** (optional): Maximum results (1-100, default: 20)
+- **minSimilarity** (optional): Minimum similarity for semantic/hybrid (0.0-1.0, default: 0.7)
+
+### Search Modes
+
+| Mode | Pattern Type | Use Case |
+|------|-------------|----------|
+| **entity** | Regex | Find by name pattern, type filtering |
+| **content** | Regex | Find patterns inside method bodies |
+| **semantic** | Natural language | Find similar code by meaning |
+| **hybrid** | Both | Combines all with intelligent ranking |
+
+### When to Use
+
+✅ **Entity mode:**
+- Find all classes matching pattern
+- Find naming convention violations
+- Filter by type (class, method, etc.)
+
+✅ **Content mode:**
+- Find code patterns inside methods
+- Find usage of specific APIs
+- Search for debug/logging statements
+
+✅ **Semantic mode:**
+- Find similar functionality by description
+- Discover related code by meaning
+- Natural language queries
+
+✅ **Hybrid mode:**
+- Best overall results
+- Combines multiple signals
+- Ranked by relevance
+
+### Fallback Behavior
+
+If semantic service is unavailable:
+- `"hybrid"` → falls back to `"entity"`
+- `"semantic"` → falls back to `"entity"`
+
+Check `get_capabilities()` to verify semantic mode availability.
+
+### Related Tools
+
+- ➡️ [**SearchDefinitions**](#search_definitions) — simpler regex search
+- ➡️ [**SemanticSearch**](./ULTRA_SHARP_SEMANTIC.md#semantic_search) — pure semantic search
+- ➡️ [**ViewDefinition**](#view_definition) — see found code
+
+---
+
+## find_duplicates
+
+**Find semantically similar methods** — identifies groups of methods with similar functionality within the solution based on a similarity threshold. Requires semantic search service.
+
+### Usage
+
+```javascript
+find_duplicates(
+    similarityThreshold: 0.75
+)
+```
+
+### Parameters
+
+- **similarityThreshold** (required): Minimum similarity score (0.0 to 1.0)
+  - `0.75` — recommended starting value
+  - `0.85+` — nearly identical code
+  - `0.6-0.75` — similar functionality
+
+### What It Shows
+
+Groups of similar methods:
+- 📊 **Similarity score** between methods
+- 🆔 **FQN** of each method in group
+- 📍 **Location** (file:line)
+- 📝 **Code preview** for comparison
+
+### When to Use
+
+✅ **For finding technical debt:**
+- Discover copy-paste code
+- Find consolidation opportunities
+- Identify refactoring targets
+
+✅ **For code review:**
+- Check for duplicate implementations
+- Ensure DRY principle
+- Find inconsistent implementations
+
+✅ **For refactoring:**
+- Find methods to extract to shared utility
+- Identify candidates for abstraction
+- Reduce code duplication
+
+### Prerequisites
+
+⚠️ **Requires semantic search service:**
+- Check with `get_capabilities()` first
+- If unavailable, use `DetectCodeClones` instead
+
+### Related Tools
+
+- ➡️ [**DetectCodeClones**](./ULTRA_SHARP_SEMANTIC.md#detect_code_clones) — more options, different algorithm
+- ➡️ [**SemanticSearch**](./ULTRA_SHARP_SEMANTIC.md#semantic_search) — find similar to specific code
+- ➡️ [**AnalyzeComplexity**](#analyze_complexity) — complexity metrics
+
+---
+
 ## Tool Comparison
 
 | Tool | What It Finds | Speed | Use Case |
@@ -599,6 +891,11 @@ analyze_complexity(
 | **FindReferences** | All usages | 2-15 sec | Impact analysis |
 | **SearchDefinitions** | Regex patterns | 2-15 sec | Find naming/patterns |
 | **AnalyzeComplexity** | Complexity metrics | 0.1-60 sec | Technical debt |
+| **GetAllSubtypes** | Nested types recursively | 0.5-2 sec | Explore type structure |
+| **ViewInheritanceChain** | Base/derived types | 0.5-1 sec | Inheritance hierarchy |
+| **ViewCallGraph** | Callers and callees | 1-3 sec | Control flow analysis |
+| **PatternSearch** | Multi-mode search | 1-10 sec | Advanced code search |
+| **FindDuplicates** | Similar methods | 5-30 sec | Code deduplication |
 
 ---
 

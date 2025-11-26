@@ -190,7 +190,7 @@
 **Сервисы**: `SemanticMergeService`
 
 **Инструменты**:
-- `semantic_merge` - 3-way merge с AI
+- `semantic_merge` - 3-way merge с AI и natural language instructions
 
 **Анализ**:
 - Использует `EmbeddingGenerator` (может быть HTTP к TEI/Ollama)

@@ -81,15 +81,16 @@ public sealed class TEIProvider : IEmbeddingProvider {
             );
             response.EnsureSuccessStatusCode();
 
-            var embedding = await response.Content.ReadFromJsonAsync(
-                EmbeddingJsonContext.GetSingleArrayTypeInfo(),
+            // TEI returns [[0.1, 0.2, ...]] even for single input
+            var embeddings = await response.Content.ReadFromJsonAsync(
+                EmbeddingJsonContext.GetDoubleArrayTypeInfo(),
                 cancellationToken
             );
-            if (embedding == null || embedding.Length == 0) {
+            if (embeddings == null || embeddings.Length == 0 || embeddings[0].Length == 0) {
                 throw new InvalidOperationException("TEI returned empty embedding");
             }
 
-            return embedding;
+            return embeddings[0];
         } catch (HttpRequestException ex) {
             _logger.LogError(ex, "[TEI] HTTP request failed");
             throw new InvalidOperationException($"TEI request failed: {ex.Message}", ex);

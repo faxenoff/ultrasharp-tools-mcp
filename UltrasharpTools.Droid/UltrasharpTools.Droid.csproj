@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\UltrasharpTools.Tools\UltrasharpTools.Tools.csproj" />
     <!-- VectorDB is a separate Native AOT process, copied by build scripts -->
@@ -17,7 +17,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>3.2.0</Version>
+    <Version>3.2.1</Version>
     <AssemblyName>UltrasharpTools.Droid</AssemblyName>
     <RootNamespace>UltrasharpTools.Droid</RootNamespace>
 

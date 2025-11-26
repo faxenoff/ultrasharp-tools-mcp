@@ -13,9 +13,11 @@
 | **AddMember** | Add method/property/class to type | ✅ Branch + Commit | ✅ Yes |
 | **OverwriteMember** | Replace or delete existing member | ✅ Branch + Commit | ✅ Yes |
 | **RenameSymbol** | Rename with reference updates | ✅ Branch + Commit | ✅ Yes |
-| **FindAndReplace** | Regex replacement in code | ✅ Branch + Commit | ✅ Yes |
+| **FindAndReplace** | Regex replacement in code (FQN or glob) | ✅ Branch + Commit | ✅ Yes |
 | **MoveMember** | Move member to different type/namespace | ✅ Branch + Commit | ✅ Yes |
 | **Undo** | Rollback last modification | ✅ Git revert | - |
+
+> 💡 **Tip:** Use `find_and_replace` with **FQN target** (e.g., `MyNamespace.MyClass`) for batch modifications within a class. Much more reliable than file paths!
 
 ---
 
@@ -500,6 +502,82 @@ replacementText: "string.IsNullOrWhiteSpace($1)"
 
    // Specific file
    target: "src/Services/UserService.cs"
+   ```
+
+### 🎯 Batch Operations with FQN Target
+
+**Key insight:** When `target` is a **fully qualified name (FQN)** of a class, the replacement happens **within that entire class** in one operation. This is much more powerful than file path targeting for batch modifications.
+
+#### Example: Change All Log Levels in a Class
+
+```javascript
+// Change ALL LogInformation to LogDebug in entire class
+find_and_replace(
+    regexPattern: "\\.LogInformation\\(",
+    replacementText: ".LogDebug(",
+    target: "MyNamespace.Services.UserService",  // FQN of class!
+    commitMessage: "Lower log level in UserService"
+)
+```
+
+**Result:** All 15 occurrences changed in one operation!
+
+#### Why FQN is Better Than File Path
+
+| Approach | Target | Works? |
+|----------|--------|--------|
+| FQN | `MyNamespace.UserService` | ✅ Yes |
+| File path | `src/Services/UserService.cs` | ❌ Often fails |
+| Glob | `src/**/*.cs` | ⚠️ Too broad |
+
+**FQN advantages:**
+- ✅ Scoped to single class (safe)
+- ✅ Works with partial classes
+- ✅ Roslyn-aware (understands code structure)
+- ✅ Automatic formatting after changes
+
+#### Batch Replacement Across Multiple Classes
+
+Run multiple replacements in parallel:
+
+```javascript
+// Change log levels in multiple classes at once
+find_and_replace(target: "MyApp.Indexing.MultiVersionIndexer", ...)
+find_and_replace(target: "MyApp.Merge.SemanticMergeService", ...)
+find_and_replace(target: "MyApp.Matching.RenameDetector", ...)
+// All executed in parallel!
+```
+
+#### Real-World Use Cases
+
+1. **Change logging level across module:**
+   ```javascript
+   // From verbose Information to Debug
+   find_and_replace(
+       regexPattern: "\\.LogInformation\\(",
+       replacementText: ".LogDebug(",
+       target: "MyApp.DataAccess.Repository"
+   )
+   ```
+
+2. **Replace deprecated API in class:**
+   ```javascript
+   // Replace old async pattern
+   find_and_replace(
+       regexPattern: "\\.Result\\b",
+       replacementText: ".GetAwaiter().GetResult()",
+       target: "MyApp.LegacyService"
+   )
+   ```
+
+3. **Update naming convention:**
+   ```javascript
+   // Change _field to field_
+   find_and_replace(
+       regexPattern: "_(\\w+)",
+       replacementText: "$1_",
+       target: "MyApp.Models.UserDto"
+   )
    ```
 
 ### Related Tools
