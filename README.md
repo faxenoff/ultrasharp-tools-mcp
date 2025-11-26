@@ -428,8 +428,6 @@ UltrasharpTools.Droid.exe \
 
 ## 🎨 **Полный список инструментов (52 tools)**
 
-> **Легенда**: 🔷 = требует Semantic Mode (проверьте `get_capabilities()`)
-
 ### 🔷 Solution Management (2)
 | Инструмент | Что делает |
 |------------|------------|
