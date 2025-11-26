@@ -6,21 +6,165 @@
 
 ---
 
-### [3.2.0] - 2025-11-25
+## [3.3.0] - 2025-11-27
 
 ### 🎯 Статус
-**TBD** - Brief description of this release
+**Three-Process Architecture & Semantic Replace** — Новая архитектура Comm → Droid → VectorDB для экономии ресурсов + новый инструмент semantic_replace
 
 ### Добавлено
-- TODO: Add new features here
+
+#### Three-Process Architecture (Comm → Droid → VectorDB) 🏗️
+
+**Проблема:** Каждый AI-агент (Claude Desktop, Claude Code, Cursor) запускал свой Droid процесс = 2-3 GB RAM на каждый редактор.
+
+**Решение:** Разделение на три процесса с общим backend:
+
+```
+Claude Desktop / Claude Code / Cursor / VS Code
+    ↓ stdio (JSON-RPC)
+┌─────────────────────────────────────────────────────────────┐
+│  Comm.exe — Lightweight stdio bridge (~5 MB each)           │
+└─────────────────────────────│───────────────────────────────┘
+                              │ Named Pipes (IPC)
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Droid.exe — MCP Server (singleton, multi-client)           │
+└─────────────────────────────│───────────────────────────────┘
+                              │ Named Pipes (IPC)
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  VectorDB.exe — Semantic Engine (singleton, lazy start)     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Преимущества:**
+- ✅ **N редакторов → 1 Droid** — экономия 10-20 GB RAM
+- ✅ **Общий Roslyn workspace** — все редакторы видят одни изменения
+- ✅ **Общий symbol cache** — загружается один раз
+- ✅ **Auto-start** — Comm автоматически запускает Droid при первом подключении
+
+#### semantic_replace — Batch Find & Replace с контекстом 🔄
+
+**Two-Phase Workflow:**
+```javascript
+// Phase 1: Preview — найти все вхождения с полным контекстом
+semantic_replace(
+    pattern: "Console\\.WriteLine",
+    searchMode: "regex",      // regex | roslyn | semantic
+    scope: "member",          // statement | block | member | type | file
+    filePattern: "**/Services/*.cs"
+)
+// Returns: matchId, full context code, file:line location
+
+// Phase 2: Apply — применить выбранные замены
+semantic_replace(
+    apply: true,
+    replacements: '[{"matchId":"sr-001","newCode":"_logger.LogInformation(msg)"}]',
+    applyMode: "AllOrNothing",  // AllOrNothing | BestEffort
+    commitMessage: "Migrate to ILogger"
+)
+```
+
+**Use cases:**
+- Миграция Console.WriteLine → ILogger
+- Замена deprecated API на новые
+- Batch обновление паттернов кода
+- API upgrades с полным контекстом
+
+#### semantic_merge — Branch-based Merge 🌿
+
+**Обновлённый API:**
+```javascript
+semantic_merge(
+    sourceBranch: "feature/caching",
+    targetBranch: "main",
+    instructions: "ignore swagger; prefer source for caching",
+    filePatterns: "*.cs",
+    apply: true
+)
+```
+
+**Natural Language Instructions:**
+- `"ignore swagger"` → исключает *.swagger.json
+- `"skip appsettings"` → исключает appsettings*.json
+- `"prefer source for X"` → приоритет source ветки для кода X
 
 ### Изменено
-- TODO: Add changes here
+
+**Конфигурация MCP — теперь запускается Comm.exe:**
+```json
+{
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "command": "C:\\Tools\\UltrasharpTools\\Comm\\UltrasharpTools.Comm.exe"
+    }
+  }
+}
+```
+
+**Документация:**
+- README.md — полностью переписана секция архитектуры
+- ULTRA_SHARP_SEMANTIC.md — добавлены semantic_replace, get_semantic_replace_info
+- ULTRA_SHARP.md — обновлён Quick Reference
+- Dev.Docs/CLAUDE.md — добавлены SemanticReplaceTools.cs, SemanticMergeTools.cs
+- Dev.Docs/ULTRA-SHARPED.md — добавлена секция Three-Process Architecture
 
 ### Исправлено
-- TODO: Add fixes here
+
+**VectorDB wake-up из idle mode:**
+- **Проблема:** VectorDB не просыпался после Efficiency Mode (EcoQoS)
+- **Причина:** EcoQoS слишком агрессивно троттлил CPU, Named Pipe listener не успевал принять подключения
+- **Решение:** Отключён EcoQoS в PowerManagementService, оставлен только ThreadPool reduction + GC.Collect
+- **Файл:** `UltraSharpTools.VectorDB/PowerManagementService.cs`
 
 ---
+
+## [3.2.1] - 2025-11-26
+
+### 🎯 Статус
+**Bugfix Release** — Исправление VectorDB wake-up + улучшения стабильности
+
+### Исправлено
+
+**VectorDB connection timeout:**
+- Добавлен 30-секундный timeout для подключения к VectorDB
+- Автоматический перезапуск VectorDB процесса при timeout
+- Метод `KillVectorDBProcess()` в VectorDBClient для принудительного перезапуска
+
+**PowerManagementService idle threads:**
+- Увеличен `IdleMinWorkerThreads` с 1 до 2
+- Увеличен `IdleMinCompletionThreads` с 1 до 2
+- Предотвращает deadlock при пробуждении из idle mode
+
+### Изменено
+
+**VectorDBClient resilience:**
+- Try-catch обёртка для StartVectorDBProcess
+- Graceful handling connection failures
+- Improved logging для диагностики
+
+---
+
+## [3.2.0] - 2025-11-25
+
+### 🎯 Статус
+**Efficiency Mode Release** — Энергосбережение для VectorDB процесса
+
+### Добавлено
+
+**PowerManagementService для VectorDB:**
+- Efficiency Mode (EcoQoS) после 3 минут простоя
+- Автоматическое переключение Normal ↔ Idle режимов
+- ThreadPool optimization в idle mode
+- GC.Collect для освобождения памяти
+
+### Изменено
+
+- VectorDB теперь уходит в energy-saving mode при отсутствии запросов
+- Уменьшено потребление CPU в idle (Efficiency Mode flag)
+
+---
+
 # [3.0.8] - 2025-11-25
 
 ### 🎯 Статус

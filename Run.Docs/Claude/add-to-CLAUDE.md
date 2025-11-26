@@ -30,7 +30,7 @@ UltrasharpTools provides deep C# code understanding through Roslyn APIs, enablin
 - Saves tokens by avoiding full file reads
 
 **Auto-Git Integration**
-- Every modification creates `sharptools/YYYYMMDD-HHMMSS` branch
+- Every modification creates `ultrasharptools/YYYYMMDD-HHMMSS` branch
 - Auto-commits with descriptive messages
 - Use `undo` to rollback last change
 - Disable with `--disable-git` flag

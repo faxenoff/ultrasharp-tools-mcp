@@ -17,99 +17,62 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Roslyn](https://img.shields.io/badge/Powered%20by-Roslyn-blue)](https://github.com/dotnet/roslyn)
 
-**Умный ассистент для работы с C# кодом**
+**Умный инструмент работы с C# кодом для вас и вашего ИИ **
 
-Представьте, что вы можете просто сказать AI: "Добавь новый метод в этот класс", "Найди где используется этот сервис", "Покажи что сломается если изменить этот интерфейс" — и получить точные изменения за секунды, с автоматическим форматированием, проверкой на ошибки и Git коммитом.
+Если вы активно используете ИИ для написания кода, то наверняка сталкивались с тем, что ИИ тратит много времени и токенов в попытках полнотекстового поиска и редактирования. Если надо поменять много кода, то ИИ пишет скрипты под каждую задачу, которые запускаются примерно после десятой правки и хорошо если ничего не сломают.
 
-UltrasharpTools делает именно это. Он даёт AI полный доступ к вашей C# кодовой базе через Roslyn — не просто как к тексту, а как к **реальному коду**, который можно анализировать, модифицировать и проверять на ошибки автоматически.
+Ultrasharp Tools - это инструмент для вашего инструмента (ИИ), который решит все эти проблемы.
 
-**🚀 35x быстрее** | **✨ 37 готовых инструментов** | **🔍 485К символов за 10.16 сек** | **⚡ < 20ms переключение веток**
+- Весь код парсится в готовую связанную структуру и работа всех инструментов идёт именно с ней, а не с исходным кодом.
+- Молниеносный парсинг структуры - 500К строк за 10 сек, 6М строк кода за 50 сек. Потом все из кеша за 0.02 сек.
+- Структура кешируется, инкрементно обновляется, разбита на слои для каждой git-ветки. При переключении веток или перезапуске - вся структура сразу готова.
+- Точно так же строится/кешируется векторная база для взаимодействия с локальными embed-моделями (Ollama/TEI).
+- Инструменты поиска/анализа/модификации сразу возвращают/меняют нужные части кода без лишнего поиска.
+- При изменениях сразу происходит статический анализ/линтинг/форматирование изменённого кода и если есть что новое - оно сразу приходит в сообщении о завершении модификации.
+- Команды инструментам можно давать в простом виде: "Добавь новый метод в этот класс", "Найди где используется этот сервис", "Покажи что сломается если изменить этот интерфейс" — локальная семантическая модель сама всё разберёт и запустит что нужно, сколько нужно и вернёт результат.
+- При использовании инструментов семантической замены или мержа - модель сама разберется с деталями на месте (которые не совпадают по структуре). Если нет уверенности - выдумывать не станет, сообщит честно. Можно за секунды поменять 500+ точек логирования на новый формат с умным реформатированием по смыслу.
+- Есть инструменты "статической трассировки" выполнения - задаёте точку старта и завершения, инструмент пройдёт по ней и вернет последовательность что там происходило, а ИИ уже по ней разберётся. Или наоборот, у вас есть точка падения и вы ищите причины - инструмент "отмотает назад" и вернёт ИИ что там было.
+- Ещё очень выручает semantic_merge, который на трёх уровнях разбирается со сложными мержами сам.
+- Архитектура разделена на три части: Comm (маленький процесс-мост, запускается у каждого агента), Droid (основной процесс), VectorDB (работа с семантикой). При любом количестве агентов у вас всегда один основной процесс работает, нет дублирования и лишнего потребления ресурсов. Экономия до 10Gb RAM.
+
 
 ---
-Для работы с JS/TS/Python - используйте родственный проект [ultrascript-tools-mcp](https://github.com/faxenoff/ultrascript-tools-mcp)
+Для работы с JS/TS/Python - используйте аналогичный [ultrascript-tools-mcp](https://github.com/faxenoff/ultrascript-tools-mcp)
 
-## 📦 **Быстрая установка**
+---
 
-### Шаг 1: Скачать релиз
+## 📦 **Установка**
 
-Перейдите на [GitHub Releases](https://github.com/yourusername/ultrasharp-tools-mcp/releases) и скачайте архив для вашей ОС:
-
-- **Windows**: `UltrasharpTools-win-x64.zip`
-- **Linux**: `UltrasharpTools-linux-x64.tar.gz`
-- **macOS**: `UltrasharpTools-osx-x64.tar.gz`
-
-### Шаг 2: Распаковать
-
-**Windows:**
-```cmd
-# Распакуйте архив в удобное место, например:
-C:\Tools\UltrasharpTools\
-```
-
-**Linux/macOS:**
-```bash
-# Создайте директорию и распакуйте
-mkdir -p ~/Tools/UltrasharpTools
-tar -xzf UltrasharpTools-linux-x64.tar.gz -C ~/Tools/UltrasharpTools
-chmod +x ~/Tools/UltrasharpTools/UltrasharpTools.Droid
-```
-
-### Шаг 3: Настроить Claude Desktop
-
-Откройте конфигурационный файл Claude Desktop:
-
-**Windows**: `%USERPROFILE%\.claude\config.json`
-**Linux/macOS**: `~/.claude/config.json`
-
-Добавьте конфигурацию:
-
+1. Скачайте релиз на [GitHub Releases](https://github.com/yourusername/ultrasharp-tools-mcp/releases) и распакуйте.
+2. Настройте ИИ (Claude Code / Claude Desktop):
 ```json
+// Добавить в ~/.claude.json (Claude Code) или claude_desktop_config.json (Desktop)
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "C:\\Tools\\UltrasharpTools\\UltrasharpTools.Droid.exe",
-      "args": ["--log-level", "Information"]
+      "command": "C:\\Tools\\UltrasharpTools\\Comm\\UltrasharpTools.Comm.exe"
     }
   }
 }
 ```
 
-> **Linux/macOS**: Замените путь на `/home/username/Tools/UltrasharpTools/UltrasharpTools.Droid`
-
-### Шаг 4: (Опционально) Настроить семантический поиск
-
-Для умного поиска похожего кода запустите мастер настройки:
+> **Примечание:** Запускается именно **Comm.exe** — лёгкий stdio-bridge (~5 MB).
+> Comm автоматически запустит Droid (Roslyn сервер) и VectorDB (semantic индексер) при первом подключении.
+3. Добавить в CLAUDE.md описание работы с инструментами
+4. Настройте семантический поиск -  запустите мастер настройки и следуйте его инструкциям:
 
 **Windows:**
 ```cmd
-cd C:\Tools\UltrasharpTools
-Scripts\setup-semantic-embedding.cmd
+C:\Tools\UltrasharpTools\Scripts\setup-semantic-embedding.cmd
 ```
 
 **Linux/macOS:**
 ```bash
-cd ~/Tools/UltrasharpTools
-pwsh Scripts/setup-semantic-embedding.ps1
+PATH/Tools/UltrasharpTools/Scripts/setup-semantic-embedding.sh
 ```
+В зависимости от опредёленного GPU - будет предложено выбрать систему Ollama/TEI-в-docker. Потом выбрать наиболее подходящую вам embedding модель.
 
-Следуйте инструкциям мастера:
-1. Выберите **Ollama** (проще всего) или **TEI** (для GPU)
-2. Скрипт автоматически установит необходимые компоненты
-3. Готово! Семантический поиск теперь доступен
-
-> **Примечание**: Для работы скрипта нужен PowerShell 7+. Установите: https://aka.ms/powershell
-
-### Готово! 🎉
-
-Перезапустите Claude Desktop. Теперь можно работать:
-
-```
-Вы: "Загрузи solution D:/MyProject/MyApp.sln"
-Claude: ✅ Solution loaded: 15 projects, 482K symbols
-
-Вы: "Добавь метод SendEmail в EmailService"
-Claude: ✅ Метод добавлен, отформатирован, git commit создан
-```
+Специально для GTX50xx (Blackwood) используется неофициальная TEI, которая поддерживает такую архитектуру.
 
 ---
 
@@ -143,8 +106,8 @@ Claude: ✅ Метод добавлен, отформатирован, git commi
 ```
 AI: "Добавляю метод в конец файла..."
 Результат: ❌ Метод внутри другого метода
-          ❌ Отсутствуют using'и
-          ❌ Не скомпилируется
+           ❌ Отсутствуют using'и
+           ❌ Не скомпилируется
 ```
 
 **UltrasharpTools с Roslyn:**
@@ -235,65 +198,22 @@ UltrasharpTools:
 
 | Операция | Результат | Детали |
 |----------|-----------|--------|
-| **Индексация 485К символов** | **10.16 секунд** | Cold start с Type Dictionary Cache |
+| **Индексация 500К символов** | **10 секунд** | Cold start с Type Dictionary Cache |
 | **Индексация с кешем** | **< 9 секунд** | Cache hit (5.4x быстрее) |
 | **Поиск символа** | **< 100 миллисекунд** | Bloom filter + FastSymbolIndex |
 | **Переключение Git ветки** | **< 20 мс** | Layered index (base + deltas) |
 | **Компиляция solution** | **В памяти** | Мгновенная проверка ошибок |
 
-**Почему так быстро?**
-
-### Layered Indexing (Phase 7)
-```
-┌─────────────────────────────────────────┐
-│ Base Layer (SQLite)                     │  ← Основной индекс (кеш)
-│ 485К символов, загружается 1 раз        │     Загрузка: 10.16s cold / 8.9s warm
-├─────────────────────────────────────────┤
-│ Branch Deltas (по ветке)                │  ← Изменения в ветке
-│ Только изменённые символы               │     Переключение: < 20ms
-├─────────────────────────────────────────┤
-│ Working Delta (незакоммиченное)         │  ← Текущие правки
-│ Ваши изменения до git commit            │     Обновление: < 1ms
-└─────────────────────────────────────────┘
-```
-
-**Результат**: при переключении веток не нужна полная переиндексация — только дельты!
-
-**Ключевая оптимизация**: Type Dictionary Cache (FastSymbolIndex) — O(1) поиск типов вместо O(N) для каждого символа. Это дало **35x ускорение** (от 356 сек до 10.16 сек).
-
-### Fast Symbol Index
-- ✅ **Bloom Filter** - 99.9% false positive rate < 0.01%
-- ✅ **Parallel processing** - Assembly loading в 4-5 потоков
-- ✅ **SIMD optimizations** - xxHash32 вместо SHA256 (2-3x быстрее)
-- ✅ **SQLite WAL mode** - параллельные read операции
-
-**Пример**: solution на 890K символов (112 веток):
-- Холодный старт: 48.3s
-- С кешем: **8.9s** (5.4x быстрее)
-- Поиск: **< 100ms**
-- Переключение ветки: **16.6ms**
-
 ### Ожидаемое время загрузки по размеру проекта
 
 | Размер проекта | Проектов | Время загрузки | Примечание |
 |----------------|----------|----------------|------------|
-| **~100K LOC** | 10-20 | **5-15 сек** | Типичный микросервис |
-| **~500K LOC** | 50-100 | **20-40 сек** | Средний enterprise проект |
-| **~1M LOC** | 100-200 | **40-80 сек** | Крупный монолит |
-| **~2-3M LOC** | 400-600 | **60-90 сек** | ASP.NET Core (1504 проекта*) |
-| **~4-5M LOC** | 250-400 | **45-60 сек** | Roslyn compiler (663 проекта*) |
+| **~100K LOC** | 10-20 | **5 сек** | Типичный микросервис |
+| **~500K LOC** | 50-100 | **10 сек** | Средний enterprise проект |
+| **~1M LOC** | 100-200 | **20 сек** | Крупный монолит |
+| **~2-3M LOC** | 400-600 | **40 сек** | ASP.NET Core (1504 проекта*) |
+| **~4-5M LOC** | 250-400 | **60 сек** | Roslyn compiler (663 проекта*) |
 
-\* Multi-target проекты (`net10.0;net462`) создают несколько проектов в Roslyn workspace
-
-**Реальные тесты на крупных .slnx:**
-
-| Solution | C# проектов | Загружено | Время | В workspace |
-|----------|-------------|-----------|-------|-------------|
-| **Roslyn.slnx** | 267 | 158 | **~49 сек** | 663 проекта |
-| **aspnetcore.slnx** | 577 | 405 | **~67 сек** | 1504 проекта |
-
-> **Примечание**: .slnx загружается параллельно (8 потоков, 60 сек таймаут на проект).
-> VB.NET и F# проекты автоматически пропускаются.
 
 ---
 
@@ -332,41 +252,86 @@ UltrasharpTools предоставляет два режима работы по
 
 **Основной режим для разработчиков**
 
-**Как работает:**
+**Архитектура (три процесса):**
 ```
-Claude Desktop/Claude Code
-    ↓ stdio процесс на вашей машине
-UltrasharpTools.Droid.exe
-    ↓ прямой доступ к файловой системе
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Claude Desktop    Claude Code    Cursor    VS Code + Continue.dev     │
+│       ↓                ↓            ↓                ↓                  │
+│    Comm.exe         Comm.exe     Comm.exe        Comm.exe              │
+│  (stdio bridge)   (stdio bridge)   ...            ...                  │
+└────────┬───────────────┬────────────┬──────────────┬────────────────────┘
+         │               │            │              │
+         └───────────────┴─────┬──────┴──────────────┘
+                               │ Named Pipes (IPC)
+                               ↓
+┌─────────────────────────────────────────────────────────────┐
+│  UltrasharpTools.Droid.exe  (singleton, auto-start)         │
+│  ├─ MCP Server (многоклиентный)                             │
+│  ├─ Roslyn Workspace (анализ и модификация кода)            │
+│  ├─ Git Integration (автокоммиты)                           │
+│  └─ VectorDB Client ──────┐                                 │
+└───────────────────────────│─────────────────────────────────┘
+                            │ Named Pipes (IPC)
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  UltrasharpTools.VectorDB.exe  (singleton, lazy start)      │
+│  ├─ Semantic Index (sqlite-vec / vectorlite)                │
+│  ├─ Embedding Generator (TEI/Ollama)                        │
+│  └─ Power Management (Efficiency Mode в idle)               │
+└─────────────────────────────────────────────────────────────┘
+    ↓
 Ваши C# проекты на диске
 ```
+
+**Почему три процесса?**
+
+| Процесс | Роль | Lifecycle |
+|---------|------|-----------|
+| **Comm** | Лёгкий stdio-bridge (~5 MB) | Один на каждый AI-агент/редактор |
+| **Droid** | Roslyn workspace, Git, MCP tools | Singleton — один на все Comm |
+| **VectorDB** | Semantic index, embeddings | Singleton — lazy start по требованию |
+
+| Преимущество | Описание |
+|--------------|----------|
+| **Общие ресурсы** | 5 редакторов используют ОДИН Droid+VectorDB вместо 5 копий (экономия 2-3 GB RAM) |
+| **Общий кеш** | Roslyn compilation cache, symbol index — загружаются один раз |
+| **Изоляция памяти** | VectorDB 500MB+ не влияет на Droid, Comm минималистичен |
+| **Независимый перезапуск** | VectorDB перезапускается без потери Droid сессии |
+| **Энергосбережение** | VectorDB → Efficiency Mode после 3 минут простоя |
+| **Ленивый запуск** | VectorDB стартует только при первом semantic запросе |
 
 **Конфигурация (`~/.claude.json`):**
 ```json
 {
-  "Droids": {
+  "mcpServers": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "D:/path/to/Run.Publish/Droid/UltrasharpTools.Droid.exe",
-      "args": ["--log-level", "Information"],
+      "command": "D:/path/to/Run.Publish/Comm/UltrasharpTools.Comm.exe",
+      "args": [],
       "env": {}
     }
   }
 }
 ```
 
-**Возможности:**
-- ✅ **Полный доступ** к файловой системе вашей машины
-- ✅ **Локальный Git** - автоматические коммиты в `sharptools/*` ветки
-- ✅ **Максимальная скорость** - нет сетевых задержек
-- ✅ **NuGet packages** из локального кэша (`~/.nuget/packages/`)
-- ✅ **Локальная семантика** (опционально) - semantic search через Ollama/TEI/Memory
+> ⚠️ **Важно:** Запускается **Comm.exe**, а не Droid.exe! Comm автоматически запустит Droid при первом подключении.
 
-**Use case:** Индивидуальная разработка, рефакторинг, отладка на локальной машине
+**Возможности:**
+- ✅ **Много агентов — один сервер** — Claude Desktop + Claude Code + Cursor одновременно
+- ✅ **Общий Roslyn workspace** — все редакторы видят одни и те же изменения
+- ✅ **Локальный Git** — автоматические коммиты в `sharptools/*` ветки
+- ✅ **Максимальная скорость** — нет сетевых задержек
+- ✅ **NuGet packages** из локального кэша (`~/.nuget/packages/`)
+- ✅ **Локальная семантика** — semantic search через Ollama/TEI (VectorDB)
+- ✅ **Auto-recovery** — Droid и VectorDB перезапускаются при сбоях
+
+**Use case:** Индивидуальная разработка с несколькими AI-агентами/редакторами одновременно
 
 ---
 
-### 🌐 Overlord - Semantic Hub для команды
+### 🌐 Overlord - Semantic Hub для команды (в тестировании)
+
+> ⚠️ **Статус:** В активном тестировании. API может меняться.
 
 **Централизованный сервер для semantic обработки кода**
 
@@ -429,46 +394,7 @@ UltrasharpTools.Droid.exe \
 
 ---
 
-### 📊 Сравнение режимов
-
-| Аспект | Droid (автономный) | Droid + Overlord (гибридный) |
-|--------|-------------------|------------------------------|
-| **Работа с файлами** | ✅ Локально на вашей машине | ✅ Локально на вашей машине |
-| **Semantic search** | Локальная модель (Ollama/TEI) | Централизованная мощная модель |
-| **Vector store** | Локальный SQLite | Shared MultiProjectVectorStore |
-| **Cross-project** | ❌ Только текущий проект | ✅ Поиск по всем проектам команды |
-| **GPU requirements** | Желательно для TEI | Не нужно (на сервере) |
-| **Recommendations** | Нет | ✅ "Есть похожий код в TeamProject" |
-| **Setup сложность** | 🟢 Простой | 🟡 + Overlord deployment |
-| **Использование** | Индивидуальная работа | Командная разработка |
-
----
-
-### 🎯 Какой режим выбрать?
-
-**Автономный Droid (без Overlord):**
-- ✅ Работаете в одиночку
-- ✅ Один проект за раз
-- ✅ Хотите простую настройку
-- ✅ Локальная semantic модель достаточна (Ollama на вашей машине)
-- ✅ Не нужен поиск между проектами
-
-**Droid + Overlord (гибридный режим):**
-- ✅ Работаете в команде (2+ разработчика)
-- ✅ Несколько проектов/микросервисов
-- ✅ Нужен cross-project поиск дубликатов
-- ✅ Хотите мощную embedding модель на GPU без локального GPU
-- ✅ Важны smart recommendations ("похожий код в другом проекте")
-- ✅ Team knowledge sharing
-
-**Типичный сценарий:**
-1. Начните с **автономного Droid** - быстрый старт, всё локально
-2. Когда вырастет команда → добавьте **Overlord** для semantic синхронизации
-3. Каждый разработчик работает со своими файлами + получает знания от всей команды
-
----
-
-## 🎨 **Полный список инструментов (50 tools)**
+## 🎨 **Полный список инструментов (52 tools)**
 
 > **Легенда**: 🔷 = требует Semantic Mode (проверьте `get_capabilities()`)
 
@@ -492,8 +418,8 @@ UltrasharpTools.Droid.exe \
 | `manage_usings` | Чтение/запись using директив | - |
 | `manage_attributes` | Чтение/запись атрибутов на декларациях | - |
 | `analyze_complexity` | Метрики сложности (cyclomatic, cognitive, coupling) | - |
-| `pattern_search` | 4 режима поиска: entity, content, semantic, hybrid | 🔷* |
-| `find_duplicates` | Семантический поиск похожего кода | 🔷 |
+| `pattern_search` | 4 режима поиска: entity, content, semantic, hybrid | * |
+| `find_duplicates` | Семантический поиск похожего кода |  |
 | `detect_technology_stack` | Определяет frameworks, languages, dependencies | - |
 | `list_file_entities` | Список types и members в файле | - |
 
@@ -548,15 +474,17 @@ UltrasharpTools.Droid.exe \
 | `split_file` | Разбивает файл по top-level типам (класс → файл) |
 | `synthesize_files` | Объединяет несколько файлов в один |
 
-### 🧠 Semantic Tools (6) — требуют Semantic Mode 🔷
+### 🧠 Semantic Tools (8) — требуют Semantic Mode
 | Инструмент | Что делает |
 |------------|------------|
 | `semantic_search` | Поиск кода по смыслу (natural language) |
 | `semantic_diff` | Сравнение semantic изменений (поведение vs текст) |
 | `detect_code_clones` | Обнаружение дубликатов через ML |
+| `semantic_replace` | Batch find & replace с контекстом (preview + apply) |
+| `get_semantic_replace_info` | Справка по возможностям semantic_replace |
 | `reindex_changed_files` | Инкрементальная переиндексация |
-| `SemanticMerge` | 3-way merge с пониманием структуры кода |
-| `GetSemanticMergeInfo` | Статистика индексации для merge |
+| `semantic_merge` | 3-way merge с пониманием структуры кода |
+| `get_semantic_merge_info` | Справка по возможностям semantic_merge |
 
 ### 💾 Snapshot Tools (4)
 | Инструмент | Что делает |
@@ -587,8 +515,9 @@ UltrasharpTools.Droid.exe \
 
 **Требуют Semantic Mode (проверка через `get_capabilities()`):**
 - `semantic_search`, `semantic_diff`, `detect_code_clones`
+- `semantic_replace`, `get_semantic_replace_info`
 - `find_duplicates`, `reindex_changed_files`
-- `SemanticMerge`, `GetSemanticMergeInfo`
+- `semantic_merge`, `get_semantic_merge_info`
 - `pattern_search` в режимах `semantic` и `hybrid`
 
 **📖 Подробная документация**: [Run.Docs/Claude/](Run.Docs/Claude/) - примеры, best practices, workflows для каждого инструмента.
@@ -597,7 +526,7 @@ UltrasharpTools.Droid.exe \
 
 ## 🔧 **Дополнительные возможности**
 
-### Semantic Code Search (опционально)
+### Semantic Code Search
 
 Для поиска похожего кода по смыслу (не по тексту) можно включить векторные embeddings.
 
@@ -621,7 +550,7 @@ pwsh Dev.Scripts/setup-semantic-embedding.ps1
 ```
 
 Выберите embedding provider:
-- **Ollama** (рекомендуется) - простая установка, работает на CPU/GPU
+- **Ollama** - простая установка, работает на CPU/GPU
 - **TEI** - максимальная производительность, требует Docker + NVIDIA GPU
 - **Memory** - для тестирования без внешних зависимостей
 
@@ -667,87 +596,6 @@ setup-semantic-embedding.cmd
 Подробнее: [Dev.Docs/Development/LAYERED_INDEXING_DESIGN.md](Dev.Docs/Development/LAYERED_INDEXING_DESIGN.md)
 
 ---
-
-## 📊 **Что внутри (для технарей)**
-
-<details>
-<summary>Технические детали архитектуры</summary>
-
-### Архитектура
-
-**3-проектная структура** для разделения ответственности:
-
-```
-UltrasharpTools.Tools (Class Library)
-├─ Вся бизнес-логика (Roslyn, Git, Analysis)
-├─ Все MCP tool implementations
-├─ Все сервисы (SolutionManager, CodeModificationService)
-└─ Dependencies: Roslyn 5.0, LibGit2Sharp, NuGet.Protocol
-
-         ↑                           ↑
-         │                           │
-         │                           │
-
-Droid (Console)         Overlord (Web)
-├─ Stdio transport          ├─ HTTP/SSE transport
-├─ For: Claude Code         ├─ For: Remote access
-└─ Output: exe + deps       └─ Output: exe + deps
-```
-
-### Performance Optimizations
-
-**Layered Symbol Index:**
-- **Base Layer**: SQLite cache (full index, загружается 1 раз)
-- **Branch Delta**: Изменения относительно base для каждой ветки
-- **Working Delta**: Незакоммиченные изменения
-
-**Fast Operations:**
-- Bloom Filter: O(1) проверка существования (false positive < 0.01%)
-- SIMD xxHash32: 2-3x быстрее чем SHA256
-- Parallel assembly loading: 4-5x speedup
-- SQLite prepared statements caching: +25-30% batch operations
-
-**Call Graph Caching:**
-- SQLite persistence для TraceBackwards
-- 5-10x speedup на warm cache
-- 80-95% hit rate на реальных проектах
-
-**Git-Aware Layered Index:**
-- Branch switching: **< 20ms** (вместо полной переиндексации)
-- Incremental updates: только измененные файлы
-- Automatic cleanup: LRU eviction для старых веток
-
-### Системные требования
-
-**Минимум**:
-- .NET 10 SDK
-- 4GB RAM
-- Dual-core CPU
-
-**Рекомендуется**:
-- .NET 10 SDK
-- 16GB RAM (для больших solutions 890K+ символов)
-- Quad-core CPU
-- SSD
-
-### Performance Benchmarks
-
-**Реальный проект: 890K символов, 112 ветки**
-
-| Операция | Время | Детали |
-|----------|-------|--------|
-| Cold start (первая загрузка) | 48.3s | Полная индексация + Roslyn compilation |
-| Warm start (с кешем) | **8.9s** | 5.4x быстрее, только загрузка из SQLite |
-| Symbol search | **< 100ms** | Bloom filter + indexed lookup |
-| Branch switch | **16.6ms** | Только delta применяется |
-| Background cleanup (112 веток) | 2.2s | Compaction + orphan cleanup |
-
-**Call Graph Tracing (TraceBackwards)**
-| Метрика | Значение |
-|---------|----------|
-| Cache hit rate | 80-95% |
-| Speedup (warm cache) | 5-10x |
-| Storage | SQLite (< 10MB для 890K symbols) |
 
 ### Конфигурация
 
@@ -813,61 +661,6 @@ UltrasharpTools.Droid.exe --low-memory
 
 Инструкции по сборке из исходников, запуску тестов и разработке см. [Dev.Docs/CLAUDE.md](Dev.Docs/CLAUDE.md)
 
----
-
-## 📝 **Что нового?**
-
-### v3.0.6 (2025-11-20) - Production Release
-
-**Ключевые улучшения:**
-
-**🚀 Performance (2-150x ускорение):**
-- ⚡ Phase 7: Layered Indexing - Base + Branch Deltas + Working Deltas
-  - Git-aware три-слойная архитектура
-  - SQLite persistence (5.4x speedup: 48.3s → 8.9s)
-  - Branch switching < 20ms
-  - SIMD optimizations (4-8x для similarity calculations)
-  - xxHash32 вместо SHA256 (2-3x faster hashing)
-- ⚡ Fast Symbol Index - Bloom filters + битовые флаги (10-100x)
-- ⚡ Parallel processing - Assembly loading (4-5x), NuGet resolution (3-4x)
-- ⚡ SIMD vectorization - AVX2 для ComputeHashes (2.2-5.7x)
-- ⚡ Dynamic PGO - адаптивная runtime оптимизация (+30-50%)
-- ⚡ ReadyToRun (R2R) - AOT для 50% faster startup
-
-**✨ Новые возможности:**
-- Quality Tools - format_code (CSharpier), AnalyzeCodeStyle, ApplyCodeFixes
-- Semantic Merge - умное 3-way слияние с movement/rename detection
-- Advanced Tracing - trace_execution, TraceBackwards, AnalyzePathFeasibility (Z3)
-- Auto-linting integration - автоматическая проверка после модификаций
-
-**🏗️ Infrastructure:**
-- .NET 10 + C# 13.0 с modern language features
-- Docker + Kubernetes - production-ready deployment
-- Helm Chart - гибкая конфигурация
-- GitHub Actions CI/CD - автоматическая сборка
-- Structured logging - Microsoft.Extensions.Logging
-
-**📊 Production Validation:**
-- 890K символов, 112 git branches
-- 5.4x speedup с кешем
-- < 100ms symbol search
-- 16.6ms branch switching
-- Memory trade-off: +596 MB → 10-100x faster operations
-
-[Полная документация изменений](Dev.Docs/ULTRA-SHARPED.md)
-
----
-
-## 🤝 **Contributing**
-
-Приветствуются contributions!
-
-1. Fork репозиторий
-2. Создайте feature branch
-3. Следуйте [Development Guidelines](Dev.Docs/Development/Normalization.md)
-4. Submit pull request
-
-**Development Docs**: [Dev.Docs/](Dev.Docs/) - архитектура, design decisions, implementation guides
 
 ---
 
@@ -875,7 +668,9 @@ UltrasharpTools.Droid.exe --low-memory
 
 MIT License - см. [LICENSE](LICENSE)
 
-**Основан на**: [sharp-tools](https://github.com/tluyben/sharp-tools) by tluyben
+**Основан на**: [sharp-tools](https://github.com/tluyben/sharp-tools) by tluyben.
+([Отличия от оригинального проекта](Dev.Docs/ULTRA-SHARPED.md))
+
 
 **Links**: [GitHub](https://github.com/yourusername/ultrasharp-tools-mcp) • [Documentation](Run.Docs/) • [MCP Protocol](https://github.com/modelcontextprotocol)
 

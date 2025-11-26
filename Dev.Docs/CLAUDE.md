@@ -185,6 +185,8 @@ dotnet run -- --port 11435
 | `ModificationTools.cs` | add_member, modify_code, rename_symbol, move_member |
 | `PatternSearchTools.cs` | search_definitions, pattern_search, replace_references |
 | `SemanticAnalysisTools.cs` | semantic_search, semantic_diff, detect_code_clones |
+| `SemanticReplaceTools.cs` | semantic_replace, get_semantic_replace_info |
+| `SemanticMergeTools.cs` | semantic_merge, get_semantic_merge_info |
 | `QualityTools.cs` | format_code, analyze_code_style, apply_code_fixes |
 | `TraceTools.cs` | trace_execution, trace_backwards, analyze_path_feasibility |
 | `LogTools.cs` | analyze_logs |
@@ -293,7 +295,7 @@ UltraSharpTools.VectorDB/
 - Адаптивный уровень детализации
 
 **Git Integration**:
-- Автоматические ветки `sharptools/YYYYMMDD-HHMMSS`
+- Автоматические ветки `ultrasharptools/YYYYMMDD-HHMMSS`
 - Автокоммиты с описанием
 - `undo` откатывает последний коммит
 - Отключение: `--disable-git`

@@ -1,5 +1,7 @@
 # UltrasharpTools Overlord - MCP Remote Server
 
+> ⚠️ **Статус:** В активном тестировании. API может меняться.
+
 **Roslyn-powered C# code analysis server для командной работы через Model Context Protocol.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -325,6 +327,6 @@ MIT License - see [LICENSE](https://github.com/faxenoff/ultrasharp-tools-mcp/blo
 
 ---
 
-**Версия:** 3.2.1
-**Последнее обновление:** 2025-11-18
+**Версия:** 3.3.0
+**Последнее обновление:** 2025-11-27
 **Maintainers:** UltrasharpTools Team

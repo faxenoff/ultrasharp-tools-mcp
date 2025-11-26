@@ -8,7 +8,7 @@ tags: [csharp, mcp, roslyn, dotnet, sharptools]
 
 # C# Development with SharpTools MCP
 
-**Complete MCP suite for C# development: 36+ tools for analysis, modification, debugging, and quality.**
+**Complete MCP suite for C# development: 52 tools for analysis, modification, debugging, and quality.**
 
 ---
 

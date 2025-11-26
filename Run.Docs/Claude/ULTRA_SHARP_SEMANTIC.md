@@ -13,6 +13,8 @@
 | **semantic_search** | Find semantically similar code | ✅ Yes | Find similar patterns, discover existing utilities |
 | **semantic_diff** | Compare semantic changes | ✅ Yes | Verify refactorings, detect breaking changes |
 | **detect_code_clones** | Find duplicate code | ✅ Yes | Identify consolidation opportunities |
+| **semantic_replace** | Batch find & replace with context | ⚠️ Optional | Systematic API upgrades, batch refactoring |
+| **get_semantic_replace_info** | Show replace system info | ❌ No | Understand replace capabilities |
 | **semantic_merge** | AI-powered branch merge | ⚠️ Optional | Merge branches with natural language instructions |
 | **get_semantic_merge_info** | Show merge system info | ❌ No | Understand merge capabilities |
 | **reindex_changed_files** | Update semantic index | ✅ Yes | Refresh index after file changes |
@@ -367,6 +369,223 @@ detect_code_clones(minSimilarity: 0.80, membersOnly: false)
 - ➡️ [**semantic_diff**](#semantic_diff) — verify refactoring preserved behavior
 - ➡️ [**view_definition**](./ULTRA_SHARP_ANALYSIS.md#view_definition) — examine clone code
 - ➡️ [**modify_code**](./ULTRA_SHARP_MODIFICATION.md#modify_code) — consolidate clones
+
+---
+
+## semantic_replace
+
+**Batch find and replace with full context extraction** — find patterns across the codebase and replace them with new code, with full context for informed decisions.
+
+### Two-Phase Workflow
+
+**Phase 1: Preview Mode (default)**
+```javascript
+// Find all occurrences with full context
+semantic_replace(
+    pattern: "Console\\.WriteLine",
+    searchMode: "regex",
+    scope: "member",
+    limit: 100
+)
+// Returns: matchId, code context, location for each match
+```
+
+**Phase 2: Apply Mode**
+```javascript
+// Apply selected replacements
+semantic_replace(
+    apply: true,
+    replacements: '[{"matchId":"sr-xxx","newCode":"Logger.Info(...)"}]',
+    applyMode: "AllOrNothing",
+    commitMessage: "Replace Console.WriteLine with Logger"
+)
+```
+
+### Parameters (Preview Mode)
+
+- **pattern** (required): Pattern to search — regex, FQN, or natural language query
+- **searchMode** (default: "regex"): Search mode
+  - `"regex"` — text pattern matching
+  - `"roslyn"` — FQN/symbol search via Roslyn
+  - `"semantic"` — AI-powered semantic search (requires setup)
+- **scope** (default: "member"): Context scope for returned code
+  - `"statement"` — single statement
+  - `"block"` — enclosing block
+  - `"member"` — full method/property
+  - `"type"` — full class/struct
+  - `"file"` — entire file
+- **filePattern** (optional): Glob pattern filter, e.g. `"**/*.cs"`, `"Services/*.cs"`
+- **namespaceFilter** (optional): Namespace filter, e.g. `"MyApp.Services.*"`
+- **limit** (default: 100): Maximum results to return
+
+### Parameters (Apply Mode)
+
+- **apply** (required): Set to `true` to apply changes
+- **replacements** (required): JSON array of replacements
+  ```json
+  [
+    {"matchId": "sr-001", "newCode": "Logger.Info(message)"},
+    {"matchId": "sr-002", "newCode": "Logger.Warning(msg)"}
+  ]
+  ```
+- **applyMode** (default: "AllOrNothing"):
+  - `"AllOrNothing"` — rollback on any error
+  - `"BestEffort"` — apply successful, report failures
+- **commitMessage** (optional): Git commit message
+
+### What It Shows (Preview)
+
+- 🆔 **Match ID** — unique identifier for each match (sr-001, sr-002...)
+- 📄 **Full context code** — container code (method, class, etc. based on scope)
+- 📁 **Location** — file path and line number
+- 🔍 **Match info** — what was matched and where
+
+### When to Use
+
+✅ **For systematic API upgrades:**
+- Replace deprecated API calls with new ones
+- Migrate from old libraries to new
+- Update logging patterns
+
+✅ **For batch refactoring:**
+- Replace Console.WriteLine with proper logging
+- Update exception handling patterns
+- Migrate configuration access patterns
+
+✅ **For code modernization:**
+- Replace string.Format with interpolation
+- Update null checks to pattern matching
+- Migrate to newer C# syntax
+
+### Example Workflows
+
+**1. Replace Console.WriteLine with Logger:**
+```javascript
+// Preview: find all Console.WriteLine calls
+semantic_replace(
+    pattern: "Console\\.WriteLine",
+    scope: "member"
+)
+// Output: Found 25 matches with full method context
+
+// Review matches, then apply replacements
+semantic_replace(
+    apply: true,
+    replacements: '[
+        {"matchId":"sr-001","newCode":"_logger.LogInformation(message)"},
+        {"matchId":"sr-002","newCode":"_logger.LogWarning(error)"}
+        // ... more replacements
+    ]',
+    commitMessage: "Migrate Console.WriteLine to ILogger"
+)
+```
+
+**2. Find deprecated API usage:**
+```javascript
+// Find all uses of deprecated method
+semantic_replace(
+    pattern: "MyNamespace.OldClass.DeprecatedMethod",
+    searchMode: "roslyn",
+    scope: "member"
+)
+// Returns full method context for each usage
+
+// After reviewing, replace each occurrence appropriately
+semantic_replace(
+    apply: true,
+    replacements: '[...]',
+    applyMode: "BestEffort"  // Apply what we can
+)
+```
+
+**3. Semantic search for patterns:**
+```javascript
+// Find similar error handling patterns
+semantic_replace(
+    pattern: "catch exception and log error",
+    searchMode: "semantic",
+    scope: "block"
+)
+// Returns semantically similar code blocks
+```
+
+### Best Practices
+
+1. **Always preview first:**
+   ```javascript
+   // ✅ Good - preview then apply
+   semantic_replace(pattern: "...", scope: "member")
+   // Review results...
+   semantic_replace(apply: true, replacements: "[...]")
+
+   // ❌ Bad - blind replacement
+   // Never apply without reviewing preview
+   ```
+
+2. **Use appropriate scope:**
+   ```javascript
+   // Statement context for simple replacements
+   semantic_replace(pattern: "...", scope: "statement")
+
+   // Member context for API migrations
+   semantic_replace(pattern: "...", scope: "member")
+   ```
+
+3. **Filter for targeted changes:**
+   ```javascript
+   // Only in specific namespace
+   semantic_replace(
+       pattern: "...",
+       namespaceFilter: "MyApp.Services.*"
+   )
+
+   // Only in specific files
+   semantic_replace(
+       pattern: "...",
+       filePattern: "**/Controllers/*.cs"
+   )
+   ```
+
+4. **Use AllOrNothing for critical changes:**
+   ```javascript
+   // Rollback if any replacement fails
+   semantic_replace(
+       apply: true,
+       replacements: "[...]",
+       applyMode: "AllOrNothing"
+   )
+   ```
+
+### Performance
+
+- **Preview:** 2-10 sec depending on codebase size and pattern complexity
+- **Apply:** 1-5 sec per batch of replacements
+- **Semantic mode:** 5-15 sec (requires embedding generation)
+
+### Related Tools
+
+- ➡️ [**replace_all_references**](./ULTRA_SHARP_MODIFICATION.md#replace_all_references) — replace all references to a symbol
+- ➡️ [**find_and_replace**](./ULTRA_SHARP_MODIFICATION.md#find_and_replace) — simple regex find/replace
+- ➡️ [**semantic_search**](#semantic_search) — find similar code without replacement
+
+---
+
+## get_semantic_replace_info
+
+**Replace system information** — returns capabilities and usage instructions for semantic replace.
+
+### Usage
+
+```javascript
+get_semantic_replace_info()
+```
+
+### What It Shows
+
+- 📋 **Feature overview** — search modes, scope options
+- 🔧 **Parameters reference** — all available options
+- 📊 **Apply modes** — AllOrNothing vs BestEffort
+- 💡 **Usage examples** — common workflows
 
 ---
 

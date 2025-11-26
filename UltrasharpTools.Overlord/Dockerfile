@@ -94,12 +94,12 @@ LABEL \
     org.opencontainers.image.url="https://github.com/faxenoff/ultrasharp-tools-mcp" \
     org.opencontainers.image.source="https://github.com/faxenoff/ultrasharp-tools-mcp" \
     org.opencontainers.image.documentation="https://github.com/faxenoff/ultrasharp-tools-mcp/blob/main/Run.Docs/OVERLORD_README.md" \
-    version="3.2.1" \
+    version="3.3.0" \
     maintainer="UltrasharpTools Team" \
     app.kubernetes.io/name="ultrasharp-tools-server" \
     app.kubernetes.io/component="mcp-server" \
     app.kubernetes.io/part-of="ultrasharp-tools" \
-    app.kubernetes.io/version="3.2.1"
+    app.kubernetes.io/version="3.3.0"
 
 # Expose port
 EXPOSE 3001

@@ -32,6 +32,21 @@
 
 ## 🎯 Доступные фичи
 
+### [SemanticReplace/](SemanticReplace/)
+**Batch Code Replacement with Full Context**
+
+Инструмент для массовых изменений кода с извлечением полного контекста (весь метод/класс).
+
+- ✅ Статус: Реализовано (v3.3.0)
+- 🎯 Три режима поиска: regex, roslyn, semantic
+
+**Ключевые возможности:**
+- 3 режима поиска: Regex (текст), Roslyn (FQN), Semantic (ML/embeddings)
+- 5 уровней scope: Statement, Block, Member, Type, File
+- Two-Phase Workflow: Preview → Apply
+- Apply Modes: AllOrNothing (rollback) или BestEffort (partial)
+- Уникальные Match IDs для точечных замен
+
 ### [SemanticMerge/](SemanticMerge/)
 **Semantic 3-Way Code Merging**
 

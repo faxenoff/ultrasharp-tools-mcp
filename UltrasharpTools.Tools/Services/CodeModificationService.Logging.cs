@@ -2,8 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace UltrasharpTools.Tools.Services;
 
-public partial class CodeModificationService
-{
+public partial class CodeModificationService {
     // Member operations (3000-3009)
     [LoggerMessage(EventId = 3000, Level = LogLevel.Information,
         Message = "Adding member to type {TypeName} in document {DocumentPath}")]
@@ -187,4 +186,14 @@ public partial class CodeModificationService
     [LoggerMessage(EventId = 3076, Level = LogLevel.Information,
         Message = "Successfully reverted the last change using Git.")]
     private partial void LogRevertSucceeded();
+
+    // Semantic reindex operations (3080-3089)
+    [LoggerMessage(EventId = 3080, Level = LogLevel.Information,
+        Message = "Incrementally reindexing {Count} changed C# files in semantic search index")]
+    private partial void LogSemanticReindexing(int count);
+    [LoggerMessage(EventId = 3081, Level = LogLevel.Information,
+        Message = "Semantic reindex done for {Count} files")]
+    private partial void LogSemanticReindexCompleted(int count); [LoggerMessage(EventId = 3082, Level = LogLevel.Warning,
+                    Message = "Semantic reindex failed but code changes were still applied")]
+    private partial void LogSemanticReindexFailed(Exception exception);
 }

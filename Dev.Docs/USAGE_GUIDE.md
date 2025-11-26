@@ -1,6 +1,6 @@
 # UltrasharpTools - Руководство по использованию
 
-**Версия:** 3.2.1
+**Версия:** 3.3.0
 **Дата:** 2025-11-18
 
 ---
@@ -30,7 +30,7 @@ pwsh Dev.Scripts/publish-mcp.ps1  # Windows/Linux
 ./Dev.Scripts/publish-mcp.sh      # Linux/Mac
 ```
 
-**Результат:** `Run.Publish/Droid/UltrasharpTools.Droid.exe` (103 MB)
+**Результат:** `Run.Publish/Comm/UltrasharpTools.Comm.exe` (~5 MB) + `Run.Publish/Droid/UltrasharpTools.Droid.exe` (103 MB)
 
 ### 1.2 Конфигурация Claude Desktop
 
@@ -38,23 +38,19 @@ pwsh Dev.Scripts/publish-mcp.ps1  # Windows/Linux
 
 ```json
 {
-  "Droids": {
+  "mcpServers": {
     "ultrasharp-tools": {
-      "type": "stdio",
-      "command": "D:/github/ultrasharp-tools-mcp/Run.Publish/Droid/UltrasharpTools.Droid.exe",
-      "args": [
-        "--log-level", "Information"
-      ],
-      "env": {}
+      "command": "D:/Tools/UltrasharpTools/Comm/UltrasharpTools.Comm.exe"
     }
   }
 }
 ```
 
 **⚠️ Важно:**
+- Запускайте **Comm.exe**, а не Droid.exe!
+- Comm — лёгкий stdio-bridge, который автоматически запустит Droid
 - Используйте **полный абсолютный путь**
 - На Windows: `\\` или `/` (оба работают)
-- Обязательно добавьте `"type": "stdio"` и `"env": {}`
 
 ### 1.3 Первый запрос
 
@@ -236,7 +232,7 @@ Claude вызывает: add_member(
 ✅ Git commit created: feat: Add SendWelcomeEmail to UserService
 ✅ Compilation successful (0 errors)
 
-Branch: sharptools/20251118-143022
+Branch: ultrasharptools/20251118-143022
 ```
 
 #### Изменение метода
@@ -771,7 +767,7 @@ view_definition("MyApp.Services.Users.UserService")
    git commit -m "Before UltrasharpTools refactoring"
    ```
 
-2. **UltrasharpTools создаёт ветки `sharptools/*` автоматически**
+2. **UltrasharpTools создаёт ветки `ultrasharptools/*` автоматически**
    - Каждое изменение = новая ветка + commit
    - Используйте `undo` для отката
 
@@ -828,5 +824,5 @@ view_definition("MyApp.Services.Users.UserService")
 
 ---
 
-**Версия:** 3.2.1
+**Версия:** 3.3.0
 **Последнее обновление:** 2025-11-18

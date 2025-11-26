@@ -5,8 +5,6 @@
 Данный документ описывает все ключевые улучшения, внесённые в оригинальный SharpTools MCP Server, в результате чего был создан **UltrasharpTools** — комплексная модернизация с фокусом на производительность, качество кода и новые возможности.
 
 **Базовый проект:** SharpTools (https://github.com/tluyben/sharp-tools)
-**Форк:** UltrasharpTools (переименование + расширенная функциональность)
-**Период разработки:** Фазы 1-6 + Performance Phases 1-5
 **Результат:** Улучшение производительности в 2-100 раз для критичных операций + новые инструменты анализа
 
 ---
@@ -46,7 +44,7 @@
 - ✅ **FrozenSet** — оптимизация hash lookups
 - ✅ **Infrastructure Fixes** — graceful shutdown, SQLite reliability
 
-### 6. Memory Optimization (v3.0.8 - 2025-11-25) ✅ NEW!
+### 6. Memory Optimization (2025-11-25)
 - ✅ **MemoryCache Limits** — уменьшены лимиты (500MB+1GB → 150MB+250MB) = **-1.1GB**
 - ✅ **SqliteSymbolIndex** — disk-based symbol storage с FTS5
 - ✅ **SqliteReflectionTypeIndex** — SQLite для reflection types вместо FrozenDictionary
@@ -58,7 +56,7 @@
 ### 7. Quality Tools
 - ✅ **FormatCode** — автоматическое форматирование через CSharpier
 
-### 8. Layered Indexing & Git Workflow (Phase 7 - 2025-01-17) ✅
+### 8. Layered Indexing & Git Workflow (2025-01-17)
 - ✅ **Three-Layer Architecture** — Base + Branch Deltas + Working Deltas
 - ✅ **Git Branch Integration** — автоматические branch deltas при переключении веток
 - ✅ **Working Delta Promotion** — promotion в branch delta при git commit
@@ -71,7 +69,7 @@
 - ✅ **5.4x Speedup** — cache hit (48.3s → 8.9s)
 - ✅ **< 20ms** — branch switching operations
 
-### 9. Advanced Tracing & Debugging (Phase 5-6)
+### 9. Advanced Tracing & Debugging
 - ✅ **TraceExecution** — статический трейсинг выполнения с data flow
 - ✅ **TraceBackwards** — обратный трейсинг от точки краша
 - ✅ **AnalyzePathFeasibility** — символьное выполнение через Z3 Theorem Prover
@@ -79,15 +77,77 @@
 - ✅ **Taint Analysis** — отслеживание потенциально опасных данных
 - ✅ **Interprocedural Analysis** — трейсинг через вызовы методов
 
-### 10. Semantic Merge (NEW!)
+### 10. Semantic Merge & Replace
+
+**Semantic Merge:**
 - ✅ **Multi-format Support** — C#, XML, YAML, PowerShell, Shell scripts
 - ✅ **Semantic Matching** — векторное сходство для определения перемещений
 - ✅ **Movement Detection** — автоматическое обнаружение перемещённого кода
 - ✅ **Type Ambiguity Detection** — выявление конфликтов типов при слиянии
 - ✅ **Rename Detection** — обнаружение переименований через heuristics
 - ✅ **Three-Way Merge** — умное слияние с учётом семантики
+- ✅ **Branch-based Merge** — `semantic_merge(sourceBranch, targetBranch, instructions)`
+- ✅ **Natural Language Instructions** — "ignore swagger; prefer source for caching"
 
-### 11. Production Ready
+**Semantic Replace:**
+- ✅ **Two-Phase Workflow** — Preview → Apply для безопасных batch изменений
+- ✅ **Three Search Modes** — regex, roslyn (FQN), semantic (ML)
+- ✅ **Context Scopes** — statement, block, member, type, file
+- ✅ **Smart Filters** — filePattern, namespaceFilter для таргетированных изменений
+- ✅ **Apply Modes** — AllOrNothing (rollback) или BestEffort (partial apply)
+- ✅ **Match IDs** — уникальные идентификаторы для точечных замен
+
+### 11. Three-Process Architecture
+
+**Проблема:** Каждый AI-агент запускал свой Roslyn + Semantic процесс = 2-3 GB RAM на каждый редактор.
+
+**Решение:** Разделение на три процесса с общим backend.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Claude Desktop    Claude Code    Cursor    VS Code + Continue.dev     │
+│       ↓                ↓            ↓                ↓                  │
+│    Comm.exe         Comm.exe     Comm.exe        Comm.exe              │
+│  (stdio bridge)   (stdio bridge)   ...            ...     (~5 MB each) │
+└────────┬───────────────┬────────────┬──────────────┬────────────────────┘
+         │               │            │              │
+         └───────────────┴─────┬──────┴──────────────┘
+                               │ Named Pipes (IPC)
+                               ↓
+┌─────────────────────────────────────────────────────────────┐
+│  UltrasharpTools.Droid.exe  (singleton, auto-start)         │
+│  ├─ MCP Server (многоклиентный)                             │
+│  ├─ Roslyn Workspace (анализ и модификация кода)            │
+│  ├─ Git Integration (автокоммиты)                           │
+│  └─ VectorDB Client ──────┐                                 │
+└───────────────────────────│─────────────────────────────────┘
+                            │ Named Pipes (IPC)
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│  UltrasharpTools.VectorDB.exe  (singleton, lazy start)      │
+│  ├─ Semantic Index (sqlite-vec / vectorlite)                │
+│  ├─ Embedding Generator (TEI/Ollama)                        │
+│  └─ Power Management (Efficiency Mode в idle)               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Роли процессов:**
+| Процесс | Роль | Lifecycle |
+|---------|------|-----------|
+| **Comm** | Лёгкий stdio-bridge (~5 MB) | Один на каждый AI-агент/редактор |
+| **Droid** | Roslyn workspace, Git, MCP tools | Singleton — один на все Comm |
+| **VectorDB** | Semantic index, embeddings | Singleton — lazy start по требованию |
+
+**Преимущества:**
+- ✅ **Общие ресурсы** — 5 редакторов используют ОДИН Droid+VectorDB (экономия 2-3 GB RAM)
+- ✅ **Общий кеш** — Roslyn compilation, symbol index загружаются один раз
+- ✅ **Изоляция памяти** — VectorDB 500MB+ не влияет на Droid, Comm минималистичен
+- ✅ **Независимый перезапуск** — VectorDB перезапускается при проблемах
+- ✅ **Энергосбережение** — Efficiency Mode после 3 минут простоя
+- ✅ **Ленивый запуск** — VectorDB стартует по требованию
+- ✅ **Auto-recovery** — 30s timeout + автоперезапуск при сбоях
+
+### 12. Production Ready
 - ✅ **Docker Support** — multi-stage Dockerfile с оптимизациями
 - ✅ **Kubernetes Deployment** — полный набор manifests (deployment, service, ingress, PVC)
 - ✅ **Helm Chart** — гибкое развертывание с конфигурацией
@@ -95,7 +155,7 @@
 - ✅ **Project-local Storage** — .ultrasharp/ для cache и logs
 - ✅ **Production Build Scripts** — автоматизированная сборка для Windows/Linux
 
-### 12. Documentation & Organization
+### 13. Documentation & Organization
 - ✅ **Dev.Docs** — документация для разработчиков (Features/, Performance/, Development/)
 - ✅ **Run.Docs** — документация для пользователей (Tools/, Setup/, Configuration/, Deployment/)
 - ✅ **Feature Documentation Pattern** — Design → Examples → Implementation → Summary
@@ -238,21 +298,97 @@ apply_code_fixes(
 - **RenameDetector** — обнаружение переименований
 - **TypeAmbiguityDetector** — выявление конфликтов типов
 
-**Пример использования:**
+**Пример использования (Branch-based):**
 ```bash
-SemanticMerge(
-    basePath: "base/MyClass.cs",
-    leftPath: "feature/MyClass.cs",
-    rightPath: "main/MyClass.cs",
-    outputPath: "merged/MyClass.cs"
+semantic_merge(
+    sourceBranch: "feature/caching",
+    targetBranch: "main",
+    instructions: "ignore swagger; prefer source for caching",
+    filePatterns: "*.cs",
+    apply: true
 )
 ```
+
+**Natural Language Instructions:**
+- `"ignore swagger"` → исключает *.swagger.json, **/swagger/**
+- `"skip appsettings"` → исключает appsettings*.json
+- `"prefer source for X"` → приоритет source ветки для кода связанного с X
+- `"preserve formatting"` → сохраняет форматирование target ветки
 
 **Результаты:**
 - ✅ Автоматическое разрешение 80-90% конфликтов
 - ✅ Обнаружение перемещений кода между файлами
 - ✅ Обнаружение переименований методов/классов
 - ✅ Сохранение семантики при слиянии
+- ✅ Branch-based workflow (автоматический merge-base)
+- ✅ Preview mode (apply: false)
+
+---
+
+### Semantic Replace
+
+**Проблема:** Batch замены через regex теряют контекст и приводят к ошибкам.
+
+**Решение:** Two-phase workflow с полным контекстом и селективным применением.
+
+**Workflow:**
+
+```
+Phase 1: Preview                          Phase 2: Apply
+┌─────────────────────────┐              ┌─────────────────────────┐
+│ semantic_replace(       │              │ semantic_replace(       │
+│   pattern: "Console\\." │  ──────────► │   apply: true,          │
+│   scope: "member"       │   Review     │   replacements: [       │
+│ )                       │   matches    │     {matchId, newCode}  │
+└─────────────────────────┘              │   ]                     │
+         │                               └─────────────────────────┘
+         ▼
+┌─────────────────────────┐
+│ Returns:                │
+│ - matchId (sr-001...)   │
+│ - full context code     │
+│ - file:line location    │
+└─────────────────────────┘
+```
+
+**Search Modes:**
+- `regex` — текстовый поиск по паттерну
+- `roslyn` — поиск по FQN через Roslyn SymbolFinder
+- `semantic` — ML-powered поиск по смыслу (требует VectorDB)
+
+**Context Scopes:**
+- `statement` — одна строка/statement
+- `block` — окружающий блок {}
+- `member` — полный метод/свойство
+- `type` — полный класс/struct
+- `file` — весь файл
+
+**Пример использования:**
+```bash
+# Preview: найти все Console.WriteLine
+semantic_replace(
+    pattern: "Console\\.WriteLine",
+    scope: "member",
+    filePattern: "**/Services/*.cs"
+)
+
+# Apply: заменить выбранные
+semantic_replace(
+    apply: true,
+    replacements: '[
+        {"matchId":"sr-001","newCode":"_logger.LogInformation(msg)"},
+        {"matchId":"sr-002","newCode":"_logger.LogWarning(err)"}
+    ]',
+    applyMode: "AllOrNothing",
+    commitMessage: "Migrate to ILogger"
+)
+```
+
+**Результаты:**
+- ✅ Безопасные batch изменения с preview
+- ✅ Полный контекст для информированных решений
+- ✅ AllOrNothing rollback при ошибках
+- ✅ Таргетированные фильтры (namespace, file pattern)
 
 ---
 
@@ -353,31 +489,6 @@ analyze_path_feasibility(
 - Docker build cache для быстрой сборки
 - Automated tagging (branch, SHA, latest)
 
-### Project-local Storage
-
-**Проблема:** Логи и кеши создавались в корне системы, конфликтовали между проектами.
-
-**Решение:** `.ultrasharp/` директория в корне каждого проекта.
-
-```
-MyProject/
-├── .ultrasharp/
-│   ├── cache/
-│   │   ├── analysis/
-│   │   ├── callgraph/
-│   │   └── symbols/
-│   └── logs/
-│       └── UltrasharpTools.Droid-.log
-├── MyProject.sln
-└── src/
-```
-
-**Возможности:**
-- Автоматическое определение project root (.sln, .git, .csproj)
-- Изолированные кеши для каждого проекта
-- Переопределение через --log-directory parameter
-- Добавлено в .gitignore
-
 ---
 
 ## 📈 Performance Benchmarks
@@ -470,7 +581,7 @@ MyProject/
 ## 🎓 Lessons Learned
 
 ### 1. Indexing vs On-Demand Trade-off
-- **Layered indexing** (Phase 7) решает проблему полной переиндексации — только изменённые файлы
+- **Layered indexing** решает проблему полной переиндексации — только изменённые файлы
 - **Git-aware deltas** — автоматическая синхронизация с git branches
 - **SQLite persistence** — кеш сохраняется между запусками (5.4x speedup)
 - **Memory overhead** оправдан для production codebases (10k+ символов)
@@ -500,26 +611,63 @@ MyProject/
 
 ## 📚 Архитектурные решения
 
-### 1. Dependency Injection
+### 1. Three-Process Architecture
+
+**Comm → Droid → VectorDB разделение:**
+```
+Claude Desktop / Claude Code / Cursor / VS Code
+    ↓ stdio (JSON-RPC)
+┌─────────────────────────────────────────────────────────────┐
+│  Comm.exe — Lightweight stdio bridge (~5 MB each)           │
+│  └─ Forwards MCP messages to Droid via Named Pipes          │
+└─────────────────────────────│───────────────────────────────┘
+                              │ Named Pipes (IPC)
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Droid.exe — MCP Server (singleton, multi-client)           │
+│  ├─ Roslyn Workspace (MSBuildWorkspace)                     │
+│  ├─ FastSymbolIndex (Bloom + FrozenDictionary)              │
+│  ├─ Git Integration (auto-commits)                          │
+│  └─ VectorDBClient ─────────┐                               │
+└─────────────────────────────│───────────────────────────────┘
+                              │ Named Pipes (IPC)
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  VectorDB.exe — Semantic Engine (singleton, lazy start)     │
+│  ├─ sqlite-vec / vectorlite backend                         │
+│  ├─ TEI/Ollama embedding provider                           │
+│  └─ PowerManagement (Efficiency Mode)                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Преимущества:**
+- N редакторов → 1 Droid+VectorDB (экономия 2-3 GB RAM)
+- Общий Roslyn workspace и symbol cache
+- Изоляция памяти (VectorDB 500MB+ не влияет на Droid)
+- Независимый restart при сбоях
+- Ленивый запуск (экономия ресурсов)
+- Разные power profiles
+
+### 2. Dependency Injection
 Все сервисы регистрируются через `ServiceCollectionExtensions`:
 ```csharp
 services.WithSharpToolsServices(enableGit: true, buildConfiguration: "Debug");
 services.AddMcpServer().WithHttpTransport().WithSharpTools();
 ```
 
-### 2. Separation of Concerns
+### 3. Separation of Concerns
 - **Tools/** — MCP endpoints (тонкий слой)
 - **Services/** — бизнес-логика
 - **Interfaces/** — контракты
 - **Infrastructure/** — утилиты (ProjectPathHelper, FastSymbolIndex)
 
-### 3. Caching Strategy
+### 4. Caching Strategy
 - **MemoryCache** для Compilation/SemanticModel (hot data)
 - **SQLite** для AnalysisCache/CallGraphCache (persistent)
 - **FastSymbolIndex** для in-memory symbol lookup
 - **FrozenDictionary** для read-only reflection cache
 
-### 4. Error Handling
+### 5. Error Handling
 - **ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync** wrapper для всех tools
 - **Structured logging** через Microsoft.Extensions.Logging
 - **Graceful degradation** (если индекс не построен → fallback to Roslyn API)

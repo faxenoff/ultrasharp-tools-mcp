@@ -1,6 +1,6 @@
 # UltrasharpTools - Архитектура системы
 
-**Версия:** 3.2.1
+**Версия:** 3.3.0
 **Статус:** Production Ready
 **Дата обновления:** 2025-11-24
 
@@ -34,7 +34,7 @@ UltrasharpTools - это MCP-сервер для интеллектуально�
 │  ┌──────────────────────────────────────────┐              │
 │  │  UltrasharpTools.Tools (Core Library)    │              │
 │  │  ────────────────────────────────────     │              │
-│  │  • 37 MCP инструментов                   │              │
+│  │  • 52 MCP инструментов                   │              │
 │  │  • Roslyn Analysis & Modification        │              │
 │  │  • Fast Symbol Index (Type Dictionary)   │              │
 │  │  • Layered Symbol Index (35x faster)     │              │

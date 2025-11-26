@@ -1,6 +1,7 @@
 using Microsoft.Extensions.FileSystemGlobbing;
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Mcp;
+using UltrasharpTools.Tools.Semantic;
 
 namespace UltrasharpTools.Tools.Services;
 
@@ -8,6 +9,7 @@ public partial class CodeModificationService(
     ISolutionManager solutionManager,
     IGitService gitService,
     IQuickLintService quickLintService,
+    ISemanticSearchService? semanticSearchService,
     ILogger<CodeModificationService> logger
 ) : ICodeModificationService
 {
@@ -17,6 +19,7 @@ public partial class CodeModificationService(
         gitService ?? throw new ArgumentNullException(nameof(gitService));
     private readonly IQuickLintService _quickLintService =
         quickLintService ?? throw new ArgumentNullException(nameof(quickLintService));
+    private readonly ISemanticSearchService? _semanticSearchService = semanticSearchService;
     private readonly ILogger<CodeModificationService> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -792,6 +795,9 @@ public partial class CodeModificationService(
 
             _solutionManager.RefreshCurrentSolution();
 
+            // Incrementally update semantic index for changed files
+            await ReindexChangedFilesForSemanticSearchAsync(changedFilePaths, cancellationToken);
+
             // Run quick lint on changed files (only .cs files)
             var csFiles = changedFilePaths
                 .Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
@@ -953,5 +959,40 @@ public partial class CodeModificationService(
         }
 
         return (true, successMessage);
+    }
+
+    /// <summary>
+    /// Incrementally reindex changed files in the semantic search index.
+    /// </summary>
+    private async Task ReindexChangedFilesForSemanticSearchAsync(
+        List<string> changedFilePaths,
+        CancellationToken cancellationToken
+    )
+    {
+        if (_semanticSearchService == null || !_semanticSearchService.IsAvailable)
+        {
+            return; // Semantic search not available, skip reindexing
+        }
+
+        var csFiles = changedFilePaths
+            .Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (csFiles.Count == 0)
+        {
+            return; // No C# files to reindex
+        }
+
+        try
+        {
+            LogSemanticReindexing(csFiles.Count);
+            await _semanticSearchService.ReindexChangedFilesAsync(csFiles.ToArray(), cancellationToken);
+            LogSemanticReindexCompleted(csFiles.Count);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the operation if semantic reindexing fails
+            LogSemanticReindexFailed(ex);
+        }
     }
 }

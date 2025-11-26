@@ -21,8 +21,10 @@ public sealed partial class PowerManagementService : IDisposable {
     // Настройки для разных режимов ThreadPool
     private readonly int _normalMinWorkerThreads;
     private readonly int _normalMinCompletionThreads;
-    private const int IdleMinWorkerThreads = 1;
-    private const int IdleMinCompletionThreads = 1;
+    // Для VectorDB нужно минимум 2 потока: 1 для WaitForConnectionAsync completion,
+    // 1 для обработки запросов. С 1 потоком pipe listener может не успеть принять подключение.
+    private const int IdleMinWorkerThreads = 2;
+    private const int IdleMinCompletionThreads = 2;
 
     public PowerMode CurrentMode => _currentMode;
     public DateTime LastActivityTime => _lastActivityTime;
@@ -102,8 +104,10 @@ public sealed partial class PowerManagementService : IDisposable {
             return;
 
         try {
-            // Включаем настоящий Efficiency Mode (EcoQoS на Windows 11+)
-            EfficiencyModeHelper.EnableEfficiencyMode(_logger);
+            // NOTE: НЕ включаем EcoQoS - он слишком агрессивно троттлит процесс
+            // и pipe listener не успевает принять входящие подключения.
+            // Вместо этого только уменьшаем ThreadPool для экономии памяти.
+            // EfficiencyModeHelper.EnableEfficiencyMode(_logger); // DISABLED
 
             // Уменьшаем минимальные потоки ThreadPool
             ThreadPool.SetMinThreads(IdleMinWorkerThreads, IdleMinCompletionThreads);
@@ -123,8 +127,8 @@ public sealed partial class PowerManagementService : IDisposable {
             return;
 
         try {
-            // Отключаем Efficiency Mode
-            EfficiencyModeHelper.DisableEfficiencyMode(_logger);
+            // NOTE: EcoQoS отключен в idle mode, так что здесь ничего не нужно
+            // EfficiencyModeHelper.DisableEfficiencyMode(_logger); // DISABLED
 
             // Восстанавливаем настройки ThreadPool
             ThreadPool.SetMinThreads(_normalMinWorkerThreads, _normalMinCompletionThreads);

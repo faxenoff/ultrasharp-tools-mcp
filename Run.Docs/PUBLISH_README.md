@@ -38,29 +38,31 @@ pwsh ./Config/validate-semantic-config.ps1
 
 ### 3. Добавьте в Claude Code
 
-Откройте файл конфигурации Claude Code и добавьте:
+Откройте файл конфигурации Claude Code (`~/.claude.json`) и добавьте:
 
 ```json
 {
-  "Droids": {
-    "SharpTools": {
-      "command": "/path/to/UltrasharpTools.Droid.exe",
-      "args": [
-        "--log-directory",
-        "/path/to/logs",
-        "--log-level",
-        "Information"
-      ]
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "command": "/path/to/Comm/UltrasharpTools.Comm.exe"
     }
   }
 }
 ```
 
+> ⚠️ **Важно:** Запускается **Comm.exe**, а не Droid.exe!
+> Comm — лёгкий stdio-bridge (~5 MB), который автоматически запустит Droid при первом подключении.
+
 ## 📁 Структура папки
 
 ```
-Droid/
-├── UltrasharpTools.Droid.exe      ← Главный файл
+UltrasharpTools/
+├── Comm/
+│   └── UltrasharpTools.Comm.exe   ← 👈 Запускать этот файл!
+├── Droid/
+│   └── UltrasharpTools.Droid.exe  ← Roslyn сервер (запускается автоматически)
+├── VectorDB/
+│   └── UltrasharpTools.VectorDB.exe ← Semantic индексер (lazy start)
 ├── *.dll                               ← Runtime файлы
 │
 ├── semantic-config.json                ← Создаётся setup (основной конфиг)

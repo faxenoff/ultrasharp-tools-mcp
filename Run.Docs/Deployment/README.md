@@ -1,5 +1,7 @@
 # UltrasharpTools Overlord - Deployment Guide
 
+> ⚠️ **Статус:** Overlord находится в активном тестировании. API может меняться.
+
 Полное руководство по развертыванию UltrasharpTools MCP Remote Server в Kubernetes кластере.
 
 ## 📋 Содержание
@@ -429,10 +431,10 @@ echo $GITHUB_PAT | docker login ghcr.io -u YOUR_USERNAME --password-stdin
 
 # Tag
 docker tag ultrasharp-tools-server:release \
-  ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v3.2.1
+  ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v3.3.0
 
 # Push
-docker push ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v3.2.1
+docker push ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v3.3.0
 ```
 
 ---
@@ -649,4 +651,4 @@ kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- \
 Если возникли проблемы:
 1. Проверьте [Troubleshooting](#troubleshooting) секцию
 2. Изучите логи: `kubectl logs -f deployment/ultrasharp-tools-server -n ultrasharp-tools`
-3. Создайте issue на GitHub: https://github.com/YOUR_ORG/ultrasharp-tools-mcp/issues
+3. Создайте issue на GitHub: https://github.com/faxenoff/ultrasharp-tools-mcp/issues

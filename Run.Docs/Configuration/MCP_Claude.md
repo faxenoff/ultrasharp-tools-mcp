@@ -20,7 +20,7 @@ tags: [mcp, quick-reference, decision-tree]
 - ✅ Code modification with auto-linting
 - ✅ Quality tools (formatting, linting, auto-fixes)
 - ✅ Debugging (CFG tracing, backtrace, log analysis)
-- ✅ 36+ specialized tools for C# development
+- ✅ 52 specialized tools for C# development
 
 **Key workflow:**
 ```

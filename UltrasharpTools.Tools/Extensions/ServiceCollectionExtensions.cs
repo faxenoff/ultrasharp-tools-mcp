@@ -14,6 +14,8 @@ using UltrasharpTools.Tools.Models;
 using UltrasharpTools.Tools.Semantic;
 using UltrasharpTools.Tools.Semantic.Embedding;
 using UltrasharpTools.Tools.Semantic.GPU;
+using UltrasharpTools.Tools.Replace.Interfaces;
+using UltrasharpTools.Tools.Replace.Services;
 using UltrasharpTools.Tools.Semantic.Hybrid;
 
 namespace UltrasharpTools.Tools.Extensions;
@@ -77,7 +79,14 @@ public static class ServiceCollectionExtensions {
         } else {
             services.AddSingleton<IGitService, NoOpGitService>();
         }
-        services.AddSingleton<ICodeModificationService, CodeModificationService>();
+        services.AddSingleton<ICodeModificationService>(sp => {
+            var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var gitService = sp.GetRequiredService<IGitService>();
+            var quickLintService = sp.GetRequiredService<IQuickLintService>();
+            var semanticSearchService = sp.GetService<ISemanticSearchService>(); // Optional - for auto-reindex
+            var logger = sp.GetRequiredService<ILogger<CodeModificationService>>();
+            return new CodeModificationService(solutionManager, gitService, quickLintService, semanticSearchService, logger);
+        });
         services.AddSingleton<IEditorConfigProvider, EditorConfigProvider>();
         services.AddSingleton<ILoadingOrchestrator, LoadingOrchestrator>();
         services.AddSingleton<IDocumentOperationsService, DocumentOperationsService>();
@@ -579,6 +588,63 @@ public static class ServiceCollectionExtensions {
         // after solution loads. These services are created manually after solution
         // loads, not registered in DI container.
         // Tests can create them directly with required parameters.
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds Semantic Replace services for batch code modifications with full context extraction.
+    /// Provides pattern matching, context extraction, and atomic batch replacements.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection WithSemanticReplace(this IServiceCollection services)
+    {
+        // Pattern Matcher Service
+        services.AddSingleton<IPatternMatcherService>(sp => {
+            var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var semanticSimilarityService = sp.GetService<ISemanticSimilarityService>(); // Optional
+            var semanticSearchService = sp.GetService<ISemanticSearchService>(); // Optional - for semantic mode
+            var logger = sp.GetService<ILogger<PatternMatcherService>>();
+            return new PatternMatcherService(solutionManager, semanticSimilarityService, semanticSearchService, logger);
+        });
+
+        // Context Extractor Service
+        services.AddSingleton<IContextExtractorService>(sp => {
+            var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var logger = sp.GetService<ILogger<ContextExtractorService>>();
+            return new ContextExtractorService(solutionManager, logger);
+        });
+
+        // Batch Replacer Service
+        services.AddSingleton<IBatchReplacerService>(sp => {
+            var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var modificationService = sp.GetRequiredService<ICodeModificationService>();
+            var formattingService = sp.GetRequiredService<IFormattingService>();
+            var versionManager = sp.GetRequiredService<UltrasharpTools.Tools.Versioning.VersionManager>();
+            var gitService = sp.GetService<IGitService>(); // Optional
+            var logger = sp.GetService<ILogger<BatchReplacerService>>();
+            return new BatchReplacerService(
+                solutionManager,
+                modificationService,
+                formattingService,
+                versionManager,
+                gitService,
+                logger);
+        });
+
+        // Main Semantic Replace Service
+        services.AddSingleton<ISemanticReplaceService>(sp => {
+            var patternMatcher = sp.GetRequiredService<IPatternMatcherService>();
+            var contextExtractor = sp.GetRequiredService<IContextExtractorService>();
+            var batchReplacer = sp.GetRequiredService<IBatchReplacerService>();
+            var logger = sp.GetService<ILogger<SemanticReplaceService>>();
+            return new SemanticReplaceService(
+                patternMatcher,
+                contextExtractor,
+                batchReplacer,
+                logger);
+        });
 
         return services;
     }

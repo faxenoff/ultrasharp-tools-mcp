@@ -28,7 +28,7 @@ namespace UltrasharpTools.Droid;
 public static class Program
 {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
-    public const string ApplicationVersion = "3.2.1";
+    public const string ApplicationVersion = "3.3.0";
 
     private static readonly JsonSerializerOptions SemanticConfigJsonOptions =
         new()
@@ -364,6 +364,9 @@ public static class Program
             symbolCacheOptions,
             lowMemoryMode
         );
+
+        // Register Semantic Replace services (batch find/replace with context extraction)
+        builder.Services.WithSemanticReplace();
 
         // NOTE: Semantic Merge services are registered later, after Semantic RAG is configured
         // This ensures EmbeddingGenerator is available for SemanticMerge

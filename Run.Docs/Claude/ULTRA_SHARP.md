@@ -67,7 +67,7 @@ This is the main overview. For detailed method documentation, see:
 
 ### 3. Git Integration
 
-**Every modification creates a branch** `sharptools/YYYYMMDD-HHMMSS`:
+**Every modification creates a branch** `ultrasharptools/YYYYMMDD-HHMMSS`:
 - Automatic commits with descriptive messages
 - Use `undo` to rollback last change
 - Disable with `--disable-git` flag
@@ -193,8 +193,10 @@ AI-powered code understanding (requires setup):
 - `semantic_search` - Find semantically similar code
 - `semantic_diff` - Compare code semantic changes
 - `detect_code_clones` - Find duplicate/similar code
+- `semantic_replace` - Batch find & replace with full context extraction
+- `semantic_merge` - AI-powered branch merge with natural language instructions
 
-**Use when:** Finding similar patterns, refactoring duplicates, code review
+**Use when:** Finding similar patterns, refactoring duplicates, code review, systematic API upgrades
 
 **Setup required:** Run `setup-semantic-embedding.cmd` (Windows) or `pwsh Dev.Scripts/setup-semantic-embedding.ps1`
 
@@ -263,7 +265,7 @@ Step 4: Ensure quality
 → AnalyzeCodeStyle(solutionPath)
 
 Step 5: Verify changes
-→ Check git diff in sharptools/* branch
+→ Check git diff in ultrasharptools/* branch
 ```
 
 ### 3. Fix Bug
@@ -322,7 +324,7 @@ Step 5: Verify
 --load-solution <path>        # Auto-load solution on startup
 --build-configuration <cfg>   # Debug|Release
 --disable-git                 # Disable git integration
---git-branch-retention-count N  # Keep only N recent sharptools/* branches
+--git-branch-retention-count N  # Keep only N recent ultrasharptools/* branches
 --git-auto-cleanup            # Auto-cleanup old branches after modifications
 ```
 
@@ -369,7 +371,7 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
    - Direct symbol resolution, no file scanning
 
 3. **Review git changes before pushing**
-   - Check `sharptools/*` branches
+   - Check `ultrasharptools/*` branches
    - Verify commit messages are descriptive
 
 4. **Run quality tools before committing**
@@ -422,7 +424,7 @@ pwsh Dev.Scripts/validate-semantic-config.ps1
 
 **Git conflicts:**
 - Use `undo` to rollback problematic changes
-- Clean up old branches: `git branch -D sharptools/YYYYMMDD-HHMMSS`
+- Clean up old branches: `git branch -D ultrasharptools/YYYYMMDD-HHMMSS`
 - Or disable git: `--disable-git` flag
 
 **Performance issues:**
@@ -490,6 +492,9 @@ cleanup_snapshots(keepCount)
 
 # Semantic (if enabled)
 semantic_search(query)
+semantic_diff(beforeFqn, afterFqn)
 find_duplicates(threshold)
+semantic_replace(pattern, scope)        # preview mode
+semantic_replace(apply, replacements)   # apply mode
 semantic_merge(sourceBranch, targetBranch, instructions)
 ```

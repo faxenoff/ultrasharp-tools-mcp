@@ -45,14 +45,19 @@ UltrasharpTools MCP поддерживает два режима работы, �
 │                                              │
 │ claude_desktop_config.json:                  │
 │ {                                            │
-│   "command": "D:/path/to/Droid.exe"      │
+│   "command": "D:/path/to/Comm.exe"           │
 │ }                                            │
 └──────────┬───────────────────────────────────┘
            │ запускает как child process
            ↓
 ┌──────────────────────────────────────────────┐
-│ UltrasharpTools.Droid.exe                │
-│ (локальный процесс на вашей машине)          │
+│ UltrasharpTools.Comm.exe (stdio bridge)      │
+│ (~5 MB, минимальный процесс)                 │
+│                                              │
+│ └───→ Named Pipe IPC                         │
+│         ↓                                    │
+│ UltrasharpTools.Droid.exe (singleton)        │
+│ (Roslyn сервер, ~500 MB)                     │
 │                                              │
 │ Working Directory: где был запущен           │
 │ Permissions: ваши user permissions           │
@@ -70,19 +75,18 @@ UltrasharpTools MCP поддерживает два режима работы, �
 └──────────────────────────────────────────────┘
 ```
 
+> **💡 Почему три процесса?** Comm.exe — лёгкий stdio bridge, который позволяет
+> нескольким редакторам/агентам подключаться к одному Droid+VectorDB, экономя
+> 2-3 GB RAM на каждый инстанс.
+
 ### Конфигурация
 
 **Windows (`%USERPROFILE%\.claude.json`):**
 ```json
 {
-  "Droids": {
+  "mcpServers": {
     "ultrasharp-tools": {
-      "type": "stdio",
-      "command": "D:/Projects/ultrasharp-tools-mcp/Run.Publish/Droid/UltrasharpTools.Droid.exe",
-      "args": [
-        "--log-level", "Information"
-      ],
-      "env": {}
+      "command": "D:/Tools/UltrasharpTools/Comm/UltrasharpTools.Comm.exe"
     }
   }
 }
@@ -91,18 +95,15 @@ UltrasharpTools MCP поддерживает два режима работы, �
 **macOS/Linux (`~/.claude.json`):**
 ```json
 {
-  "Droids": {
+  "mcpServers": {
     "ultrasharp-tools": {
-      "type": "stdio",
-      "command": "/home/user/ultrasharp-tools-mcp/Run.Publish/Droid/UltrasharpTools.Droid",
-      "args": [
-        "--log-level", "Information"
-      ],
-      "env": {}
+      "command": "/home/user/ultrasharp-tools/Comm/UltrasharpTools.Comm"
     }
   }
 }
 ```
+
+> ⚠️ **Важно:** Запускается `Comm.exe`, а не `Droid.exe`!
 
 ### Доступ к файлам
 
@@ -636,10 +637,9 @@ dotnet restore MyApp.sln
 ```json
 // ~/.claude.json
 {
-  "Droids": {
+  "mcpServers": {
     "ultrasharp-tools": {
-      "type": "stdio",
-      "command": "D:/tools/ultrasharp/Droid.exe"
+      "command": "D:/tools/ultrasharp/Comm/UltrasharpTools.Comm.exe"
     }
   }
 }
@@ -875,10 +875,9 @@ initContainers:
 
 ```json
 {
-  "Droids": {
+  "mcpServers": {
     "ultrasharp-local": {
-      "type": "stdio",
-      "command": "D:/tools/ultrasharp/Droid.exe"
+      "command": "D:/tools/ultrasharp/Comm/UltrasharpTools.Comm.exe"
     },
     "ultrasharp-remote": {
       "type": "sse",

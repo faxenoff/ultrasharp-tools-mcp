@@ -3,7 +3,7 @@ using UltraSharpTools.Comm;
 public class Program
 {
     public const string ApplicationName = "UltraSharpTools.Comm";
-    public const string ApplicationVersion = "3.2.1";
+    public const string ApplicationVersion = "3.3.0";
 
     public static async Task Main(string[] args)
     {

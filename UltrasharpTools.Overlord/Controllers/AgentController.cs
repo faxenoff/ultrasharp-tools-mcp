@@ -210,7 +210,7 @@ public partial class AgentController : ControllerBase
             {
                 status = "healthy",
                 timestamp = DateTime.UtcNow,
-                version = "3.2.1",
+                version = "3.3.0",
                 activeClients = _notificationService.GetActiveClientsCount(),
             }
         );

@@ -139,7 +139,7 @@
 | Tracing | 5 | Debugging & diagnostics |
 | LogAnalysis | 1 | Анализ логов |
 | Document | 4 | Файловые операции |
-| **TOTAL** | **35+** | |
+| **TOTAL** | **52** | |
 
 ## 🔗 См. также
 
