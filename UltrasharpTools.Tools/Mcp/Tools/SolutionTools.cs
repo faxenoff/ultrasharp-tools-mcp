@@ -50,9 +50,9 @@ public static class SolutionTools {
         ILoadingOrchestrator loadingOrchestrator,
         ISolutionManager solutionManager,
         ILogger<SolutionToolsLogCategory> logger,
+        [Description("The absolute file path to the .sln solution file.")] string solutionPath,
         IClientIdProvider? clientIdProvider,
         IClientContextService? clientContextService,
-        [Description("The absolute file path to the .sln solution file.")] string solutionPath,
         CancellationToken cancellationToken
     ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
@@ -147,22 +147,22 @@ public static class SolutionTools {
                     );
                 }
 
+                // Register client context for multi-client tracking (pipe server mode)
+                if (clientIdProvider != null && clientContextService != null) {
+                    clientContextService.RegisterSolutionLoad(clientIdProvider.ClientId, solutionPath);
+                    logger.LogDebug(
+                        "Registered client {ClientId} for solution {SolutionPath}",
+                        clientIdProvider.ClientId,
+                        solutionPath
+                    );
+                }
+
                 logger.LogInformation(
                     "Solution loaded successfully via orchestrator: {SolutionPath} with {ProjectCount} projects from {Source}",
                     result.SolutionPath,
                     result.ProjectCount,
                     result.Source
                 );
-
-                // Register solution load for client context tracking (multi-client mode)
-                if (clientIdProvider != null && clientContextService != null) {
-                    clientContextService.RegisterSolutionLoad(clientIdProvider.ClientId, solutionPath);
-                    logger.LogDebug(
-                        "Registered solution load for client {ClientId}: {SolutionPath}",
-                        clientIdProvider.ClientId,
-                        solutionPath
-                    );
-                }
 
                 try {
                     return await GetProjectStructure(solutionManager, logger, cancellationToken);
