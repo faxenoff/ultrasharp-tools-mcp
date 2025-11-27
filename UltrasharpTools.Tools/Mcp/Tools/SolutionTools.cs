@@ -38,7 +38,6 @@ public static class SolutionTools {
         + "When using `SharpTool`s, you focus on individual components, and navigate with type hierarchies and call graphs instead of raw code. "
         + "Because of this, you create more modular, coherent, composable, type-safe, and thus inherently correct code. "
         + $"`{ToolHelpers.SharpToolPrefix}{nameof(LoadSolution)}` is the entry point for the suite, and should be called once at the beginning of your session to initialize the other tools with data from the solution.";
-
     [McpServerTool(
         Name = "load_solution",
         Idempotent = true,
@@ -51,6 +50,8 @@ public static class SolutionTools {
         ILoadingOrchestrator loadingOrchestrator,
         ISolutionManager solutionManager,
         ILogger<SolutionToolsLogCategory> logger,
+        IClientIdProvider? clientIdProvider,
+        IClientContextService? clientContextService,
         [Description("The absolute file path to the .sln solution file.")] string solutionPath,
         CancellationToken cancellationToken
     ) {
@@ -152,6 +153,16 @@ public static class SolutionTools {
                     result.ProjectCount,
                     result.Source
                 );
+
+                // Register solution load for client context tracking (multi-client mode)
+                if (clientIdProvider != null && clientContextService != null) {
+                    clientContextService.RegisterSolutionLoad(clientIdProvider.ClientId, solutionPath);
+                    logger.LogDebug(
+                        "Registered solution load for client {ClientId}: {SolutionPath}",
+                        clientIdProvider.ClientId,
+                        solutionPath
+                    );
+                }
 
                 try {
                     return await GetProjectStructure(solutionManager, logger, cancellationToken);
@@ -1623,9 +1634,9 @@ public static class SolutionTools {
         return result;
     }
 
-private static string TruncateMessage(string message, int maxLength)
-{
-    if (message.Length <= maxLength)
-        return message;
-    return message[..(maxLength - 3)] + "...";
-}}
+    private static string TruncateMessage(string message, int maxLength) {
+        if (message.Length <= maxLength)
+            return message;
+        return message[..(maxLength - 3)] + "...";
+    }
+}
