@@ -94,7 +94,7 @@ apply: true
     [Description("Source branch name (where changes come from), e.g. 'feature/caching'")] string sourceBranch,
     [Description("Target branch name (where to merge), e.g. 'main'. Defaults to current branch.")] string? targetBranch = null,
     [Description("Natural language merge instructions, e.g. 'ignore swagger files; prefer source for caching'")] string? instructions = null,
-    [Description("File patterns to merge (comma-separated), e.g. '*.cs,*.json'. Default: '*.cs'")] string filePatterns = "*.cs",
+    [Description("File patterns to merge (comma-separated), e.g. '*.cs,*.json'. Default: '*' (all files)")] string filePatterns = "*",
     [Description("Apply changes as unstaged files (true) or just preview (false)")] bool apply = true,
     CancellationToken cancellationToken = default) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(

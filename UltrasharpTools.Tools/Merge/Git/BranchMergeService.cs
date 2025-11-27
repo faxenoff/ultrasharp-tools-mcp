@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging.Abstractions;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using UltrasharpTools.Tools.Merge.Indexing;
 using UltrasharpTools.Tools.Merge.Models;
 
@@ -26,7 +27,7 @@ public sealed class BranchMergeService {
         string sourceBranch,
         string targetBranch,
         string? instructions = null,
-        string filePatterns = "*.cs",
+        string filePatterns = "*",
         bool applyChanges = true,
         CancellationToken ct = default) {
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -90,10 +91,23 @@ public sealed class BranchMergeService {
             .Distinct()
             .ToList();
 
+        // 3.5. Разделить файлы по категориям
+        var binaryFiles = allChangedFiles.Where(IsBinaryFile).ToList();
+        var semanticFiles = allChangedFiles.Where(f => !IsBinaryFile(f) && SupportsSemanticMerge(f)).ToList();
+        var textFiles = allChangedFiles.Where(f => !IsBinaryFile(f) && !SupportsSemanticMerge(f)).ToList();
+
+        _logger.LogDebug("[MERGE] File categories: binary={Binary} (skipped), semantic={Semantic}, text={Text}",
+            binaryFiles.Count, semanticFiles.Count, textFiles.Count);
+
+        if (binaryFiles.Count > 0) {
+            _logger.LogWarning("[MERGE] Skipping {Count} binary files: {Files}",
+                binaryFiles.Count, string.Join(", ", binaryFiles.Take(5)));
+        }
+
+        // Исключить binary файлы из обработки
+        allChangedFiles = semanticFiles.Concat(textFiles).ToList();
+
         // Определить какие файлы существуют в каждой версии:
-        // - base: файлы которые НЕ были Added в source И НЕ были Added в target
-        // - source: файлы которые НЕ были Deleted в source
-        // - target: файлы которые НЕ были Deleted в target
         var filesInBase = allChangedFiles
             .Where(f => sourceStatuses.GetValueOrDefault(f) != GitFileStatus.Added
                      && targetStatuses.GetValueOrDefault(f) != GitFileStatus.Added)
@@ -112,18 +126,20 @@ public sealed class BranchMergeService {
             filesInBase.Count, filesInSource.Count, filesInTarget.Count, allChangedFiles.Count);
 
         if (allChangedFiles.Count == 0) {
-            _logger.LogDebug("[MERGE] No files to merge after applying filters");
+            var summary = binaryFiles.Count > 0
+                ? $"No mergeable files (skipped {binaryFiles.Count} binary files)"
+                : "No files to merge after applying filters";
+            _logger.LogDebug("[MERGE] {Summary}", summary);
             return new BranchMergeResult {
                 Success = true,
-                Summary = "No files to merge after applying filters",
+                Summary = summary,
                 ChangedFiles = new List<string>(),
                 Conflicts = new List<MergeConflictInfo>(),
                 Actions = new List<MergeActionInfo>(),
             };
         }
 
-        // 4. Создать запрос для SemanticMergeService
-        // Используем временные директории для git show содержимого
+        // 4. Создать временные директории
         var tempDir = Path.Combine(Path.GetTempPath(), $"semantic-merge-{Guid.NewGuid():N}");
         _logger.LogDebug("[MERGE] Step 4: Creating temp directories at {TempDir}", tempDir);
         try {
@@ -134,7 +150,8 @@ public sealed class BranchMergeService {
             Directory.CreateDirectory(baseDir);
             Directory.CreateDirectory(sourceDir);
             Directory.CreateDirectory(targetDir);
-            // Извлечь файлы из каждой версии (batch операция - один git archive на версию)
+
+            // Извлечь файлы из каждой версии
             _logger.LogDebug("[MERGE] Extracting files from branches (batch mode)...");
             var baseExtracted = await gitReader.ExtractFilesToDirectoryAsync(mergeBase, filesInBase, baseDir, ct);
             var sourceExtracted = await gitReader.ExtractFilesToDirectoryAsync(sourceBranch, filesInSource, sourceDir, ct);
@@ -142,31 +159,95 @@ public sealed class BranchMergeService {
             _logger.LogDebug("[MERGE] Extracted files: base={Base}, source={Source}, target={Target}",
                 baseExtracted, sourceExtracted, targetExtracted);
 
-            // 5. Выполнить semantic merge
-            _logger.LogDebug("[MERGE] Step 5: Starting SemanticMergeService.MergeAsync...");
-            var request = new IndexingRequest {
-                BaseDirectory = baseDir,
-                BranchADirectory = sourceDir,
-                BranchBDirectory = targetDir,
-                FilePatterns = filePatterns.Split(',', StringSplitOptions.RemoveEmptyEntries),
-                // Commit SHAs для идентификации версий
-                BaseCommitSha = baseShort,
-                BranchACommitSha = sourceShort,
-                BranchBCommitSha = targetShort,
-                // Branch names для кэширования
-                BaseBranch = "merge-base",
-                BranchA = sourceBranch,
-                BranchB = targetBranch,
-            };
+            // 5. Гибридный merge: сначала traditional для text, затем semantic
+            var traditionalMergedFiles = new Dictionary<string, string>(); // path -> merged content
+            var filesForSemanticMerge = new List<string>(semanticFiles); // C# файлы всегда идут на semantic
 
-            var mergeResult = await _mergeService.MergeAsync(request, ct);
+            _logger.LogDebug("[MERGE] Step 5: Trying traditional merge for {Count} text files...", textFiles.Count);
+            foreach (var file in textFiles) {
+                var basePath = Path.Combine(baseDir, file.Replace('/', Path.DirectorySeparatorChar));
+                var sourcePath = Path.Combine(sourceDir, file.Replace('/', Path.DirectorySeparatorChar));
+                var targetPath = Path.Combine(targetDir, file.Replace('/', Path.DirectorySeparatorChar));
+                var traditionalResult = await TryTraditionalMergeAsync(basePath, sourcePath, targetPath, ct);
 
-            // 6. Применить инструкции к результату
-            if (parsedInstructions.AutoResolveConflicts) {
-                mergeResult = ApplyInstructionsToResult(mergeResult, parsedInstructions);
+                if (traditionalResult.Success && !traditionalResult.HasConflicts && traditionalResult.MergedContent != null) {
+                    _logger.LogDebug("[MERGE] Traditional merge succeeded for: {File}", file);
+                    traditionalMergedFiles[file] = traditionalResult.MergedContent;
+                } else {
+                    _logger.LogDebug("[MERGE] Traditional merge failed for {File}: {Reason}, falling back to semantic",
+                        file, traditionalResult.ErrorMessage ?? "conflicts");
+                    filesForSemanticMerge.Add(file);
+                }
             }
 
-            // 7. Формируем результат
+            _logger.LogDebug("[MERGE] Traditional merge: {Success} succeeded, {Fallback} need semantic merge",
+                traditionalMergedFiles.Count, filesForSemanticMerge.Count);
+
+            // 6. Semantic merge для C# и файлов с конфликтами
+            MergeResult? semanticResult = null;
+            if (filesForSemanticMerge.Count > 0) {
+                _logger.LogDebug("[MERGE] Step 6: Starting SemanticMergeService.MergeAsync for {Count} files...",
+                    filesForSemanticMerge.Count);
+
+                // Фильтруем паттерны только для файлов которые нужны для semantic merge
+                var semanticPatterns = filesForSemanticMerge
+                    .Select(f => Path.GetExtension(f))
+                    .Distinct()
+                    .Select(ext => $"*{ext}")
+                    .ToArray();
+
+                var request = new IndexingRequest {
+                    BaseDirectory = baseDir,
+                    BranchADirectory = sourceDir,
+                    BranchBDirectory = targetDir,
+                    FilePatterns = semanticPatterns,
+                    BaseCommitSha = baseShort,
+                    BranchACommitSha = sourceShort,
+                    BranchBCommitSha = targetShort,
+                    BaseBranch = "merge-base",
+                    BranchA = sourceBranch,
+                    BranchB = targetBranch,
+                };
+
+                semanticResult = await _mergeService.MergeAsync(request, ct);
+
+                // Применить инструкции к результату
+                if (parsedInstructions.AutoResolveConflicts) {
+                    semanticResult = ApplyInstructionsToResult(semanticResult, parsedInstructions);
+                }
+            }
+
+            // 7. Объединить результаты
+            var allActions = new List<MergeActionInfo>();
+
+            // Добавить традиционно смердженные файлы как actions
+            foreach (var (filePath, content) in traditionalMergedFiles) {
+                allActions.Add(new MergeActionInfo {
+                    FilePath = filePath,
+                    ActionType = "Modify",
+                    Source = "traditional",
+                    Confidence = 1.0f,
+                });
+            }
+
+            // Добавить semantic merge results
+            if (semanticResult != null) {
+                allActions.AddRange(semanticResult.Actions.Select(a => new MergeActionInfo {
+                    FilePath = a.TargetPath,
+                    ActionType = a.Type.ToString(),
+                    Source = a.Source,
+                    Confidence = a.Confidence,
+                }));
+            }
+
+            var conflicts = semanticResult?.Conflicts.Select(c => new MergeConflictInfo {
+                FilePath = c.BaseUnit?.FilePath ?? "",
+                Symbol = c.BaseUnit?.FullyQualifiedName ?? "",
+                ConflictType = c.ConflictType.ToString(),
+                Description = c.Description,
+                Severity = c.Severity.ToString(),
+            }).ToList() ?? new List<MergeConflictInfo>();
+
             var result = new BranchMergeResult {
                 Success = true,
                 MergeBase = baseShort,
@@ -174,33 +255,37 @@ public sealed class BranchMergeService {
                 TargetBranch = targetBranch,
                 Instructions = parsedInstructions,
                 ChangedFiles = allChangedFiles,
-                Actions = mergeResult.Actions.Select(a => new MergeActionInfo {
-                    FilePath = a.TargetPath,
-                    ActionType = a.Type.ToString(),
-                    Source = a.Source,
-                    Confidence = a.Confidence,
-                }).ToList(),
-                Conflicts = mergeResult.Conflicts.Select(c => new MergeConflictInfo {
-                    FilePath = c.BaseUnit?.FilePath ?? "",
-                    Symbol = c.BaseUnit?.FullyQualifiedName ?? "",
-                    ConflictType = c.ConflictType.ToString(),
-                    Description = c.Description,
-                    Severity = c.Severity.ToString(),
-                }).ToList(),
+                Actions = allActions,
+                Conflicts = conflicts,
                 Statistics = new MergeStatisticsInfo {
-                    TotalChanges = mergeResult.Statistics.TotalChanges,
-                    AutoMerged = mergeResult.Statistics.AutoMergedChanges,
-                    Conflicts = mergeResult.Statistics.ConflictCount,
-                    FastPathMatches = mergeResult.Statistics.FastPathMatches,
-                    SlowPathMatches = mergeResult.Statistics.SlowPathMatches,
-                    MergeTimeMs = mergeResult.Statistics.MergeTimeMs,
+                    TotalChanges = allActions.Count + conflicts.Count,
+                    AutoMerged = allActions.Count,
+                    Conflicts = conflicts.Count,
+                    FastPathMatches = semanticResult?.Statistics.FastPathMatches ?? 0,
+                    SlowPathMatches = semanticResult?.Statistics.SlowPathMatches ?? 0,
+                    MergeTimeMs = sw.ElapsedMilliseconds,
                 },
             };
 
-            // 8. Применить изменения как unstaged если запрошено
+            // 8. Применить изменения
             if (applyChanges && result.Success && result.Conflicts.Count == 0) {
-                await ApplyMergeResultAsync(gitReader, repositoryPath, mergeResult, ct);
-                result.Summary = $"Merged {result.Actions.Count} changes from {sourceBranch} to {targetBranch}. " +
+                // Записать традиционно смердженные файлы
+                foreach (var (filePath, content) in traditionalMergedFiles) {
+                    var fullPath = Path.Combine(repositoryPath, filePath.Replace('/', Path.DirectorySeparatorChar));
+                    var dir = Path.GetDirectoryName(fullPath);
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                        Directory.CreateDirectory(dir);
+                    await File.WriteAllTextAsync(fullPath, content, ct);
+                }
+
+                // Записать semantic merge результаты
+                if (semanticResult != null) {
+                    await ApplyMergeResultAsync(gitReader, repositoryPath, semanticResult, ct);
+                }
+
+                var binaryNote = binaryFiles.Count > 0 ? $" ({binaryFiles.Count} binary files skipped)" : "";
+                result.Summary = $"Merged {result.Actions.Count} changes from {sourceBranch} to {targetBranch}{binaryNote}. " +
+                    $"Traditional: {traditionalMergedFiles.Count}, Semantic: {(semanticResult?.Actions.Count ?? 0)}. " +
                     $"Files written as unstaged changes. Use 'git diff' to review.";
             } else if (result.Conflicts.Count > 0) {
                 result.Summary = $"Merge has {result.Conflicts.Count} conflicts that need manual resolution. " +
@@ -227,11 +312,11 @@ public sealed class BranchMergeService {
         }
     }
     private async Task WriteFilesFromBranchAsync(
-        GitBranchReader gitReader,
-        string branchOrCommit,
-        List<string> files,
-        string targetDir,
-        CancellationToken ct) {
+            GitBranchReader gitReader,
+            string branchOrCommit,
+            List<string> files,
+            string targetDir,
+            CancellationToken ct) {
         _logger.LogDebug("[MERGE] WriteFilesFromBranchAsync: {Branch}, {Count} files", branchOrCommit, files.Count);
         var written = 0;
         var skipped = 0;
@@ -318,6 +403,148 @@ public sealed class BranchMergeService {
         }
 
         return false;
+    }
+    /// <summary>
+    /// Расширения файлов, которые считаются бинарными и не подлежат merge.
+    /// </summary>
+    private static readonly HashSet<string> BinaryExtensions = new(StringComparer.OrdinalIgnoreCase) {
+    // Images
+    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg", ".webp", ".tiff", ".psd",
+    // Archives
+    ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz",
+    // Binaries
+    ".exe", ".dll", ".so", ".dylib", ".bin", ".obj", ".o", ".a", ".lib",
+    // Documents
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    // Media
+    ".mp3", ".mp4", ".avi", ".mov", ".mkv", ".wav", ".flac", ".ogg",
+    // Fonts
+    ".ttf", ".otf", ".woff", ".woff2", ".eot",
+    // Other
+    ".db", ".sqlite", ".mdb", ".snk", ".pfx", ".p12",
+};
+
+    /// <summary>
+    /// Расширения файлов, которые поддерживают семантический merge (Roslyn).
+    /// </summary>
+    private static readonly HashSet<string> SemanticMergeExtensions = new(StringComparer.OrdinalIgnoreCase) {
+    ".cs",
+};
+
+    /// <summary>
+    /// Проверяет, является ли файл бинарным по расширению.
+    /// </summary>
+    private static bool IsBinaryFile(string filePath) {
+        var ext = Path.GetExtension(filePath);
+        return BinaryExtensions.Contains(ext);
+    }
+
+    /// <summary>
+    /// Проверяет, поддерживает ли файл семантический merge.
+    /// </summary>
+    private static bool SupportsSemanticMerge(string filePath) {
+        var ext = Path.GetExtension(filePath);
+        return SemanticMergeExtensions.Contains(ext);
+    }/// <summary>
+     /// Результат традиционного 3-way merge.
+     /// </summary>
+    private record TraditionalMergeResult(
+        bool Success,
+        bool HasConflicts,
+        string? MergedContent,
+        string? ErrorMessage
+    );
+
+    /// <summary>
+    /// Выполняет традиционный 3-way merge для текстового файла через git merge-file.
+    /// </summary>
+    private async Task<TraditionalMergeResult> TryTraditionalMergeAsync(
+        string baseFilePath,
+        string sourceFilePath,
+        string targetFilePath,
+        CancellationToken ct) {
+        try {
+            // Проверяем наличие файлов
+            var baseExists = File.Exists(baseFilePath);
+            var sourceExists = File.Exists(sourceFilePath);
+            var targetExists = File.Exists(targetFilePath);
+
+            // Если файл добавлен только в одной ветке - просто берём его
+            if (!baseExists && sourceExists && !targetExists) {
+                return new TraditionalMergeResult(true, false, await File.ReadAllTextAsync(sourceFilePath, ct), null);
+            }
+            if (!baseExists && !sourceExists && targetExists) {
+                return new TraditionalMergeResult(true, false, await File.ReadAllTextAsync(targetFilePath, ct), null);
+            }
+            if (!baseExists && sourceExists && targetExists) {
+                // Оба добавили файл - конфликт, нужен semantic merge
+                return new TraditionalMergeResult(false, true, null, "File added in both branches");
+            }
+
+            // Если файл удалён в одной ветке
+            if (baseExists && !sourceExists && targetExists) {
+                // Удалён в source - конфликт modify/delete
+                return new TraditionalMergeResult(false, true, null, "File deleted in source but modified in target");
+            }
+            if (baseExists && sourceExists && !targetExists) {
+                // Удалён в target - конфликт modify/delete
+                return new TraditionalMergeResult(false, true, null, "File deleted in target but modified in source");
+            }
+
+            // Стандартный случай: файл существует во всех трёх версиях
+            if (!baseExists || !sourceExists || !targetExists) {
+                return new TraditionalMergeResult(false, false, null, "Missing files for merge");
+            }
+
+            // Создаём временные файлы для git merge-file (он модифицирует первый файл in-place)
+            var tempDir = Path.Combine(Path.GetTempPath(), $"merge-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempDir);
+            try {
+                var tempSource = Path.Combine(tempDir, "source");
+                var tempBase = Path.Combine(tempDir, "base");
+                var tempTarget = Path.Combine(tempDir, "target");
+
+                File.Copy(sourceFilePath, tempSource, overwrite: true);
+                File.Copy(baseFilePath, tempBase, overwrite: true);
+                File.Copy(targetFilePath, tempTarget, overwrite: true);
+
+                // git merge-file <current> <base> <other>
+                // Exit code: 0 = success, >0 = conflicts (число конфликтов), <0 = error
+                var psi = new ProcessStartInfo {
+                    FileName = "git",
+                    Arguments = $"merge-file -p \"{tempSource}\" \"{tempBase}\" \"{tempTarget}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                using var process = Process.Start(psi);
+                if (process == null) {
+                    return new TraditionalMergeResult(false, false, null, "Failed to start git merge-file");
+                }
+
+                var output = await process.StandardOutput.ReadToEndAsync(ct);
+                var error = await process.StandardError.ReadToEndAsync(ct);
+                await process.WaitForExitAsync(ct);
+
+                if (process.ExitCode == 0) {
+                    // Успешный merge без конфликтов
+                    return new TraditionalMergeResult(true, false, output, null);
+                } else if (process.ExitCode > 0) {
+                    // Есть конфликты - нужен semantic merge
+                    return new TraditionalMergeResult(false, true, output, $"Conflicts detected ({process.ExitCode})");
+                } else {
+                    // Ошибка
+                    return new TraditionalMergeResult(false, false, null, $"git merge-file error: {error}");
+                }
+            } finally {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        } catch (Exception ex) {
+            _logger.LogWarning(ex, "Traditional merge failed, will try semantic merge");
+            return new TraditionalMergeResult(false, false, null, ex.Message);
+        }
     }
 }
 
