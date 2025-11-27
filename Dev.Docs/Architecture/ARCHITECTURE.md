@@ -1,6 +1,6 @@
 # UltrasharpTools - Архитектура системы
 
-**Версия:** 3.3.0
+**Версия:** 3.5.0
 **Статус:** Production Ready
 **Дата обновления:** 2025-11-24
 
@@ -18,15 +18,15 @@ UltrasharpTools - это MCP-сервер для интеллектуально�
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────────┐        ┌──────────────────┐          │
-│  │  Comm (Stdio)    │        │  Overlord (HTTP) │          │
-│  │  Native AOT      │        │  Team Server     │          │
-│  │  < 4 MB          │        │  Multi-project   │          │
+│  │  Comm (Bridge)   │        │  Overlord (HTTP) │          │
+│  │  Named Pipe      │        │  Team Server     │          │
+│  │  < 5 MB          │        │  Multi-project   │          │
 │  └────────┬─────────┘        └────────┬─────────┘          │
-│           │ IPC                       │ HTTP                │
-│           ▼                           │                     │
+│           │ Named Pipe               │ HTTP                │
+│           ▼ (multi-client)           │                     │
 │  ┌──────────────────┐                │                     │
-│  │  Droid (Local)   │◄───────────────┘                     │
-│  │  Full Roslyn     │                                       │
+│  │  Droid (Daemon)  │◄───────────────┘                     │
+│  │  Full Roslyn     │  ← Singleton, все Comm подключаются  │
 │  │  ~100 MB         │                                       │
 │  └────────┬─────────┘                                       │
 │           │                                                 │
@@ -66,15 +66,15 @@ UltrasharpTools.Tools (Class Library)
          ↑                           ↑                    ↑
          │                           │                    │
 
-Comm (Native AOT)      Droid (Console App)       Overlord (Web App)
-├─ Stdio MCP proxy     ├─ Full Roslyn            ├─ HTTP/SSE transport
-├─ < 4 MB exe          ├─ Local/Hybrid mode      ├─ Team collaboration
-├─ Fast startup        ├─ IPC server             ├─ Multi-project vectorstore
+Comm (Bridge)          Droid (Daemon)            Overlord (Web App)
+├─ Named Pipe bridge   ├─ Full Roslyn            ├─ HTTP/SSE transport
+├─ < 5 MB exe          ├─ Multi-client daemon    ├─ Team collaboration
+├─ Fast startup        ├─ Singleton process      ├─ Multi-project vectorstore
 ├─ Claude Desktop      ├─ ~100 MB                ├─ Cross-project search
-└─ Auto-launch Droid   └─ Named pipes            └─ Kubernetes-ready
+└─ Auto-launch Droid   └─ Named Pipe server      └─ Kubernetes-ready
 
-        IPC via Named Pipes
-        (Windows/Linux)
+        Named Pipe IPC (multi-client)
+        Wake-up через Named Event
 ```
 
 **Преимущества:**

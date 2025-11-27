@@ -1,7 +1,7 @@
 # UltrasharpTools - Руководство по использованию
 
-**Версия:** 3.3.0
-**Дата:** 2025-11-18
+**Версия:** 3.5.0
+**Дата:** 2025-11-27
 
 ---
 
@@ -32,7 +32,28 @@ pwsh Dev.Scripts/publish-mcp.ps1  # Windows/Linux
 
 **Результат:** `Run.Publish/Comm/UltrasharpTools.Comm.exe` (~5 MB) + `Run.Publish/Droid/UltrasharpTools.Droid.exe` (103 MB)
 
-### 1.2 Конфигурация Claude Desktop
+### 1.2 Архитектура Comm/Droid
+
+UltrasharpTools использует **трёхпроцессную архитектуру** с lazy-запуском:
+
+```
+Claude₁ ←stdio→ Comm₁ ──┐
+Claude₂ ←stdio→ Comm₂ ──┼── Named Pipe ──→ Droid (singleton) ──→ VectorDB
+Claude₃ ←stdio→ Comm₃ ──┘
+```
+
+**Компоненты:**
+- **Comm** (~5 MB) — лёгкий stdio-bridge для MCP-клиентов
+- **Droid** (~103 MB) — основной Roslyn-сервер (singleton, multi-client)
+- **VectorDB** (~40 MB) — семантический движок (lazy start, опционально)
+
+**Как это работает:**
+1. Первый Comm запускает Droid как daemon с `--pipe-server`
+2. Последующие Comm подключаются к существующему Droid
+3. Wake-up из idle режима через Named Event (мгновенное пробуждение)
+4. Все Comm разделяют один SolutionManager (solution грузится один раз)
+
+### 1.3 Конфигурация Claude Desktop
 
 Создайте/отредактируйте `~/.claude.json` (Linux/Mac) или `%USERPROFILE%\.claude.json` (Windows):
 
@@ -48,11 +69,12 @@ pwsh Dev.Scripts/publish-mcp.ps1  # Windows/Linux
 
 **⚠️ Важно:**
 - Запускайте **Comm.exe**, а не Droid.exe!
-- Comm — лёгкий stdio-bridge, который автоматически запустит Droid
+- Comm — лёгкий stdio-bridge, который автоматически запустит Droid при первом подключении
 - Используйте **полный абсолютный путь**
 - На Windows: `\\` или `/` (оба работают)
+- **Multiple instances:** Несколько Claude окон могут работать одновременно — все используют один Droid
 
-### 1.3 Первый запрос
+### 1.4 Первый запрос
 
 **В Claude Desktop:**
 
@@ -708,6 +730,48 @@ dotnet build
 publish-droid.cmd
 ```
 
+### 5.6 Named Pipe: Droid не запускается
+
+**Проблема:**
+```
+Error: Failed to connect to Droid pipe after 30s timeout
+```
+
+**Решение:**
+1. Проверьте, запущен ли Droid:
+   ```powershell
+   Get-Process -Name "UltrasharpTools.Droid" -ErrorAction SilentlyContinue
+   ```
+
+2. Если Droid завис, убейте процесс:
+   ```powershell
+   Stop-Process -Name "UltrasharpTools.Droid" -Force
+   ```
+
+3. Убедитесь, что путь к Droid указан правильно в Comm:
+   - Comm ищет Droid в той же директории или в `../Droid/`
+
+4. Проверьте логи Droid:
+   ```bash
+   # Логи в Run.Logs/droid-*.log
+   ```
+
+### 5.7 Named Pipe: Multiple Droid instances
+
+**Проблема:** Запустилось несколько Droid процессов
+
+**Причина:** Race condition при одновременном старте нескольких Comm
+
+**Решение:**
+```powershell
+# Остановите все Droid
+Stop-Process -Name "UltrasharpTools.Droid" -Force
+
+# Перезапустите Comm — он стартует один Droid
+```
+
+**Превентивно:** Named Event `UltraSharpTools_Droid_WakeUp` должен предотвратить эту проблему. Если она повторяется, проверьте логи.
+
 ---
 
 ## 6. Performance Tips
@@ -824,5 +888,5 @@ view_definition("MyApp.Services.Users.UserService")
 
 ---
 
-**Версия:** 3.3.0
-**Последнее обновление:** 2025-11-18
+**Версия:** 3.5.0
+**Последнее обновление:** 2025-11-27

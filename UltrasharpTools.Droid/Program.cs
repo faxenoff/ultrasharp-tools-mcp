@@ -28,7 +28,7 @@ namespace UltrasharpTools.Droid;
 public static class Program
 {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
-    public const string ApplicationVersion = "3.3.0";
+    public const string ApplicationVersion = "3.5.0";
 
     private static readonly JsonSerializerOptions SemanticConfigJsonOptions =
         new()
@@ -154,6 +154,13 @@ public static class Program
             DefaultValueFactory = _ => false,
         };
 
+        var pipeServerOption = new Option<bool>("--pipe-server")
+        {
+            Description =
+                "Run as Named Pipe server for multi-client mode. Multiple Comm instances can connect to one Droid.",
+            DefaultValueFactory = _ => false,
+        };
+
         var rootCommand = new RootCommand("UltrasharpTools MCP Droid")
         {
             logDirOption,
@@ -174,6 +181,7 @@ public static class Program
             symbolCacheClearOption,
             symbolCacheDirectoryOption,
             lowMemoryOption,
+            pipeServerOption,
         };
 
         // Parse arguments first to get values
@@ -216,6 +224,7 @@ public static class Program
         bool symbolCacheClear = parseResult.GetValue(symbolCacheClearOption);
         string? symbolCacheDirectory = parseResult.GetValue(symbolCacheDirectoryOption);
         bool lowMemoryMode = parseResult.GetValue(lowMemoryOption);
+        bool pipeServerMode = parseResult.GetValue(pipeServerOption);
 
         // Use project-local logs directory if not specified
         if (string.IsNullOrWhiteSpace(logDirPath))
@@ -1055,6 +1064,65 @@ public static class Program
             }
         }
 
+        // Pipe Server Mode - multi-client через Named Pipe
+        if (pipeServerMode)
+        {
+            // Регистрируем ClientContextService для multi-client reference counting
+            builder.Services.AddSingleton<IClientContextService>(sp => {
+                var solutionManager = sp.GetRequiredService<ISolutionManager>();
+                var vectorDBClient = sp.GetService<UltrasharpTools.Tools.Ipc.VectorDBClient>();
+                var clientContextLogger = sp.GetRequiredService<ILogger<Ipc.ClientContextService>>();
+                return new Ipc.ClientContextService(solutionManager, vectorDBClient, clientContextLogger);
+            });
+
+            // В pipe режиме НЕ добавляем MCP - он будет создаваться для каждого клиента
+            var sharedHost = builder.Build();
+
+            // Запускаем hosted services (PowerManagementService, etc.)
+            await sharedHost.StartAsync();
+
+            var loggerFactory = sharedHost.Services.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger(ApplicationName);
+
+            logger.LogInformation("[PipeServer] Starting in multi-client pipe server mode...");
+
+            // Загружаем solution в фоне (shared для всех клиентов)
+            if (!string.IsNullOrEmpty(solutionPath))
+            {
+                var loadingOrchestrator = sharedHost.Services.GetRequiredService<ILoadingOrchestrator>();
+                logger.LogInformation("Starting background solution loading: {SolutionPath}", solutionPath);
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var result = await loadingOrchestrator.RequestLoadingAsync(
+                            solutionPath,
+                            LoadingSource.BackgroundStartup,
+                            CancellationToken.None
+                        );
+                        if (result.Success)
+                        {
+                            logger.LogInformation("Background loading completed: {SolutionPath}", result.SolutionPath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Background loading failed");
+                    }
+                });
+            }
+
+            // Запускаем pipe server
+            await using var pipeServer = new Ipc.PipeServerMode(sharedHost.Services, logger);
+            await pipeServer.RunAsync();
+
+            // Останавливаем hosted services
+            await sharedHost.StopAsync();
+            return 0;
+        }
+
+        // Stdio Mode - стандартный режим для одного клиента
         builder
             .Services.AddMcpServer(options =>
             {

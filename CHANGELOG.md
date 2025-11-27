@@ -6,6 +6,79 @@
 
 ---
 
+## [3.4.0] - 2025-11-27
+
+### 🎯 Статус
+**Multi-Client Named Pipe Architecture** — Несколько MCP клиентов теперь могут работать с одним Droid процессом
+
+### Добавлено
+
+#### Named Pipe Multi-Client Mode 🔗
+
+**Проблема:** Каждый Comm запускал свой Droid процесс = дублирование ресурсов и несинхронизированный state.
+
+**Решение:** Singleton Droid с Named Pipe и Named Event wake-up:
+
+```
+Claude₁ ←stdio→ Comm₁ ──┐
+Claude₂ ←stdio→ Comm₂ ──┼── Named Pipe ──→ Droid (singleton) ──→ VectorDB
+Claude₃ ←stdio→ Comm₃ ──┘
+```
+
+**Новые компоненты:**
+
+- **PipeServerMode** (`UltrasharpTools.Droid/Ipc/PipeServerMode.cs`)
+  - Named Pipe сервер с multi-client поддержкой (до 10 клиентов)
+  - Named Event `UltraSharpTools_Droid_WakeUp` для мгновенного пробуждения из idle
+  - Каждый клиент получает отдельный MCP Host, но общие services
+  - StreamServerTransport из MCP SDK 0.4.1 для custom streams
+
+- **DroidPipeClient** (`UltraSharpTools.Comm/DroidPipeClient.cs`)
+  - Подключение к существующему Droid через Named Pipe
+  - Автозапуск Droid с `--pipe-server` если процесс не найден
+  - Wake-up через Named Event перед подключением
+
+- **Droid CLI option** `--pipe-server`
+  - Запуск в daemon режиме для multi-client подключений
+  - Comm автоматически запускает Droid с этим флагом
+
+**Преимущества:**
+- ✅ **N редакторов → 1 Droid** — экономия RAM и CPU
+- ✅ **Общий SolutionManager** — solution загружается один раз
+- ✅ **Instant wake-up** — Named Event работает на уровне ядра
+- ✅ **Graceful shutdown** — корректное завершение при закрытии последнего клиента
+
+#### Named Event Wake-up (VectorDB + Droid) ⚡
+
+**Проблема:** EcoQoS (Efficiency Mode) агрессивно троттлил CPU, Named Pipe listener не успевал принять подключения.
+
+**Решение:** Named Event `EventWaitHandle` для мгновенного пробуждения:
+- Droid: `UltraSharpTools_Droid_WakeUp`
+- VectorDB: `UltraSharpTools_VectorDB_WakeUp`
+
+Named Event работает на уровне ядра Windows и не зависит от ThreadPool или CPU throttling.
+
+### Изменено
+
+**MCP SDK обновлён до 0.4.1-preview.1:**
+- Публичный `StreamServerTransport` для custom streams
+- Поддержка Named Pipe через `StreamServerTransport(inputStream, outputStream)`
+
+**Документация:**
+- README.md — обновлена секция архитектуры с Named Pipe диаграммой
+- Dev.Docs/Architecture/ARCHITECTURE.md — добавлена секция Named Pipe Multi-Client
+- Dev.Docs/USAGE_GUIDE.md — добавлены troubleshooting секции для Named Pipe
+- Dev.Docs/CLAUDE.md — обновлена структура проекта
+
+### Исправлено
+
+**VectorDB wake-up из idle mode (улучшено):**
+- Теперь используется Named Event вместо только ThreadPool
+- EcoQoS снова можно использовать безопасно
+- Файл: `UltraSharpTools.VectorDB/PowerManagementService.cs`
+
+---
+
 ## [3.3.0] - 2025-11-27
 
 ### 🎯 Статус
