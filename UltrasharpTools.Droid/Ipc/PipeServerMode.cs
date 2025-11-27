@@ -28,7 +28,7 @@ public sealed class PipeServerMode : IAsyncDisposable {
     /// <summary>
     /// Время простоя без клиентов до автоматического завершения (5 минут).
     /// </summary>
-    private static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(1);
 
     private readonly ILogger _logger;
     private readonly IServiceProvider _sharedServices;
