@@ -149,55 +149,68 @@ public sealed class CodeUnitExtractor {
         );
 
         return result;
-    }    /// <summary>
-         /// Извлечь CodeUnits из директории (рекурсивно) с оптимизированным сканированием.
-         /// Использует EnumerateFiles для экономии памяти и параллельное сканирование паттернов.
-         /// </summary>
+    }
     public async Task<List<CodeUnit>> ExtractFromDirectoryAsync(
     string directoryPath,
     string[] filePatterns,
     CancellationToken ct = default
-    ) {
+) {
+        // Нормализуем базовый путь для корректного вычисления относительных путей
+        var normalizedBasePath = Path.GetFullPath(directoryPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
         // Предварительная загрузка путей с использованием параллельного сканирования
         var filesBag = new ConcurrentBag<string>();
 
         // Параллельно сканируем все паттерны
         await Parallel.ForEachAsync(
-        filePatterns,
-        new ParallelOptions {
-            MaxDegreeOfParallelism = 4,
-            CancellationToken = ct
-        },
-        async (pattern, token) => {
-            await Task.Run(
-    () => {
-        // EnumerateFiles для экономии памяти
-        var matchedFiles = Directory.EnumerateFiles(
-directoryPath,
-pattern,
-SearchOption.AllDirectories
-);
+            filePatterns,
+            new ParallelOptions {
+                MaxDegreeOfParallelism = 4,
+                CancellationToken = ct
+            },
+            async (pattern, token) => {
+                await Task.Run(
+                    () => {
+                        // EnumerateFiles для экономии памяти
+                        var matchedFiles = Directory.EnumerateFiles(
+                            directoryPath,
+                            pattern,
+                            SearchOption.AllDirectories
+                        );
 
-        foreach (var file in matchedFiles) {
-            filesBag.Add(file);
-        }
-    },
-    token
-    );
-        }
+                        foreach (var file in matchedFiles) {
+                            filesBag.Add(file);
+                        }
+                    },
+                    token
+                );
+            }
         );
 
         var files = filesBag.ToList();
 
         _logger.LogInformation(
-        "Found {Count} files matching patterns in {Directory} (parallel scan)",
-        files.Count,
-        directoryPath
+            "Found {Count} files matching patterns in {Directory} (parallel scan)",
+            files.Count,
+            directoryPath
         );
 
-        return await ExtractFromFilesAsync(files, ct);
-    }
+        var units = await ExtractFromFilesAsync(files, ct);
 
+        // Преобразуем абсолютные пути в относительные
+        foreach (var unit in units) {
+            if (!string.IsNullOrEmpty(unit.FilePath) && Path.IsPathRooted(unit.FilePath)) {
+                var absolutePath = Path.GetFullPath(unit.FilePath);
+                if (absolutePath.StartsWith(normalizedBasePath, StringComparison.OrdinalIgnoreCase)) {
+                    var relativePath = absolutePath.Substring(normalizedBasePath.Length);
+                    // Нормализуем разделители на forward slash для переносимости
+                    unit.FilePath = relativePath.Replace(Path.DirectorySeparatorChar, '/');
+                }
+            }
+        }
+
+        return units;
+    }
     /// <summary>
     /// Создать file-level unit для неподдерживаемых типов файлов.
     /// </summary>

@@ -4,8 +4,7 @@ namespace UltrasharpTools.Tools.Merge.Models;
 /// Универсальная единица кода на любом уровне гранулярности.
 /// Может быть: файлом, классом, методом, блоком кода, JSON объектом.
 /// </summary>
-public sealed record CodeUnit
-{
+public sealed record CodeUnit {
     /// <summary>Уникальный стабильный ID (переживает rename/move)</summary>
     public required string Id { get; init; }
 
@@ -13,7 +12,7 @@ public sealed record CodeUnit
     public required CodeUnitType Type { get; init; }
 
     /// <summary>Путь к файлу</summary>
-    public required string FilePath { get; init; }
+    public required string FilePath { get; set; }
 
     /// <summary>Простое имя (без namespace/parent)</summary>
     public required string Name { get; init; }
@@ -65,8 +64,7 @@ public sealed record CodeUnit
 /// <summary>
 /// Тип единицы кода.
 /// </summary>
-public enum CodeUnitType
-{
+public enum CodeUnitType {
     File, // Весь файл
     Namespace, // Namespace
     Type, // Class, Interface, Struct, Enum
@@ -90,8 +88,7 @@ public enum CodeUnitType
 /// <summary>
 /// Структурное представление кода.
 /// </summary>
-public sealed record CodeStructure
-{
+public sealed record CodeStructure {
     /// <summary>Нормализованный AST (без whitespace, comments)</summary>
     public required string NormalizedAst { get; init; }
 
@@ -108,8 +105,7 @@ public sealed record CodeStructure
 /// <summary>
 /// Позиция в исходном коде.
 /// </summary>
-public sealed record SourceLocation
-{
+public sealed record SourceLocation {
     public required int StartLine { get; init; }
     public required int StartColumn { get; init; }
     public required int EndLine { get; init; }
@@ -119,8 +115,7 @@ public sealed record SourceLocation
 /// <summary>
 /// Control Flow Graph (упрощённое представление).
 /// </summary>
-public sealed record ControlFlowGraph
-{
+public sealed record ControlFlowGraph {
     /// <summary>Количество basic blocks</summary>
     public required int BlockCount { get; init; }
 
@@ -143,8 +138,7 @@ public sealed record ControlFlowGraph
 /// <summary>
 /// Путь выполнения в CFG.
 /// </summary>
-public sealed record ExecutionPath
-{
+public sealed record ExecutionPath {
     public required string Start { get; init; }
     public required string End { get; init; }
     public required string Description { get; init; }
