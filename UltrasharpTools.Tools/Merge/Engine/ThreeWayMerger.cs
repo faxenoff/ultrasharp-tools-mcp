@@ -344,25 +344,29 @@ public sealed class ThreeWayMerger {
         Dictionary<string, FastPathMatchResult> fastMatchesB,
         List<MergeAction> actions
     ) {
-        // Units в A, но не в base
+        // ВАЖНО: Обрабатываем только File-level units
+        // Units в A, но не в base (новые файлы)
         var addedInA = branchAIndex
-            .Units.Values.Where(u => !baseIndex.Units.ContainsKey(u.Id))
+            .Units.Values
+            .Where(u => u.Type == CodeUnitType.File && !baseIndex.Units.ContainsKey(u.Id))
             .ToList();
 
         foreach (var unit in addedInA) {
+            _logger.LogDebug("[3WAY] New file in A: {Path}", unit.FilePath);
             actions.Add(CreateMergeAction(unit, MergeActionType.Create, "branchA", 0.95f));
         }
 
-        // Units в B, но не в base
+        // Units в B, но не в base (новые файлы)
         var addedInB = branchBIndex
-            .Units.Values.Where(u => !baseIndex.Units.ContainsKey(u.Id))
+            .Units.Values
+            .Where(u => u.Type == CodeUnitType.File && !baseIndex.Units.ContainsKey(u.Id))
             .ToList();
 
         foreach (var unit in addedInB) {
+            _logger.LogDebug("[3WAY] New file in B: {Path}", unit.FilePath);
             actions.Add(CreateMergeAction(unit, MergeActionType.Create, "branchB", 0.95f));
         }
     }
-
     /// <summary>
     /// Обработать удалённые units.
     /// </summary>
