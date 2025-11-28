@@ -10,8 +10,7 @@ namespace UltrasharpTools.Tools.Merge.Engine;
 /// Three-way merge: base + branchA + branchB → merged.
 /// Главный компонент Semantic Merge Engine.
 /// </summary>
-public sealed class ThreeWayMerger
-{
+public sealed class ThreeWayMerger {
     private readonly FastPathMatcher _fastPathMatcher;
     private readonly SemanticMatcher _semanticMatcher;
     private readonly MovementDetector _movementDetector;
@@ -26,8 +25,7 @@ public sealed class ThreeWayMerger
         LazyEmbeddingGenerator embeddingGenerator,
         SemanticConflictResolver conflictResolver,
         ILogger<ThreeWayMerger>? logger = null
-    )
-    {
+    ) {
         _fastPathMatcher = fastPathMatcher;
         _semanticMatcher = semanticMatcher;
         _movementDetector = movementDetector;
@@ -44,8 +42,7 @@ public sealed class ThreeWayMerger
         VersionedIndex branchAIndex,
         VersionedIndex branchBIndex,
         CancellationToken ct = default
-    )
-    {
+    ) {
         _logger.LogDebug(
             "[3WAY] === Starting 3-way merge: {Base} + {BranchA} + {BranchB} ===",
             baseIndex.Version,
@@ -82,27 +79,23 @@ public sealed class ThreeWayMerger
 
         // 3. Генерировать embeddings для unmatched (Slow Path)
         _logger.LogDebug("[3WAY] Step 3: Generating embeddings for unmatched units (Slow Path)...");
-        if (unmatchedA.Count > 0)
-        {
+        if (unmatchedA.Count > 0) {
             _logger.LogDebug("[3WAY] Generating embeddings for {Count} unmatched units in branch A...", unmatchedA.Count);
             var enrichedA = await _embeddingGenerator.GenerateEmbeddingsAsync(unmatchedA, ct);
             _logger.LogDebug("[3WAY] Embeddings generated for branch A: {Count} units", enrichedA.Count);
 
             // Обновить в индексе
-            foreach (var unit in enrichedA)
-            {
+            foreach (var unit in enrichedA) {
                 branchAIndex.Units[unit.Id] = unit;
             }
         }
 
-        if (unmatchedB.Count > 0)
-        {
+        if (unmatchedB.Count > 0) {
             _logger.LogDebug("[3WAY] Generating embeddings for {Count} unmatched units in branch B...", unmatchedB.Count);
             var enrichedB = await _embeddingGenerator.GenerateEmbeddingsAsync(unmatchedB, ct);
             _logger.LogDebug("[3WAY] Embeddings generated for branch B: {Count} units", enrichedB.Count);
 
-            foreach (var unit in enrichedB)
-            {
+            foreach (var unit in enrichedB) {
                 branchBIndex.Units[unit.Id] = unit;
             }
         }
@@ -194,8 +187,7 @@ public sealed class ThreeWayMerger
 
         // 7. Собрать статистику
         _logger.LogDebug("[3WAY] Step 7: Collecting statistics...");
-        var statistics = new MergeStatistics
-        {
+        var statistics = new MergeStatistics {
             TotalChanges = mergeActions.Count + conflicts.Count,
             AutoMergedChanges = mergeActions.Count,
             ConflictCount = conflicts.Count,
@@ -211,8 +203,7 @@ public sealed class ThreeWayMerger
             sw.ElapsedMilliseconds
         );
 
-        return new MergeResult
-        {
+        return new MergeResult {
             Actions = mergeActions,
             Conflicts = conflicts,
             Statistics = statistics,
@@ -226,11 +217,9 @@ public sealed class ThreeWayMerger
         VersionedIndex baseIndex,
         VersionedIndex targetIndex,
         Dictionary<string, FastPathMatchResult> fastMatches
-    )
-    {
+    ) {
         return baseIndex.Units.Values.Where(u => !fastMatches.ContainsKey(u.Id)).ToList();
     }
-
     /// <summary>
     /// Обработать matched units (существуют в обеих ветках).
     /// </summary>
@@ -245,12 +234,13 @@ public sealed class ThreeWayMerger
         List<MergeAction> actions,
         List<SemanticConflict> conflicts,
         CancellationToken ct
-    )
-    {
+    ) {
         var potentialConflicts = new List<(CodeUnit Base, CodeUnit A, CodeUnit B)>();
 
-        foreach (var baseUnit in baseIndex.Units.Values)
-        {
+        // ВАЖНО: Обрабатываем только File-level units чтобы избежать перезаписи файлов
+        // частичным контентом от Type/Method/Property units.
+        // File-level units содержат полный контент файла.
+        foreach (var baseUnit in baseIndex.Units.Values.Where(u => u.Type == CodeUnitType.File)) {
             // Найти в обеих ветках
             FastPathMatchResult? matchA = null;
             SemanticMatchResult? semanticA = null;
@@ -277,8 +267,7 @@ public sealed class ThreeWayMerger
             if (
                 unitA.ContentHash == baseUnit.ContentHash
                 && unitB.ContentHash == baseUnit.ContentHash
-            )
-            {
+            ) {
                 // Нет изменений - пропустить
                 continue;
             }
@@ -287,8 +276,8 @@ public sealed class ThreeWayMerger
             if (
                 unitA.ContentHash != baseUnit.ContentHash
                 && unitB.ContentHash == baseUnit.ContentHash
-            )
-            {
+            ) {
+                _logger.LogDebug("[3WAY] File changed only in A: {Path}", baseUnit.FilePath);
                 actions.Add(CreateMergeAction(unitA, MergeActionType.Update, "branchA", 1.0f));
                 continue;
             }
@@ -297,38 +286,36 @@ public sealed class ThreeWayMerger
             if (
                 unitA.ContentHash == baseUnit.ContentHash
                 && unitB.ContentHash != baseUnit.ContentHash
-            )
-            {
+            ) {
+                _logger.LogDebug("[3WAY] File changed only in B: {Path}", baseUnit.FilePath);
                 actions.Add(CreateMergeAction(unitB, MergeActionType.Update, "branchB", 1.0f));
                 continue;
             }
 
             // Случай 4: Обе ветки изменили одинаково
-            if (unitA.ContentHash == unitB.ContentHash)
-            {
+            if (unitA.ContentHash == unitB.ContentHash) {
+                _logger.LogDebug("[3WAY] File changed identically in both branches: {Path}", baseUnit.FilePath);
                 actions.Add(CreateMergeAction(unitA, MergeActionType.Update, "merged", 1.0f));
                 continue;
             }
 
             // Случай 5: Потенциальный конфликт - обе ветки изменили по-разному
             // Собираем для семантического разрешения
+            _logger.LogDebug("[3WAY] File has potential conflict: {Path}", baseUnit.FilePath);
             potentialConflicts.Add((baseUnit, unitA, unitB));
         }
 
         // Попытка семантически разрешить конфликты
-        if (potentialConflicts.Count > 0)
-        {
+        if (potentialConflicts.Count > 0) {
             _logger.LogDebug("[3WAY] Attempting to resolve {Count} potential conflicts semantically...", potentialConflicts.Count);
 
             var resolved = 0;
-            foreach (var (baseUnit, unitA, unitB) in potentialConflicts)
-            {
+            foreach (var (baseUnit, unitA, unitB) in potentialConflicts) {
                 ct.ThrowIfCancellationRequested();
 
                 var resolution = await _conflictResolver.TryResolveAsync(baseUnit, unitA, unitB, ct);
 
-                if (resolution.IsResolved && resolution.MergedUnit != null)
-                {
+                if (resolution.IsResolved && resolution.MergedUnit != null) {
                     actions.Add(CreateMergeAction(
                         resolution.MergedUnit,
                         MergeActionType.Update,
@@ -337,9 +324,7 @@ public sealed class ThreeWayMerger
                     resolved++;
                     _logger.LogDebug("[3WAY] Resolved conflict for {Symbol}: {Resolution}",
                         baseUnit.FullyQualifiedName, resolution.Resolution);
-                }
-                else
-                {
+                } else {
                     conflicts.Add(CreateConflict(baseUnit, unitA, unitB, ConflictType.ContentConflict));
                 }
             }
@@ -348,7 +333,6 @@ public sealed class ThreeWayMerger
                 resolved, potentialConflicts.Count);
         }
     }
-
     /// <summary>
     /// Обработать добавленные units.
     /// </summary>
@@ -359,15 +343,13 @@ public sealed class ThreeWayMerger
         Dictionary<string, FastPathMatchResult> fastMatchesA,
         Dictionary<string, FastPathMatchResult> fastMatchesB,
         List<MergeAction> actions
-    )
-    {
+    ) {
         // Units в A, но не в base
         var addedInA = branchAIndex
             .Units.Values.Where(u => !baseIndex.Units.ContainsKey(u.Id))
             .ToList();
 
-        foreach (var unit in addedInA)
-        {
+        foreach (var unit in addedInA) {
             actions.Add(CreateMergeAction(unit, MergeActionType.Create, "branchA", 0.95f));
         }
 
@@ -376,8 +358,7 @@ public sealed class ThreeWayMerger
             .Units.Values.Where(u => !baseIndex.Units.ContainsKey(u.Id))
             .ToList();
 
-        foreach (var unit in addedInB)
-        {
+        foreach (var unit in addedInB) {
             actions.Add(CreateMergeAction(unit, MergeActionType.Create, "branchB", 0.95f));
         }
     }
@@ -393,30 +374,25 @@ public sealed class ThreeWayMerger
         Dictionary<string, FastPathMatchResult> fastMatchesB,
         List<MergeAction> actions,
         List<SemanticConflict> conflicts
-    )
-    {
-        foreach (var baseUnit in baseIndex.Units.Values)
-        {
+    ) {
+        foreach (var baseUnit in baseIndex.Units.Values) {
             var existsInA = fastMatchesA.ContainsKey(baseUnit.Id);
             var existsInB = fastMatchesB.ContainsKey(baseUnit.Id);
 
             // Удалено в обеих ветках
-            if (!existsInA && !existsInB)
-            {
+            if (!existsInA && !existsInB) {
                 actions.Add(CreateMergeAction(baseUnit, MergeActionType.Delete, "merged", 1.0f));
                 continue;
             }
 
             // Удалено только в A
-            if (!existsInA && existsInB)
-            {
+            if (!existsInA && existsInB) {
                 // TODO: Проверить, не была ли модифицирована в B
                 actions.Add(CreateMergeAction(baseUnit, MergeActionType.Delete, "branchA", 0.8f));
             }
 
             // Удалено только в B
-            if (existsInA && !existsInB)
-            {
+            if (existsInA && !existsInB) {
                 actions.Add(CreateMergeAction(baseUnit, MergeActionType.Delete, "branchB", 0.8f));
             }
         }
@@ -430,15 +406,12 @@ public sealed class ThreeWayMerger
         MergeActionType type,
         string source,
         float confidence
-    )
-    {
-        return new MergeAction
-        {
+    ) {
+        return new MergeAction {
             TargetPath = unit.FilePath,
             Type = type,
             Content = unit.Content,
-            Intent = new ChangeIntent
-            {
+            Intent = new ChangeIntent {
                 Type = IntentType.Modification,
                 Description = $"{type} {unit.Name}",
                 AffectedSymbols = new List<string> { unit.FullyQualifiedName },
@@ -457,10 +430,8 @@ public sealed class ThreeWayMerger
         CodeUnit unitA,
         CodeUnit unitB,
         ConflictType conflictType
-    )
-    {
-        return new SemanticConflict
-        {
+    ) {
+        return new SemanticConflict {
             Id = $"conflict-{Guid.NewGuid():N}",
             BaseUnit = baseUnit,
             VersionA = unitA,
