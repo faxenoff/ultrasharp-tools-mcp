@@ -400,6 +400,7 @@ public static class Program
         );
 
         bool semanticEnabled = false;
+        UltrasharpTools.Droid.Services.Hybrid.VectorDBLauncher? vectorDbLauncher = null;
 
         if (hasSemanticConfig)
         {
@@ -556,7 +557,7 @@ public static class Program
                             if (enableConsoleOutput) b.AddConsole();
                             b.SetMinimumLevel(LogLevel.Information);
                         });
-                        var vectorDbLauncher = new UltrasharpTools.Droid.Services.Hybrid.VectorDBLauncher(
+                        vectorDbLauncher = new UltrasharpTools.Droid.Services.Hybrid.VectorDBLauncher(
                             vectorDbLoggerFactory.CreateLogger<UltrasharpTools.Droid.Services.Hybrid.VectorDBLauncher>()
                         );
                         vectorDbLauncher.StartAsync();
@@ -1117,6 +1118,10 @@ public static class Program
             await using var pipeServer = new Ipc.PipeServerMode(sharedHost.Services, logger);
             await pipeServer.RunAsync();
 
+            // Останавливаем VectorDB если был запущен
+            vectorDbLauncher?.Stop();
+            logger.LogInformation("[PipeServer] VectorDB stopped");
+
             // Останавливаем hosted services
             await sharedHost.StopAsync();
             return 0;
@@ -1211,7 +1216,8 @@ public static class Program
         }
         finally
         {
-            // Console.WriteLine($"{ApplicationName} shutting down.");
+            // Останавливаем VectorDB если был запущен
+            vectorDbLauncher?.Stop();
         }
     }
 }

@@ -76,20 +76,37 @@ public sealed class BranchMergeService {
         _logger.LogDebug("[MERGE] Step 3: Getting changed files with status...");
         var changesInSource = await gitReader.GetChangedFilesWithStatusAsync(mergeBase, sourceBranch, ct);
         var changesInTarget = await gitReader.GetChangedFilesWithStatusAsync(mergeBase, targetBranch, ct);
-        _logger.LogDebug("[MERGE] Changed files: source={SourceCount}, target={TargetCount}", changesInSource.Count, changesInTarget.Count);
+
+        // Также получить прямой diff source..target для информации
+        var directDiff = await gitReader.GetChangedFilesWithStatusAsync(sourceBranch, targetBranch, ct);
+
+        _logger.LogInformation("[MERGE] Changes: source vs base={SourceCount}, target vs base={TargetCount}, source vs target={DirectCount}",
+            changesInSource.Count, changesInTarget.Count, directDiff.Count);
+
+        // Если в source нет изменений относительно merge-base
+        if (changesInSource.Count == 0 && changesInTarget.Count > 0) {
+            _logger.LogWarning("[MERGE] Source branch ({Source}) has no changes relative to merge-base ({Base}). " +
+                "Target ({Target}) has {Count} changes. Direct diff shows {DirectCount} files different.",
+                sourceBranch, baseShort, targetBranch, changesInTarget.Count, directDiff.Count);
+        }
 
         // Построить словари статусов для быстрого поиска
         var sourceStatuses = changesInSource.ToDictionary(c => c.Path, c => c.Status);
         var targetStatuses = changesInTarget.ToDictionary(c => c.Path, c => c.Status);
 
-        // Все изменённые файлы (объединение)
+        // При мерже source → target нам нужны ТОЛЬКО файлы изменённые в source.
+        // Файлы изменённые только в target уже там есть - их мержить не нужно.
+        // Файлы изменённые в обоих - это потенциальные конфликты (они входят в changesInSource).
         var allChangedFiles = changesInSource.Select(c => c.Path)
-            .Union(changesInTarget.Select(c => c.Path))
             .Where(f => MatchesFilePattern(f, filePatterns))
             .Where(f => !parsedInstructions.ShouldExcludeFile(f))
             .Where(f => parsedInstructions.ShouldIncludeFile(f))
             .Distinct()
             .ToList();
+
+        _logger.LogDebug("[MERGE] Files from source: {SourceCount}, files only in target (skipped): {TargetOnlyCount}",
+            allChangedFiles.Count,
+            changesInTarget.Count(t => !sourceStatuses.ContainsKey(t.Path)));
 
         // 3.5. Разделить файлы по категориям
         var binaryFiles = allChangedFiles.Where(IsBinaryFile).ToList();
@@ -107,6 +124,11 @@ public sealed class BranchMergeService {
         // Исключить binary файлы из обработки
         allChangedFiles = semanticFiles.Concat(textFiles).ToList();
 
+        // Построить mapping для переименованных файлов в target (старый путь -> новый путь)
+        var targetRenames = changesInTarget
+            .Where(c => c.Status == GitFileStatus.Renamed && !string.IsNullOrEmpty(c.OldPath))
+            .ToDictionary(c => c.OldPath!, c => c.Path);
+
         // Определить какие файлы существуют в каждой версии:
         var filesInBase = allChangedFiles
             .Where(f => sourceStatuses.GetValueOrDefault(f) != GitFileStatus.Added
@@ -117,21 +139,76 @@ public sealed class BranchMergeService {
             .Where(f => sourceStatuses.GetValueOrDefault(f) != GitFileStatus.Deleted)
             .ToList();
 
+        // Для target: исключить файлы которые:
+        // 1. Были переименованы в target (их нет по старому пути)
+        // 2. Добавлены ТОЛЬКО в source (их нет в target) - но если Added в обоих, то включить (add/add conflict)
+        // 3. Удалены в target
         var filesInTarget = allChangedFiles
-            .Where(f => targetStatuses.GetValueOrDefault(f) != GitFileStatus.Deleted)
+            .Where(f => sourceStatuses.GetValueOrDefault(f) != GitFileStatus.Deleted)
+            .Where(f => {
+                var srcStatus = sourceStatuses.GetValueOrDefault(f);
+                var tgtStatus = targetStatuses.GetValueOrDefault(f);
+                // Если Added в source - включить только если также Added в target (add/add)
+                if (srcStatus == GitFileStatus.Added) {
+                    return tgtStatus == GitFileStatus.Added;
+                }
+                return true;
+            })
+            .Where(f => !targetRenames.ContainsKey(f)) // Переименован в target - нет по старому пути
+            .Where(f => targetStatuses.GetValueOrDefault(f) != GitFileStatus.Deleted) // Удалён в target
             .ToList();
 
-        _logger.LogDebug(
-            "[MERGE] Files by version: base={BaseCount}, source={SourceCount}, target={TargetCount}, total={TotalCount}",
-            filesInBase.Count, filesInSource.Count, filesInTarget.Count, allChangedFiles.Count);
+        // Логировать переименования (это потенциальные конфликты rename/modify)
+        var renamedInSource = allChangedFiles.Where(f => targetRenames.ContainsKey(f)).ToList();
+        if (renamedInSource.Count > 0) {
+            _logger.LogWarning("[MERGE] {Count} files were renamed in target (rename/modify conflicts): {Files}",
+                renamedInSource.Count, string.Join(", ", renamedInSource.Take(5)));
+        }
+
+        _logger.LogInformation(
+            "[MERGE] Files by version: base={BaseCount}, source={SourceCount}, target={TargetCount}, total={TotalCount}, renamed={Renamed}",
+            filesInBase.Count, filesInSource.Count, filesInTarget.Count, allChangedFiles.Count, renamedInSource.Count);
+
+        // Детальный лог каждого файла
+        foreach (var f in allChangedFiles) {
+            var srcStatus = sourceStatuses.GetValueOrDefault(f);
+            var tgtStatus = targetStatuses.GetValueOrDefault(f, GitFileStatus.Unknown);
+            var inBase = filesInBase.Contains(f);
+            var inSrc = filesInSource.Contains(f);
+            var inTgt = filesInTarget.Contains(f);
+            _logger.LogInformation("[MERGE] File: {File} | srcStatus={SrcStatus}, tgtStatus={TgtStatus} | inBase={InBase}, inSrc={InSrc}, inTgt={InTgt}",
+                f, srcStatus, tgtStatus, inBase, inSrc, inTgt);
+        }
 
         if (allChangedFiles.Count == 0) {
-            var summary = binaryFiles.Count > 0
-                ? $"No mergeable files (skipped {binaryFiles.Count} binary files)"
-                : "No files to merge after applying filters";
-            _logger.LogDebug("[MERGE] {Summary}", summary);
+            string summary;
+            if (binaryFiles.Count > 0) {
+                summary = $"No mergeable files (skipped {binaryFiles.Count} binary files)";
+            } else if (changesInSource.Count == 0 && changesInTarget.Count > 0) {
+                // Нет изменений в source, но есть в target - скорее всего направление неправильное
+                summary = $"⚠️ No changes in {sourceBranch} relative to merge-base ({baseShort}).\n" +
+                    $"   {targetBranch} has {changesInTarget.Count} changes vs base.\n" +
+                    $"   Direct diff {sourceBranch}..{targetBranch}: {directDiff.Count} files.\n" +
+                    $"   💡 Try: merge {targetBranch} → {sourceBranch}";
+            } else if (changesInSource.Count == 0 && changesInTarget.Count == 0) {
+                summary = "Both branches are identical to merge-base. Nothing to merge.";
+            } else {
+                // DEBUG: changesInSource > 0 но allChangedFiles = 0 после фильтрации
+                summary = $"DEBUG: changesInSource={changesInSource.Count}, " +
+                    $"changesInTarget={changesInTarget.Count}, " +
+                    $"directDiff={directDiff.Count}, " +
+                    $"binaryFiles={binaryFiles.Count}, " +
+                    $"semanticFiles={semanticFiles.Count}, " +
+                    $"textFiles={textFiles.Count}, " +
+                    $"filePatterns={filePatterns}, " +
+                    $"sourceFiles=[{string.Join(",", changesInSource.Take(5).Select(c => c.Path))}]";
+            }
+            _logger.LogInformation("[MERGE] {Summary}", summary);
             return new BranchMergeResult {
                 Success = true,
+                MergeBase = baseShort,
+                SourceBranch = sourceBranch,
+                TargetBranch = targetBranch,
                 Summary = summary,
                 ChangedFiles = new List<string>(),
                 Conflicts = new List<MergeConflictInfo>(),
@@ -152,15 +229,17 @@ public sealed class BranchMergeService {
             Directory.CreateDirectory(targetDir);
 
             // Извлечь файлы из каждой версии
-            _logger.LogDebug("[MERGE] Extracting files from branches (batch mode)...");
+            _logger.LogInformation("[MERGE] Extracting files: base={BaseFiles}, source={SourceFiles}, target={TargetFiles}",
+                string.Join(", ", filesInBase), string.Join(", ", filesInSource), string.Join(", ", filesInTarget));
             var baseExtracted = await gitReader.ExtractFilesToDirectoryAsync(mergeBase, filesInBase, baseDir, ct);
             var sourceExtracted = await gitReader.ExtractFilesToDirectoryAsync(sourceBranch, filesInSource, sourceDir, ct);
             var targetExtracted = await gitReader.ExtractFilesToDirectoryAsync(targetBranch, filesInTarget, targetDir, ct);
-            _logger.LogDebug("[MERGE] Extracted files: base={Base}, source={Source}, target={Target}",
-                baseExtracted, sourceExtracted, targetExtracted);
+            _logger.LogInformation("[MERGE] Extracted files: base={Base}/{BaseTotal}, source={Source}/{SourceTotal}, target={Target}/{TargetTotal}",
+                baseExtracted, filesInBase.Count, sourceExtracted, filesInSource.Count, targetExtracted, filesInTarget.Count);
 
             // 5. Гибридный merge: сначала traditional для text, затем semantic
             var traditionalMergedFiles = new Dictionary<string, string>(); // path -> merged content
+            var textFileConflicts = new List<string>(); // text файлы с конфликтами (маркеры в контенте)
             var filesForSemanticMerge = new List<string>(semanticFiles); // C# файлы всегда идут на semantic
 
             _logger.LogDebug("[MERGE] Step 5: Trying traditional merge for {Count} text files...", textFiles.Count);
@@ -173,15 +252,34 @@ public sealed class BranchMergeService {
                 if (traditionalResult.Success && !traditionalResult.HasConflicts && traditionalResult.MergedContent != null) {
                     _logger.LogDebug("[MERGE] Traditional merge succeeded for: {File}", file);
                     traditionalMergedFiles[file] = traditionalResult.MergedContent;
+                } else if (traditionalResult.HasConflicts && traditionalResult.MergedContent != null) {
+                    // Есть конфликты но git merge-file вернул результат с маркерами - используем его
+                    _logger.LogWarning("[MERGE] Traditional merge has conflicts for {File}, using merge output with conflict markers", file);
+                    traditionalMergedFiles[file] = traditionalResult.MergedContent;
+                    // Добавим в список конфликтов для отчёта
+                    textFileConflicts.Add(file);
                 } else {
-                    _logger.LogDebug("[MERGE] Traditional merge failed for {File}: {Reason}, falling back to semantic",
-                        file, traditionalResult.ErrorMessage ?? "conflicts");
-                    filesForSemanticMerge.Add(file);
+                    // Merge не удался совсем - берём source версию
+                    _logger.LogWarning("[MERGE] Traditional merge failed for {File}: {Reason}. Taking source version.",
+                        file, traditionalResult.ErrorMessage ?? "unknown error");
+                    if (File.Exists(sourcePath)) {
+                        var sourceContent = await File.ReadAllTextAsync(sourcePath, ct);
+                        traditionalMergedFiles[file] = sourceContent;
+                        _logger.LogInformation("[MERGE] Using source version for {File} ({Len} bytes)", file, sourceContent.Length);
+                    } else {
+                        _logger.LogWarning("[MERGE] Source file not found for {File}, skipping", file);
+                    }
                 }
             }
 
-            _logger.LogDebug("[MERGE] Traditional merge: {Success} succeeded, {Fallback} need semantic merge",
-                traditionalMergedFiles.Count, filesForSemanticMerge.Count);
+            _logger.LogInformation("[MERGE] Traditional merge: {Success} succeeded, {Fallback} need semantic merge. Text files: {TextCount}",
+                traditionalMergedFiles.Count, filesForSemanticMerge.Count, textFiles.Count);
+            if (traditionalMergedFiles.Count > 0) {
+                _logger.LogInformation("[MERGE] Traditional merged: [{Files}]", string.Join(", ", traditionalMergedFiles.Keys));
+            }
+            if (filesForSemanticMerge.Count > 0) {
+                _logger.LogInformation("[MERGE] Semantic fallback: [{Files}]", string.Join(", ", filesForSemanticMerge));
+            }
 
             // 6. Semantic merge для C# и файлов с конфликтами
             MergeResult? semanticResult = null;
@@ -217,27 +315,90 @@ public sealed class BranchMergeService {
                 }
             }
 
-            // 7. Объединить результаты
+            // 7. Объединить результаты (дедуплицировать по файлу!)
             var allActions = new List<MergeActionInfo>();
+            var totalInsertions = 0;
+            var totalDeletions = 0;
 
-            // Добавить традиционно смердженные файлы как actions
-            foreach (var (filePath, content) in traditionalMergedFiles) {
+            // Добавить традиционно смердженные файлы как actions (кроме файлов с конфликтами)
+            foreach (var (filePath, mergedContent) in traditionalMergedFiles) {
+                // Файлы с конфликтами не добавляем в actions - они будут в conflicts
+                if (textFileConflicts.Contains(filePath)) continue;
+
+                // Сравнить с оригинальным файлом в target для подсчёта строк
+                var targetFilePath = Path.Combine(targetDir, filePath.Replace('/', Path.DirectorySeparatorChar));
+                var originalContent = File.Exists(targetFilePath) ? await File.ReadAllTextAsync(targetFilePath, ct) : "";
+                var (ins, del) = CountLineDiff(originalContent, mergedContent);
+                totalInsertions += ins;
+                totalDeletions += del;
+
                 allActions.Add(new MergeActionInfo {
                     FilePath = filePath,
                     ActionType = "Modify",
                     Source = "traditional",
                     Confidence = 1.0f,
+                    Insertions = ins,
+                    Deletions = del,
                 });
             }
 
-            // Добавить semantic merge results
+            // Добавить semantic merge results (дедуплицировать по файлу - один action на файл)
+            var filesWithSemanticActions = new HashSet<string>();
             if (semanticResult != null) {
-                allActions.AddRange(semanticResult.Actions.Select(a => new MergeActionInfo {
-                    FilePath = a.TargetPath,
-                    ActionType = a.Type.ToString(),
-                    Source = a.Source,
-                    Confidence = a.Confidence,
-                }));
+                var semanticByFile = semanticResult.Actions
+                    .Where(a => !string.IsNullOrEmpty(a.TargetPath))
+                    .GroupBy(a => a.TargetPath)
+                    .Select(g => g.OrderByDescending(a => a.Content?.Length ?? 0).First());
+
+                foreach (var a in semanticByFile) {
+                    filesWithSemanticActions.Add(a.TargetPath);
+                    // Не добавлять если уже есть traditional action для этого файла
+                    if (!traditionalMergedFiles.ContainsKey(a.TargetPath)) {
+                        var targetFilePath = Path.Combine(targetDir, a.TargetPath.Replace('/', Path.DirectorySeparatorChar));
+                        var originalContent = File.Exists(targetFilePath) ? await File.ReadAllTextAsync(targetFilePath, ct) : "";
+                        var (ins, del) = CountLineDiff(originalContent, a.Content ?? "");
+                        totalInsertions += ins;
+                        totalDeletions += del;
+
+                        allActions.Add(new MergeActionInfo {
+                            FilePath = a.TargetPath,
+                            ActionType = a.Type.ToString(),
+                            Source = a.Source,
+                            Confidence = a.Confidence,
+                            Insertions = ins,
+                            Deletions = del,
+                        });
+                    }
+                }
+            }
+
+            // Fallback: C# файлы без semantic actions - берём source версию
+            foreach (var file in filesForSemanticMerge) {
+                if (!traditionalMergedFiles.ContainsKey(file) && !filesWithSemanticActions.Contains(file)) {
+                    var sourcePath = Path.Combine(sourceDir, file.Replace('/', Path.DirectorySeparatorChar));
+                    if (File.Exists(sourcePath)) {
+                        var sourceContent = await File.ReadAllTextAsync(sourcePath, ct);
+                        var targetFilePath = Path.Combine(targetDir, file.Replace('/', Path.DirectorySeparatorChar));
+                        var originalContent = File.Exists(targetFilePath) ? await File.ReadAllTextAsync(targetFilePath, ct) : "";
+                        var (ins, del) = CountLineDiff(originalContent, sourceContent);
+                        totalInsertions += ins;
+                        totalDeletions += del;
+
+                        _logger.LogWarning("[MERGE] Semantic merge produced no action for {File}, using source version", file);
+
+                        // Добавляем в traditionalMergedFiles для записи
+                        traditionalMergedFiles[file] = sourceContent;
+
+                        allActions.Add(new MergeActionInfo {
+                            FilePath = file,
+                            ActionType = "Modify",
+                            Source = "source-fallback",
+                            Confidence = 0.5f,
+                            Insertions = ins,
+                            Deletions = del,
+                        });
+                    }
+                }
             }
 
             var conflicts = semanticResult?.Conflicts.Select(c => new MergeConflictInfo {
@@ -248,6 +409,31 @@ public sealed class BranchMergeService {
                 Severity = c.Severity.ToString(),
             }).ToList() ?? new List<MergeConflictInfo>();
 
+            // Добавить text file конфликты (с маркерами в контенте)
+            foreach (var file in textFileConflicts) {
+                conflicts.Add(new MergeConflictInfo {
+                    FilePath = file,
+                    Symbol = "",
+                    ConflictType = "TextMergeConflict",
+                    Description = "File has conflict markers (<<<<<<< ======= >>>>>>>) that need manual resolution",
+                    Severity = "Warning",
+                });
+            }
+
+            // Дедуплицировать конфликты по файлу
+            var conflictsByFile = conflicts
+                .GroupBy(c => c.FilePath)
+                .Select(g => g.First())
+                .ToList();
+
+            // Применить маппинг rename к путям (для корректного отчёта)
+            var finalActions = allActions.Select(a => targetRenames.TryGetValue(a.FilePath, out var renamedPath)
+                ? a with { FilePath = renamedPath }
+                : a).ToList();
+            var finalConflicts = conflictsByFile.Select(c => targetRenames.TryGetValue(c.FilePath, out var renamedPath)
+                ? c with { FilePath = renamedPath }
+                : c).ToList();
+
             var result = new BranchMergeResult {
                 Success = true,
                 MergeBase = baseShort,
@@ -255,41 +441,59 @@ public sealed class BranchMergeService {
                 TargetBranch = targetBranch,
                 Instructions = parsedInstructions,
                 ChangedFiles = allChangedFiles,
-                Actions = allActions,
-                Conflicts = conflicts,
+                Actions = finalActions,
+                Conflicts = finalConflicts,
                 Statistics = new MergeStatisticsInfo {
-                    TotalChanges = allActions.Count + conflicts.Count,
-                    AutoMerged = allActions.Count,
-                    Conflicts = conflicts.Count,
+                    FilesToMerge = finalActions.Count + finalConflicts.Count,
+                    AutoMergedFiles = finalActions.Count,
+                    ConflictFiles = finalConflicts.Count,
+                    TotalInsertions = totalInsertions,
+                    TotalDeletions = totalDeletions,
                     FastPathMatches = semanticResult?.Statistics.FastPathMatches ?? 0,
                     SlowPathMatches = semanticResult?.Statistics.SlowPathMatches ?? 0,
                     MergeTimeMs = sw.ElapsedMilliseconds,
                 },
             };
 
-            // 8. Применить изменения
-            if (applyChanges && result.Success && result.Conflicts.Count == 0) {
+            // 8. Применить изменения (даже с конфликтами - они будут с маркерами для ручного разрешения)
+            if (applyChanges && result.Success) {
+                _logger.LogInformation("[MERGE] === APPLYING CHANGES to: {Repo} ===", repositoryPath);
+                if (result.Conflicts.Count > 0) {
+                    _logger.LogWarning("[MERGE] Applying {Count} files with conflict markers for manual resolution",
+                        result.Conflicts.Count);
+                }
+
                 // Записать традиционно смердженные файлы
+                var writtenCount = 0;
                 foreach (var (filePath, content) in traditionalMergedFiles) {
-                    var fullPath = Path.Combine(repositoryPath, filePath.Replace('/', Path.DirectorySeparatorChar));
+                    // Если файл был переименован в target - писать по новому пути
+                    var actualPath = targetRenames.TryGetValue(filePath, out var renamedPath) ? renamedPath : filePath;
+                    if (actualPath != filePath) {
+                        _logger.LogInformation("[MERGE] File renamed in target: {OldPath} → {NewPath}", filePath, actualPath);
+                    }
+
+                    var fullPath = Path.Combine(repositoryPath, actualPath.Replace('/', Path.DirectorySeparatorChar));
+                    _logger.LogInformation("[MERGE] Writing: {Path} ({Len} bytes)", fullPath, content?.Length ?? 0);
                     var dir = Path.GetDirectoryName(fullPath);
                     if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                         Directory.CreateDirectory(dir);
                     await File.WriteAllTextAsync(fullPath, content, ct);
+                    writtenCount++;
                 }
+                _logger.LogInformation("[MERGE] Written {Count} traditional files to {Repo}", writtenCount, repositoryPath);
 
                 // Записать semantic merge результаты
                 if (semanticResult != null) {
+                    _logger.LogInformation("[MERGE] Applying {Count} semantic merge results", semanticResult.Actions.Count);
                     await ApplyMergeResultAsync(gitReader, repositoryPath, semanticResult, ct);
                 }
 
                 var binaryNote = binaryFiles.Count > 0 ? $" ({binaryFiles.Count} binary files skipped)" : "";
-                result.Summary = $"Merged {result.Actions.Count} changes from {sourceBranch} to {targetBranch}{binaryNote}. " +
-                    $"Traditional: {traditionalMergedFiles.Count}, Semantic: {(semanticResult?.Actions.Count ?? 0)}. " +
-                    $"Files written as unstaged changes. Use 'git diff' to review.";
-            } else if (result.Conflicts.Count > 0) {
-                result.Summary = $"Merge has {result.Conflicts.Count} conflicts that need manual resolution. " +
-                    $"Review conflicts and resolve before applying.";
+                var conflictNote = result.Conflicts.Count > 0
+                    ? $" ⚠️ {result.Conflicts.Count} files have conflict markers - resolve manually!"
+                    : "";
+                result.Summary = $"Merged {result.Actions.Count + result.Conflicts.Count} files from {sourceBranch} to {targetBranch}{binaryNote}.{conflictNote} " +
+                    $"Files written to {repositoryPath}. Use 'git diff' to review.";
             } else {
                 result.Summary = $"Dry run: {result.Actions.Count} changes would be merged. " +
                     $"Set applyChanges=true to apply.";
@@ -454,9 +658,33 @@ public sealed class BranchMergeService {
     private static bool SupportsSemanticMerge(string filePath) {
         var ext = Path.GetExtension(filePath);
         return SemanticMergeExtensions.Contains(ext);
-    }/// <summary>
-     /// Результат традиционного 3-way merge.
-     /// </summary>
+    }
+
+    /// <summary>
+    /// Простой подсчёт изменений строк между двумя текстами.
+    /// </summary>
+    private static (int insertions, int deletions) CountLineDiff(string original, string modified) {
+        if (string.IsNullOrEmpty(original) && string.IsNullOrEmpty(modified))
+            return (0, 0);
+
+        var originalLines = original.Split('\n').Length;
+        var modifiedLines = modified.Split('\n').Length;
+
+        if (string.IsNullOrEmpty(original))
+            return (modifiedLines, 0);
+        if (string.IsNullOrEmpty(modified))
+            return (0, originalLines);
+
+        var diff = modifiedLines - originalLines;
+        if (diff >= 0)
+            return (diff, 0);
+        else
+            return (0, -diff);
+    }
+
+    /// <summary>
+    /// Результат традиционного 3-way merge.
+    /// </summary>
     private record TraditionalMergeResult(
         bool Success,
         bool HasConflicts,
@@ -478,6 +706,9 @@ public sealed class BranchMergeService {
             var sourceExists = File.Exists(sourceFilePath);
             var targetExists = File.Exists(targetFilePath);
 
+            _logger.LogInformation("[TRADITIONAL] File check: base={BaseExists} ({BasePath}), source={SourceExists}, target={TargetExists}",
+                baseExists, Path.GetFileName(baseFilePath), sourceExists, targetExists);
+
             // Если файл добавлен только в одной ветке - просто берём его
             if (!baseExists && sourceExists && !targetExists) {
                 return new TraditionalMergeResult(true, false, await File.ReadAllTextAsync(sourceFilePath, ct), null);
@@ -486,8 +717,9 @@ public sealed class BranchMergeService {
                 return new TraditionalMergeResult(true, false, await File.ReadAllTextAsync(targetFilePath, ct), null);
             }
             if (!baseExists && sourceExists && targetExists) {
-                // Оба добавили файл - конфликт, нужен semantic merge
-                return new TraditionalMergeResult(false, true, null, "File added in both branches");
+                // Оба добавили файл - используем пустой base для 3-way merge
+                // git merge-file справится с этим
+                _logger.LogInformation("[TRADITIONAL] File added in both branches, using empty base for merge");
             }
 
             // Если файл удалён в одной ветке
@@ -500,9 +732,9 @@ public sealed class BranchMergeService {
                 return new TraditionalMergeResult(false, true, null, "File deleted in target but modified in source");
             }
 
-            // Стандартный случай: файл существует во всех трёх версиях
-            if (!baseExists || !sourceExists || !targetExists) {
-                return new TraditionalMergeResult(false, false, null, "Missing files for merge");
+            // Для merge нужны source и target, base может быть пустым (add/add случай)
+            if (!sourceExists || !targetExists) {
+                return new TraditionalMergeResult(false, false, null, "Missing source or target file for merge");
             }
 
             // Создаём временные файлы для git merge-file (он модифицирует первый файл in-place)
@@ -514,14 +746,23 @@ public sealed class BranchMergeService {
                 var tempTarget = Path.Combine(tempDir, "target");
 
                 File.Copy(sourceFilePath, tempSource, overwrite: true);
-                File.Copy(baseFilePath, tempBase, overwrite: true);
+                // Для add/add случая base пустой
+                if (baseExists) {
+                    File.Copy(baseFilePath, tempBase, overwrite: true);
+                } else {
+                    await File.WriteAllTextAsync(tempBase, "", ct);
+                }
                 File.Copy(targetFilePath, tempTarget, overwrite: true);
 
                 // git merge-file <current> <base> <other>
+                // Для merge source → target:
+                //   current = target (куда мержим)
+                //   base = merge-base
+                //   other = source (откуда мержим)
                 // Exit code: 0 = success, >0 = conflicts (число конфликтов), <0 = error
                 var psi = new ProcessStartInfo {
                     FileName = "git",
-                    Arguments = $"merge-file -p \"{tempSource}\" \"{tempBase}\" \"{tempTarget}\"",
+                    Arguments = $"merge-file -p \"{tempTarget}\" \"{tempBase}\" \"{tempSource}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -585,6 +826,8 @@ public sealed record MergeActionInfo {
     public string ActionType { get; init; } = "";
     public string Source { get; init; } = "";
     public float Confidence { get; init; }
+    public int Insertions { get; init; }
+    public int Deletions { get; init; }
 }
 
 public sealed record MergeConflictInfo {
@@ -596,10 +839,17 @@ public sealed record MergeConflictInfo {
 }
 
 public sealed record MergeStatisticsInfo {
-    public int TotalChanges { get; init; }
-    public int AutoMerged { get; init; }
-    public int Conflicts { get; init; }
+    public int FilesToMerge { get; init; }
+    public int AutoMergedFiles { get; init; }
+    public int ConflictFiles { get; init; }
+    public int TotalInsertions { get; init; }
+    public int TotalDeletions { get; init; }
     public int FastPathMatches { get; init; }
     public int SlowPathMatches { get; init; }
     public long MergeTimeMs { get; init; }
+
+    // Legacy properties for compatibility
+    public int TotalChanges => FilesToMerge;
+    public int AutoMerged => AutoMergedFiles;
+    public int Conflicts => ConflictFiles;
 }

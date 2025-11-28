@@ -26,6 +26,15 @@ public interface ILoadingOrchestrator {
     /// Gets current loading status
     /// </summary>
     LoadingStatus GetStatus();
+
+    /// <summary>
+    /// Waits for any in-progress loading to complete.
+    /// Returns immediately if no loading is in progress.
+    /// </summary>
+    /// <param name="timeout">Maximum time to wait</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if ready (loaded or no loading in progress), false if timeout</returns>
+    Task<bool> WaitForReadyAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
 }
 public record LoadingResult {
     public bool Success { get; init; }
@@ -196,5 +205,46 @@ public class LoadingOrchestrator : ILoadingOrchestrator {
             _logger.LogError(ex, "Failed to load solution from {Source}: {SolutionPath}", source, solutionPath);
             return LoadingResult.CreateFailure(solutionPath, ex.Message, source);
         }
+    }
+
+    public async Task<bool> WaitForReadyAsync(TimeSpan timeout, CancellationToken cancellationToken = default) {
+        var deadline = DateTime.UtcNow + timeout;
+
+        while (DateTime.UtcNow < deadline) {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            Task<LoadingResult>? loadingTask;
+            await _lock.WaitAsync(cancellationToken);
+            try {
+                loadingTask = _currentLoadingTask;
+            } finally {
+                _lock.Release();
+            }
+
+            // Нет загрузки в процессе - готов
+            if (loadingTask == null) {
+                return true;
+            }
+
+            // Ждём завершения текущей загрузки или таймаута
+            var remainingTime = deadline - DateTime.UtcNow;
+            if (remainingTime <= TimeSpan.Zero) {
+                _logger.LogWarning("[LoadingOrchestrator] WaitForReadyAsync timeout after {Timeout}", timeout);
+                return false;
+            }
+
+            try {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(remainingTime);
+                await loadingTask.WaitAsync(cts.Token);
+                return true;
+            } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                // Timeout
+                _logger.LogWarning("[LoadingOrchestrator] WaitForReadyAsync timeout after {Timeout}", timeout);
+                return false;
+            }
+        }
+
+        return false;
     }
 }

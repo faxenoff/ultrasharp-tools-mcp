@@ -1,4 +1,5 @@
 using ModelContextProtocol;
+using UltrasharpTools.Tools.Infrastructure;
 using UltrasharpTools.Tools.Merge.Git;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
@@ -9,14 +10,19 @@ namespace UltrasharpTools.Tools.Mcp.Tools;
 public sealed class SemanticMergeTools {
     private readonly BranchMergeService? _branchMergeService;
     private readonly ISolutionManager _solutionManager;
+    private readonly ILoadingOrchestrator _loadingOrchestrator;
     private readonly ILogger<SemanticMergeTools> _logger;
+
+    private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromMinutes(5);
 
     public SemanticMergeTools(
     BranchMergeService? branchMergeService,
     ISolutionManager solutionManager,
+    ILoadingOrchestrator loadingOrchestrator,
     ILogger<SemanticMergeTools> logger) {
         _branchMergeService = branchMergeService;
         _solutionManager = solutionManager;
+        _loadingOrchestrator = loadingOrchestrator;
         _logger = logger;
     }
 
@@ -96,19 +102,43 @@ apply: true
     [Description("Natural language merge instructions, e.g. 'ignore swagger files; prefer source for caching'")] string? instructions = null,
     [Description("File patterns to merge (comma-separated), e.g. '*.cs,*.json'. Default: '*' (all files)")] string filePatterns = "*",
     [Description("Apply changes as unstaged files (true) or just preview (false)")] bool apply = true,
+    [Description("Path to git repository. If not specified, uses loaded solution's directory.")] string? repositoryPath = null,
     CancellationToken cancellationToken = default) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
         async () => {
+            // Ждём завершения инициализации (загрузка solution, индексов и т.д.)
+            var status = _loadingOrchestrator.GetStatus();
+            if (status.IsLoading) {
+                _logger.LogInformation("[SemanticMerge] Waiting for solution loading to complete...");
+                var isReady = await _loadingOrchestrator.WaitForReadyAsync(ReadinessTimeout, cancellationToken);
+                if (!isReady) {
+                    return "Error: Server is still initializing. Please wait a few seconds and try again.";
+                }
+            }
+
             if (_branchMergeService == null) {
                 return "Error: BranchMergeService not available. SemanticMerge requires proper initialization.";
             }
 
-            // Получить путь к репозиторию из загруженного solution
-            var solutionPath = _solutionManager.CurrentSolution?.FilePath;
-            if (string.IsNullOrEmpty(solutionPath)) {
-                return "Error: No solution loaded. Use load_solution first.";
+            // Определить путь к репозиторию
+            if (string.IsNullOrEmpty(repositoryPath)) {
+                // Fallback: использовать путь из загруженного solution
+                var solutionPath = _solutionManager.CurrentSolution?.FilePath;
+                if (string.IsNullOrEmpty(solutionPath)) {
+                    return "Error: No solution loaded and no repositoryPath specified. Either load_solution or provide repositoryPath.";
+                }
+                repositoryPath = Path.GetDirectoryName(solutionPath)!;
             }
-            var repositoryPath = Path.GetDirectoryName(solutionPath)!;
+
+            // Проверить что директория существует и содержит .git
+            if (!Directory.Exists(repositoryPath)) {
+                return $"Error: Repository path does not exist: {repositoryPath}";
+            }
+            if (!Directory.Exists(Path.Combine(repositoryPath, ".git"))) {
+                return $"Error: Not a git repository (no .git folder): {repositoryPath}";
+            }
+
+            _logger.LogInformation("[MERGE] Using repository path: {Path}", repositoryPath);
 
             // Если target не указан, использовать текущую ветку
             if (string.IsNullOrEmpty(targetBranch)) {
@@ -145,50 +175,53 @@ apply: true
             return sb.ToString();
         }
 
-        sb.AppendLine($"✅ {result.Summary}");
-        sb.AppendLine();
-        sb.AppendLine($"Merge: {result.SourceBranch} → {result.TargetBranch}");
-        sb.AppendLine($"Base: {result.MergeBase}");
+        // Краткая сводка
+        sb.AppendLine($"Merge: {result.SourceBranch} → {result.TargetBranch} (base: {result.MergeBase})");
         sb.AppendLine();
 
+        // Инструкции (если есть)
         if (result.Instructions != null && !string.IsNullOrEmpty(result.Instructions.RawInstructions)) {
             sb.AppendLine($"📝 Instructions: {result.Instructions.RawInstructions}");
-            if (result.Instructions.ExcludePatterns.Count > 0)
-                sb.AppendLine($"   Excluded: {string.Join(", ", result.Instructions.ExcludePatterns)}");
-            if (result.Instructions.PreferSourceKeywords.Count > 0)
-                sb.AppendLine($"   Prefer source: {string.Join(", ", result.Instructions.PreferSourceKeywords)}");
             sb.AppendLine();
         }
 
+        // Статистика в читаемом формате
         if (result.Statistics != null) {
+            var stats = result.Statistics;
             sb.AppendLine("📊 Statistics:");
-            sb.AppendLine($"   Total changes: {result.Statistics.TotalChanges}");
-            sb.AppendLine($"   Auto-merged: {result.Statistics.AutoMerged}");
-            sb.AppendLine($"   Conflicts: {result.Statistics.Conflicts}");
-            sb.AppendLine($"   Fast path: {result.Statistics.FastPathMatches}");
-            sb.AppendLine($"   Slow path: {result.Statistics.SlowPathMatches}");
-            sb.AppendLine($"   Time: {result.Statistics.MergeTimeMs}ms");
+            sb.AppendLine($"   Files to merge: {stats.FilesToMerge}");
+            sb.AppendLine($"   Lines: +{stats.TotalInsertions} / -{stats.TotalDeletions}");
+            sb.AppendLine($"   Auto-merged: {stats.AutoMergedFiles} files");
+            if (stats.ConflictFiles > 0)
+                sb.AppendLine($"   Conflicts: {stats.ConflictFiles} files");
+            sb.AppendLine($"   Time: {stats.MergeTimeMs}ms");
             sb.AppendLine();
         }
 
-        if (result.Actions.Count > 0) {
-            sb.AppendLine("📁 Actions:");
-            foreach (var action in result.Actions.Take(20)) {
-                sb.AppendLine($"   {action.ActionType}: {action.FilePath} ({action.Source}, {action.Confidence:P0})");
+        // Файлы с изменениями строк
+        if (result.Actions.Count > 0 || result.Conflicts.Count > 0) {
+            sb.AppendLine("📁 Files:");
+
+            // Успешно смердженные файлы
+            foreach (var action in result.Actions.Take(30)) {
+                var lineInfo = action.Insertions > 0 || action.Deletions > 0
+                    ? $" (+{action.Insertions}/-{action.Deletions})"
+                    : "";
+                sb.AppendLine($"   ✅ {action.FilePath}{lineInfo}");
             }
-            if (result.Actions.Count > 20)
-                sb.AppendLine($"   ... and {result.Actions.Count - 20} more");
-            sb.AppendLine();
-        }
+            if (result.Actions.Count > 30)
+                sb.AppendLine($"   ... and {result.Actions.Count - 30} more files");
 
-        if (result.Conflicts.Count > 0) {
-            sb.AppendLine("⚠️ Conflicts (require manual resolution):");
+            // Конфликты
             foreach (var conflict in result.Conflicts.Take(10)) {
-                sb.AppendLine($"   {conflict.FilePath}: {conflict.Description}");
+                sb.AppendLine($"   ⚠️ {conflict.FilePath} (conflict)");
             }
             if (result.Conflicts.Count > 10)
-                sb.AppendLine($"   ... and {result.Conflicts.Count - 10} more");
+                sb.AppendLine($"   ... and {result.Conflicts.Count - 10} more conflicts");
         }
+
+        sb.AppendLine();
+        sb.AppendLine(result.Summary);
 
         return sb.ToString();
     }

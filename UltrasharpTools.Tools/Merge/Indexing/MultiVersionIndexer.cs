@@ -91,8 +91,17 @@ public sealed class MultiVersionIndexer {
         // 3. Построить иерархию
         _extractor.BuildHierarchy(units);
 
-        // 4. Создать словарь units
-        var unitsDict = units.ToDictionary(u => u.Id);
+        // 4. Создать словарь units (с дедупликацией на случай конфликтов Id)
+        var unitsDict = new Dictionary<string, CodeUnit>(units.Count);
+        foreach (var unit in units) {
+            if (!unitsDict.TryAdd(unit.Id, unit)) {
+                _logger.LogWarning(
+                    "[Indexer] Duplicate CodeUnit Id detected: {Id} (FilePath: {FilePath}). Keeping first occurrence.",
+                    unit.Id,
+                    unit.FilePath
+                );
+            }
+        }
 
         // 5. Создать VectorStore (пустой, embeddings добавятся позже)
         var vectorStore = new VectorStore();

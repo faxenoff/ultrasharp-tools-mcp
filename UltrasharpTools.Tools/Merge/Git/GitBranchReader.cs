@@ -228,12 +228,19 @@ public sealed class GitBranchReader {
         CancellationToken ct = default) {
         // git diff --name-status base..target
         // Output format: "M\tpath/to/file" or "R100\told/path\tnew/path"
-        var result = await RunGitCommandAsync($"diff --name-status {baseBranch}..{targetBranch}", ct);
-        if (!result.Success)
+        var cmd = $"diff --name-status {baseBranch}..{targetBranch}";
+        _logger.LogInformation("[GIT] GetChangedFilesWithStatusAsync: {Cmd} in {WorkDir}", cmd, _repositoryPath);
+        var result = await RunGitCommandAsync(cmd, ct);
+        _logger.LogInformation("[GIT] GetChangedFilesWithStatusAsync result: Success={Success}, OutputLen={Len}, Output={Output}",
+            result.Success, result.Output?.Length ?? 0, result.Output?.Length > 200 ? result.Output[..200] + "..." : result.Output);
+        if (!result.Success) {
+            _logger.LogWarning("[GIT] GetChangedFilesWithStatusAsync failed for {Base}..{Target}", baseBranch, targetBranch);
             return new List<GitFileChange>();
+        }
 
         var changes = new List<GitFileChange>();
         var lines = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        _logger.LogInformation("[GIT] GetChangedFilesWithStatusAsync: {LineCount} lines parsed from output", lines.Length);
 
         foreach (var line in lines) {
             var parts = line.Split('\t');
@@ -361,8 +368,10 @@ public sealed class GitBranchReader {
 
             if (gitProcess.ExitCode != 0) {
                 var error = await gitProcess.StandardError.ReadToEndAsync(ct);
-                _logger.LogWarning("[GIT] git archive failed: {Error}", error);
-                return 0;
+                _logger.LogWarning("[GIT] git archive failed: {Error}. Falling back to individual file extraction.", error.Trim());
+
+                // Fallback: извлекаем файлы по одному через git show
+                return await ExtractFilesIndividuallyAsync(branchOrCommit, filePaths, targetDirectory, ct);
             }
 
             // Подсчитать извлечённые файлы
@@ -375,9 +384,51 @@ public sealed class GitBranchReader {
             return extractedCount;
         } catch (Exception ex) {
             sw.Stop();
-            _logger.LogWarning(ex, "[GIT] ExtractFilesToDirectoryAsync failed after {Ms}ms", sw.ElapsedMilliseconds);
-            return 0;
+            _logger.LogWarning(ex, "[GIT] ExtractFilesToDirectoryAsync failed after {Ms}ms. Falling back to individual extraction.", sw.ElapsedMilliseconds);
+
+            // Fallback: извлекаем файлы по одному через git show
+            return await ExtractFilesIndividuallyAsync(branchOrCommit, filePaths, targetDirectory, ct);
         }
+    }
+
+    /// <summary>
+    /// Fallback: извлечение файлов по одному через git show.
+    /// Медленнее, но надёжнее - игнорирует отсутствующие файлы.
+    /// </summary>
+    private async Task<int> ExtractFilesIndividuallyAsync(
+        string branchOrCommit,
+        IReadOnlyList<string> filePaths,
+        string targetDirectory,
+        CancellationToken ct) {
+
+        _logger.LogDebug("[GIT] ExtractFilesIndividuallyAsync: extracting {Count} files one by one", filePaths.Count);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var extracted = 0;
+
+        foreach (var filePath in filePaths) {
+            ct.ThrowIfCancellationRequested();
+            try {
+                var normalizedPath = filePath.Replace('\\', '/');
+                var content = await GetFileContentAsync(branchOrCommit, normalizedPath, ct);
+                if (content != null) {
+                    var targetPath = Path.Combine(targetDirectory, filePath.Replace('/', Path.DirectorySeparatorChar));
+                    var dir = Path.GetDirectoryName(targetPath);
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                        Directory.CreateDirectory(dir);
+                    await File.WriteAllTextAsync(targetPath, content, ct);
+                    extracted++;
+                }
+            } catch (Exception ex) {
+                _logger.LogDebug("[GIT] Failed to extract {File} from {Branch}: {Error}",
+                    filePath, branchOrCommit, ex.Message);
+            }
+        }
+
+        sw.Stop();
+        _logger.LogDebug("[GIT] ExtractFilesIndividuallyAsync completed in {Ms}ms: {Count}/{Total} files",
+            sw.ElapsedMilliseconds, extracted, filePaths.Count);
+
+        return extracted;
     }
 
 private async Task<string?> FindGitExecutableDirectoryAsync(CancellationToken ct) {

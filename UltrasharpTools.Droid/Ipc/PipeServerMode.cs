@@ -14,6 +14,7 @@ using UltrasharpTools.Tools.Merge.Git;
 using UltrasharpTools.Tools.Replace.Interfaces;
 using UltrasharpTools.Tools.Semantic;
 using UltrasharpTools.Tools.Services;
+using UltrasharpTools.Tools.Mcp.Tools;
 
 namespace UltrasharpTools.Droid.Ipc;
 /// <summary>
@@ -26,9 +27,9 @@ public sealed class PipeServerMode : IAsyncDisposable {
     private const int MaxClients = 10;
 
     /// <summary>
-    /// Время простоя без клиентов до автоматического завершения (5 минут).
+    /// Немедленное завершение при отключении последнего клиента (graceful shutdown).
     /// </summary>
-    private static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan ShutdownDelay = TimeSpan.FromSeconds(2);
 
     private readonly ILogger _logger;
     private readonly IServiceProvider _sharedServices;
@@ -192,43 +193,52 @@ public sealed class PipeServerMode : IAsyncDisposable {
         _logger.LogDebug("[PipeServer] Active clients: {Count}", count);
 
         if (count <= 0) {
-            // Последний клиент отключился - запускаем idle timer
-            _logger.LogInformation("[PipeServer] No active clients, starting idle timer ({Timeout} minutes)", IdleTimeout.TotalMinutes);
-            _idleTimer = new Timer(IdleTimerCallback, null, IdleTimeout, Timeout.InfiniteTimeSpan);
+            // Последний клиент отключился - запускаем graceful shutdown с коротким delay
+            // для завершения pending операций (запись файлов, коммиты и т.д.)
+            _logger.LogInformation("[PipeServer] No active clients, shutting down in {Delay} seconds", ShutdownDelay.TotalSeconds);
+            _idleTimer = new Timer(IdleTimerCallback, null, ShutdownDelay, Timeout.InfiniteTimeSpan);
         }
     }
 
     private void IdleTimerCallback(object? state) {
         if (_activeClientCount <= 0 && !_stopping) {
-            _logger.LogInformation("[PipeServer] Idle timeout reached, shutting down...");
+            _logger.LogInformation("[PipeServer] Graceful shutdown initiated (no active clients)");
             _cts.Cancel();
         }
     }
 
     private IHost CreateHostForClient(NamedPipeServerStream pipe, string clientId) {
-        var builder = Host.CreateApplicationBuilder();
+        try {
+            var builder = Host.CreateApplicationBuilder();
 
-        // Регистрируем ClientIdProvider для этого клиента
-        builder.Services.AddSingleton<IClientIdProvider>(new PipeClientIdProvider(clientId));
+            // Регистрируем ClientIdProvider для этого клиента
+            builder.Services.AddSingleton<IClientIdProvider>(new PipeClientIdProvider(clientId));
 
-        // Используем общие сервисы (SolutionManager, GitService, etc.)
-        RegisterSharedServices(builder.Services);
+            // Используем общие сервисы (SolutionManager, GitService, etc.)
+            RegisterSharedServices(builder.Services);
 
-        // Настраиваем MCP Server с pipe transport и tools
-        builder.Services
-            .AddMcpServer(options => {
-                options.ServerInfo = new Implementation {
-                    Name = Program.ApplicationName,
-                    Version = Program.ApplicationVersion,
-                };
-            })
-            .WithStreamServerTransport(pipe, pipe) // Используем Named Pipe как transport
-            .WithUltrasharpTools(); // Регистрируем MCP tools
+            // Настраиваем MCP Server с pipe transport и tools
+            builder.Services
+                .AddMcpServer(options => {
+                    options.ServerInfo = new Implementation {
+                        Name = Program.ApplicationName,
+                        Version = Program.ApplicationVersion,
+                    };
+                })
+                .WithStreamServerTransport(pipe, pipe) // Используем Named Pipe как transport
+                .WithUltrasharpTools(); // Регистрируем MCP tools
 
-        // Минимальное логирование для клиентских сессий
-        builder.Logging.SetMinimumLevel(LogLevel.Warning);
+            // Минимальное логирование для клиентских сессий
+            builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
-        return builder.Build();
+            _logger.LogDebug("[PipeServer] Building host for client {ClientId}...", clientId);
+            var host = builder.Build();
+            _logger.LogDebug("[PipeServer] Host built successfully for client {ClientId}", clientId);
+            return host;
+        } catch (Exception ex) {
+            _logger.LogError(ex, "[PipeServer] Failed to create host for client {ClientId}", clientId);
+            throw;
+        }
     }
 
     private void RegisterSharedServices(IServiceCollection services) {
@@ -278,6 +288,9 @@ public sealed class PipeServerMode : IAsyncDisposable {
         // Semantic Merge services
         RegisterIfAvailable<BranchMergeService>(services);
         RegisterIfAvailable<SemanticMergeService>(services);
+
+        // MCP Tools с explicit dependencies (требуют factory registration)
+        RegisterIfAvailable<SemanticMergeTools>(services);
 
         // Semantic Mode Provider (для get_capabilities)
         RegisterIfAvailable<ISemanticModeProvider>(services);

@@ -537,8 +537,9 @@ public static class ServiceCollectionExtensions {
         services.AddSingleton(sp => {
             var branchMergeService = sp.GetService<BranchMergeService>();
             var solutionManager = sp.GetRequiredService<ISolutionManager>();
+            var loadingOrchestrator = sp.GetRequiredService<ILoadingOrchestrator>();
             var logger = sp.GetRequiredService<ILogger<Mcp.Tools.SemanticMergeTools>>();
-            return new Mcp.Tools.SemanticMergeTools(branchMergeService, solutionManager, logger);
+            return new Mcp.Tools.SemanticMergeTools(branchMergeService, solutionManager, loadingOrchestrator, logger);
         });
 
         return services;

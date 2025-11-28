@@ -187,24 +187,37 @@ public sealed class CodeUnitExtractor {
             }
         );
 
-        var files = filesBag.ToList();
+        // Дедупликация файлов (один файл может соответствовать нескольким паттернам)
+        var files = filesBag.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
         _logger.LogInformation(
-            "Found {Count} files matching patterns in {Directory} (parallel scan)",
+            "Found {Count} unique files matching patterns in {Directory} (parallel scan)",
             files.Count,
             directoryPath
         );
 
         var units = await ExtractFromFilesAsync(files, ct);
 
-        // Преобразуем абсолютные пути в относительные
-        foreach (var unit in units) {
+        // Преобразуем абсолютные пути в относительные (и Id и FilePath)
+        for (int i = 0; i < units.Count; i++) {
+            var unit = units[i];
             if (!string.IsNullOrEmpty(unit.FilePath) && Path.IsPathRooted(unit.FilePath)) {
                 var absolutePath = Path.GetFullPath(unit.FilePath);
                 if (absolutePath.StartsWith(normalizedBasePath, StringComparison.OrdinalIgnoreCase)) {
                     var relativePath = absolutePath.Substring(normalizedBasePath.Length);
                     // Нормализуем разделители на forward slash для переносимости
-                    unit.FilePath = relativePath.Replace(Path.DirectorySeparatorChar, '/');
+                    var normalizedRelativePath = relativePath.Replace(Path.DirectorySeparatorChar, '/');
+
+                    // Обновляем Id: заменяем абсолютный путь на относительный
+                    var absolutePathForReplace = absolutePath.Replace(Path.DirectorySeparatorChar, '/');
+                    var newId = unit.Id.Replace(absolutePathForReplace, normalizedRelativePath);
+                    if (newId == unit.Id) {
+                        // Попробуем с оригинальными разделителями Windows
+                        newId = unit.Id.Replace(absolutePath, normalizedRelativePath);
+                    }
+
+                    // Создаём новый record с обновлёнными Id и FilePath
+                    units[i] = unit with { Id = newId, FilePath = normalizedRelativePath };
                 }
             }
         }

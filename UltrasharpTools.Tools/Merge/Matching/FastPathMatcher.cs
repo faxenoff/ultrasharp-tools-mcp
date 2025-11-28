@@ -92,6 +92,25 @@ public sealed class FastPathMatcher
     {
         var matches = new Dictionary<string, FastPathMatchResult>();
 
+        // Диагностика: показать первые несколько ID из каждой версии
+        var baseFileIds = baseVersion.Units.Values
+            .Where(u => u.Type == CodeUnitType.File)
+            .Take(3)
+            .Select(u => u.Id)
+            .ToList();
+        var targetFileIds = targetVersion.Units.Values
+            .Where(u => u.Type == CodeUnitType.File)
+            .Take(3)
+            .Select(u => u.Id)
+            .ToList();
+
+        _logger.LogInformation(
+            "[FastPath] Sample base File IDs: {BaseIds}",
+            string.Join(", ", baseFileIds));
+        _logger.LogInformation(
+            "[FastPath] Sample target File IDs: {TargetIds}",
+            string.Join(", ", targetFileIds));
+
         // Создать lookup таблицы для O(1) доступа
         var hashToUnits = targetVersion
             .Units.Values.GroupBy(u => u.ContentHash)
