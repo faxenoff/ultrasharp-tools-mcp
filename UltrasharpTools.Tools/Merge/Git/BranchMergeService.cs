@@ -362,28 +362,37 @@ public sealed class BranchMergeService {
 
         return result with { Conflicts = filteredConflicts };
     }
-
     private async Task ApplyMergeResultAsync(
-    GitBranchReader gitReader,
-    string repositoryPath,
-    MergeResult mergeResult,
-    CancellationToken ct) {
-        foreach (var action in mergeResult.Actions) {
-            if (action.Type == MergeActionType.Delete) {
-                _logger.LogInformation("Would delete: {Path}", action.TargetPath);
-                continue;
-            }
+        GitBranchReader gitReader,
+        string repositoryPath,
+        MergeResult mergeResult,
+        CancellationToken ct) {
+        // Группировать actions по файлу и выбрать наиболее полный контент
+        // (File-level actions содержат весь файл, Type/Method - только фрагменты)
+        var actionsByFile = mergeResult.Actions
+            .Where(a => a.Type != MergeActionType.Delete && !string.IsNullOrEmpty(a.Content) && !string.IsNullOrEmpty(a.TargetPath))
+            .GroupBy(a => a.TargetPath)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
-            if (!string.IsNullOrEmpty(action.Content) && !string.IsNullOrEmpty(action.TargetPath)) {
-                var fullPath = Path.Combine(repositoryPath, action.TargetPath.Replace('/', Path.DirectorySeparatorChar));
-                var dir = Path.GetDirectoryName(fullPath);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-                await File.WriteAllTextAsync(fullPath, action.Content, ct);
-            }
+        foreach (var (filePath, actions) in actionsByFile) {
+            // Выбрать action с максимальным Content (File-level будет иметь полный контент)
+            var bestAction = actions.OrderByDescending(a => a.Content?.Length ?? 0).First();
+
+            _logger.LogDebug("[MERGE] Writing file {FilePath}: selected action with {ContentLength} chars (from {Count} actions)",
+                filePath, bestAction.Content?.Length ?? 0, actions.Count);
+
+            var fullPath = Path.Combine(repositoryPath, filePath.Replace('/', Path.DirectorySeparatorChar));
+            var dir = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+            await File.WriteAllTextAsync(fullPath, bestAction.Content!, ct);
+        }
+
+        // Обработать Delete actions
+        foreach (var action in mergeResult.Actions.Where(a => a.Type == MergeActionType.Delete)) {
+            _logger.LogInformation("Would delete: {Path}", action.TargetPath);
         }
     }
-
     private static bool MatchesFilePattern(string filePath, string pattern) {
         if (string.IsNullOrEmpty(pattern) || pattern == "*")
             return true;
