@@ -316,7 +316,7 @@ $ZipTempDir = Join-Path $ProjectRoot "Run.Publish.Zip"
 Write-Header "Building Comm (Cosmopolitan - cross-platform)"
 
 $CommBuildScript = Join-Path $ProjectRoot "UltraSharpTools.Comm.C\build.ps1"
-$CommBinary = Join-Path $ProjectRoot "UltraSharpTools.Comm.C\UltraSharpTools.com"
+$CommBinary = Join-Path $ProjectRoot "UltraSharpTools.Comm.C\UltraSharp-tools.com"
 
 & $CommBuildScript -NoCopy
 if ($LASTEXITCODE -ne 0) {
