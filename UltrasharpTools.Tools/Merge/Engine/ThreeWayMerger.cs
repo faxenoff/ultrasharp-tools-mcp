@@ -379,29 +379,32 @@ public sealed class ThreeWayMerger {
         List<MergeAction> actions,
         List<SemanticConflict> conflicts
     ) {
-        foreach (var baseUnit in baseIndex.Units.Values) {
+        // ВАЖНО: Обрабатываем только File-level units (удалённые файлы)
+        foreach (var baseUnit in baseIndex.Units.Values.Where(u => u.Type == CodeUnitType.File)) {
             var existsInA = fastMatchesA.ContainsKey(baseUnit.Id);
             var existsInB = fastMatchesB.ContainsKey(baseUnit.Id);
 
             // Удалено в обеих ветках
             if (!existsInA && !existsInB) {
+                _logger.LogDebug("[3WAY] File deleted in both branches: {Path}", baseUnit.FilePath);
                 actions.Add(CreateMergeAction(baseUnit, MergeActionType.Delete, "merged", 1.0f));
                 continue;
             }
 
             // Удалено только в A
             if (!existsInA && existsInB) {
+                _logger.LogDebug("[3WAY] File deleted in A: {Path}", baseUnit.FilePath);
                 // TODO: Проверить, не была ли модифицирована в B
                 actions.Add(CreateMergeAction(baseUnit, MergeActionType.Delete, "branchA", 0.8f));
             }
 
             // Удалено только в B
             if (existsInA && !existsInB) {
+                _logger.LogDebug("[3WAY] File deleted in B: {Path}", baseUnit.FilePath);
                 actions.Add(CreateMergeAction(baseUnit, MergeActionType.Delete, "branchB", 0.8f));
             }
         }
     }
-
     /// <summary>
     /// Создать MergeAction.
     /// </summary>
