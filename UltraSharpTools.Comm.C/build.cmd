@@ -7,7 +7,7 @@ setlocal enabledelayedexpansion
 
 set SCRIPT_DIR=%~dp0
 set SOURCE_FILE=%SCRIPT_DIR%comm.c
-set OUTPUT_COM=%SCRIPT_DIR%UltraSharpTools.com
+set OUTPUT_COM=%SCRIPT_DIR%UltraSharp-tools.com
 set OUTPUT_DIR=%SCRIPT_DIR%..\Run.Publish\Droid
 set COSMO_DIR=%LOCALAPPDATA%\cosmocc\bin
 
@@ -60,7 +60,7 @@ set UNIX_SCRIPT_DIR=/%UNIX_SCRIPT_DIR:~0,1%%UNIX_SCRIPT_DIR:~2%
 echo [*] Compiling comm.c...
 
 REM Run cosmocc via Git Bash
-"%GITBASH%" -c "export PATH='%UNIX_COSMO_DIR%':$PATH && cd '%UNIX_SCRIPT_DIR%' && cosmocc -Os -Wall -Wextra -o UltraSharpTools.com comm.c"
+"%GITBASH%" -c "export PATH='%UNIX_COSMO_DIR%':$PATH && cd '%UNIX_SCRIPT_DIR%' && cosmocc -Os -Wall -Wextra -o UltraSharp-tools.com comm.c"
 
 if %errorlevel% neq 0 (
     echo [-] Build failed!
@@ -75,7 +75,7 @@ if not exist "%OUTPUT_COM%" (
 REM Get file size
 for %%A in ("%OUTPUT_COM%") do set SIZE=%%~zA
 set /a SIZE_KB=%SIZE%/1024
-echo [+] Built: UltraSharpTools.com (%SIZE_KB% KB)
+echo [+] Built: UltraSharp-tools.com (%SIZE_KB% KB)
 
 REM Copy to output directory
 if "%1"=="-nocopy" goto :summary
@@ -85,14 +85,14 @@ echo [*] Copying to %OUTPUT_DIR%...
 
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 
-copy /y "%OUTPUT_COM%" "%OUTPUT_DIR%\UltraSharpTools.com" >nul
-echo [+] Copied to: %OUTPUT_DIR%\UltraSharpTools.com
+copy /y "%OUTPUT_COM%" "%OUTPUT_DIR%\UltraSharp-tools.com" >nul
+echo [+] Copied to: %OUTPUT_DIR%\UltraSharp-tools.com
 
 :summary
 echo.
 echo === Build Summary ===
 echo.
-echo Output:     UltraSharpTools.com
+echo Output:     UltraSharp-tools.com
 echo Size:       %SIZE_KB% KB
 echo Platforms:  Windows x64, Linux x64, macOS x64/ARM64, FreeBSD, NetBSD, OpenBSD
 echo.

@@ -44,7 +44,7 @@ Claude Desktop <--stdin/stdout--> comm.com <--Named Pipe/Unix Socket--> Droid
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "C:\\Tools\\UltrasharpTools\\Droid\\UltraSharpTools.com"
+      "command": "C:\\Tools\\UltrasharpTools\\Droid\\UltraSharp-tools.com"
     }
   }
 }
@@ -54,7 +54,7 @@ Claude Desktop <--stdin/stdout--> comm.com <--Named Pipe/Unix Socket--> Droid
 
 **Новые компоненты:**
 - `UltraSharpTools.Comm.C/` — исходники на C и build scripts
-- `UltraSharpTools.com` — универсальный бинарник
+- `UltraSharp-tools.com` — универсальный бинарник
 - `setup.ps1` / `setup.cmd` — установка cosmocc toolchain
 - `build.ps1` / `build.cmd` — сборка
 
@@ -94,7 +94,7 @@ Claude Desktop <--stdin/stdout--> comm.com <--Named Pipe/Unix Socket--> Droid
 ```
 Run.Release/
 ├── Droid/
-│   ├── UltraSharpTools.com      ← Новый Comm (~700KB, все платформы)
+│   ├── UltraSharp-tools.com      ← Новый Comm (~700KB, все платформы)
 │   ├── UltrasharpTools.Droid.exe
 │   └── ...
 ├── VectorDB/

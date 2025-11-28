@@ -59,7 +59,7 @@ build.cmd
 make
 
 # Using cosmocc directly
-cosmocc -Os -DNDEBUG -o UltraSharpTools.com comm.c
+cosmocc -Os -DNDEBUG -o UltraSharp-tools.com comm.c
 
 # Using gcc directly (single platform only)
 gcc -Os -o comm comm.c

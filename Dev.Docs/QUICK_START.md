@@ -24,7 +24,7 @@ build-all.cmd
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:\\github\\ultrasharp-tools-mcp\\Run.Build\\Droid\\UltraSharpTools.com"
+      "command": "D:\\github\\ultrasharp-tools-mcp\\Run.Build\\Droid\\UltraSharp-tools.com"
     }
   }
 }
@@ -32,7 +32,7 @@ build-all.cmd
 
 **Важно:**
 - Используйте двойные обратные слэши `\\` в пути!
-- `UltraSharpTools.com` — универсальный Comm (~700 KB, работает на Win/Linux/macOS)
+- `UltraSharp-tools.com` — универсальный Comm (~700 KB, работает на Win/Linux/macOS)
 
 ### 3. Перезапуск
 

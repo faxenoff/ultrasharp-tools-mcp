@@ -2,7 +2,7 @@
 // Single portable binary for Windows/Linux/macOS via Cosmopolitan Libc
 //
 // Build with cosmocc:
-//   cosmocc -Os -DNDEBUG -o UltraSharpTools.com comm.c
+//   cosmocc -Os -DNDEBUG -o UltraSharp-tools.com comm.c
 //
 // The binary auto-detects OS at runtime and uses:
 //   Windows: Named Pipes (\\.\pipe\UltraSharpTools_Droid)
@@ -117,9 +117,21 @@ static int win_get_exe_dir(char *buf, size_t buf_size) {
     strncpy(buf, exe, buf_size - 1);
     buf[buf_size - 1] = '\0';
 
-    // Find last backslash or slash
+    // Convert /D/path to D:\path (Cosmopolitan returns Unix-style paths)
+    if (buf[0] == '/' && buf[1] && buf[2] == '/') {
+        char drive = buf[1];
+        buf[0] = drive;
+        buf[1] = ':';
+        // buf is now "D:/path..." - slashes will be fixed below
+    }
+
+    // Normalize to backslashes for Windows
+    for (char *p = buf; *p; p++) {
+        if (*p == '/') *p = '\\';
+    }
+
+    // Find last backslash
     char *last = strrchr(buf, '\\');
-    if (!last) last = strrchr(buf, '/');
     if (last) *last = '\0';
 
     return 0;
@@ -144,9 +156,28 @@ static int win_start_droid(int argc, char **argv) {
     // Build command line
     snprintf(cmd_line, sizeof(cmd_line), "\"%s\" --pipe-server", droid_path);
     for (int i = 1; i < argc; i++) {
-        strcat(cmd_line, " \"");
-        strcat(cmd_line, argv[i]);
-        strcat(cmd_line, "\"");
+        strcat(cmd_line, " ");
+
+        // Convert /D/path to D:\path for Windows if needed
+        char arg_buf[1024];
+        const char *arg = argv[i];
+        if (arg[0] == '/' && arg[1] && arg[2] == '/') {
+            snprintf(arg_buf, sizeof(arg_buf), "%c:%s", arg[1], arg + 2);
+            // Convert slashes
+            for (char *p = arg_buf; *p; p++) {
+                if (*p == '/') *p = '\\';
+            }
+            arg = arg_buf;
+        }
+
+        // Only quote if contains spaces
+        if (strchr(arg, ' ') != NULL) {
+            strcat(cmd_line, "\"");
+            strcat(cmd_line, arg);
+            strcat(cmd_line, "\"");
+        } else {
+            strcat(cmd_line, arg);
+        }
     }
 
     // Convert to UTF-16

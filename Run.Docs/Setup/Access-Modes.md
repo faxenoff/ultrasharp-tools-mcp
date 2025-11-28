@@ -45,13 +45,13 @@ UltrasharpTools MCP поддерживает два режима работы, �
 │                                              │
 │ claude_desktop_config.json:                  │
 │ {                                            │
-│   "command": "D:/path/to/UltraSharpTools.com"│
+│   "command": "D:/path/to/UltraSharp-tools.com"│
 │ }                                            │
 └──────────┬───────────────────────────────────┘
            │ запускает как child process
            ↓
 ┌──────────────────────────────────────────────┐
-│ UltraSharpTools.com (stdio bridge)           │
+│ UltraSharp-tools.com (stdio bridge)           │
 │ (~700 KB, универсальный бинарник)            │
 │                                              │
 │ └───→ Named Pipe IPC                         │
@@ -75,7 +75,7 @@ UltrasharpTools MCP поддерживает два режима работы, �
 └──────────────────────────────────────────────┘
 ```
 
-> **💡 Почему три процесса?** UltraSharpTools.com — универсальный stdio bridge (~700 KB),
+> **💡 Почему три процесса?** UltraSharp-tools.com — универсальный stdio bridge (~700 KB),
 > который позволяет нескольким редакторам/агентам подключаться к одному Droid+VectorDB,
 > экономя 2-3 GB RAM на каждый инстанс.
 
@@ -86,7 +86,7 @@ UltrasharpTools MCP поддерживает два режима работы, �
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:/Tools/UltrasharpTools/Droid/UltraSharpTools.com"
+      "command": "D:/Tools/UltrasharpTools/Droid/UltraSharp-tools.com"
     }
   }
 }
@@ -97,13 +97,13 @@ UltrasharpTools MCP поддерживает два режима работы, �
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "/home/user/ultrasharp-tools/Droid/UltraSharpTools.com"
+      "command": "/home/user/ultrasharp-tools/Droid/UltraSharp-tools.com"
     }
   }
 }
 ```
 
-> ⚠️ **Важно:** Запускается `UltraSharpTools.com` (~700 KB), а не `Droid.exe`!
+> ⚠️ **Важно:** Запускается `UltraSharp-tools.com` (~700 KB), а не `Droid.exe`!
 
 ### Доступ к файлам
 
@@ -639,7 +639,7 @@ dotnet restore MyApp.sln
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:/tools/ultrasharp/Droid/UltraSharpTools.com"
+      "command": "D:/tools/ultrasharp/Droid/UltraSharp-tools.com"
     }
   }
 }
@@ -877,7 +877,7 @@ initContainers:
 {
   "mcpServers": {
     "ultrasharp-local": {
-      "command": "D:/tools/ultrasharp/Droid/UltraSharpTools.com"
+      "command": "D:/tools/ultrasharp/Droid/UltraSharp-tools.com"
     },
     "ultrasharp-remote": {
       "type": "sse",

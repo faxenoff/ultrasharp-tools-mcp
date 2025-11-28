@@ -88,13 +88,13 @@
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "C:\\Tools\\UltrasharpTools\\Droid\\UltraSharpTools.com"
+      "command": "C:\\Tools\\UltrasharpTools\\Droid\\UltraSharp-tools.com"
     }
   }
 }
 ```
 
-> **Примечание:** Запускается **UltraSharpTools.com** — универсальный Comm (~700 KB, работает на Win/Linux/macOS).
+> **Примечание:** Запускается **UltraSharp-tools.com** — универсальный Comm (~700 KB, работает на Win/Linux/macOS).
 > Первый Comm автоматически запустит Droid в daemon-режиме. Последующие Comm подключатся к существующему Droid.
 3. Добавить в CLAUDE.md описание работы с инструментами
 4. Настройте семантический поиск -  запустите мастер настройки и следуйте его инструкциям:
@@ -295,7 +295,7 @@ UltrasharpTools предоставляет два режима работы по
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Claude Desktop    Claude Code    Cursor    VS Code + Continue.dev     │
 │       ↓                ↓            ↓                ↓                  │
-│  UltraSharpTools.com  .com        .com           .com                  │
+│  UltraSharp-tools.com  .com        .com           .com                  │
 │  (stdio bridge)   (stdio bridge)   ...            ...                  │
 └────────┬───────────────┬────────────┬──────────────┬────────────────────┘
          │               │            │              │
@@ -344,7 +344,7 @@ UltrasharpTools предоставляет два режима работы по
   "mcpServers": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "D:/path/to/Run.Release/Droid/UltraSharpTools.com",
+      "command": "D:/path/to/Run.Release/Droid/UltraSharp-tools.com",
       "args": [],
       "env": {}
     }
@@ -352,7 +352,7 @@ UltrasharpTools предоставляет два режима работы по
 }
 ```
 
-> ⚠️ **Важно:** Запускается **UltraSharpTools.com** (~700 KB), а не Droid.exe! Comm автоматически запустит Droid при первом подключении.
+> ⚠️ **Важно:** Запускается **UltraSharp-tools.com** (~700 KB), а не Droid.exe! Comm автоматически запустит Droid при первом подключении.
 
 **Возможности:**
 - ✅ **Много агентов — один сервер** — Claude Desktop + Claude Code + Cursor одновременно

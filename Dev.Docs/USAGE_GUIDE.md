@@ -30,7 +30,7 @@ pwsh Dev.Scripts/publish-mcp.ps1  # Windows/Linux
 ./Dev.Scripts/publish-mcp.sh      # Linux/Mac
 ```
 
-**Результат:** `Run.Publish/Droid/UltraSharpTools.com` (~50 KB) + `Run.Publish/Droid/UltrasharpTools.Droid.exe` (103 MB)
+**Результат:** `Run.Publish/Droid/UltraSharp-tools.com` (~50 KB) + `Run.Publish/Droid/UltrasharpTools.Droid.exe` (103 MB)
 
 ### 1.2 Архитектура Comm/Droid
 
@@ -61,14 +61,14 @@ Claude₃ ←stdio→ Comm₃ ──┘
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:/Tools/UltrasharpTools/Droid/UltraSharpTools.com"
+      "command": "D:/Tools/UltrasharpTools/Droid/UltraSharp-tools.com"
     }
   }
 }
 ```
 
 **⚠️ Важно:**
-- Запускайте **UltraSharpTools.com** (~700 KB), а не Droid.exe!
+- Запускайте **UltraSharp-tools.com** (~700 KB), а не Droid.exe!
 - Comm — универсальный stdio-bridge (работает на Win/Linux/macOS), который автоматически запустит Droid при первом подключении
 - Используйте **полный абсолютный путь**
 - На Windows: `\\` или `/` (оба работают)
