@@ -5,8 +5,9 @@
 
 .DESCRIPTION
     Builds all components for Windows, Linux, and macOS:
-    - Windows: Native AOT for VectorDB/Comm (~15MB + ~5MB)
-    - Linux (via WSL): Native AOT for VectorDB/Comm (auto-installs prerequisites)
+    - Comm: Cosmopolitan C binary (~700KB, works on all platforms)
+    - Windows: Native AOT for VectorDB (~15MB)
+    - Linux (via WSL): Native AOT for VectorDB (auto-installs prerequisites)
     - macOS: Self-contained single-file (~130MB total)
     - Droid: Always self-contained (uses Roslyn, not AOT-compatible)
 
@@ -309,6 +310,28 @@ Write-Success "Created: $ReleasesDir"
 # Temporary directory for creating archives (avoids locking issues)
 $ZipTempDir = Join-Path $ProjectRoot "Run.Publish.Zip"
 
+# ============================================================================
+# Build Comm (Cosmopolitan) once - works on all platforms
+# ============================================================================
+Write-Header "Building Comm (Cosmopolitan - cross-platform)"
+
+$CommBuildScript = Join-Path $ProjectRoot "UltraSharpTools.Comm.C\build.ps1"
+$CommBinary = Join-Path $ProjectRoot "UltraSharpTools.Comm.C\UltraSharpTools.com"
+
+& $CommBuildScript -NoCopy
+if ($LASTEXITCODE -ne 0) {
+    Write-Err "Comm (Cosmopolitan) build failed"
+    exit 1
+}
+
+if (-not (Test-Path $CommBinary)) {
+    Write-Err "Comm binary not found: $CommBinary"
+    exit 1
+}
+
+$CommSize = (Get-Item $CommBinary).Length / 1KB
+Write-Success "Comm built: $([math]::Round($CommSize, 0)) KB (Cosmopolitan - works on all platforms)"
+
 # Define target platforms
 $Platforms = @(
     @{ RID = "win-x64";     OS = "windows"; Arch = "x64";   Archive = "zip" }
@@ -351,7 +374,6 @@ foreach ($Platform in $Platforms) {
 
         # Determine output paths
         $vectordbOutput = Join-Path $platformOutput "_temp_vectordb"
-        $commOutput = Join-Path $platformOutput "_temp_comm"
         $droidOutput = Join-Path $platformOutput "Droid"
 
         # ===== Build VectorDB =====
@@ -378,32 +400,6 @@ foreach ($Platform in $Platforms) {
                 /p:PublishSingleFile=true `
                 /p:EnableCompressionInSingleFile=true | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "VectorDB build failed" }
-        }
-
-        # ===== Build Comm =====
-        if ($useLinuxAot) {
-            Write-Info "Building Comm (Native AOT via WSL)..."
-            $commProject = "$ProjectRoot/UltraSharpTools.Comm/UltraSharpTools.Comm.csproj"
-            $success = Invoke-WslNativeAotBuild -ProjectPath $commProject -RuntimeId $rid -OutputPath $commOutput
-            if (-not $success) { throw "Comm WSL build failed" }
-        } elseif ($useWindowsAot) {
-            Write-Info "Building Comm (Native AOT)..."
-            dotnet publish "$ProjectRoot\UltraSharpTools.Comm\UltraSharpTools.Comm.csproj" `
-                -c Release `
-                -r $rid `
-                -o $commOutput `
-                /p:PublishAot=true | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Comm build failed" }
-        } else {
-            Write-Info "Building Comm (self-contained single-file)..."
-            dotnet publish "$ProjectRoot\UltraSharpTools.Comm\UltraSharpTools.Comm.csproj" `
-                -c Release `
-                -r $rid `
-                --self-contained true `
-                -o $commOutput `
-                /p:PublishSingleFile=true `
-                /p:EnableCompressionInSingleFile=true | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Comm build failed" }
         }
 
         # ===== Build Droid =====
@@ -438,13 +434,14 @@ foreach ($Platform in $Platforms) {
             Write-Info "Copied BuildHost-netcore"
         }
 
-        # Copy VectorDB and Comm to Droid folder
+        # Copy VectorDB to Droid folder
         Copy-Item -Path (Join-Path $platformOutput "_temp_vectordb\*") -Destination $droidOutput -Recurse -Force
-        Copy-Item -Path (Join-Path $platformOutput "_temp_comm\*") -Destination $droidOutput -Recurse -Force
+
+        # Copy Cosmopolitan Comm binary (already built once, works on all platforms)
+        Copy-Item -Path $CommBinary -Destination $droidOutput -Force
 
         # Cleanup temp folders
         Remove-Item (Join-Path $platformOutput "_temp_vectordb") -Recurse -Force
-        Remove-Item (Join-Path $platformOutput "_temp_comm") -Recurse -Force
 
         # Copy to archive temp directory
         Write-Info "Preparing archive..."

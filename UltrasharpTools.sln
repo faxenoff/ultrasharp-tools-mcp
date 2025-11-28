@@ -21,8 +21,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Test.Semant
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltrasharpTools.Test.SemanticAnalysis", "UltrasharpTools.Test\UltrasharpTools.Test.SemanticAnalysis\UltrasharpTools.Test.SemanticAnalysis.csproj", "{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltraSharpTools.Comm", "UltraSharpTools.Comm\UltraSharpTools.Comm.csproj", "{D9C77309-0840-4500-A463-24C18BA8D5C5}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UltraSharpTools.VectorDB", "UltraSharpTools.VectorDB\UltraSharpTools.VectorDB.csproj", "{2099593E-F852-4C11-9590-7FD83A2BE2DC}"
 EndProject
 Global
@@ -131,18 +129,6 @@ Global
 		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|x64.Build.0 = Release|Any CPU
 		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|x86.ActiveCfg = Release|Any CPU
 		{56D0FB11-76B8-4CC4-837C-1F9967EA5B0E}.Release|x86.Build.0 = Release|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Debug|x64.Build.0 = Debug|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Debug|x86.Build.0 = Debug|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Release|x64.ActiveCfg = Release|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Release|x64.Build.0 = Release|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Release|x86.ActiveCfg = Release|Any CPU
-		{D9C77309-0840-4500-A463-24C18BA8D5C5}.Release|x86.Build.0 = Release|Any CPU
 		{2099593E-F852-4C11-9590-7FD83A2BE2DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2099593E-F852-4C11-9590-7FD83A2BE2DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2099593E-F852-4C11-9590-7FD83A2BE2DC}.Debug|x64.ActiveCfg = Debug|Any CPU

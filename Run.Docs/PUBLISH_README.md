@@ -44,22 +44,21 @@ pwsh ./Config/validate-semantic-config.ps1
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "/path/to/Comm/UltrasharpTools.Comm.exe"
+      "command": "/path/to/Droid/UltraSharpTools.com"
     }
   }
 }
 ```
 
-> ⚠️ **Важно:** Запускается **Comm.exe**, а не Droid.exe!
-> Comm — лёгкий stdio-bridge (~5 MB), который автоматически запустит Droid при первом подключении.
+> ⚠️ **Важно:** Запускается **UltraSharpTools.com** (~700 KB), а не Droid.exe!
+> Это универсальный Comm (работает на Win/Linux/macOS), который автоматически запустит Droid при первом подключении.
 
 ## 📁 Структура папки
 
 ```
 UltrasharpTools/
-├── Comm/
-│   └── UltrasharpTools.Comm.exe   ← 👈 Запускать этот файл!
 ├── Droid/
+│   ├── UltraSharpTools.com        ← 👈 Запускать этот файл! (~700 KB, все платформы)
 │   └── UltrasharpTools.Droid.exe  ← Roslyn сервер (запускается автоматически)
 ├── VectorDB/
 │   └── UltrasharpTools.VectorDB.exe ← Semantic индексер (lazy start)

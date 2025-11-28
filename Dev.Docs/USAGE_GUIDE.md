@@ -1,6 +1,6 @@
 # UltrasharpTools - Руководство по использованию
 
-**Версия:** 3.5.0
+**Версия:** 3.6.0
 **Дата:** 2025-11-27
 
 ---
@@ -30,7 +30,7 @@ pwsh Dev.Scripts/publish-mcp.ps1  # Windows/Linux
 ./Dev.Scripts/publish-mcp.sh      # Linux/Mac
 ```
 
-**Результат:** `Run.Publish/Comm/UltrasharpTools.Comm.exe` (~5 MB) + `Run.Publish/Droid/UltrasharpTools.Droid.exe` (103 MB)
+**Результат:** `Run.Publish/Droid/UltraSharpTools.com` (~50 KB) + `Run.Publish/Droid/UltrasharpTools.Droid.exe` (103 MB)
 
 ### 1.2 Архитектура Comm/Droid
 
@@ -43,7 +43,7 @@ Claude₃ ←stdio→ Comm₃ ──┘
 ```
 
 **Компоненты:**
-- **Comm** (~5 MB) — лёгкий stdio-bridge для MCP-клиентов
+- **Comm** (~700 KB) — универсальный stdio-bridge для MCP-клиентов (один бинарник для всех ОС)
 - **Droid** (~103 MB) — основной Roslyn-сервер (singleton, multi-client)
 - **VectorDB** (~40 MB) — семантический движок (lazy start, опционально)
 
@@ -61,15 +61,15 @@ Claude₃ ←stdio→ Comm₃ ──┘
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:/Tools/UltrasharpTools/Comm/UltrasharpTools.Comm.exe"
+      "command": "D:/Tools/UltrasharpTools/Droid/UltraSharpTools.com"
     }
   }
 }
 ```
 
 **⚠️ Важно:**
-- Запускайте **Comm.exe**, а не Droid.exe!
-- Comm — лёгкий stdio-bridge, который автоматически запустит Droid при первом подключении
+- Запускайте **UltraSharpTools.com** (~700 KB), а не Droid.exe!
+- Comm — универсальный stdio-bridge (работает на Win/Linux/macOS), который автоматически запустит Droid при первом подключении
 - Используйте **полный абсолютный путь**
 - На Windows: `\\` или `/` (оба работают)
 - **Multiple instances:** Несколько Claude окон могут работать одновременно — все используют один Droid
@@ -888,5 +888,5 @@ view_definition("MyApp.Services.Users.UserService")
 
 ---
 
-**Версия:** 3.5.0
+**Версия:** 3.6.0
 **Последнее обновление:** 2025-11-27

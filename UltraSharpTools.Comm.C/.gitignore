@@ -1,0 +1,8 @@
+# Build artifacts
+*.com
+*.exe
+*.o
+*.obj
+
+# Local cosmocc (if installed locally)
+cosmocc/

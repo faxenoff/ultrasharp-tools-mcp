@@ -45,14 +45,14 @@ UltrasharpTools MCP поддерживает два режима работы, �
 │                                              │
 │ claude_desktop_config.json:                  │
 │ {                                            │
-│   "command": "D:/path/to/Comm.exe"           │
+│   "command": "D:/path/to/UltraSharpTools.com"│
 │ }                                            │
 └──────────┬───────────────────────────────────┘
            │ запускает как child process
            ↓
 ┌──────────────────────────────────────────────┐
-│ UltrasharpTools.Comm.exe (stdio bridge)      │
-│ (~5 MB, минимальный процесс)                 │
+│ UltraSharpTools.com (stdio bridge)           │
+│ (~700 KB, универсальный бинарник)            │
 │                                              │
 │ └───→ Named Pipe IPC                         │
 │         ↓                                    │
@@ -75,9 +75,9 @@ UltrasharpTools MCP поддерживает два режима работы, �
 └──────────────────────────────────────────────┘
 ```
 
-> **💡 Почему три процесса?** Comm.exe — лёгкий stdio bridge, который позволяет
-> нескольким редакторам/агентам подключаться к одному Droid+VectorDB, экономя
-> 2-3 GB RAM на каждый инстанс.
+> **💡 Почему три процесса?** UltraSharpTools.com — универсальный stdio bridge (~700 KB),
+> который позволяет нескольким редакторам/агентам подключаться к одному Droid+VectorDB,
+> экономя 2-3 GB RAM на каждый инстанс.
 
 ### Конфигурация
 
@@ -86,7 +86,7 @@ UltrasharpTools MCP поддерживает два режима работы, �
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:/Tools/UltrasharpTools/Comm/UltrasharpTools.Comm.exe"
+      "command": "D:/Tools/UltrasharpTools/Droid/UltraSharpTools.com"
     }
   }
 }
@@ -97,13 +97,13 @@ UltrasharpTools MCP поддерживает два режима работы, �
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "/home/user/ultrasharp-tools/Comm/UltrasharpTools.Comm"
+      "command": "/home/user/ultrasharp-tools/Droid/UltraSharpTools.com"
     }
   }
 }
 ```
 
-> ⚠️ **Важно:** Запускается `Comm.exe`, а не `Droid.exe`!
+> ⚠️ **Важно:** Запускается `UltraSharpTools.com` (~700 KB), а не `Droid.exe`!
 
 ### Доступ к файлам
 
@@ -639,7 +639,7 @@ dotnet restore MyApp.sln
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:/tools/ultrasharp/Comm/UltrasharpTools.Comm.exe"
+      "command": "D:/tools/ultrasharp/Droid/UltraSharpTools.com"
     }
   }
 }
@@ -877,7 +877,7 @@ initContainers:
 {
   "mcpServers": {
     "ultrasharp-local": {
-      "command": "D:/tools/ultrasharp/Comm/UltrasharpTools.Comm.exe"
+      "command": "D:/tools/ultrasharp/Droid/UltraSharpTools.com"
     },
     "ultrasharp-remote": {
       "type": "sse",

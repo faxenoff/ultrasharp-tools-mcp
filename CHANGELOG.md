@@ -6,6 +6,109 @@
 
 ---
 
+## [3.5.0] - 2025-11-28
+
+### 🎯 Статус
+**Cosmopolitan Comm & Semantic Merge Fixes** — Новый легковесный Comm на C/Cosmopolitan + исправления semantic_merge
+
+### Добавлено
+
+#### Cosmopolitan Comm — Универсальный бинарник ~700KB ⚡
+
+**Проблема:** .NET Native AOT Comm.exe весил ~15MB и требовал отдельные сборки для каждой платформы.
+
+**Решение:** Переписан Comm на чистом C с использованием [Cosmopolitan Libc](https://github.com/jart/cosmopolitan):
+
+```
+Claude Desktop <--stdin/stdout--> comm.com <--Named Pipe/Unix Socket--> Droid
+```
+
+**Характеристики:**
+
+| Метрика | .NET AOT | Cosmopolitan C |
+|---------|----------|----------------|
+| Размер бинарника | ~15 MB | **~700 KB** |
+| Потребление RAM | ~30 MB | **~1 MB** |
+| Время старта | ~100ms | **~1ms** |
+| Платформы | Отдельные сборки | **Один файл для всех** |
+| Зависимости | .NET Runtime | **Нет** |
+
+**Один бинарник для всех платформ:**
+- ✅ Windows x64
+- ✅ Linux x64/ARM64
+- ✅ macOS x64/ARM64 (Apple Silicon)
+- ✅ BSD
+
+**Новая конфигурация MCP:**
+```json
+{
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "command": "C:\\Tools\\UltrasharpTools\\Droid\\UltraSharpTools.com"
+    }
+  }
+}
+```
+
+> **Примечание:** Расширение `.com` — это Cosmopolitan "Actually Portable Executable", работает на всех ОС.
+
+**Новые компоненты:**
+- `UltraSharpTools.Comm.C/` — исходники на C и build scripts
+- `UltraSharpTools.com` — универсальный бинарник
+- `setup.ps1` / `setup.cmd` — установка cosmocc toolchain
+- `build.ps1` / `build.cmd` — сборка
+
+### Исправлено
+
+#### Semantic Merge — File-level CodeUnit fixes 🔧
+
+**Проблема:** ThreeWayMerger обрабатывал все CodeUnits включая вложенные (методы, классы), что приводило к дублированию и неверным merge actions.
+
+**Исправления:**
+
+1. **ApplyMergeResultAsync** (`021502c`)
+   - Группировка merge actions по файлу
+   - Выбор наиболее полного контента при конфликтах
+   - Предотвращение дублирования записей
+
+2. **ProcessMatchedUnitsAsync** (`c2c7f40`)
+   - Обработка только File-level CodeUnits
+   - Упрощение логики сопоставления
+   - Корректная обработка вложенных изменений
+
+3. **ProcessAddedUnits** (`9b8bce2`)
+   - Фильтрация только File-level units при добавлении
+   - Предотвращение дублирования добавленных файлов
+
+4. **ProcessDeletedUnits** (`a00e335`)
+   - Фильтрация только File-level units при удалении
+   - Корректное определение удалённых файлов
+
+5. **General fixes** (`4e5600b`)
+   - Общие улучшения semantic_merge
+   - Улучшенная обработка edge cases
+
+### Изменено
+
+**Структура релиза:**
+```
+Run.Release/
+├── Droid/
+│   ├── UltraSharpTools.com      ← Новый Comm (~700KB, все платформы)
+│   ├── UltrasharpTools.Droid.exe
+│   └── ...
+├── VectorDB/
+│   └── ...
+└── Scripts/
+    └── ...
+```
+
+**Документация:**
+- README.md — обновлена конфигурация MCP для нового Comm
+- CHANGELOG.md — добавлена версия 3.5.0
+
+---
+
 ## [3.4.0] - 2025-11-27
 
 ### 🎯 Статус

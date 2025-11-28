@@ -24,13 +24,15 @@ build-all.cmd
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "D:\\github\\ultrasharp-tools-mcp\\Run.Build\\Droid\\UltraSharpTools.Comm.exe"
+      "command": "D:\\github\\ultrasharp-tools-mcp\\Run.Build\\Droid\\UltraSharpTools.com"
     }
   }
 }
 ```
 
-**Важно:** Используйте двойные обратные слэши `\\` в пути!
+**Важно:**
+- Используйте двойные обратные слэши `\\` в пути!
+- `UltraSharpTools.com` — универсальный Comm (~700 KB, работает на Win/Linux/macOS)
 
 ### 3. Перезапуск
 
@@ -82,9 +84,9 @@ load_solution("D:\\MyProject\\MyProject.sln")
 
 ## 🐛 Troubleshooting
 
-### Comm падает без логов
+### Comm не запускается
 
-**Проблема:** Отсутствует `UltrasharpTools.Droid.exe`
+**Проблема:** Отсутствует `UltrasharpTools.Droid.exe` в той же папке
 
 **Решение:**
 ```cmd

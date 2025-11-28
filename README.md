@@ -60,7 +60,7 @@
   ### Архитектура
 
   Три процесса с lazy-запуском:
-  - **Comm** — лёгкий Named Pipe bridge (~5 MB), запускается у каждого агента
+  - **Comm** — лёгкий Named Pipe bridge (~700 KB, один бинарник для всех ОС), запускается у каждого агента
   - **Droid** — основной Roslyn-сервер (singleton, multi-client через Named Pipe)
   - **VectorDB** — семантический движок (lazy start, shared между всеми)
 
@@ -88,13 +88,13 @@
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "C:\\Tools\\UltrasharpTools\\Comm\\UltrasharpTools.Comm.exe"
+      "command": "C:\\Tools\\UltrasharpTools\\Droid\\UltraSharpTools.com"
     }
   }
 }
 ```
 
-> **Примечание:** Запускается именно **Comm.exe** — лёгкий Named Pipe bridge (~5 MB).
+> **Примечание:** Запускается **UltraSharpTools.com** — универсальный Comm (~700 KB, работает на Win/Linux/macOS).
 > Первый Comm автоматически запустит Droid в daemon-режиме. Последующие Comm подключатся к существующему Droid.
 3. Добавить в CLAUDE.md описание работы с инструментами
 4. Настройте семантический поиск -  запустите мастер настройки и следуйте его инструкциям:
@@ -295,7 +295,7 @@ UltrasharpTools предоставляет два режима работы по
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Claude Desktop    Claude Code    Cursor    VS Code + Continue.dev     │
 │       ↓                ↓            ↓                ↓                  │
-│    Comm.exe         Comm.exe     Comm.exe        Comm.exe              │
+│  UltraSharpTools.com  .com        .com           .com                  │
 │  (stdio bridge)   (stdio bridge)   ...            ...                  │
 └────────┬───────────────┬────────────┬──────────────┬────────────────────┘
          │               │            │              │
@@ -325,7 +325,7 @@ UltrasharpTools предоставляет два режима работы по
 
 | Процесс | Роль | Lifecycle |
 |---------|------|-----------|
-| **Comm** | Лёгкий stdio-bridge (~5 MB) | Один на каждый AI-агент/редактор |
+| **Comm** | Универсальный stdio-bridge (~700 KB) | Один на каждый AI-агент/редактор |
 | **Droid** | Roslyn workspace, Git, MCP tools | Singleton — один на все Comm |
 | **VectorDB** | Semantic index, embeddings | Singleton — lazy start по требованию |
 
@@ -344,7 +344,7 @@ UltrasharpTools предоставляет два режима работы по
   "mcpServers": {
     "ultrasharp-tools": {
       "type": "stdio",
-      "command": "D:/path/to/Run.Publish/Comm/UltrasharpTools.Comm.exe",
+      "command": "D:/path/to/Run.Release/Droid/UltraSharpTools.com",
       "args": [],
       "env": {}
     }
@@ -352,7 +352,7 @@ UltrasharpTools предоставляет два режима работы по
 }
 ```
 
-> ⚠️ **Важно:** Запускается **Comm.exe**, а не Droid.exe! Comm автоматически запустит Droid при первом подключении.
+> ⚠️ **Важно:** Запускается **UltraSharpTools.com** (~700 KB), а не Droid.exe! Comm автоматически запустит Droid при первом подключении.
 
 **Возможности:**
 - ✅ **Много агентов — один сервер** — Claude Desktop + Claude Code + Cursor одновременно
