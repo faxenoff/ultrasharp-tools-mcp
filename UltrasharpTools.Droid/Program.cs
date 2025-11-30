@@ -28,7 +28,7 @@ namespace UltrasharpTools.Droid;
 public static class Program
 {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
-    public const string ApplicationVersion = "3.6.2";
+    public const string ApplicationVersion = "3.6.3";
 
     private static readonly JsonSerializerOptions SemanticConfigJsonOptions =
         new()
