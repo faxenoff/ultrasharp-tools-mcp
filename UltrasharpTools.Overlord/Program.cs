@@ -329,7 +329,8 @@ public class Program
                     // but ModelContextProtocol's own Debug logging should be sufficient.
                 })
                 .WithHttpTransport()
-                .WithUltrasharpTools();
+                .WithUltrasharpTools()
+                .WithUltrasharpPrompts();
 
             var app = builder.Build();
             var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();

@@ -41,6 +41,7 @@ Dev.Docs/
 Run.Docs/
 *.md
 !README.md
+!Prompts/*.md
 
 # Scripts (not needed in image)
 Dev.Scripts/

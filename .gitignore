@@ -78,7 +78,7 @@ vectors.*
 
 # VS Code Copilot Edits (auto-generated)
 .vscode/prompts/
-Prompts/
+# Note: /Prompts/ is now used for MCP prompts - do not ignore
 
 # OS generated files
 ehthumbs.db
