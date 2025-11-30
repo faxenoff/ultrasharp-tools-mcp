@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>3.6.1</Version>
+    <Version>3.6.2</Version>
     <!-- Копирование всех зависимостей NuGet в выходную директорию -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <!-- Оптимизации производительности -->
@@ -43,5 +43,9 @@
   <!-- Vectorlite native library для HNSW ANN vector search (для больших кодовых баз >10K символов) -->
   <ItemGroup>
     <None Include="Native\vectorlite\vectorlite.dll" CopyToOutputDirectory="PreserveNewest" Link="vectorlite.dll" />
+  </ItemGroup>
+  <!-- MCP Prompts documentation files -->
+  <ItemGroup>
+    <None Include="..\Prompts\*.md" CopyToOutputDirectory="PreserveNewest" LinkBase="Prompts" />
   </ItemGroup>
 </Project>

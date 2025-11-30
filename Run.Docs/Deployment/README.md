@@ -431,10 +431,10 @@ echo $GITHUB_PAT | docker login ghcr.io -u YOUR_USERNAME --password-stdin
 
 # Tag
 docker tag ultrasharp-tools-server:release \
-  ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v3.6.1
+  ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v3.6.2
 
 # Push
-docker push ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v3.6.1
+docker push ghcr.io/YOUR_ORG/ultrasharp-tools-overlord:v3.6.2
 ```
 
 ---

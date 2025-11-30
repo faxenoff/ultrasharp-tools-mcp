@@ -28,7 +28,7 @@ namespace UltrasharpTools.Droid;
 public static class Program
 {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
-    public const string ApplicationVersion = "3.6.1";
+    public const string ApplicationVersion = "3.6.2";
 
     private static readonly JsonSerializerOptions SemanticConfigJsonOptions =
         new()
@@ -1141,7 +1141,8 @@ public static class Program
                 // Experimental capabilities cannot be set here due to source-generated JSON serializer limitations
             })
             .WithStdioServerTransport()
-            .WithUltrasharpTools();
+            .WithUltrasharpTools()
+            .WithUltrasharpPrompts();
 
         try
         {

@@ -17,6 +17,7 @@ using UltrasharpTools.Tools.Semantic.GPU;
 using UltrasharpTools.Tools.Replace.Interfaces;
 using UltrasharpTools.Tools.Replace.Services;
 using UltrasharpTools.Tools.Semantic.Hybrid;
+using UltrasharpTools.Tools.Mcp.Prompts;
 
 namespace UltrasharpTools.Tools.Extensions;
 
@@ -157,6 +158,16 @@ public static class ServiceCollectionExtensions {
         var toolAssembly = Assembly.Load("UltrasharpTools.Tools");
 
         return builder.WithToolsFromAssembly(toolAssembly);
+    }
+
+    /// <summary>
+    /// Adds UltrasharpTools MCP prompts to the MCP service builder.
+    /// Prompts provide categorized documentation for all available tools.
+    /// </summary>
+    /// <param name="builder">The MCP service builder.</param>
+    /// <returns>The MCP service builder for chaining.</returns>
+    public static IMcpServerBuilder WithUltrasharpPrompts(this IMcpServerBuilder builder) {
+        return builder.WithPrompts<McpPrompts>();
     }
 
     /// <summary>

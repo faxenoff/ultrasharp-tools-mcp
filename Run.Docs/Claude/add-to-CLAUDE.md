@@ -1,205 +1,49 @@
 # UltrasharpTools MCP Server
 
-**Roslyn-powered C# code analysis and modification tools for AI agents.**
+**Roslyn-powered C# code analysis and modification.**
 
 ## Quick Start
 
-UltrasharpTools provides deep C# code understanding through Roslyn APIs, enabling intelligent code analysis, modification, and refactoring.
-
-### Essential Workflow
-
 ```
 1. load_solution("path/to/solution.sln")
-   → Loads workspace, returns project list
-
 2. load_project("ProjectName")
-   → Returns comprehensive type map (namespaces → types)
-
-3. Use FQN (Fully Qualified Names) for everything:
-   - view_definition(fqn)
-   - get_members(fqn)
-   - find_references(fqn)
-   - modify_code(fqn, newCode)
+3. Use FQN for everything: view_definition, get_members, modify_code
 ```
 
-### Key Principles
+## Key Principles
 
-**FQN-First Navigation**
-- Always use Fully Qualified Names (e.g., `MyNamespace.MyClass.MyMethod`)
-- Fuzzy matching automatically finds close matches
-- Saves tokens by avoiding full file reads
-
-**Auto-Git Integration**
-- Every modification creates `ultrasharptools/YYYYMMDD-HHMMSS` branch
-- Auto-commits with descriptive messages
-- Use `undo` to rollback last change
-- Disable with `--disable-git` flag
-
-**Token Efficiency**
-- Code returned without indentation (~10% token savings)
-- Adaptive detail levels in LoadProject
-- Symbol-based navigation instead of file scanning
+- **FQN-First**: Always use Fully Qualified Names (`MyNamespace.MyClass.MyMethod`)
+- **Auto-Git**: Every modification creates branch + commit. Use `undo` to rollback
+- **Token Efficient**: Code without indentation, symbol-based navigation
 
 ## Tool Categories
 
-| Category | Purpose | Key Tools |
-|----------|---------|-----------|
-| **Solution** | Load & navigate | load_solution, load_project |
-| **Analysis** | Code understanding | view_definition, get_members, find_references |
-| **Modification** | Code changes | modify_code, add_member, rename_symbol |
-| **Quality** | Formatting & fixes | format_code, **analyze_code_style** (NEW: presets, filters, cache), apply_code_fixes |
-| **Document** | File operations | read_raw_from_roslyn_document, overwrite_roslyn_document |
-| **Tracing** | Debugging | trace_execution, trace_backwards, analyze_logs |
-| **Semantic** | Smart search | semantic_search, semantic_diff |
-| **System** | Server info | get_capabilities |
+| Category | Tools |
+|----------|-------|
+| Solution | `load_solution`, `load_project` |
+| Analysis | `view_definition`, `get_members`, `find_references`, `search_definitions` |
+| Modification | `modify_code`, `add_member`, `rename_symbol`, `find_and_replace` |
+| Quality | `format_code`, `analyze_code_style`, `apply_code_fixes` |
+| Tracing | `trace_execution`, `trace_backwards`, `analyze_logs` |
+| Semantic | `semantic_search`, `pattern_search`, `detect_code_clones` |
+| System | `get_capabilities`, `create_snapshot`, `undo` |
 
-## Detailed Documentation
+## Documentation
 
-For comprehensive tool documentation and advanced usage, see:
-**[ULTRA_SHARP.md](./ULTRA_SHARP.md)** - Complete reference with examples
+**Use MCP prompts for detailed documentation:**
 
-## Common Patterns
+| Prompt | Content |
+|--------|---------|
+| `overview` | Key concepts, workflow, all categories |
+| `solution` | Solution/project management |
+| `analysis` | Code analysis and navigation |
+| `modification` | Code modification and refactoring |
+| `quality` | Formatting and linting |
+| `tracing` | Execution tracing and debugging |
+| `semantic` | Semantic search (requires setup) |
+| `system` | Capabilities and snapshots |
 
-### Explore Codebase
-```
-1. LoadSolution → get projects
-2. LoadProject → get type map
-3. ViewDefinition → understand implementations
-4. find_references → see usage patterns
-```
+## Important
 
-### Refactor Code
-```
-1. ViewDefinition → read current code
-2. OverwriteMember → apply changes (auto-commits)
-3. FormatCode → cleanup style
-4. analyze_code_style → verify quality (NEW: with presets, filters, caching)
-```
-
-### Systematic Code Quality Improvement (NEW)
-```
-1. analyze_code_style(preset: "critical") → find security issues
-2. analyze_code_style(preset: "high") → reliability + key performance
-3. analyze_code_style(preset: "performance", filePatterns: "**/Services/*.cs") → targeted fixes
-4. Leverage 5-minute cache for 10x faster repeated queries
-```
-
-### Debug Issues
-```
-1. TraceExecution → follow execution path
-2. AnalyzeLogs → extract structured data
-3. view_definition → examine suspect code
-4. OverwriteMember → apply fix
-```
-
-## Configuration
-
-**Check Server Capabilities** (REQUIRED at startup):
-```
-get_capabilities()
-→ Returns: semantic mode status, enabled features, server info
-→ Use to: detect if semantic search is available
-
-Example response:
-{
-  "semanticMode": {
-    "enabled": true,
-    "mode": "Local",           // Local, Overlord, Both, or None
-    "provider": "TEI",          // TEI, Ollama, Memory, or null
-    "dimension": 384
-  },
-  "version": "3.0.0",
-  "roslynVersion": "5.0.0"
-}
-```
-
-**⚠️ IMPORTANT - Semantic Features:**
-Before using `semantic_search`, `semantic_diff`, or `detect_code_clones`:
-1. **ALWAYS call `get_capabilities()` first**
-2. Check `semanticMode.enabled === true`
-3. If disabled, these tools WILL FAIL - use alternative tools instead:
-   - Instead of `semantic_search` → use `pattern_search` or `search_definitions`
-   - Instead of `semantic_diff` → use `find_and_replace` with git diff
-   - Instead of `detect_code_clones` → use `analyze_complexity`
-
-**Semantic Search Setup** (optional, user must configure):
-- Setup: `setup-semantic-embedding.cmd` (Windows) or `pwsh Dev.Scripts/setup-semantic-embedding.ps1`
-- Providers: TEI (recommended), Ollama, Memory
-- Config: `Run.Config/semantic-config.json`
-- Verify after setup: `get_capabilities()` → `semanticMode.enabled`
-
-**Build Configuration**:
-- Use `--build-configuration Debug` for full debugging symbols
-- Use `--build-configuration Release` for production code paths
-
-## NEW: Advanced Code Analysis with analyze_code_style
-
-**Presets for quick filtering:**
-```javascript
-// By category
-analyze_code_style(preset: "performance")    // Performance issues
-analyze_code_style(preset: "security")       // Security vulnerabilities
-analyze_code_style(preset: "maintainability") // Code maintainability
-
-// By priority
-analyze_code_style(preset: "critical")       // Critical security issues
-analyze_code_style(preset: "high")           // High priority (reliability + key performance)
-analyze_code_style(preset: "medium")         // Medium priority
-analyze_code_style(preset: "low")            // Low priority (style, naming)
-```
-
-**Targeted filtering:**
-```javascript
-// Specific diagnostic codes
-analyze_code_style(diagnosticIds: "CA1822,CA1860,CS8019")
-
-// Specific files (glob patterns)
-analyze_code_style(filePatterns: "**/Services/*.cs,**/Controllers/*.cs")
-
-// Specific projects
-analyze_code_style(projectNames: "MyProject.Core,MyProject.Api")
-
-// Combined filters
-analyze_code_style(
-    preset: "performance",
-    filePatterns: "**/Services/*.cs",
-    severityFilter: "Info"
-)
-```
-
-**Performance:**
-- First run: 30-60 seconds (scans entire solution)
-- Cached runs (within 5 minutes): 3-5 seconds — **10x faster!**
-- Different filters on same solution use cache
-
-**Available presets:**
-- **Category:** performance, security, reliability, maintainability, usage, design, globalization, naming, documentation, logging
-- **Priority:** critical, high, medium, low
-
-## Best Practices
-
-✅ **DO**:
-- Call `get_capabilities()` at startup to check available features
-- Start with load_solution + load_project
-- Use FQN for all symbol operations
-- **NEW:** Use analyze_code_style with presets for systematic quality improvement
-  - Start with `preset: "critical"` for security issues
-  - Use `preset: "high"` for reliability and key performance
-  - Leverage caching for iterative work (10x faster repeated queries)
-  - Filter by specific areas: `filePatterns: "**/Services/*.cs"`
-- Use format_code for consistency
-- Review changes with git diff
-
-❌ **DON'T**:
-- Don't scan files manually - use load_project type map
-- Don't guess FQNs - fuzzy matching handles variations
-- Don't skip load_solution - required for all operations
-- Don't forget to load dependencies with load_solution
-- Don't assume semantic mode is available - check with get_capabilities()
-
-## Support & Resources
-
-- **Full Documentation**: [ULTRA_SHARP.md](./ULTRA_SHARP.md)
-- **Tool Reference**: Individual `ULTRA_SHARP_*.md` files
-- **Examples**: `Run.Docs/Guides/` directory
-- **Architecture**: `Dev.Docs/Architecture/` directory
+- Call `get_capabilities()` at startup to check semantic mode availability
+- If semantic mode disabled, use `pattern_search` instead of `semantic_search`

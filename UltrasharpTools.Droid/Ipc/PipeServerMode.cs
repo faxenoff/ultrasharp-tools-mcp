@@ -226,7 +226,8 @@ public sealed class PipeServerMode : IAsyncDisposable {
                     };
                 })
                 .WithStreamServerTransport(pipe, pipe) // Используем Named Pipe как transport
-                .WithUltrasharpTools(); // Регистрируем MCP tools
+                .WithUltrasharpTools() // Регистрируем MCP tools
+                .WithUltrasharpPrompts(); // Регистрируем MCP prompts
 
             // Минимальное логирование для клиентских сессий
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
