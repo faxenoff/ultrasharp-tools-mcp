@@ -9,8 +9,7 @@ namespace UltraSharpTools.VectorDB.Semantic.Embedding;
 /// <summary>
 /// Factory for creating embedding providers with auto-selection
 /// </summary>
-public sealed class EmbeddingProviderFactory
-{
+public sealed class EmbeddingProviderFactory {
     private readonly EmbeddingOptions _options;
     private readonly ILogger<EmbeddingProviderFactory> _logger;
     private readonly IGPUDetectionService _gpuDetection;
@@ -23,22 +22,18 @@ public sealed class EmbeddingProviderFactory
         IGPUDetectionService gpuDetection,
         IHttpClientFactory httpClientFactory,
         ILoggerFactory loggerFactory
-    )
-    {
+    ) {
         _options = options.Value;
         _logger = logger;
         _gpuDetection = gpuDetection;
         _httpClientFactory = httpClientFactory;
         _loggerFactory = loggerFactory;
     }
-
     /// <summary>
     /// Create embedding provider based on configuration and GPU capabilities
     /// </summary>
-    public async Task<IEmbeddingProvider> CreateAsync(CancellationToken cancellationToken = default)
-    {
-        if (!_options.Enabled)
-        {
+    public async Task<IEmbeddingProvider> CreateAsync(CancellationToken cancellationToken = default) {
+        if (!_options.Enabled) {
             _logger.LogInformation("[EmbeddingFactory] Embeddings disabled, using Memory provider");
             return CreateMemoryProvider();
         }
@@ -46,8 +41,7 @@ public sealed class EmbeddingProviderFactory
         var providerType = _options.Provider.ToLowerInvariant();
 
         // Auto-detect mode: simplified for Indexer (no GPU detection)
-        if (providerType == "auto" && _options.AutoDetectGPU)
-        {
+        if (providerType == "auto" && _options.AutoDetectGPU) {
             _logger.LogInformation("[EmbeddingFactory] Auto-detect disabled in Indexer, using default");
             // Indexer always uses configured provider, no GPU auto-detection
             providerType = "ollama"; // Default fallback
@@ -55,17 +49,16 @@ public sealed class EmbeddingProviderFactory
         }
 
         // Create provider
-        var provider = providerType switch
-        {
-            "tei" => CreateTEIProvider(),
-            "ollama" => CreateOllamaProvider(),
-            "memory" => CreateMemoryProvider(),
-            _ => throw new InvalidOperationException($"Unknown embedding provider: {providerType}"),
-        };
+        IEmbeddingProvider? provider = null;
+        try {
+            provider = providerType switch {
+                "tei" => CreateTEIProvider(),
+                "ollama" => CreateOllamaProvider(),
+                "memory" => CreateMemoryProvider(),
+                _ => throw new InvalidOperationException($"Unknown embedding provider: {providerType}"),
+            };
 
-        // Initialize provider
-        try
-        {
+            // Initialize provider
             await provider.InitializeAsync(cancellationToken);
             _logger.LogInformation(
                 "[EmbeddingFactory] Provider initialized: {Name} ({Tokens} tokens, dimension: {Dim})",
@@ -73,18 +66,26 @@ public sealed class EmbeddingProviderFactory
                 provider.MaxContextTokens,
                 provider.Dimension
             );
-        }
-        catch (Exception ex)
-        {
+
+            return provider;
+        } catch (Exception ex) {
             _logger.LogError(
                 ex,
                 "[EmbeddingFactory] Provider initialization failed: {Provider}",
                 providerType
             );
 
+            // Dispose failed provider before fallback
+            if (provider != null) {
+                try {
+                    await provider.DisposeAsync();
+                } catch (Exception disposeEx) {
+                    _logger.LogWarning(disposeEx, "[EmbeddingFactory] Failed to dispose provider during fallback");
+                }
+            }
+
             // Fallback to memory provider
-            if (providerType != "memory")
-            {
+            if (providerType != "memory") {
                 _logger.LogWarning("[EmbeddingFactory] Falling back to Memory provider");
                 var fallbackProvider = CreateMemoryProvider();
                 await fallbackProvider.InitializeAsync(cancellationToken);
@@ -93,12 +94,8 @@ public sealed class EmbeddingProviderFactory
 
             throw;
         }
-
-        return provider;
     }
-
-    private IEmbeddingProvider CreateTEIProvider()
-    {
+    private IEmbeddingProvider CreateTEIProvider() {
         return new TEIProvider(
             _options.TEI,
             _loggerFactory.CreateLogger<TEIProvider>(),
@@ -106,8 +103,7 @@ public sealed class EmbeddingProviderFactory
         );
     }
 
-    private IEmbeddingProvider CreateOllamaProvider()
-    {
+    private IEmbeddingProvider CreateOllamaProvider() {
         return new OllamaProvider(
             _options.Ollama,
             _loggerFactory.CreateLogger<OllamaProvider>(),
@@ -115,8 +111,7 @@ public sealed class EmbeddingProviderFactory
         );
     }
 
-    private IEmbeddingProvider CreateMemoryProvider()
-    {
+    private IEmbeddingProvider CreateMemoryProvider() {
         return new MemoryProvider(_options.Memory, _loggerFactory.CreateLogger<MemoryProvider>());
     }
 }
