@@ -80,16 +80,59 @@ gcc -Os -o comm comm.c
 
 ## Claude Desktop Configuration
 
+**Windows:**
 ```json
 {
   "mcpServers": {
     "ultrasharp": {
-      "command": "path/to/comm.com",
-      "args": []
+      "command": "C:\\path\\to\\UltraSharp-tools.com"
     }
   }
 }
 ```
+
+**macOS/Linux:**
+```json
+{
+  "mcpServers": {
+    "ultrasharp": {
+      "command": "/path/to/ultrasharp-tools"
+    }
+  }
+}
+```
+
+## macOS: ENOEXEC Fix
+
+Cosmopolitan APE binaries may not run directly on macOS due to `ENOEXEC` (exec format error).
+
+**Solution 1: Use the shell wrapper (recommended)**
+
+Use `ultrasharp-tools` wrapper script instead of `.com` directly:
+```bash
+chmod +x ultrasharp-tools
+./ultrasharp-tools --help
+```
+
+The wrapper:
+- Removes quarantine attribute (`xattr -d com.apple.quarantine`)
+- Executes `.com` via `sh` (APE has embedded shell header)
+
+**Solution 2: Update zsh to 5.9+**
+
+zsh 5.9+ supports APE binaries natively:
+```bash
+# Check current version
+zsh --version
+
+# Update via Homebrew
+brew install zsh
+
+# Set as default shell (optional)
+chsh -s /opt/homebrew/bin/zsh
+```
+
+After updating zsh, `.com` files can be executed directly.
 
 ## File locations
 
