@@ -454,6 +454,13 @@ foreach ($Platform in $Platforms) {
             }
         }
 
+        # Copy shell wrapper for macOS/Linux (solves ENOEXEC with Cosmopolitan APE)
+        $WrapperSource = Join-Path $ProjectRoot "UltraSharpTools.Comm.C\ultrasharp-tools"
+        if (Test-Path $WrapperSource) {
+            Copy-Item -Path $WrapperSource -Destination $droidOutput -Force
+            Write-Info "Copied ultrasharp-tools wrapper script"
+        }
+
         # Cleanup temp folders
         Remove-Item (Join-Path $platformOutput "_temp_vectordb") -Recurse -Force
 
@@ -487,7 +494,7 @@ foreach ($Platform in $Platforms) {
 
                 Write-Info "Creating tar.gz via WSL (preserving Unix permissions)..."
                 # Set executable permissions on binaries and shell scripts
-                $chmodCmd = "chmod +x '$wslZipTempDir'/*.com '$wslZipTempDir'/UltrasharpTools.Droid '$wslZipTempDir'/UltraSharpTools.VectorDB 2>/dev/null; chmod +x '$wslZipTempDir'/Config/*.sh '$wslZipTempDir'/Config/Scripts/*.sh 2>/dev/null"
+                $chmodCmd = "chmod +x '$wslZipTempDir'/*.com '$wslZipTempDir'/ultrasharp-tools '$wslZipTempDir'/UltrasharpTools.Droid '$wslZipTempDir'/UltraSharpTools.VectorDB 2>/dev/null; chmod +x '$wslZipTempDir'/Config/*.sh '$wslZipTempDir'/Config/Scripts/*.sh 2>/dev/null"
                 Invoke-WslCommand -Command $chmodCmd -Silent | Out-Null
 
                 # Create tar.gz with preserved permissions
@@ -499,7 +506,7 @@ foreach ($Platform in $Platforms) {
             } else {
                 # Fallback: Windows tar (no Unix permissions)
                 Write-Warn "Creating tar.gz without Unix permissions (WSL not available)"
-                Write-Warn "Users will need to run: chmod +x *.com UltrasharpTools.Droid Config/*.sh"
+                Write-Warn "Users will need to run: chmod +x ultrasharp-tools *.com UltrasharpTools.Droid Config/*.sh"
                 Push-Location $ZipTempDir
                 try {
                     tar -czf $tarPath *

@@ -1,0 +1,16 @@
+#!/bin/sh
+# UltraSharpTools MCP launcher for macOS/Linux
+# Wrapper for Cosmopolitan APE binary
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+COMM_BINARY="$SCRIPT_DIR/UltraSharp-tools.com"
+
+# Remove quarantine attribute on macOS (first run only)
+if [ "$(uname)" = "Darwin" ]; then
+    xattr -d com.apple.quarantine "$COMM_BINARY" 2>/dev/null || true
+    xattr -d com.apple.quarantine "$SCRIPT_DIR/UltrasharpTools.Droid" 2>/dev/null || true
+    xattr -d com.apple.quarantine "$SCRIPT_DIR/UltraSharpTools.VectorDB" 2>/dev/null || true
+fi
+
+# Execute via sh (APE binaries have shell header)
+exec sh "$COMM_BINARY" "$@"
