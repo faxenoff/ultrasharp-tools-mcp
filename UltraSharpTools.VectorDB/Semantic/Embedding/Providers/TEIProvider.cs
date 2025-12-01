@@ -41,7 +41,6 @@ public sealed class TEIProvider : IEmbeddingProvider {
         _httpClient.BaseAddress = new Uri(_options.BaseUrl);
         _httpClient.Timeout = TimeSpan.FromMilliseconds(_options.TimeoutMs);
     }
-
     public async Task InitializeAsync(CancellationToken cancellationToken = default) {
         _logger.LogInformation("[TEI] Initializing with model: {Model}", _options.Model);
 
@@ -54,19 +53,36 @@ public sealed class TEIProvider : IEmbeddingProvider {
         }
 
         // Warmup: generate test embedding to determine dimension
-        try {
-            var testEmbedding = await EmbedAsync("test", cancellationToken);
-            _dimension = testEmbedding.Length;
-            _logger.LogInformation("[TEI] Initialized successfully (dimension: {Dim})", _dimension);
-        } catch (Exception ex) {
-            _logger.LogError(ex, "[TEI] Initialization failed");
-            throw new InvalidOperationException(
-                "TEI provider initialization failed. Is Docker container running?",
-                ex
-            );
+        // With retry on CUDA errors (424 Failed Dependency)
+        const int maxRetries = 2;
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                var testEmbedding = await EmbedAsync("test", cancellationToken);
+                _dimension = testEmbedding.Length;
+                _logger.LogInformation("[TEI] Initialized successfully (dimension: {Dim})", _dimension);
+                return;
+            } catch (InvalidOperationException ex) when (
+                attempt < maxRetries &&
+                (ex.Message.Contains("424") || ex.Message.Contains("Failed Dependency") || ex.Message.Contains("CUDA"))
+            ) {
+                _logger.LogWarning(
+                    "[TEI] CUDA/GPU error detected (attempt {Attempt}/{Max}), restarting container...",
+                    attempt + 1, maxRetries + 1
+                );
+                await TryRestartDockerContainerAsync(cancellationToken);
+            } catch (Exception ex) {
+                _logger.LogError(ex, "[TEI] Initialization failed");
+                throw new InvalidOperationException(
+                    "TEI provider initialization failed. Is Docker container running?",
+                    ex
+                );
+            }
         }
-    }
 
+        throw new InvalidOperationException(
+            "TEI provider initialization failed after retries. CUDA error persists - check GPU status."
+        );
+    }
     public async Task<float[]> EmbedAsync(
         string text,
         CancellationToken cancellationToken = default
