@@ -225,4 +225,45 @@ public sealed class TEIProvider : IEmbeddingProvider {
         _httpClient?.Dispose();
         return ValueTask.CompletedTask;
     }
+    private async Task TryRestartDockerContainerAsync(CancellationToken cancellationToken) {
+        try {
+            _logger.LogInformation(
+                "[TEI] Restarting Docker container: {Container}",
+                _options.ContainerName
+            );
+
+            using var process = new System.Diagnostics.Process {
+                StartInfo = new System.Diagnostics.ProcessStartInfo {
+                    FileName = "docker",
+                    Arguments = $"restart {_options.ContainerName}",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                },
+            };
+            process.Start();
+            await process.WaitForExitAsync(cancellationToken);
+
+            if (process.ExitCode == 0) {
+                _logger.LogInformation("[TEI] Docker container restarted successfully");
+
+                // Wait for server to become ready (longer timeout for model reload)
+                for (int i = 0; i < 60; i++) {
+                    await Task.Delay(1000, cancellationToken);
+                    if (await CheckServerAsync(cancellationToken)) {
+                        _logger.LogInformation("[TEI] Server is ready after restart");
+                        return;
+                    }
+                }
+
+                _logger.LogWarning("[TEI] Server did not become ready after 60 seconds");
+            } else {
+                var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
+                _logger.LogError("[TEI] Docker restart failed: {Error}", stderr);
+            }
+        } catch (Exception ex) {
+            _logger.LogError(ex, "[TEI] Failed to restart Docker container");
+        }
+    }
 }
