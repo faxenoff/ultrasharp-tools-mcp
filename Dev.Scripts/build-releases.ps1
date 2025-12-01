@@ -440,6 +440,20 @@ foreach ($Platform in $Platforms) {
         # Copy Cosmopolitan Comm binary (already built once, works on all platforms)
         Copy-Item -Path $CommBinary -Destination $droidOutput -Force
 
+        # Copy Config directory (setup scripts, embedding-models.json, etc.)
+        $ConfigSource = Join-Path $ProjectRoot "Run.Publish\Droid\Config"
+        if (Test-Path $ConfigSource) {
+            Copy-Item -Path $ConfigSource -Destination (Join-Path $droidOutput "Config") -Recurse -Force
+            Write-Info "Copied Config directory"
+        } else {
+            # Fallback to Run.Config if Run.Publish\Droid\Config doesn't exist
+            $ConfigSource = Join-Path $ProjectRoot "Run.Config"
+            if (Test-Path $ConfigSource) {
+                Copy-Item -Path $ConfigSource -Destination (Join-Path $droidOutput "Config") -Recurse -Force
+                Write-Info "Copied Config directory (from Run.Config)"
+            }
+        }
+
         # Cleanup temp folders
         Remove-Item (Join-Path $platformOutput "_temp_vectordb") -Recurse -Force
 
@@ -463,22 +477,43 @@ foreach ($Platform in $Platforms) {
             Write-Success "Created: $archiveName.zip ($([math]::Round($fileSize, 2)) MB)"
         }
         else {
-            # Linux/macOS: tar.gz archive
+            # Linux/macOS: tar.gz archive with executable permissions
             $tarPath = Join-Path $ReleasesDir "$archiveName.tar.gz"
 
-            Push-Location $ZipTempDir
-            try {
-                # Create tar.gz (requires tar in PATH)
-                tar -czf $tarPath *
-                if ($LASTEXITCODE -ne 0) {
-                    throw "tar command failed"
+            # Use WSL to create tar.gz with proper Unix permissions
+            if ($script:WslAvailable) {
+                $wslZipTempDir = Get-WslProjectPath -WindowsPath $ZipTempDir
+                $wslTarPath = Get-WslProjectPath -WindowsPath $tarPath
+
+                Write-Info "Creating tar.gz via WSL (preserving Unix permissions)..."
+                # Set executable permissions on binaries and shell scripts
+                $chmodCmd = "chmod +x '$wslZipTempDir'/*.com '$wslZipTempDir'/UltrasharpTools.Droid '$wslZipTempDir'/UltraSharpTools.VectorDB 2>/dev/null; chmod +x '$wslZipTempDir'/Config/*.sh '$wslZipTempDir'/Config/Scripts/*.sh 2>/dev/null"
+                Invoke-WslCommand -Command $chmodCmd -Silent | Out-Null
+
+                # Create tar.gz with preserved permissions
+                $tarCmd = "cd '$wslZipTempDir' && tar -czf '$wslTarPath' *"
+                $success = Invoke-WslCommand -Command $tarCmd
+                if (-not $success) {
+                    throw "tar command failed in WSL"
                 }
-                $fileSize = (Get-Item $tarPath).Length / 1MB
-                Write-Success "Created: $archiveName.tar.gz ($([math]::Round($fileSize, 2)) MB)"
+            } else {
+                # Fallback: Windows tar (no Unix permissions)
+                Write-Warn "Creating tar.gz without Unix permissions (WSL not available)"
+                Write-Warn "Users will need to run: chmod +x *.com UltrasharpTools.Droid Config/*.sh"
+                Push-Location $ZipTempDir
+                try {
+                    tar -czf $tarPath *
+                    if ($LASTEXITCODE -ne 0) {
+                        throw "tar command failed"
+                    }
+                }
+                finally {
+                    Pop-Location
+                }
             }
-            finally {
-                Pop-Location
-            }
+
+            $fileSize = (Get-Item $tarPath).Length / 1MB
+            Write-Success "Created: $archiveName.tar.gz ($([math]::Round($fileSize, 2)) MB)"
         }
 
         # Cleanup temp directory and platform output
