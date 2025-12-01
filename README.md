@@ -84,18 +84,34 @@
 
 1. Скачайте релиз на [GitHub Releases](https://github.com/yourusername/ultrasharp-tools-mcp/releases) и распакуйте.
 2. Настройте ИИ (Claude Code / Claude Desktop) - .claude.json:
+
+**Windows:**
 ```json
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "command": "C:\\Tools\\UltrasharpTools\\Droid\\UltraSharp-tools.com"
+      "command": "C:\\Tools\\UltrasharpTools\\UltraSharp-tools.com"
     }
   }
 }
 ```
 
-> **Примечание:** Запускается **UltraSharp-tools.com** — универсальный Comm (~700 KB, работает на Win/Linux/macOS).
+**macOS/Linux:**
+```json
+{
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "command": "/path/to/ultrasharp-tools"
+    }
+  }
+}
+```
+
+> **Примечание:** Запускается **UltraSharp-tools.com** (Windows) или **ultrasharp-tools** wrapper (macOS/Linux).
 > Первый Comm автоматически запустит Droid в daemon-режиме. Последующие Comm подключатся к существующему Droid.
+
+> ⚠️ **macOS:** Используйте `ultrasharp-tools` wrapper, а не `.com` напрямую (решает ENOEXEC).
+> Альтернатива: обновите zsh до 5.9+ (`brew install zsh`) — тогда `.com` работает напрямую.
 3. Добавить в CLAUDE.md описание работы с инструментами
 4. Настройте семантический поиск -  запустите мастер настройки и следуйте его инструкциям:
 
@@ -339,20 +355,30 @@ UltrasharpTools предоставляет два режима работы по
 | **Ленивый запуск** | VectorDB стартует только при первом semantic запросе |
 
 **Конфигурация (`~/.claude.json`):**
+
+Windows:
 ```json
 {
   "mcpServers": {
     "ultrasharp-tools": {
-      "type": "stdio",
-      "command": "D:/path/to/Run.Release/Droid/UltraSharp-tools.com",
-      "args": [],
-      "env": {}
+      "command": "D:\\path\\to\\UltraSharp-tools.com"
     }
   }
 }
 ```
 
-> ⚠️ **Важно:** Запускается **UltraSharp-tools.com** (~700 KB), а не Droid.exe! Comm автоматически запустит Droid при первом подключении.
+macOS/Linux:
+```json
+{
+  "mcpServers": {
+    "ultrasharp-tools": {
+      "command": "/path/to/ultrasharp-tools"
+    }
+  }
+}
+```
+
+> ⚠️ **macOS/Linux:** Используйте `ultrasharp-tools` wrapper (решает ENOEXEC). Или обновите zsh до 5.9+.
 
 **Возможности:**
 - ✅ **Много агентов — один сервер** — Claude Desktop + Claude Code + Cursor одновременно
