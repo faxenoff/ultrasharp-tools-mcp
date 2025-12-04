@@ -9,8 +9,7 @@ public partial class DocumentOperationsService(
     ICodeModificationService modificationService,
     IGitService gitService,
     ILogger<DocumentOperationsService> logger
-) : IDocumentOperationsService
-{
+) : IDocumentOperationsService {
     private readonly ISolutionManager _solutionManager = solutionManager;
     private readonly ICodeModificationService _modificationService = modificationService;
     private readonly IGitService _gitService = gitService;
@@ -53,15 +52,12 @@ public partial class DocumentOperationsService(
         string filePath,
         bool omitLeadingSpaces,
         CancellationToken cancellationToken
-    )
-    {
-        if (!File.Exists(filePath))
-        {
+    ) {
+        if (!File.Exists(filePath)) {
             throw new FileNotFoundException($"File not found: {filePath}");
         }
 
-        if (!IsPathReadable(filePath))
-        {
+        if (!IsPathReadable(filePath)) {
             throw new UnauthorizedAccessException(
                 $"Reading from this path is not allowed: {filePath}"
             );
@@ -75,10 +71,8 @@ public partial class DocumentOperationsService(
         // Line endings уже нормализованы к LF, split просто по \n
         var lines = content.Split('\n', StringSplitOptions.None);
 
-        if (omitLeadingSpaces)
-        {
-            for (int i = 0; i < lines.Length; i++)
-            {
+        if (omitLeadingSpaces) {
+            for (int i = 0; i < lines.Length; i++) {
                 lines[i] = TrimLeadingSpaces(lines[i]);
             }
 
@@ -94,28 +88,24 @@ public partial class DocumentOperationsService(
         bool overwriteIfExists,
         CancellationToken cancellationToken,
         string commitMessage
-    )
-    {
+    ) {
         var pathInfo = GetPathInfo(filePath);
 
-        if (!pathInfo.IsWritable)
-        {
+        if (!pathInfo.IsWritable) {
             LogPathNotWritable(filePath, pathInfo.WriteRestrictionReason);
             throw new UnauthorizedAccessException(
                 $"Writing to this path is not allowed: {filePath}. {pathInfo.WriteRestrictionReason}"
             );
         }
 
-        if (File.Exists(filePath) && !overwriteIfExists)
-        {
+        if (File.Exists(filePath) && !overwriteIfExists) {
             LogFileExistsNoOverwrite(filePath);
             return false;
         }
 
         // Ensure directory exists
         string? directory = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-        {
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory)) {
             Directory.CreateDirectory(directory);
         }
 
@@ -129,11 +119,9 @@ public partial class DocumentOperationsService(
             !pathInfo.IsFormattable
             || bestProject is null
             || string.IsNullOrWhiteSpace(bestProject.FilePath)
-        )
-        {
+        ) {
             LogNonCodeFileAdded(filePath);
-            if (string.IsNullOrEmpty(commitMessage))
-            {
+            if (string.IsNullOrEmpty(commitMessage)) {
                 return true; // No commit message provided, don't commit, just return
             }
             //just commit the file
@@ -146,13 +134,10 @@ public partial class DocumentOperationsService(
             bestProject.FilePath,
             cancellationToken
         );
-        if (isSdkStyleProject)
-        {
+        if (isSdkStyleProject) {
             LogFileAddedToSdkProject(bestProject.FilePath);
             await _solutionManager.ReloadSolutionFromDiskAsync(cancellationToken);
-        }
-        else
-        {
+        } else {
             legacyProject = await TryAddFileToLegacyProjectAsync(
                 filePath,
                 bestProject,
@@ -161,25 +146,20 @@ public partial class DocumentOperationsService(
         }
         var newSolution = legacyProject?.Solution ?? _solutionManager.CurrentSolution;
         var documentId = newSolution?.GetDocumentIdsWithFilePath(filePath).FirstOrDefault();
-        if (documentId is null)
-        {
+        if (documentId is null) {
             LogMysteryFileNotAdded(filePath);
             return false;
         }
         var document = newSolution?.GetDocument(documentId);
-        if (document is null)
-        {
+        if (document is null) {
             LogDocumentNotFound(filePath);
             return false;
         }
         // If it's a code file, try to format it, which will also commit it
-        if (await TryFormatAndCommitFileAsync(document, cancellationToken, commitMessage))
-        {
+        if (await TryFormatAndCommitFileAsync(document, cancellationToken, commitMessage)) {
             LogFileFormattedAndCommitted(filePath);
             return true;
-        }
-        else
-        {
+        } else {
             LogFormatFailed(filePath);
         }
         return true;
@@ -189,23 +169,19 @@ public partial class DocumentOperationsService(
         string filePath,
         Project project,
         CancellationToken cancellationToken
-    )
-    {
-        if (!_solutionManager.IsSolutionLoaded || !File.Exists(filePath))
-        {
+    ) {
+        if (!_solutionManager.IsSolutionLoaded || !File.Exists(filePath)) {
             return null;
         }
 
-        try
-        {
+        try {
             // Get the document ID if the file is already in the solution
             var documentId = _solutionManager
                 .CurrentSolution!.GetDocumentIdsWithFilePath(filePath)
                 .FirstOrDefault();
 
             // If the document is already in the solution, no need to add it again
-            if (documentId != null)
-            {
+            if (documentId != null) {
                 LogFileAlreadyInProject(filePath);
                 return null;
             }
@@ -218,13 +194,11 @@ public partial class DocumentOperationsService(
             var relativePath = string.Empty;
             string[] folders = [];
 
-            if (!string.IsNullOrEmpty(projectDir))
-            {
+            if (!string.IsNullOrEmpty(projectDir)) {
                 relativePath = Path.GetRelativePath(projectDir, filePath);
                 var folderPath = Path.GetDirectoryName(relativePath);
 
-                if (!string.IsNullOrEmpty(folderPath) && folderPath != ".")
-                {
+                if (!string.IsNullOrEmpty(folderPath) && folderPath != ".") {
                     folders = folderPath.Split(
                         Path.DirectorySeparatorChar,
                         Path.AltDirectorySeparatorChar
@@ -240,9 +214,7 @@ public partial class DocumentOperationsService(
 
             // Add the document to the project in memory
             return project.AddDocument(fileName, sourceText, folders, filePath).Project;
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             LogAddFileFailed(ex, filePath);
             return null;
         }
@@ -251,10 +223,8 @@ public partial class DocumentOperationsService(
     private async Task<bool> IsSDKStyleProjectAsync(
         string projectFilePath,
         CancellationToken cancellationToken
-    )
-    {
-        try
-        {
+    ) {
+        try {
             var content = await OptimizedFileIO.ReadAllTextAsync(projectFilePath, null, cancellationToken);
 
             // Use XmlDocument for proper parsing
@@ -264,40 +234,33 @@ public partial class DocumentOperationsService(
             var projectNode = xmlDoc.DocumentElement;
 
             // Primary check - Look for Sdk attribute on Project element
-            if (projectNode?.Attributes?["Sdk"] != null)
-            {
+            if (projectNode?.Attributes?["Sdk"] != null) {
                 LogProjectSdkStyleAttribute(projectFilePath);
                 return true;
             }
 
             // Secondary check - Look for TargetFramework instead of TargetFrameworkVersion
             var targetFrameworkNode = xmlDoc.SelectSingleNode("//TargetFramework");
-            if (targetFrameworkNode != null)
-            {
+            if (targetFrameworkNode != null) {
                 LogProjectSdkStyleFramework(projectFilePath);
                 return true;
             }
 
             LogProjectClassicStyle(projectFilePath);
             return false;
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             LogProjectStyleError(ex, projectFilePath);
             return false;
         }
     }
 
-    private Microsoft.CodeAnalysis.Project? FindMostAppropriateProject(string filePath)
-    {
-        if (!_solutionManager.IsSolutionLoaded)
-        {
+    private Microsoft.CodeAnalysis.Project? FindMostAppropriateProject(string filePath) {
+        if (!_solutionManager.IsSolutionLoaded) {
             return null;
         }
 
         var projects = _solutionManager.GetProjects().ToList();
-        if (projects.Count == 0)
-        {
+        if (projects.Count == 0) {
             return null;
         }
 
@@ -305,21 +268,17 @@ public partial class DocumentOperationsService(
         var projectsWithPath =
             new List<(Microsoft.CodeAnalysis.Project Project, int DirectoryLevel)>();
 
-        foreach (var project in projects)
-        {
-            if (string.IsNullOrEmpty(project.FilePath))
-            {
+        foreach (var project in projects) {
+            if (string.IsNullOrEmpty(project.FilePath)) {
                 continue;
             }
 
             var projectDir = Path.GetDirectoryName(project.FilePath);
-            if (string.IsNullOrEmpty(projectDir))
-            {
+            if (string.IsNullOrEmpty(projectDir)) {
                 continue;
             }
 
-            if (filePath.StartsWith(projectDir, StringComparison.OrdinalIgnoreCase))
-            {
+            if (filePath.StartsWith(projectDir, StringComparison.OrdinalIgnoreCase)) {
                 // Calculate how many directories deep this file is from the project root
                 var relativePath = filePath
                     .Substring(projectDir.Length)
@@ -335,33 +294,27 @@ public partial class DocumentOperationsService(
         return projectsWithPath.OrderBy(p => p.DirectoryLevel).FirstOrDefault().Project;
     }
 
-    public bool FileExists(string filePath)
-    {
+    public bool FileExists(string filePath) {
         return File.Exists(filePath);
     }
 
-    public bool IsPathReadable(string filePath)
-    {
+    public bool IsPathReadable(string filePath) {
         var pathInfo = GetPathInfo(filePath);
         return pathInfo.IsReadable;
     }
 
-    public bool IsPathWritable(string filePath)
-    {
+    public bool IsPathWritable(string filePath) {
         var pathInfo = GetPathInfo(filePath);
         return pathInfo.IsWritable;
     }
 
-    public bool IsCodeFile(string filePath)
-    {
-        if (string.IsNullOrEmpty(filePath))
-        {
+    public bool IsCodeFile(string filePath) {
+        if (string.IsNullOrEmpty(filePath)) {
             return false;
         }
 
         // First check if file exists but is not part of the solution
-        if (File.Exists(filePath) && !IsReferencedBySolution(filePath))
-        {
+        if (File.Exists(filePath) && !IsReferencedBySolution(filePath)) {
             return false;
         }
 
@@ -370,12 +323,9 @@ public partial class DocumentOperationsService(
         return !string.IsNullOrEmpty(extension) && CodeFileExtensions.Contains(extension);
     }
 
-    public PathInfo GetPathInfo(string filePath)
-    {
-        if (string.IsNullOrEmpty(filePath))
-        {
-            return new PathInfo
-            {
+    public PathInfo GetPathInfo(string filePath) {
+        if (string.IsNullOrEmpty(filePath)) {
+            return new PathInfo {
                 FilePath = filePath,
                 Exists = false,
                 IsWithinSolutionDirectory = false,
@@ -394,37 +344,29 @@ public partial class DocumentOperationsService(
         string? writeRestrictionReason = null;
 
         // Check for unsafe directories
-        if (ContainsUnsafeDirectory(filePath))
-        {
+        if (ContainsUnsafeDirectory(filePath)) {
             writeRestrictionReason = "Path contains a protected directory (bin, obj, .git, etc.)";
         }
 
         // Check if file is outside solution
-        if (!isWithinSolution)
-        {
+        if (!isWithinSolution) {
             writeRestrictionReason = "Path is outside the solution directory";
         }
 
         // Check if directory is read-only
-        try
-        {
+        try {
             var directoryPath = Path.GetDirectoryName(filePath);
-            if (!string.IsNullOrEmpty(directoryPath) && Directory.Exists(directoryPath))
-            {
+            if (!string.IsNullOrEmpty(directoryPath) && Directory.Exists(directoryPath)) {
                 var dirInfo = new DirectoryInfo(directoryPath);
-                if ((dirInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                {
+                if ((dirInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly) {
                     writeRestrictionReason = "Directory is read-only";
                 }
             }
-        }
-        catch
-        {
+        } catch {
             writeRestrictionReason = "Cannot determine directory permissions";
         }
 
-        return new PathInfo
-        {
+        return new PathInfo {
             FilePath = filePath,
             Exists = exists,
             IsWithinSolutionDirectory = isWithinSolution,
@@ -434,11 +376,8 @@ public partial class DocumentOperationsService(
             WriteRestrictionReason = writeRestrictionReason,
         };
     }
-
-    private bool IsPathWithinSolutionDirectory(string filePath)
-    {
-        if (!_solutionManager.IsSolutionLoaded)
-        {
+    private bool IsPathWithinSolutionDirectory(string filePath) {
+        if (!_solutionManager.IsSolutionLoaded) {
             return false;
         }
 
@@ -446,24 +385,28 @@ public partial class DocumentOperationsService(
             _solutionManager.CurrentSolution?.FilePath
         );
 
-        if (string.IsNullOrEmpty(solutionDirectory))
-        {
+        if (string.IsNullOrEmpty(solutionDirectory)) {
             return false;
         }
 
-        return filePath.StartsWith(solutionDirectory, StringComparison.OrdinalIgnoreCase);
-    }
+        // Normalize paths for proper comparison
+        var normalizedFilePath = Path.GetFullPath(filePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var normalizedSolutionDir = Path.GetFullPath(solutionDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-    private bool IsReferencedBySolution(string filePath)
-    {
-        if (!_solutionManager.IsSolutionLoaded || !File.Exists(filePath))
-        {
+        // Add trailing separator for correct prefix matching
+        // This prevents false positives like "C:\Foo" matching "C:\FooBar\file.cs"
+        normalizedSolutionDir += Path.DirectorySeparatorChar;
+
+        return normalizedFilePath.StartsWith(normalizedSolutionDir, StringComparison.OrdinalIgnoreCase)
+            || normalizedFilePath.Equals(normalizedSolutionDir.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase);
+    }
+    private bool IsReferencedBySolution(string filePath) {
+        if (!_solutionManager.IsSolutionLoaded || !File.Exists(filePath)) {
             return false;
         }
 
         // Check if the file is directly referenced by a document in the solution
-        if (_solutionManager.CurrentSolution!.GetDocumentIdsWithFilePath(filePath).Any())
-        {
+        if (_solutionManager.CurrentSolution!.GetDocumentIdsWithFilePath(filePath).Any()) {
             return true;
         }
 
@@ -473,8 +416,7 @@ public partial class DocumentOperationsService(
         return false;
     }
 
-    private bool ContainsUnsafeDirectory(string filePath)
-    {
+    private bool ContainsUnsafeDirectory(string filePath) {
         // Check if the path contains any unsafe directory segments
         var normalizedPath = filePath.Replace('\\', '/');
         var pathSegments = normalizedPath.Split('/');
@@ -486,10 +428,8 @@ public partial class DocumentOperationsService(
         Document document,
         CancellationToken cancellationToken,
         string commitMessage
-    )
-    {
-        try
-        {
+    ) {
+        try {
             var formattedDocument = await _modificationService.FormatDocumentAsync(
                 document,
                 cancellationToken
@@ -504,19 +444,15 @@ public partial class DocumentOperationsService(
 
             LogDocumentFormatted(document.FilePath);
             return true;
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             LogDocumentFormatFailed(ex, document.FilePath);
             return false;
         }
     }
 
-    private static string TrimLeadingSpaces(string line)
-    {
+    private static string TrimLeadingSpaces(string line) {
         int i = 0;
-        while (i < line.Length && char.IsWhiteSpace(line[i]))
-        {
+        while (i < line.Length && char.IsWhiteSpace(line[i])) {
             i++;
         }
 
@@ -527,27 +463,22 @@ public partial class DocumentOperationsService(
         IEnumerable<string> filePaths,
         CancellationToken cancellationToken,
         string commitMessage
-    )
-    {
+    ) {
         var filesList = filePaths.Where(f => !string.IsNullOrEmpty(f) && File.Exists(f)).ToList();
-        if (filesList.Count == 0)
-        {
+        if (filesList.Count == 0) {
             return;
         }
 
-        try
-        {
+        try {
             // Get solution path
             var solutionPath = _solutionManager.CurrentSolution?.FilePath;
-            if (string.IsNullOrEmpty(solutionPath))
-            {
+            if (string.IsNullOrEmpty(solutionPath)) {
                 LogSolutionPathNotAvailable();
                 return;
             }
 
             // Check if solution is in a git repo
-            if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken))
-            {
+            if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken)) {
                 LogNotInGitRepo();
                 return;
             }
@@ -555,8 +486,7 @@ public partial class DocumentOperationsService(
             LogProcessingGitOperations(filesList.Count);
 
             // Check if already on sharptools branch
-            if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken))
-            {
+            if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken)) {
                 LogCreatingSharpToolsBranch();
                 await _gitService.EnsureSharpToolsBranchAsync(solutionPath, cancellationToken);
             }
@@ -569,9 +499,7 @@ public partial class DocumentOperationsService(
                 cancellationToken
             );
             LogGitOperationsCompleted(filesList.Count, commitMessage);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             // Log but don't fail the operation if Git operations fail
             LogGitOperationsFailed(ex, filesList.Count);
         }
