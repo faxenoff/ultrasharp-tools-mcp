@@ -12,7 +12,7 @@ namespace UltraSharpTools.VectorDB;
 /// Обрабатывает запросы от Droid через IPC
 /// Поддерживает degraded режим при недоступности embedding provider
 /// </summary>
-public sealed partial class VectorDBService {
+public sealed partial class VectorDBService : IAsyncDisposable {
     private readonly VectorDBSemanticService? _semanticService;
     private readonly ILogger<VectorDBService> _logger;
     private readonly PowerManagementService _powerManagement;
@@ -320,5 +320,18 @@ public sealed partial class VectorDBService {
         line = buffer.Slice(0, position.Value).ToArray();
         buffer = buffer.Slice(buffer.GetPosition(1, position.Value));
         return true;
+    }
+
+    /// <summary>
+    /// Освобождает ресурсы сервиса
+    /// </summary>
+    public async ValueTask DisposeAsync() {
+        _logger.LogInformation("[VectorDBService] Disposing...");
+
+        if (_semanticService != null) {
+            await _semanticService.DisposeAsync();
+        }
+
+        _logger.LogInformation("[VectorDBService] Disposed.");
     }
 }

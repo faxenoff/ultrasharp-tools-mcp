@@ -239,6 +239,8 @@ public sealed class GitBranchReader {
         }
 
         var changes = new List<GitFileChange>();
+        if (string.IsNullOrEmpty(result.Output))
+            return changes;
         var lines = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         _logger.LogInformation("[GIT] GetChangedFilesWithStatusAsync: {LineCount} lines parsed from output", lines.Length);
 

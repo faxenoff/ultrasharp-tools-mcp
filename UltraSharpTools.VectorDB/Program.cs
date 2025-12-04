@@ -11,7 +11,7 @@ using UltraSharpTools.VectorDB.Semantic.GPU;
 
 public class Program {
     public const string ApplicationName = "UltraSharpTools.VectorDB";
-    public const string ApplicationVersion = "3.6.7";
+    public const string ApplicationVersion = "3.6.8";
 
     // VectorDB: отдельный процесс для векторизации и семантического поиска
     // Принимает запросы от Droid через Named Pipe IPC
@@ -94,25 +94,43 @@ public class Program {
         );
 
         // Пытаемся инициализировать semantic сервисы
-        VectorDBService indexerService;
+        VectorDBService? indexerService = null;
         string? providerError = null;
 
         try {
-            indexerService = await InitializeFullServiceAsync(serviceProvider, powerManagement, logger);
-            logger.LogInformation("[VectorDB] All services initialized successfully - running in FULL mode");
-        } catch (Exception ex) {
-            // Graceful degradation: запускаем в degraded режиме
-            providerError = ex.Message;
-            logger.LogWarning(ex, "[VectorDB] Failed to initialize embedding provider. Starting in DEGRADED mode.");
+            try {
+                indexerService = await InitializeFullServiceAsync(serviceProvider, powerManagement, logger);
+                logger.LogInformation("[VectorDB] All services initialized successfully - running in FULL mode");
+            } catch (Exception ex) {
+                // Graceful degradation: запускаем в degraded режиме
+                providerError = ex.Message;
+                logger.LogWarning(ex, "[VectorDB] Failed to initialize embedding provider. Starting in DEGRADED mode.");
 
-            var indexerLogger = serviceProvider.GetRequiredService<ILogger<VectorDBService>>();
-            indexerService = new VectorDBService(indexerLogger, powerManagement, providerError);
+                var indexerLogger = serviceProvider.GetRequiredService<ILogger<VectorDBService>>();
+                indexerService = new VectorDBService(indexerLogger, powerManagement, providerError);
 
-            logger.LogWarning("[VectorDB] Running in DEGRADED mode - semantic operations will return errors");
+                logger.LogWarning("[VectorDB] Running in DEGRADED mode - semantic operations will return errors");
+            }
+
+            // Основной цикл обработки подключений
+            await RunConnectionLoopAsync(indexerService, cts, logger);
+        } finally {
+            // Корректное завершение - dispose всех ресурсов
+            logger.LogInformation("[VectorDB] Disposing resources...");
+
+            // Async dispose для VectorDBService (освободит VectorStore, EmbeddingGenerator)
+            if (indexerService != null) {
+                await indexerService.DisposeAsync();
+            }
+
+            // Dispose ServiceProvider (освободит HttpClient, логгеры и т.д.)
+            serviceProvider.Dispose();
+
+            logger.LogInformation("[VectorDB] All resources disposed. Exiting.");
         }
 
-        // Основной цикл обработки подключений
-        await RunConnectionLoopAsync(indexerService, cts, logger);
+        // Явное завершение процесса чтобы не ждать фоновые потоки
+        Environment.Exit(0);
     }
 
     /// <summary>
