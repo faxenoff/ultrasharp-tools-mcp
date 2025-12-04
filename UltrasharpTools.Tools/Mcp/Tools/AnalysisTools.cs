@@ -731,7 +731,6 @@ membersByKind;
         }
         return index < line.Length ? line.Substring(index) : string.Empty;
     }
-
     [McpServerTool(
         Name = "list_implementations",
         Idempotent = true,
@@ -747,7 +746,7 @@ membersByKind;
         ICodeAnalysisService codeAnalysisService,
         ILogger<AnalysisToolsLogCategory> logger,
         [Description("The fully qualified name of the interface, abstract method, or base class.")]
-            string fullyQualifiedSymbolName,
+    string fullyQualifiedSymbolName,
         CancellationToken cancellationToken
     ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
@@ -771,11 +770,24 @@ membersByKind;
                 );
 
                 var implementations = new List<object>();
-                var roslynSymbol = await ToolHelpers.GetRoslynSymbolOrThrowAsync(
-                    solutionManager,
+
+                // Try to find the symbol (returns null if not found instead of throwing)
+                var roslynSymbol = await solutionManager.FindRoslynSymbolAsync(
                     fullyQualifiedSymbolName,
                     cancellationToken
                 );
+
+                // If symbol not found, return informational message instead of error
+                if (roslynSymbol is null) {
+                    logger.LogInformation(
+                        "Symbol '{SymbolName}' not found in the current solution",
+                        fullyQualifiedSymbolName
+                    );
+                    return ToolHelpers.ToJson(new {
+                        message = $"Symbol '{fullyQualifiedSymbolName}' not found in the current solution.",
+                        suggestion = "Try `search_definitions`, `get_members`, or `list_file_entities` to find what you need."
+                    });
+                }
 
                 try {
                     if (roslynSymbol is INamedTypeSymbol namedTypeSymbol) {
@@ -803,9 +815,9 @@ membersByKind;
                                 );
                             }
                         } else if (
-                              namedTypeSymbol.IsAbstract
-                              || namedTypeSymbol.TypeKind == TypeKind.Class
-                          ) {
+                            namedTypeSymbol.IsAbstract
+                            || namedTypeSymbol.TypeKind == TypeKind.Class
+                        ) {
                             var derivedClasses = await codeAnalysisService.FindDerivedClassesAsync(
                                 namedTypeSymbol,
                                 cancellationToken
@@ -829,9 +841,9 @@ membersByKind;
                             }
                         }
                     } else if (
-                          roslynSymbol is IMethodSymbol methodSymbol
-                          && (methodSymbol.IsAbstract || methodSymbol.IsVirtual)
-                      ) {
+                        roslynSymbol is IMethodSymbol methodSymbol
+                        && (methodSymbol.IsAbstract || methodSymbol.IsVirtual)
+                    ) {
                         var overrides = await codeAnalysisService.FindOverridesAsync(
                             methodSymbol,
                             cancellationToken
@@ -853,9 +865,9 @@ membersByKind;
                             );
                         }
                     } else if (
-                          roslynSymbol is IPropertySymbol propSymbol
-                          && (propSymbol.IsAbstract || propSymbol.IsVirtual)
-                      ) {
+                        roslynSymbol is IPropertySymbol propSymbol
+                        && (propSymbol.IsAbstract || propSymbol.IsVirtual)
+                    ) {
                         var overrides = await codeAnalysisService.FindOverridesAsync(
                             propSymbol,
                             cancellationToken
@@ -877,9 +889,9 @@ membersByKind;
                             );
                         }
                     } else if (
-                          roslynSymbol is IEventSymbol eventSymbol
-                          && (eventSymbol.IsAbstract || eventSymbol.IsVirtual)
-                      ) {
+                        roslynSymbol is IEventSymbol eventSymbol
+                        && (eventSymbol.IsAbstract || eventSymbol.IsVirtual)
+                    ) {
                         var overrides = await codeAnalysisService.FindOverridesAsync(
                             eventSymbol,
                             cancellationToken
@@ -901,14 +913,20 @@ membersByKind;
                             );
                         }
                     } else {
-                        throw new McpException(
-                            $"Symbol '{fullyQualifiedSymbolName}' is not an interface, abstract/virtual member, or class."
+                        // Return informational message instead of error for unsupported symbol types
+                        logger.LogInformation(
+                            "Symbol '{SymbolName}' is not an interface, abstract/virtual member, or class",
+                            fullyQualifiedSymbolName
                         );
+                        return ToolHelpers.ToJson(new {
+                            message = $"Symbol '{fullyQualifiedSymbolName}' is not an interface, abstract/virtual member, or class.",
+                            suggestion = "This tool is designed for interfaces, abstract classes, virtual methods/properties, or base classes."
+                        });
                     }
 
                     implementations = implementations.OrderBy(i => ((dynamic)i).signature).ToList();
                 } catch (Exception ex)
-                      when (!(ex is McpException || ex is OperationCanceledException)) {
+                    when (!(ex is McpException || ex is OperationCanceledException)) {
                     logger.LogError(
                         ex,
                         "Error finding implementations for symbol {SymbolName}",
@@ -939,7 +957,6 @@ membersByKind;
             cancellationToken
         );
     }
-
     private static async Task<string> HandlePartialTypeDefinitionAsync(
         ISymbol roslynSymbol,
         Solution? solution,
