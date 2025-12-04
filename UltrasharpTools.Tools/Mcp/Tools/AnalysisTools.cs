@@ -13,8 +13,7 @@ namespace UltrasharpTools.Tools.Mcp.Tools;
 public class AnalysisToolsLogCategory { }
 
 [McpServerToolType]
-public static partial class AnalysisTools
-{
+public static partial class AnalysisTools {
     [McpServerTool(
         Name = "get_all_subtypes",
         Idempotent = true,
@@ -32,11 +31,9 @@ public static partial class AnalysisTools
         [Description("The fully qualified name of the parent type (e.g., MyNamespace.MyClass).")]
             string fullyQualifiedParentTypeName,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 ErrorHandlingHelpers.ValidateStringParameter(
                     fullyQualifiedParentTypeName,
                     "fullyQualifiedParentTypeName",
@@ -55,8 +52,7 @@ public static partial class AnalysisTools
                     fullyQualifiedParentTypeName
                 );
 
-                try
-                {
+                try {
                     var roslynSymbol = await ToolHelpers.GetRoslynNamedTypeSymbolOrThrowAsync(
                         solutionManager,
                         fullyQualifiedParentTypeName,
@@ -69,9 +65,7 @@ public static partial class AnalysisTools
                             cancellationToken
                         )
                     );
-                }
-                catch (McpException ex)
-                {
+                } catch (McpException ex) {
                     logger.LogDebug(
                         ex,
                         "Roslyn symbol not found for {TypeName}, trying reflection.",
@@ -101,20 +95,17 @@ public static partial class AnalysisTools
         INamedTypeSymbol typeSymbol,
         ICodeAnalysisService codeAnalysisService,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         var membersByKind = new Dictionary<string, List<object>>();
 
-        foreach (var member in typeSymbol.GetMembers())
-        {
+        foreach (var member in typeSymbol.GetMembers()) {
             cancellationToken.ThrowIfCancellationRequested();
 
             if (
                 member.IsImplicitlyDeclared
                 || member.Kind == SymbolKind.ErrorType
                 || ToolHelpers.IsPropertyAccessor(member)
-            )
-            {
+            ) {
                 continue;
             }
 
@@ -123,14 +114,12 @@ public static partial class AnalysisTools
             var kind = ToolHelpers.GetSymbolKindString(member);
 
             // Create an entry for this kind if it doesn't exist
-            if (!membersByKind.TryGetValue(kind, out List<object>? value))
-            {
+            if (!membersByKind.TryGetValue(kind, out List<object>? value)) {
                 value = new List<object>();
                 membersByKind[kind] = value;
             }
 
-            var memberInfo = new
-            {
+            var memberInfo = new {
                 signature = ToolHelpers.GetRoslynSymbolModifiersString(member)
                     + " "
                     + CodeAnalysisService.GetFormattedSignatureAsync(member, false),
@@ -148,8 +137,7 @@ public static partial class AnalysisTools
         }
 
         // Sort members within each kind by signature
-        foreach (var kind in membersByKind.Keys.ToList())
-        {
+        foreach (var kind in membersByKind.Keys.ToList()) {
             membersByKind[kind] = membersByKind[kind]
                 .OrderBy(m => ((dynamic)m).line)
                 .OrderBy(m => ((dynamic)m).signature)
@@ -159,8 +147,7 @@ public static partial class AnalysisTools
         // Sort kinds in a logical order: Nested Types, Fields, Properties, Events, Methods
         var orderedKinds = membersByKind
             .Keys.OrderBy(k =>
-                k switch
-                {
+                k switch {
                     "Class" => 1,
                     "Interface" => 1,
                     "Struct" => 1,
@@ -178,8 +165,7 @@ public static partial class AnalysisTools
         var locations = GetDeclarationLocationInfo(typeSymbol);
         // For partial classes, we may have multiple locations
         object? location = locations.Count > 1 ? locations : locations.FirstOrDefault();
-        return new
-        {
+        return new {
             kind = ToolHelpers.GetSymbolKindString(typeSymbol),
             signature = ToolHelpers.GetRoslynTypeSpecificModifiersString(typeSymbol)
                 + " "
@@ -190,8 +176,7 @@ public static partial class AnalysisTools
         };
     }
 
-    private static object BuildReflectionSubtypeTree(Type type, CancellationToken cancellationToken)
-    {
+    private static object BuildReflectionSubtypeTree(Type type, CancellationToken cancellationToken) {
         var members = new List<object>();
 
         foreach (
@@ -202,8 +187,7 @@ public static partial class AnalysisTools
                     | BindingFlags.Static
                     | BindingFlags.DeclaredOnly
             )
-        )
-        {
+        ) {
             cancellationToken.ThrowIfCancellationRequested();
 
             // Skip property/event accessors to reduce noise
@@ -216,13 +200,11 @@ public static partial class AnalysisTools
                     || mi.Name.StartsWith("add_")
                     || mi.Name.StartsWith("remove_")
                 )
-            )
-            {
+            ) {
                 continue;
             }
 
-            var memberItem = new
-            {
+            var memberItem = new {
                 kind = ToolHelpers.GetReflectionMemberTypeKindString(memberInfo),
                 signature = ToolHelpers.GetReflectionMemberModifiersString(memberInfo)
                     + " "
@@ -241,21 +223,18 @@ public static partial class AnalysisTools
             .GroupBy(m => ((dynamic)m).kind)
             .Select(g =>
                 (object)
-                    new
-                    {
+                    new {
                         kind = g.Key,
-                        members = g.Select(m => new
-                            {
-                                ((dynamic)m).signature,
-                                ((dynamic)m).members,
-                            })
+                        members = g.Select(m => new {
+                            ((dynamic)m).signature,
+                            ((dynamic)m).members,
+                        })
                             .ToList(),
                     }
             )
             .ToList();
 
-        return new
-        {
+        return new {
             kind = ToolHelpers.GetReflectionTypeKindString(type),
             signature = ToolHelpers.GetReflectionTypeModifiersString(type) + " " + type.FullName,
             members,
@@ -282,11 +261,9 @@ public static partial class AnalysisTools
         )]
             bool includePrivateMembers,
         CancellationToken cancellationToken = default
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 ErrorHandlingHelpers.ValidateStringParameter(
                     fullyQualifiedTypeName,
                     nameof(fullyQualifiedTypeName),
@@ -305,8 +282,7 @@ public static partial class AnalysisTools
                     includePrivateMembers
                 );
 
-                try
-                {
+                try {
                     var roslynSymbol = await ToolHelpers.GetRoslynNamedTypeSymbolOrThrowAsync(
                         solutionManager,
                         fullyQualifiedTypeName,
@@ -319,12 +295,10 @@ public static partial class AnalysisTools
                         new Dictionary<string, Dictionary<string, List<string>>>();
                     var defaultLocation = "Unknown Location";
 
-                    foreach (var member in roslynSymbol.GetMembers())
-                    {
+                    foreach (var member in roslynSymbol.GetMembers()) {
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        if (member.IsImplicitlyDeclared || ToolHelpers.IsPropertyAccessor(member))
-                        {
+                        if (member.IsImplicitlyDeclared || ToolHelpers.IsPropertyAccessor(member)) {
                             continue;
                         }
 
@@ -336,10 +310,8 @@ public static partial class AnalysisTools
                             || member.DeclaredAccessibility == Accessibility.ProtectedAndInternal
                             || member.DeclaredAccessibility == Accessibility.ProtectedOrInternal;
 
-                        if (shouldInclude)
-                        {
-                            try
-                            {
+                        if (shouldInclude) {
+                            try {
                                 var locationInfo = GetDeclarationLocationInfo(member);
                                 var location = locationInfo.FirstOrDefault();
                                 var locationKey =
@@ -364,29 +336,24 @@ public static partial class AnalysisTools
                                         .Trim()
                                     + "//FQN: "
                                     + FuzzyFqnLookupService.GetSearchableString(member);
-                                if (!string.IsNullOrEmpty(xmlDocs))
-                                {
+                                if (!string.IsNullOrEmpty(xmlDocs)) {
                                     signature = xmlDocs + "\n" + signature;
                                 }
                                 string memberInfo = signature;
 
-                                if (!membersByLocation.TryGetValue(locationKey, out Dictionary<string, List<string>>? membersByKind))
-                                {
+                                if (!membersByLocation.TryGetValue(locationKey, out Dictionary<string, List<string>>? membersByKind)) {
                                     membersByKind = new Dictionary<string, List<string>>();
                                     membersByLocation[locationKey] =
 membersByKind;
                                 }
 
-                                if (!membersByKind.TryGetValue(kind, out List<string>? value))
-                                {
+                                if (!membersByKind.TryGetValue(kind, out List<string>? value)) {
                                     value = new List<string>();
                                     membersByKind[kind] = value;
                                 }
 
                                 value.Add(memberInfo);
-                            }
-                            catch (Exception ex)
-                            {
+                            } catch (Exception ex) {
                                 logger.LogWarning(
                                     ex,
                                     "Error retrieving details for member {MemberName} in type {TypeName}",
@@ -400,15 +367,13 @@ membersByKind;
                                     + member.ToDisplayString();
 
                                 var kind = ToolHelpers.GetSymbolKindString(member);
-                                if (!membersByLocation.TryGetValue(defaultLocation, out Dictionary<string, List<string>>? membersByKind))
-                                {
+                                if (!membersByLocation.TryGetValue(defaultLocation, out Dictionary<string, List<string>>? membersByKind)) {
                                     membersByKind = new Dictionary<string, List<string>>();
                                     membersByLocation[defaultLocation] =
 membersByKind;
                                 }
 
-                                if (!membersByKind.TryGetValue(kind, out List<string>? value))
-                                {
+                                if (!membersByKind.TryGetValue(kind, out List<string>? value)) {
                                     value = new List<string>();
                                     membersByKind[kind] = value;
                                 }
@@ -421,8 +386,7 @@ membersByKind;
                     var typeLocations = GetDeclarationLocationInfo(roslynSymbol);
 
                     return ToolHelpers.ToJson(
-                        new
-                        {
+                        new {
                             typeName = typeName,
                             note = $"Use {ToolHelpers.SharpToolPrefix}{nameof(ViewDefinition)} to view the full source code of the types or members.",
                             locations = typeLocations,
@@ -430,9 +394,7 @@ membersByKind;
                             membersByLocation = membersByLocation,
                         }
                     );
-                }
-                catch (McpException ex)
-                {
+                } catch (McpException ex) {
                     logger.LogDebug(
                         ex,
                         "Roslyn symbol not found for {TypeName} or error occurred, trying reflection.",
@@ -464,11 +426,9 @@ membersByKind;
         bool includePrivateMembers,
         ILogger<AnalysisToolsLogCategory> logger,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         var apiMembers = new List<object>();
-        try
-        {
+        try {
             foreach (
                 var memberInfo in reflectionType.GetMembers(
                     BindingFlags.Public
@@ -477,8 +437,7 @@ membersByKind;
                         | BindingFlags.Static
                         | BindingFlags.DeclaredOnly
                 )
-            )
-            {
+            ) {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Skip property and event accessors which are exposed as separate methods
@@ -491,8 +450,7 @@ membersByKind;
                         || mi.Name.StartsWith("add_")
                         || mi.Name.StartsWith("remove_")
                     )
-                )
-                {
+                ) {
                     continue;
                 }
 
@@ -500,10 +458,8 @@ membersByKind;
                 bool shouldInclude;
                 string accessibilityString = "";
 
-                try
-                {
-                    switch (memberInfo)
-                    {
+                try {
+                    switch (memberInfo) {
                         case FieldInfo fi:
                             shouldInclude =
                                 includePrivateMembers
@@ -529,8 +485,7 @@ membersByKind;
                         case PropertyInfo pi:
                             var getter = pi.GetGetMethod(true);
                             shouldInclude = includePrivateMembers; // Default for properties with no accessor
-                            if (getter != null)
-                            {
+                            if (getter != null) {
                                 shouldInclude =
                                     includePrivateMembers
                                     || getter.IsPublic
@@ -545,8 +500,7 @@ membersByKind;
                         case EventInfo ei:
                             var adder = ei.GetAddMethod(true);
                             shouldInclude = includePrivateMembers; // Default for events with no accessor
-                            if (adder != null)
-                            {
+                            if (adder != null) {
                                 shouldInclude =
                                     includePrivateMembers
                                     || adder.IsPublic
@@ -575,11 +529,9 @@ membersByKind;
                             break;
                     }
 
-                    if (shouldInclude)
-                    {
+                    if (shouldInclude) {
                         apiMembers.Add(
-                            new
-                            {
+                            new {
                                 name = memberInfo.Name,
                                 kind = ToolHelpers.GetReflectionMemberTypeKindString(memberInfo),
                                 modifiers = accessibilityString,
@@ -587,9 +539,7 @@ membersByKind;
                             }
                         );
                     }
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     logger.LogWarning(
                         ex,
                         "Error processing reflection member {MemberName}",
@@ -597,11 +547,9 @@ membersByKind;
                     );
 
                     // Add with partial information
-                    if (includePrivateMembers)
-                    {
+                    if (includePrivateMembers) {
                         apiMembers.Add(
-                            new
-                            {
+                            new {
                                 name = memberInfo.Name,
                                 kind = "Unknown",
                                 modifiers = "Error",
@@ -611,9 +559,7 @@ membersByKind;
                     }
                 }
             }
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             logger.LogError(
                 ex,
                 "Error retrieving members for reflection type {TypeName}",
@@ -625,8 +571,7 @@ membersByKind;
         }
 
         return ToolHelpers.ToJson(
-            new
-            {
+            new {
                 typeName = reflectionType.FullName,
                 source = "Reflection",
                 includesPrivateMembers = includePrivateMembers,
@@ -639,7 +584,6 @@ membersByKind;
     }
 
     private static readonly string[] separator = new[] { "\r\n", "\r", "\n" };
-
     [McpServerTool(
         Name = "view_definition",
         Idempotent = true,
@@ -656,13 +600,11 @@ membersByKind;
         ICodeAnalysisService codeAnalysisService,
         ISourceResolutionService sourceResolutionService,
         [Description("The fully qualified name of the symbol (type, method, property, etc.).")]
-            string fullyQualifiedSymbolName,
+    string fullyQualifiedSymbolName,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 ErrorHandlingHelpers.ValidateStringParameter(
                     fullyQualifiedSymbolName,
                     "fullyQualifiedSymbolName",
@@ -681,17 +623,25 @@ membersByKind;
                     fullyQualifiedSymbolName
                 );
 
-                // Get the symbol or throw an exception if not found
-                var roslynSymbol = await ToolHelpers.GetRoslynSymbolOrThrowAsync(
-                    solutionManager,
+                // Try to find the symbol (returns null if not found instead of throwing)
+                var roslynSymbol = await solutionManager.FindRoslynSymbolAsync(
                     fullyQualifiedSymbolName,
                     cancellationToken
                 );
+
+                // If symbol not found, return informational message instead of error
+                if (roslynSymbol is null) {
+                    logger.LogInformation(
+                        "Symbol '{SymbolName}' not found in the current solution",
+                        fullyQualifiedSymbolName
+                    );
+                    return $"Symbol '{fullyQualifiedSymbolName}' not found in the current solution. Try `search_definitions`, `get_members`, or `list_file_entities` to find what you need.";
+                }
+
                 var solution = solutionManager.CurrentSolution;
                 var locations = roslynSymbol.Locations.Where(l => l.IsInSource).ToList();
 
-                if (locations.Count == 0)
-                {
+                if (locations.Count == 0) {
                     // No source locations found in the solution, try to resolve from external sources
                     logger.LogInformation(
                         "No source locations found for '{SymbolName}' in the current solution, attempting external source resolution",
@@ -702,11 +652,9 @@ membersByKind;
                         roslynSymbol,
                         cancellationToken
                     );
-                    if (sourceResult != null)
-                    {
+                    if (sourceResult != null) {
                         // Add relevant reference context based on the symbol type
-                        var externalReferenceContext = roslynSymbol switch
-                        {
+                        var externalReferenceContext = roslynSymbol switch {
                             Microsoft.CodeAnalysis.INamedTypeSymbol type =>
                                 await ContextInjectors.CreateTypeReferenceContextAsync(
                                     codeAnalysisService,
@@ -729,8 +677,7 @@ membersByKind;
                             separator,
                             StringSplitOptions.None
                         );
-                        for (int i = 0; i < sourceLines.Length; i++)
-                        {
+                        for (int i = 0; i < sourceLines.Length; i++) {
                             sourceLines[i] = TrimLeadingWhitespace(sourceLines[i]);
                         }
                         var formattedSource = string.Join(Environment.NewLine, sourceLines);
@@ -738,9 +685,12 @@ membersByKind;
                         return $"<definition>\n<referencingTypes>\n{externalReferenceContext}\n</referencingTypes>\n<code file='{sourceResult.FilePath}' source='External - {sourceResult.ResolutionMethod}'>\n{formattedSource}\n</code>\n</definition>";
                     }
 
-                    throw new McpException(
-                        $"No source definition found for '{fullyQualifiedSymbolName}'. The symbol might be defined in metadata (compiled assembly) only and couldn't be decompiled."
+                    // No source found - return informational message instead of error
+                    logger.LogInformation(
+                        "No source definition found for '{SymbolName}' - symbol might be in metadata only",
+                        fullyQualifiedSymbolName
                     );
+                    return $"No source definition found for '{fullyQualifiedSymbolName}'. The symbol might be defined in metadata (compiled assembly) only and couldn't be decompiled.";
                 }
 
                 // Check if this is a partial type with multiple declarations
@@ -748,8 +698,7 @@ membersByKind;
                     roslynSymbol is Microsoft.CodeAnalysis.INamedTypeSymbol namedTypeSymbol
                     && roslynSymbol.DeclaringSyntaxReferences.Length > 1;
 
-                if (isPartialType)
-                {
+                if (isPartialType) {
                     // Handle partial types by collecting all partial declarations
                     return await HandlePartialTypeDefinitionAsync(
                         roslynSymbol,
@@ -758,9 +707,7 @@ membersByKind;
                         logger,
                         cancellationToken
                     );
-                }
-                else
-                {
+                } else {
                     // Handle single declaration (non-partial or single-part symbols)
                     return await HandleSingleDefinitionAsync(
                         roslynSymbol,
@@ -777,12 +724,9 @@ membersByKind;
             cancellationToken
         );
     }
-
-    private static string TrimLeadingWhitespace(string line)
-    {
+    private static string TrimLeadingWhitespace(string line) {
         int index = 0;
-        while (index < line.Length && char.IsWhiteSpace(line[index]))
-        {
+        while (index < line.Length && char.IsWhiteSpace(line[index])) {
             index++;
         }
         return index < line.Length ? line.Substring(index) : string.Empty;
@@ -805,11 +749,9 @@ membersByKind;
         [Description("The fully qualified name of the interface, abstract method, or base class.")]
             string fullyQualifiedSymbolName,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 ErrorHandlingHelpers.ValidateStringParameter(
                     fullyQualifiedSymbolName,
                     "fullyQualifiedSymbolName",
@@ -835,23 +777,18 @@ membersByKind;
                     cancellationToken
                 );
 
-                try
-                {
-                    if (roslynSymbol is INamedTypeSymbol namedTypeSymbol)
-                    {
-                        if (namedTypeSymbol.TypeKind == TypeKind.Interface)
-                        {
+                try {
+                    if (roslynSymbol is INamedTypeSymbol namedTypeSymbol) {
+                        if (namedTypeSymbol.TypeKind == TypeKind.Interface) {
                             var implementingSymbols =
                                 await codeAnalysisService.FindImplementationsAsync(
                                     namedTypeSymbol,
                                     cancellationToken
                                 );
-                            foreach (var impl in implementingSymbols.OfType<INamedTypeSymbol>())
-                            {
+                            foreach (var impl in implementingSymbols.OfType<INamedTypeSymbol>()) {
                                 cancellationToken.ThrowIfCancellationRequested();
                                 implementations.Add(
-                                    new
-                                    {
+                                    new {
                                         kind = ToolHelpers.GetSymbolKindString(impl),
                                         signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                             impl,
@@ -865,22 +802,18 @@ membersByKind;
                                     }
                                 );
                             }
-                        }
-                        else if (
-                            namedTypeSymbol.IsAbstract
-                            || namedTypeSymbol.TypeKind == TypeKind.Class
-                        )
-                        {
+                        } else if (
+                              namedTypeSymbol.IsAbstract
+                              || namedTypeSymbol.TypeKind == TypeKind.Class
+                          ) {
                             var derivedClasses = await codeAnalysisService.FindDerivedClassesAsync(
                                 namedTypeSymbol,
                                 cancellationToken
                             );
-                            foreach (var derived in derivedClasses)
-                            {
+                            foreach (var derived in derivedClasses) {
                                 cancellationToken.ThrowIfCancellationRequested();
                                 implementations.Add(
-                                    new
-                                    {
+                                    new {
                                         kind = ToolHelpers.GetSymbolKindString(derived),
                                         signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                             derived,
@@ -895,22 +828,18 @@ membersByKind;
                                 );
                             }
                         }
-                    }
-                    else if (
-                        roslynSymbol is IMethodSymbol methodSymbol
-                        && (methodSymbol.IsAbstract || methodSymbol.IsVirtual)
-                    )
-                    {
+                    } else if (
+                          roslynSymbol is IMethodSymbol methodSymbol
+                          && (methodSymbol.IsAbstract || methodSymbol.IsVirtual)
+                      ) {
                         var overrides = await codeAnalysisService.FindOverridesAsync(
                             methodSymbol,
                             cancellationToken
                         );
-                        foreach (var over in overrides.OfType<IMethodSymbol>())
-                        {
+                        foreach (var over in overrides.OfType<IMethodSymbol>()) {
                             cancellationToken.ThrowIfCancellationRequested();
                             implementations.Add(
-                                new
-                                {
+                                new {
                                     kind = ToolHelpers.GetSymbolKindString(over),
                                     signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                         over,
@@ -923,22 +852,18 @@ membersByKind;
                                 }
                             );
                         }
-                    }
-                    else if (
-                        roslynSymbol is IPropertySymbol propSymbol
-                        && (propSymbol.IsAbstract || propSymbol.IsVirtual)
-                    )
-                    {
+                    } else if (
+                          roslynSymbol is IPropertySymbol propSymbol
+                          && (propSymbol.IsAbstract || propSymbol.IsVirtual)
+                      ) {
                         var overrides = await codeAnalysisService.FindOverridesAsync(
                             propSymbol,
                             cancellationToken
                         );
-                        foreach (var over in overrides.OfType<IPropertySymbol>())
-                        {
+                        foreach (var over in overrides.OfType<IPropertySymbol>()) {
                             cancellationToken.ThrowIfCancellationRequested();
                             implementations.Add(
-                                new
-                                {
+                                new {
                                     kind = ToolHelpers.GetSymbolKindString(over),
                                     signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                         over,
@@ -951,22 +876,18 @@ membersByKind;
                                 }
                             );
                         }
-                    }
-                    else if (
-                        roslynSymbol is IEventSymbol eventSymbol
-                        && (eventSymbol.IsAbstract || eventSymbol.IsVirtual)
-                    )
-                    {
+                    } else if (
+                          roslynSymbol is IEventSymbol eventSymbol
+                          && (eventSymbol.IsAbstract || eventSymbol.IsVirtual)
+                      ) {
                         var overrides = await codeAnalysisService.FindOverridesAsync(
                             eventSymbol,
                             cancellationToken
                         );
-                        foreach (var over in overrides.OfType<IEventSymbol>())
-                        {
+                        foreach (var over in overrides.OfType<IEventSymbol>()) {
                             cancellationToken.ThrowIfCancellationRequested();
                             implementations.Add(
-                                new
-                                {
+                                new {
                                     kind = ToolHelpers.GetSymbolKindString(over),
                                     signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                         over,
@@ -979,19 +900,15 @@ membersByKind;
                                 }
                             );
                         }
-                    }
-                    else
-                    {
+                    } else {
                         throw new McpException(
                             $"Symbol '{fullyQualifiedSymbolName}' is not an interface, abstract/virtual member, or class."
                         );
                     }
 
                     implementations = implementations.OrderBy(i => ((dynamic)i).signature).ToList();
-                }
-                catch (Exception ex)
-                    when (!(ex is McpException || ex is OperationCanceledException))
-                {
+                } catch (Exception ex)
+                      when (!(ex is McpException || ex is OperationCanceledException)) {
                     logger.LogError(
                         ex,
                         "Error finding implementations for symbol {SymbolName}",
@@ -1003,8 +920,7 @@ membersByKind;
                 }
 
                 return ToolHelpers.ToJson(
-                    new
-                    {
+                    new {
                         kind = ToolHelpers.GetSymbolKindString(roslynSymbol),
                         signature = CodeAnalysisService.GetFormattedSignatureAsync(
                             roslynSymbol,
@@ -1030,8 +946,7 @@ membersByKind;
         ICodeAnalysisService codeAnalysisService,
         ILogger<AnalysisToolsLogCategory> logger,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         var namedTypeSymbol = (Microsoft.CodeAnalysis.INamedTypeSymbol)roslynSymbol;
         var partialDeclarations = new List<object>();
         var allSourceCode = new List<string>();
@@ -1045,16 +960,13 @@ membersByKind;
             cancellationToken
         );
 
-        foreach (var syntaxRef in roslynSymbol.DeclaringSyntaxReferences)
-        {
-            if (syntaxRef.SyntaxTree?.FilePath == null)
-            {
+        foreach (var syntaxRef in roslynSymbol.DeclaringSyntaxReferences) {
+            if (syntaxRef.SyntaxTree?.FilePath == null) {
                 continue;
             }
 
             var document = solution?.GetDocument(syntaxRef.SyntaxTree);
-            if (document == null)
-            {
+            if (document == null) {
                 logger.LogWarning(
                     "Could not find document for partial declaration in file: {FilePath}",
                     syntaxRef.SyntaxTree.FilePath
@@ -1070,13 +982,11 @@ membersByKind;
                 definitionNode != null
                 && !(definitionNode is MemberDeclarationSyntax)
                 && !(definitionNode is TypeDeclarationSyntax)
-            )
-            {
+            ) {
                 definitionNode = definitionNode.Parent;
             }
 
-            if (definitionNode == null)
-            {
+            if (definitionNode == null) {
                 logger.LogWarning(
                     "Could not find definition syntax for partial declaration in file: {FilePath}",
                     syntaxRef.SyntaxTree.FilePath
@@ -1090,8 +1000,7 @@ membersByKind;
 
             // Remove leading whitespace from each line
             var lines = result.Split(separator, StringSplitOptions.None);
-            for (int i = 0; i < lines.Length; i++)
-            {
+            for (int i = 0; i < lines.Length; i++) {
                 lines[i] = TrimLeadingWhitespace(lines[i]);
             }
             result = string.Join(Environment.NewLine, lines);
@@ -1117,18 +1026,15 @@ membersByKind;
         ICodeAnalysisService codeAnalysisService,
         ILogger<AnalysisToolsLogCategory> logger,
         CancellationToken cancellationToken
-    )
-    {
-        if (sourceLocation.SourceTree == null)
-        {
+    ) {
+        if (sourceLocation.SourceTree == null) {
             throw new McpException(
                 $"Source tree not available for symbol '{roslynSymbol.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal)}'."
             );
         }
 
         var document = solution?.GetDocument(sourceLocation.SourceTree);
-        if (document == null)
-        {
+        if (document == null) {
             throw new McpException(
                 $"Could not find document for symbol '{roslynSymbol.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal)}'."
             );
@@ -1137,8 +1043,7 @@ membersByKind;
         var symbolSyntax = await sourceLocation.SourceTree.GetRootAsync(cancellationToken);
         var node = symbolSyntax.FindNode(sourceLocation.SourceSpan);
 
-        if (node == null)
-        {
+        if (node == null) {
             throw new McpException(
                 $"Could not find syntax node for symbol '{roslynSymbol.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal)}'."
             );
@@ -1152,20 +1057,17 @@ membersByKind;
             || roslynSymbol is Microsoft.CodeAnalysis.IFieldSymbol
             || roslynSymbol is Microsoft.CodeAnalysis.IEventSymbol
             || roslynSymbol is Microsoft.CodeAnalysis.INamedTypeSymbol
-        )
-        {
+        ) {
             while (
                 definitionNode != null
                 && !(definitionNode is MemberDeclarationSyntax)
                 && !(definitionNode is TypeDeclarationSyntax)
-            )
-            {
+            ) {
                 definitionNode = definitionNode.Parent;
             }
         }
 
-        if (definitionNode == null)
-        {
+        if (definitionNode == null) {
             throw new McpException(
                 $"Could not find definition syntax for symbol '{roslynSymbol.ToDisplayString(ToolHelpers.FullyQualifiedFormatWithoutGlobal)}'."
             );
@@ -1176,8 +1078,7 @@ membersByKind;
         var lineInfo = definitionNode.GetLocation().GetLineSpan();
 
         // Generate reference context based on symbol type
-        string referenceContext = roslynSymbol switch
-        {
+        string referenceContext = roslynSymbol switch {
             Microsoft.CodeAnalysis.INamedTypeSymbol type =>
                 await ContextInjectors.CreateTypeReferenceContextAsync(
                     codeAnalysisService,
@@ -1197,8 +1098,7 @@ membersByKind;
 
         // Remove leading whitespace from each line
         var lines = result.Split(separator, StringSplitOptions.None);
-        for (int i = 0; i < lines.Length; i++)
-        {
+        for (int i = 0; i < lines.Length; i++) {
             lines[i] = TrimLeadingWhitespace(lines[i]);
         }
         result = string.Join(Environment.NewLine, lines);
@@ -1206,27 +1106,22 @@ membersByKind;
         return $"<definition>\n{referenceContext}\n<code file='{filePath}' lines='{lineInfo.StartLinePosition.Line + 1} - {lineInfo.EndLinePosition.Line + 1}'>\n{result}\n</code>\n</definition>";
     }
 
-    public class LocationInfo
-    {
+    public class LocationInfo {
         public string FilePath { get; set; } = string.Empty;
         public int StartLine { get; set; }
         public int EndLine { get; set; }
     }
 
-    private static List<LocationInfo> GetDeclarationLocationInfo(ISymbol symbol)
-    {
+    private static List<LocationInfo> GetDeclarationLocationInfo(ISymbol symbol) {
         var locations = new List<LocationInfo>();
 
-        foreach (var syntaxRef in symbol.DeclaringSyntaxReferences)
-        {
-            if (syntaxRef.SyntaxTree?.FilePath == null)
-            {
+        foreach (var syntaxRef in symbol.DeclaringSyntaxReferences) {
+            if (syntaxRef.SyntaxTree?.FilePath == null) {
                 continue;
             }
 
             var node = syntaxRef.GetSyntax();
-            var fullSpan = node switch
-            {
+            var fullSpan = node switch {
                 TypeDeclarationSyntax typeNode => typeNode.GetLocation().GetLineSpan(),
                 MethodDeclarationSyntax methodNode => methodNode.GetLocation().GetLineSpan(),
                 PropertyDeclarationSyntax propertyNode => propertyNode.GetLocation().GetLineSpan(),
@@ -1247,8 +1142,7 @@ membersByKind;
             };
 
             locations.Add(
-                new LocationInfo
-                {
+                new LocationInfo {
                     FilePath = syntaxRef.SyntaxTree.FilePath,
                     StartLine = fullSpan.StartLinePosition.Line + 1,
                     EndLine = fullSpan.EndLinePosition.Line + 1,
@@ -1257,19 +1151,15 @@ membersByKind;
         }
 
         // If we couldn't get any locations from DeclaringSyntaxReferences (rare), fall back to Locations
-        if (locations.Count == 0)
-        {
-            foreach (var location in symbol.Locations.Where(l => l.IsInSource))
-            {
-                if (location.SourceTree?.FilePath == null)
-                {
+        if (locations.Count == 0) {
+            foreach (var location in symbol.Locations.Where(l => l.IsInSource)) {
+                if (location.SourceTree?.FilePath == null) {
                     continue;
                 }
 
                 var lineSpan = location.GetLineSpan();
                 locations.Add(
-                    new LocationInfo
-                    {
+                    new LocationInfo {
                         FilePath = location.SourceTree.FilePath,
                         StartLine = lineSpan.StartLinePosition.Line + 1,
                         EndLine = lineSpan.EndLinePosition.Line + 1,
@@ -1297,11 +1187,9 @@ membersByKind;
         ILogger<AnalysisToolsLogCategory> logger,
         [Description("The FQN of the symbol.")] string fullyQualifiedSymbolName,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 ErrorHandlingHelpers.ValidateStringParameter(
                     fullyQualifiedSymbolName,
                     "fullyQualifiedSymbolName",
@@ -1334,23 +1222,17 @@ membersByKind;
                 var maxToShow = 20;
                 int count = 0;
 
-                try
-                {
-                    foreach (var refGroup in referencedSymbols)
-                    {
-                        foreach (var location in refGroup.Locations)
-                        {
+                try {
+                    foreach (var refGroup in referencedSymbols) {
+                        foreach (var location in refGroup.Locations) {
                             cancellationToken.ThrowIfCancellationRequested();
                             if (count >= maxToShow)
                                 break;
 
-                            if (location.Document != null && location.Location.IsInSource)
-                            {
-                                try
-                                {
+                            if (location.Document != null && location.Location.IsInSource) {
+                                try {
                                     var sourceTree = location.Location.SourceTree;
-                                    if (sourceTree == null)
-                                    {
+                                    if (sourceTree == null) {
                                         logger.LogWarning(
                                             "Null source tree for reference location in {FilePath}",
                                             location.Document.FilePath ?? "unknown file"
@@ -1376,16 +1258,14 @@ membersByKind;
                                                 lineSpan.EndLinePosition.Line + linesAround
                                             );
                                         i++
-                                    )
-                                    {
+                                    ) {
                                         contextLines.Add(
                                             TrimLeadingWhitespace(sourceText.Lines[i].ToString())
                                         );
                                     }
 
                                     string parentMember = "N/A";
-                                    try
-                                    {
+                                    try {
                                         var syntaxRoot = await sourceTree.GetRootAsync(
                                             cancellationToken
                                         );
@@ -1393,15 +1273,13 @@ membersByKind;
                                             location.Location.SourceSpan.Start
                                         );
 
-                                        if (token.Parent != null)
-                                        {
+                                        if (token.Parent != null) {
                                             var memberDecl = token
                                                 .Parent.AncestorsAndSelf()
                                                 .OfType<MemberDeclarationSyntax>()
                                                 .FirstOrDefault();
 
-                                            if (memberDecl != null)
-                                            {
+                                            if (memberDecl != null) {
                                                 var semanticModel =
                                                     await solutionManager.GetSemanticModelAsync(
                                                         location.Document.Id,
@@ -1411,8 +1289,7 @@ membersByKind;
                                                     memberDecl,
                                                     cancellationToken
                                                 );
-                                                if (parentSymbol != null)
-                                                {
+                                                if (parentSymbol != null) {
                                                     parentMember =
                                                         CodeAnalysisService.GetFormattedSignatureAsync(
                                                             parentSymbol,
@@ -1422,9 +1299,7 @@ membersByKind;
                                                 }
                                             }
                                         }
-                                    }
-                                    catch (Exception ex)
-                                    {
+                                    } catch (Exception ex) {
                                         logger.LogWarning(
                                             ex,
                                             "Error getting parent member for reference in {FilePath}",
@@ -1433,10 +1308,8 @@ membersByKind;
                                     }
 
                                     references.Add(
-                                        new
-                                        {
-                                            location = new
-                                            {
+                                        new {
+                                            location = new {
                                                 filePath = location.Document.FilePath,
                                                 startLine = lineSpan.StartLinePosition.Line + 1,
                                                 endLine = lineSpan.EndLinePosition.Line + 1,
@@ -1449,9 +1322,7 @@ membersByKind;
                                         }
                                     );
                                     count++;
-                                }
-                                catch (Exception ex) when (!(ex is OperationCanceledException))
-                                {
+                                } catch (Exception ex) when (!(ex is OperationCanceledException)) {
                                     logger.LogWarning(
                                         ex,
                                         "Error processing reference location in {FilePath}",
@@ -1466,8 +1337,7 @@ membersByKind;
 
                     var totalReferences = referencedSymbols.Sum(rs => rs.Locations.Count());
                     return ToolHelpers.ToJson(
-                        new
-                        {
+                        new {
                             kind = ToolHelpers.GetSymbolKindString(symbol),
                             signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                 symbol,
@@ -1483,18 +1353,15 @@ membersByKind;
                                 .ToList(),
                         }
                     );
-                }
-                catch (Exception ex)
-                    when (!(ex is McpException || ex is OperationCanceledException))
-                {
+                } catch (Exception ex)
+                      when (!(ex is McpException || ex is OperationCanceledException)) {
                     logger.LogError(
                         ex,
                         "Error collecting references for symbol {SymbolName}",
                         fullyQualifiedSymbolName
                     );
 
-                    if (references.Count > 0)
-                    {
+                    if (references.Count > 0) {
                         logger.LogInformation(
                             "Returning partial references ({Count}) for {SymbolName}",
                             references.Count,
@@ -1502,8 +1369,7 @@ membersByKind;
                         );
 
                         return ToolHelpers.ToJson(
-                            new
-                            {
+                            new {
                                 kind = ToolHelpers.GetSymbolKindString(symbol),
                                 signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                     symbol,
@@ -1552,11 +1418,9 @@ membersByKind;
         ILogger<AnalysisToolsLogCategory> logger,
         [Description("The fully qualified name of the type.")] string fullyQualifiedTypeName,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 ErrorHandlingHelpers.ValidateStringParameter(
                     fullyQualifiedTypeName,
                     "fullyQualifiedTypeName",
@@ -1580,23 +1444,19 @@ membersByKind;
                 bool hasPartialResults = false;
                 string? errorMessage = null;
 
-                try
-                {
+                try {
                     var roslynSymbol = await ToolHelpers.GetRoslynNamedTypeSymbolOrThrowAsync(
                         solutionManager,
                         fullyQualifiedTypeName,
                         cancellationToken
                     );
-                    try
-                    {
+                    try {
                         // Get base types
                         INamedTypeSymbol? currentType = roslynSymbol.BaseType;
-                        while (currentType != null)
-                        {
+                        while (currentType != null) {
                             cancellationToken.ThrowIfCancellationRequested();
                             baseTypes.Add(
-                                new
-                                {
+                                new {
                                     kind = ToolHelpers.GetSymbolKindString(currentType),
                                     signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                         currentType,
@@ -1613,14 +1473,11 @@ membersByKind;
                         }
 
                         // Get interfaces
-                        try
-                        {
-                            foreach (var iface in roslynSymbol.Interfaces)
-                            {
+                        try {
+                            foreach (var iface in roslynSymbol.Interfaces) {
                                 cancellationToken.ThrowIfCancellationRequested();
                                 baseTypes.Add(
-                                    new
-                                    {
+                                    new {
                                         kind = ToolHelpers.GetSymbolKindString(iface),
                                         signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                             iface,
@@ -1635,9 +1492,7 @@ membersByKind;
                                     }
                                 );
                             }
-                        }
-                        catch (Exception ex)
-                        {
+                        } catch (Exception ex) {
                             logger.LogWarning(
                                 ex,
                                 "Error retrieving interfaces for type {TypeName}",
@@ -1648,13 +1503,11 @@ membersByKind;
                         }
 
                         // Get derived types
-                        try
-                        {
+                        try {
                             if (
                                 roslynSymbol.TypeKind == TypeKind.Class
                                 || roslynSymbol.TypeKind == TypeKind.Interface
-                            )
-                            {
+                            ) {
                                 bool isInterface = roslynSymbol.TypeKind == TypeKind.Interface;
                                 var derived = isInterface
                                     ? await codeAnalysisService.FindImplementationsAsync(
@@ -1666,12 +1519,10 @@ membersByKind;
                                         cancellationToken
                                     );
 
-                                foreach (var derivedSymbol in derived.OfType<INamedTypeSymbol>())
-                                {
+                                foreach (var derivedSymbol in derived.OfType<INamedTypeSymbol>()) {
                                     cancellationToken.ThrowIfCancellationRequested();
                                     derivedTypes.Add(
-                                        new
-                                        {
+                                        new {
                                             kind = ToolHelpers.GetSymbolKindString(derivedSymbol),
                                             signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                                 derivedSymbol,
@@ -1686,9 +1537,7 @@ membersByKind;
                                     );
                                 }
                             }
-                        }
-                        catch (Exception ex)
-                        {
+                        } catch (Exception ex) {
                             logger.LogWarning(
                                 ex,
                                 "Error retrieving derived types for {TypeName}",
@@ -1705,8 +1554,7 @@ membersByKind;
                         derivedTypes = derivedTypes.OrderBy(t => ((dynamic)t).signature).ToList();
 
                         return ToolHelpers.ToJson(
-                            new
-                            {
+                            new {
                                 kind = ToolHelpers.GetSymbolKindString(roslynSymbol),
                                 signature = CodeAnalysisService.GetFormattedSignatureAsync(
                                     roslynSymbol,
@@ -1723,10 +1571,8 @@ membersByKind;
                                 errorMessage,
                             }
                         );
-                    }
-                    catch (Exception ex)
-                        when (!(ex is McpException || ex is OperationCanceledException))
-                    {
+                    } catch (Exception ex)
+                          when (!(ex is McpException || ex is OperationCanceledException)) {
                         logger.LogError(
                             ex,
                             "Error analyzing inheritance chain for Roslyn type {TypeName}",
@@ -1734,9 +1580,7 @@ membersByKind;
                         );
                         throw new McpException($"Error analyzing inheritance chain: {ex.Message}");
                     }
-                }
-                catch (McpException ex)
-                {
+                } catch (McpException ex) {
                     logger.LogDebug(
                         ex,
                         "Roslyn symbol not found for {TypeName} or error occurred, trying reflection.",
@@ -1746,23 +1590,19 @@ membersByKind;
                 }
 
                 // Try reflection type if Roslyn symbol processing failed
-                try
-                {
+                try {
                     var reflectionType = await ToolHelpers.GetReflectionTypeOrThrowAsync(
                         solutionManager,
                         fullyQualifiedTypeName,
                         cancellationToken
                     );
-                    try
-                    {
+                    try {
                         // Get base types
                         var currentBase = reflectionType.BaseType;
-                        while (currentBase != null && currentBase != typeof(object))
-                        {
+                        while (currentBase != null && currentBase != typeof(object)) {
                             cancellationToken.ThrowIfCancellationRequested();
                             baseTypes.Add(
-                                new
-                                {
+                                new {
                                     kind = ToolHelpers.GetReflectionTypeKindString(currentBase),
                                     signature = ToolHelpers.GetReflectionTypeModifiersString(
                                         currentBase
@@ -1781,20 +1621,16 @@ membersByKind;
                                 && reflectionType.BaseType == null
                                 && reflectionType != typeof(object)
                             )
-                        )
-                        {
+                        ) {
                             baseTypes.Add(
-                                new
-                                {
+                                new {
                                     kind = "Class",
                                     signature = "public class System.Object",
                                     assemblyName = typeof(object).Assembly.GetName().Name,
                                 }
                             );
                         }
-                    }
-                    catch (Exception ex)
-                    {
+                    } catch (Exception ex) {
                         logger.LogWarning(
                             ex,
                             "Error retrieving base types for reflection type {TypeName}",
@@ -1804,15 +1640,12 @@ membersByKind;
                         errorMessage = $"Could not retrieve all base types: {ex.Message}";
                     }
 
-                    try
-                    {
+                    try {
                         // Get interfaces
-                        foreach (var iface in reflectionType.GetInterfaces())
-                        {
+                        foreach (var iface in reflectionType.GetInterfaces()) {
                             cancellationToken.ThrowIfCancellationRequested();
                             baseTypes.Add(
-                                new
-                                {
+                                new {
                                     kind = "Interface",
                                     signature = ToolHelpers.GetReflectionTypeModifiersString(iface)
                                         + " "
@@ -1822,9 +1655,7 @@ membersByKind;
                                 }
                             );
                         }
-                    }
-                    catch (Exception ex)
-                    {
+                    } catch (Exception ex) {
                         logger.LogWarning(
                             ex,
                             "Error retrieving interfaces for reflection type {TypeName}",
@@ -1838,8 +1669,7 @@ membersByKind;
                     }
 
                     derivedTypes.Add(
-                        new
-                        {
+                        new {
                             kind = "Note",
                             signature = "Derived type discovery for pure reflection types is limited in this tool version.",
                         }
@@ -1848,8 +1678,7 @@ membersByKind;
                     baseTypes = baseTypes.OrderBy(t => ((dynamic)t).signature).ToList();
 
                     return ToolHelpers.ToJson(
-                        new
-                        {
+                        new {
                             kind = reflectionType.IsInterface
                                 ? "Interface"
                                 : (reflectionType.IsEnum ? "Enum" : "Class"),
@@ -1863,10 +1692,8 @@ membersByKind;
                             errorMessage,
                         }
                     );
-                }
-                catch (Exception ex)
-                    when (!(ex is McpException || ex is OperationCanceledException))
-                {
+                } catch (Exception ex)
+                      when (!(ex is McpException || ex is OperationCanceledException)) {
                     logger.LogError(
                         ex,
                         "Error analyzing inheritance chain for reflection type {TypeName}",
@@ -1899,11 +1726,9 @@ membersByKind;
         ILogger<AnalysisToolsLogCategory> logger,
         [Description("The FQN of the method.")] string fullyQualifiedMethodName,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 ErrorHandlingHelpers.ValidateStringParameter(
                     fullyQualifiedMethodName,
                     "fullyQualifiedMethodName",
@@ -1927,8 +1752,7 @@ membersByKind;
                     fullyQualifiedMethodName,
                     cancellationToken
                 );
-                if (symbol is not IMethodSymbol methodSymbol)
-                {
+                if (symbol is not IMethodSymbol methodSymbol) {
                     throw new McpException($"Symbol '{fullyQualifiedMethodName}' is not a method.");
                 }
 
@@ -1937,30 +1761,25 @@ membersByKind;
                 bool hasPartialResults = false;
                 string? errorMessage = null;
 
-                try
-                {
+                try {
                     // Get incoming calls (callers)
                     var callers = await codeAnalysisService.FindCallersAsync(
                         methodSymbol,
                         cancellationToken
                     );
-                    foreach (var callerInfo in callers)
-                    {
+                    foreach (var callerInfo in callers) {
                         cancellationToken.ThrowIfCancellationRequested();
-                        try
-                        {
+                        try {
                             var callLocations = callerInfo
                                 .Locations.Where(l => l.IsInSource && l.SourceTree != null)
-                                .Select(l =>
-                                {
+                                .Select(l => {
                                     var lineSpan = l.GetLineSpan();
                                     return new { line = lineSpan.StartLinePosition.Line + 1 };
                                 })
                                 .ToList();
 
                             incomingCalls.Add(
-                                new
-                                {
+                                new {
                                     kind = ToolHelpers.GetSymbolKindString(
                                         callerInfo.CallingSymbol
                                     ),
@@ -1976,9 +1795,7 @@ membersByKind;
                                     callLocations,
                                 }
                             );
-                        }
-                        catch (Exception ex) when (!(ex is OperationCanceledException))
-                        {
+                        } catch (Exception ex) when (!(ex is OperationCanceledException)) {
                             logger.LogWarning(
                                 ex,
                                 "Error processing caller {CallerSymbol} for method {MethodName}",
@@ -1994,14 +1811,11 @@ membersByKind;
                         methodSymbol,
                         cancellationToken
                     );
-                    foreach (var callee in outgoingSymbols)
-                    {
+                    foreach (var callee in outgoingSymbols) {
                         cancellationToken.ThrowIfCancellationRequested();
-                        try
-                        {
+                        try {
                             outgoingCalls.Add(
-                                new
-                                {
+                                new {
                                     kind = ToolHelpers.GetSymbolKindString(callee),
                                     calleeSignature = CodeAnalysisService.GetFormattedSignatureAsync(
                                         callee,
@@ -2013,9 +1827,7 @@ membersByKind;
                                     location = GetDeclarationLocationInfo(callee).FirstOrDefault(),
                                 }
                             );
-                        }
-                        catch (Exception ex) when (!(ex is OperationCanceledException))
-                        {
+                        } catch (Exception ex) when (!(ex is OperationCanceledException)) {
                             logger.LogWarning(
                                 ex,
                                 "Error processing callee {CalleeSymbol} for method {MethodName}",
@@ -2029,10 +1841,8 @@ membersByKind;
                     incomingCalls = incomingCalls.OrderBy(c => ((dynamic)c).signature).ToList();
 
                     outgoingCalls = outgoingCalls.OrderBy(c => ((dynamic)c).signature).ToList();
-                }
-                catch (Exception ex)
-                    when (!(ex is McpException || ex is OperationCanceledException))
-                {
+                } catch (Exception ex)
+                      when (!(ex is McpException || ex is OperationCanceledException)) {
                     logger.LogWarning(
                         ex,
                         "Error finding call graph for method {MethodName}",
@@ -2043,8 +1853,7 @@ membersByKind;
                 }
 
                 return ToolHelpers.ToJson(
-                    new
-                    {
+                    new {
                         kind = ToolHelpers.GetSymbolKindString(methodSymbol),
                         signature = CodeAnalysisService.GetFormattedSignatureAsync(
                             methodSymbol,
@@ -2085,13 +1894,11 @@ membersByKind;
         )]
             string regexPattern,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         // Maximum number of search results to return
         const int MaxSearchResults = 20;
 
-        static bool IsGeneratedCode(string signature)
-        {
+        static bool IsGeneratedCode(string signature) {
             return signature.Contains("+<") // Generated closures
                 || signature.Contains("<>") // Generated closures and async state machines
                 || signature.Contains("+d__") // Async state machines
@@ -2106,8 +1913,7 @@ membersByKind;
         }
 
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 ErrorHandlingHelpers.ValidateStringParameter(regexPattern, "regexPattern", logger);
                 await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(
                     solutionManager,
@@ -2123,15 +1929,12 @@ membersByKind;
                 );
 
                 Regex regex;
-                try
-                {
+                try {
                     regex = new Regex(
                         regexPattern,
                         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline
                     );
-                }
-                catch (ArgumentException ex)
-                {
+                } catch (ArgumentException ex) {
                     throw new McpException($"Invalid regular expression pattern: {ex.Message}");
                 }
 
@@ -2148,23 +1951,19 @@ membersByKind;
                     cancellationToken
                 );
 
-                try
-                {
+                try {
                     var projectTasks = solutionManager
                         .GetProjects()
                         .Select(project =>
                             Task.Run(
-                                async () =>
-                                {
-                                    try
-                                    {
+                                async () => {
+                                    try {
                                         earlyStopCts.Token.ThrowIfCancellationRequested();
                                         var compilation = await solutionManager.GetCompilationAsync(
                                             project.Id,
                                             cancellationToken
                                         );
-                                        if (compilation == null)
-                                        {
+                                        if (compilation == null) {
                                             Interlocked.Increment(ref projectsSkipped);
                                             logger.LogWarning(
                                                 "Skipping project {ProjectName}, compilation is null",
@@ -2173,10 +1972,8 @@ membersByKind;
                                             return;
                                         }
 
-                                        foreach (var syntaxTree in compilation.SyntaxTrees)
-                                        {
-                                            try
-                                            {
+                                        foreach (var syntaxTree in compilation.SyntaxTrees) {
+                                            try {
                                                 // Check if we've already exceeded the result limit
                                                 if (
                                                     Interlocked.CompareExchange(
@@ -2184,8 +1981,7 @@ membersByKind;
                                                         0,
                                                         0
                                                     ) >= MaxSearchResults
-                                                )
-                                                {
+                                                ) {
                                                     hasPartialResults = true;
                                                     earlyStopCts.Cancel(); // Stop other parallel tasks
                                                     break;
@@ -2215,8 +2011,7 @@ membersByKind;
                                                                 is MemberDeclarationSyntax
                                                                     or VariableDeclaratorSyntax
                                                         )
-                                                )
-                                                {
+                                                ) {
                                                     earlyStopCts.Token.ThrowIfCancellationRequested();
 
                                                     // Check if we've already exceeded the result limit
@@ -2226,19 +2021,16 @@ membersByKind;
                                                             0,
                                                             0
                                                         ) >= MaxSearchResults
-                                                    )
-                                                    {
+                                                    ) {
                                                         hasPartialResults = true;
                                                         earlyStopCts.Cancel(); // Stop other parallel tasks
                                                         break;
                                                     }
 
-                                                    try
-                                                    {
+                                                    try {
                                                         string declText = node.ToString();
                                                         var declMatches = regex.Matches(declText);
-                                                        if (declMatches.Count > 0)
-                                                        {
+                                                        if (declMatches.Count > 0) {
                                                             matchedNodesInFile.Add(
                                                                 node,
                                                                 declMatches.Cast<Match>().ToList()
@@ -2248,17 +2040,14 @@ membersByKind;
                                                                     filePath,
                                                                     out var spans
                                                                 )
-                                                            )
-                                                            {
+                                                            ) {
                                                                 spans = new HashSet<TextSpan>();
                                                                 matchedNodeSpans[filePath] = spans;
                                                             }
                                                             spans.Add(node.Span);
                                                         }
-                                                    }
-                                                    catch (Exception ex)
-                                                        when (!(ex is OperationCanceledException))
-                                                    {
+                                                    } catch (Exception ex)
+                                                          when (!(ex is OperationCanceledException)) {
                                                         logger.LogTrace(
                                                             ex,
                                                             "Error examining node in {FilePath}",
@@ -2271,8 +2060,7 @@ membersByKind;
                                                 // Second pass: Process only nodes that don't have a matched child
                                                 foreach (
                                                     var (node, nodeMatches) in matchedNodesInFile
-                                                )
-                                                {
+                                                ) {
                                                     // Check if we've already exceeded the result limit
                                                     if (
                                                         Interlocked.CompareExchange(
@@ -2280,15 +2068,13 @@ membersByKind;
                                                             0,
                                                             0
                                                         ) >= MaxSearchResults
-                                                    )
-                                                    {
+                                                    ) {
                                                         hasPartialResults = true;
                                                         earlyStopCts.Cancel(); // Stop other parallel tasks
                                                         break;
                                                     }
 
-                                                    try
-                                                    {
+                                                    try {
                                                         if (
                                                             matchedNodeSpans.TryGetValue(
                                                                 filePath,
@@ -2299,13 +2085,11 @@ membersByKind;
                                                                     spans.Contains(child.Span)
                                                                     && child != node
                                                                 )
-                                                        )
-                                                        {
+                                                        ) {
                                                             continue;
                                                         }
 
-                                                        ISymbol? symbol = node switch
-                                                        {
+                                                        ISymbol? symbol = node switch {
                                                             MemberDeclarationSyntax mds =>
                                                                 semanticModel.GetDeclaredSymbol(
                                                                     mds,
@@ -2319,13 +2103,11 @@ membersByKind;
                                                             _ => null,
                                                         };
 
-                                                        if (symbol != null)
-                                                        {
+                                                        if (symbol != null) {
                                                             var signature = symbol.ToDisplayString(
                                                                 SymbolDisplayFormat.FullyQualifiedFormat
                                                             );
-                                                            if (IsGeneratedCode(signature))
-                                                            {
+                                                            if (IsGeneratedCode(signature)) {
                                                                 continue;
                                                             }
 
@@ -2336,8 +2118,7 @@ membersByKind;
                                                                 symbol.ContainingSymbol;
                                                             string parentFqn;
 
-                                                            if (containingType != null)
-                                                            {
+                                                            if (containingType != null) {
                                                                 // For members inside a type
                                                                 parentFqn =
                                                                     FuzzyFqnLookupService.GetSearchableString(
@@ -2345,28 +2126,23 @@ membersByKind;
                                                                     );
                                                                 if (IsGeneratedCode(parentFqn))
                                                                     continue;
-                                                            }
-                                                            else if (
-                                                                containingSymbol != null
-                                                                && containingSymbol.Kind
-                                                                    == SymbolKind.Namespace
-                                                            )
-                                                            {
+                                                            } else if (
+                                                                  containingSymbol != null
+                                                                  && containingSymbol.Kind
+                                                                      == SymbolKind.Namespace
+                                                              ) {
                                                                 // For top-level types in a namespace
                                                                 parentFqn =
                                                                     FuzzyFqnLookupService.GetSearchableString(
                                                                         containingSymbol
                                                                     );
-                                                            }
-                                                            else
-                                                            {
+                                                            } else {
                                                                 // Fallback for other cases
                                                                 parentFqn = "global";
                                                             }
 
                                                             // Process each match in the declaration
-                                                            foreach (Match match in nodeMatches)
-                                                            {
+                                                            foreach (Match match in nodeMatches) {
                                                                 // Check if we've already exceeded the result limit
                                                                 if (
                                                                     Interlocked.CompareExchange(
@@ -2374,8 +2150,7 @@ membersByKind;
                                                                         0,
                                                                         0
                                                                     ) >= MaxSearchResults
-                                                                )
-                                                                {
+                                                                ) {
                                                                     hasPartialResults = true;
                                                                     earlyStopCts.Cancel(); // Stop other parallel tasks
                                                                     break;
@@ -2398,37 +2173,30 @@ membersByKind;
                                                                     Interlocked.Increment(
                                                                         ref totalMatchesFound
                                                                     ) <= MaxSearchResults
-                                                                )
-                                                                {
+                                                                ) {
                                                                     matches.Add(
-                                                                        new
-                                                                        {
+                                                                        new {
                                                                             kind = ToolHelpers.GetSymbolKindString(
                                                                                 symbol
                                                                             ),
                                                                             parentFqn = parentFqn,
                                                                             signature = signature,
                                                                             match = matchLine,
-                                                                            location = new
-                                                                            {
+                                                                            location = new {
                                                                                 filePath,
                                                                                 line = matchLineNumber,
                                                                             },
                                                                         }
                                                                     );
-                                                                }
-                                                                else
-                                                                {
+                                                                } else {
                                                                     hasPartialResults = true;
                                                                     earlyStopCts.Cancel(); // Stop other parallel tasks
                                                                     break;
                                                                 }
                                                             }
                                                         }
-                                                    }
-                                                    catch (Exception ex)
-                                                        when (!(ex is OperationCanceledException))
-                                                    {
+                                                    } catch (Exception ex)
+                                                          when (!(ex is OperationCanceledException)) {
                                                         logger.LogTrace(
                                                             ex,
                                                             "Error processing syntax node in {FilePath}",
@@ -2437,10 +2205,8 @@ membersByKind;
                                                         hasPartialResults = true;
                                                     }
                                                 }
-                                            }
-                                            catch (Exception ex)
-                                                when (!(ex is OperationCanceledException))
-                                            {
+                                            } catch (Exception ex)
+                                                  when (!(ex is OperationCanceledException)) {
                                                 logger.LogWarning(
                                                     ex,
                                                     "Error processing syntax tree {FilePath}",
@@ -2451,9 +2217,7 @@ membersByKind;
                                         }
 
                                         Interlocked.Increment(ref projectsProcessed);
-                                    }
-                                    catch (Exception ex) when (!(ex is OperationCanceledException))
-                                    {
+                                    } catch (Exception ex) when (!(ex is OperationCanceledException)) {
                                         Interlocked.Increment(ref projectsSkipped);
                                         logger.LogWarning(
                                             ex,
@@ -2474,23 +2238,18 @@ membersByKind;
                     var roslynSearchTask = Task.WhenAll(projectTasks);
                     var roslynTimeout = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
 
-                    if (await Task.WhenAny(roslynSearchTask, roslynTimeout) == roslynTimeout)
-                    {
+                    if (await Task.WhenAny(roslynSearchTask, roslynTimeout) == roslynTimeout) {
                         logger.LogWarning(
                             "Roslyn search timed out after 30 seconds. Returning partial results."
                         );
                         hasPartialResults = true;
                         errors.Add("Roslyn search timed out after 30 seconds, returning partial results.");
                         earlyStopCts.Cancel(); // Stop remaining tasks
-                    }
-                    else if (roslynSearchTask.IsFaulted && roslynSearchTask.Exception != null)
-                    {
+                    } else if (roslynSearchTask.IsFaulted && roslynSearchTask.Exception != null) {
                         throw roslynSearchTask.Exception.InnerException ?? roslynSearchTask.Exception;
                     }
-                }
-                catch (Exception ex)
-                    when (!(ex is McpException || ex is OperationCanceledException))
-                {
+                } catch (Exception ex)
+                      when (!(ex is McpException || ex is OperationCanceledException)) {
                     logger.LogError(
                         ex,
                         "Error searching Roslyn symbols with pattern {Pattern}",
@@ -2502,16 +2261,13 @@ membersByKind;
 
                 // Process reflection types in parallel with timeout
                 var reflectionSearchTask = Task.Run(
-                    async () =>
-                    {
-                        try
-                        {
+                    async () => {
+                        try {
                             // If already at limit, skip reflection search
                             if (
                                 Interlocked.CompareExchange(ref totalMatchesFound, 0, 0)
                                 >= MaxSearchResults
-                            )
-                            {
+                            ) {
                                 hasPartialResults = true;
                                 earlyStopCts.Cancel(); // Stop other parallel tasks
                                 return;
@@ -2536,13 +2292,11 @@ membersByKind;
                             var parallelism = Math.Max(1, Environment.ProcessorCount / 2);
                             var partitionCount = Math.Min(typesToProcess.Count, parallelism);
 
-                            if (partitionCount > 0)
-                            {
+                            if (partitionCount > 0) {
                                 var partitionSize = typesToProcess.Count / partitionCount;
                                 var partitionTasks = new List<Task>();
 
-                                for (int i = 0; i < partitionCount; i++)
-                                {
+                                for (int i = 0; i < partitionCount; i++) {
                                     int startIdx = i * partitionSize;
                                     int endIdx =
                                         (i == partitionCount - 1)
@@ -2551,8 +2305,7 @@ membersByKind;
 
                                     partitionTasks.Add(
                                         Task.Run(
-                                            () =>
-                                            {
+                                            () => {
                                                 for (
                                                     int j = startIdx;
                                                     j < endIdx
@@ -2560,8 +2313,7 @@ membersByKind;
                                                             .Token
                                                             .IsCancellationRequested;
                                                     j++
-                                                )
-                                                {
+                                                ) {
                                                     // Check if we've already exceeded the result limit
                                                     if (
                                                         Interlocked.CompareExchange(
@@ -2569,22 +2321,19 @@ membersByKind;
                                                             0,
                                                             0
                                                         ) >= MaxSearchResults
-                                                    )
-                                                    {
+                                                    ) {
                                                         hasPartialResults = true;
                                                         earlyStopCts.Cancel(); // Stop other parallel tasks
                                                         break;
                                                     }
 
                                                     var type = typesToProcess[j];
-                                                    try
-                                                    {
+                                                    try {
                                                         if (
                                                             IsGeneratedCode(
                                                                 type.FullName ?? type.Name
                                                             )
-                                                        )
-                                                        {
+                                                        ) {
                                                             continue;
                                                         }
 
@@ -2601,8 +2350,7 @@ membersByKind;
                                                             var memberInfo in type.GetMembers(
                                                                 bindingFlags
                                                             )
-                                                        )
-                                                        {
+                                                        ) {
                                                             if (
                                                                 earlyStopCts
                                                                     .Token
@@ -2617,8 +2365,7 @@ membersByKind;
                                                                     0,
                                                                     0
                                                                 ) >= MaxSearchResults
-                                                            )
-                                                            {
+                                                            ) {
                                                                 hasPartialResults = true;
                                                                 earlyStopCts.Cancel(); // Stop other parallel tasks
                                                                 break;
@@ -2633,8 +2380,7 @@ membersByKind;
                                                                     || mi.Name.StartsWith("add_")
                                                                     || mi.Name.StartsWith("remove_")
                                                                 )
-                                                            )
-                                                            {
+                                                            ) {
                                                                 continue;
                                                             }
 
@@ -2643,18 +2389,15 @@ membersByKind;
                                                                     memberInfo.ToString()
                                                                         ?? memberInfo.Name
                                                                 )
-                                                            )
-                                                            {
+                                                            ) {
                                                                 string signature =
                                                                     memberInfo.ToString()!;
-                                                                if (IsGeneratedCode(signature))
-                                                                {
+                                                                if (IsGeneratedCode(signature)) {
                                                                     continue;
                                                                 }
 
                                                                 hasMatchedMembers = true;
-                                                                if (memberInfo is MethodInfo method)
-                                                                {
+                                                                if (memberInfo is MethodInfo method) {
                                                                     var parameters = string.Join(
                                                                         ", ",
                                                                         method
@@ -2674,11 +2417,9 @@ membersByKind;
                                                                     Interlocked.Increment(
                                                                         ref totalMatchesFound
                                                                     ) <= MaxSearchResults
-                                                                )
-                                                                {
+                                                                ) {
                                                                     matches.Add(
-                                                                        new
-                                                                        {
+                                                                        new {
                                                                             kind = ToolHelpers.GetReflectionMemberTypeKindString(
                                                                                 memberInfo
                                                                             ),
@@ -2686,16 +2427,13 @@ membersByKind;
                                                                                 ?? type.Name,
                                                                             signature = signature,
                                                                             match = memberInfo.Name,
-                                                                            location = new
-                                                                            {
+                                                                            location = new {
                                                                                 filePath = assemblyLocation,
                                                                                 line = 0, // No line numbers for reflection matches
                                                                             },
                                                                         }
                                                                     );
-                                                                }
-                                                                else
-                                                                {
+                                                                } else {
                                                                     hasPartialResults = true;
                                                                     earlyStopCts.Cancel(); // Stop other parallel tasks
                                                                     break;
@@ -2707,8 +2445,7 @@ membersByKind;
                                                             reflectionRegex.IsMatch(
                                                                 type.FullName ?? type.Name
                                                             ) && !hasMatchedMembers
-                                                        )
-                                                        {
+                                                        ) {
                                                             // Check if we've already exceeded the result limit
                                                             if (
                                                                 Interlocked.CompareExchange(
@@ -2716,8 +2453,7 @@ membersByKind;
                                                                     0,
                                                                     0
                                                                 ) >= MaxSearchResults
-                                                            )
-                                                            {
+                                                            ) {
                                                                 hasPartialResults = true;
                                                                 earlyStopCts.Cancel(); // Stop other parallel tasks
                                                                 break;
@@ -2730,11 +2466,9 @@ membersByKind;
                                                                 Interlocked.Increment(
                                                                     ref totalMatchesFound
                                                                 ) <= MaxSearchResults
-                                                            )
-                                                            {
+                                                            ) {
                                                                 matches.Add(
-                                                                    new
-                                                                    {
+                                                                    new {
                                                                         kind = ToolHelpers.GetReflectionTypeKindString(
                                                                             type
                                                                         ),
@@ -2744,25 +2478,20 @@ membersByKind;
                                                                             ?? type.Name,
                                                                         match = type.FullName
                                                                             ?? type.Name,
-                                                                        location = new
-                                                                        {
+                                                                        location = new {
                                                                             filePath = assemblyLocation,
                                                                             line = 0, // No line numbers for reflection matches
                                                                         },
                                                                     }
                                                                 );
-                                                            }
-                                                            else
-                                                            {
+                                                            } else {
                                                                 hasPartialResults = true;
                                                                 earlyStopCts.Cancel(); // Stop other parallel tasks
                                                                 break;
                                                             }
                                                         }
-                                                    }
-                                                    catch (Exception ex)
-                                                        when (!(ex is OperationCanceledException))
-                                                    {
+                                                    } catch (Exception ex)
+                                                          when (!(ex is OperationCanceledException)) {
                                                         logger.LogWarning(
                                                             ex,
                                                             "Error processing reflection type {TypeName}",
@@ -2779,9 +2508,7 @@ membersByKind;
 
                                 await Task.WhenAll(partitionTasks);
                             }
-                        }
-                        catch (Exception ex) when (!(ex is OperationCanceledException))
-                        {
+                        } catch (Exception ex) when (!(ex is OperationCanceledException)) {
                             logger.LogError(
                                 ex,
                                 "Error searching reflection members with pattern {Pattern}",
@@ -2794,14 +2521,12 @@ membersByKind;
                     earlyStopCts.Token
                 );
 
-                try
-                {
+                try {
                     await Task.WhenAny(
                         reflectionSearchTask,
                         Task.Delay(TimeSpan.FromSeconds(5), cancellationToken)
                     );
-                    if (!reflectionSearchTask.IsCompleted)
-                    {
+                    if (!reflectionSearchTask.IsCompleted) {
                         logger.LogWarning(
                             "Reflection search timed out after 5 seconds. Returning partial results."
                         );
@@ -2809,18 +2534,14 @@ membersByKind;
                         errors.Add(
                             "Reflection search timed out after 5 seconds, returning partial results."
                         );
-                    }
-                    else if (
-                        reflectionSearchTask.IsFaulted
-                        && reflectionSearchTask.Exception != null
-                    )
-                    {
+                    } else if (
+                          reflectionSearchTask.IsFaulted
+                          && reflectionSearchTask.Exception != null
+                      ) {
                         throw reflectionSearchTask.Exception.InnerException
                             ?? reflectionSearchTask.Exception;
                     }
-                }
-                catch (OperationCanceledException)
-                {
+                } catch (OperationCanceledException) {
                     throw;
                 }
 
@@ -2845,8 +2566,7 @@ membersByKind;
                                                             !IsGeneratedCode(((dynamic)m).match)
                                                         )
                                                         .DistinctBy(m => ((dynamic)m).match)
-                                                        .Select(m => new
-                                                        {
+                                                        .Select(m => new {
                                                             match = ((dynamic)m).match,
                                                             line = ((dynamic)m).location.line > 0
                                                                 ? ((dynamic)m).location.line
@@ -2860,16 +2580,14 @@ membersByKind;
 
                 // Prepare a message for omitted results if we hit the limit
                 string? resultsLimitMessage = null;
-                if (hasPartialResults)
-                {
+                if (hasPartialResults) {
                     resultsLimitMessage =
                         $"Some search results omitted for brevity, try narrowing your search if you didn't find what you needed.";
                     logger.LogInformation("Search results limited");
                 }
 
                 return ToolHelpers.ToJson(
-                    new
-                    {
+                    new {
                         pattern = regexPattern,
                         matchesByFile = groupedMatches,
                         resultsLimitMessage,
@@ -2903,33 +2621,28 @@ membersByKind;
             string codeToWrite,
         [Description("The absolute path to the file to manage usings in")] string filePath,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 // Validate parameters
                 ErrorHandlingHelpers.ValidateStringParameter(operation, "operation", logger);
                 ErrorHandlingHelpers.ValidateStringParameter(filePath, "filePath", logger);
                 ErrorHandlingHelpers.ValidateFileExists(filePath, logger);
 
-                if (operation != "read" && operation != "write")
-                {
+                if (operation != "read" && operation != "write") {
                     throw new McpException(
                         $"Invalid operation '{operation}'. Must be 'read' or 'write'."
                     );
                 }
 
-                if (operation == "read" && codeToWrite != "None")
-                {
+                if (operation == "read" && codeToWrite != "None") {
                     throw new McpException("For read operations, codeToWrite must be 'None'");
                 }
 
                 if (
                     operation == "write"
                     && (codeToWrite == "None" || string.IsNullOrEmpty(codeToWrite))
-                )
-                {
+                ) {
                     throw new McpException(
                         "For write operations, codeToWrite must contain the complete list of using directives"
                     );
@@ -2961,8 +2674,7 @@ membersByKind;
                     d.Name.Equals("GlobalUsings.cs", StringComparison.OrdinalIgnoreCase)
                 );
 
-                if (operation == "read")
-                {
+                if (operation == "read") {
                     var usingDirectives = root.DescendantNodes()
                         .OfType<UsingDirectiveSyntax>()
                         .Select(u => u.ToFullString().Trim())
@@ -2970,13 +2682,11 @@ membersByKind;
 
                     // Handle global usings separately
                     var globalUsings = new List<string>();
-                    if (globalUsingsFile != null)
-                    {
+                    if (globalUsingsFile != null) {
                         var globalRoot = await globalUsingsFile.GetSyntaxRootAsync(
                             cancellationToken
                         );
-                        if (globalRoot != null)
-                        {
+                        if (globalRoot != null) {
                             globalUsings = globalRoot
                                 .DescendantNodes()
                                 .OfType<UsingDirectiveSyntax>()
@@ -2986,8 +2696,7 @@ membersByKind;
                     }
 
                     return ToolHelpers.ToJson(
-                        new
-                        {
+                        new {
                             file = filePath,
                             usings = string.Join("\n", usingDirectives),
                             globalUsings = string.Join("\n", globalUsings),
@@ -3013,8 +2722,7 @@ membersByKind;
 
                 // Create compilation unit with new directives
                 CompilationUnitSyntax? newRoot;
-                try
-                {
+                try {
                     var tempCode = string.Join("\n", directives);
                     newRoot = isGlobalUsings
                         ? CSharpSyntaxTree.ParseText(tempCode).GetRoot() as CompilationUnitSyntax
@@ -3028,13 +2736,10 @@ membersByKind;
                             )
                         );
 
-                    if (newRoot == null)
-                    {
+                    if (newRoot == null) {
                         throw new FormatException("Failed to create valid syntax tree.");
                     }
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     throw new McpException($"Failed to parse using directives: {ex.Message}");
                 }
 
@@ -3056,8 +2761,7 @@ membersByKind;
                     newRoot.ToFullString()
                 );
 
-                if (diffResult.Trim() == "// No changes detected.")
-                {
+                if (diffResult.Trim() == "// No changes detected.") {
                     return "Using update was successful but no difference was detected.";
                 }
 
@@ -3089,11 +2793,9 @@ membersByKind;
         [Description("The FQN of the target declaration to manage attributes for")]
             string targetDeclaration,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 // Validate parameters
                 ErrorHandlingHelpers.ValidateStringParameter(operation, "operation", logger);
                 ErrorHandlingHelpers.ValidateStringParameter(
@@ -3102,20 +2804,17 @@ membersByKind;
                     logger
                 );
 
-                if (operation != "read" && operation != "write")
-                {
+                if (operation != "read" && operation != "write") {
                     throw new McpException(
                         $"Invalid operation '{operation}'. Must be 'read' or 'write'."
                     );
                 }
 
-                if (operation == "read" && codeToWrite != "None")
-                {
+                if (operation == "read" && codeToWrite != "None") {
                     throw new McpException("For read operations, codeToWrite must be 'None'");
                 }
 
-                if (operation == "write" && codeToWrite == "None")
-                {
+                if (operation == "write" && codeToWrite == "None") {
                     throw new McpException(
                         "For write operations, codeToWrite must contain the attributes to set"
                     );
@@ -3134,8 +2833,7 @@ membersByKind;
                     cancellationToken
                 );
 
-                if (!symbol.DeclaringSyntaxReferences.Any())
-                {
+                if (!symbol.DeclaringSyntaxReferences.Any()) {
                     throw new McpException(
                         $"Symbol '{targetDeclaration}' has no declaring syntax references."
                     );
@@ -3144,11 +2842,9 @@ membersByKind;
                 var syntaxRef = symbol.DeclaringSyntaxReferences.First();
                 var node = await syntaxRef.GetSyntaxAsync(cancellationToken);
 
-                if (operation == "read")
-                {
+                if (operation == "read") {
                     // Get only the attributes on this node, not nested ones
-                    var attributeLists = node switch
-                    {
+                    var attributeLists = node switch {
                         MemberDeclarationSyntax mDecl => mDecl.AttributeLists,
                         StatementSyntax stmt => stmt.AttributeLists,
                         _ => SyntaxFactory.List<AttributeListSyntax>(),
@@ -3160,14 +2856,12 @@ membersByKind;
                     );
                     var lineSpan = node.GetLocation().GetLineSpan();
 
-                    if (string.IsNullOrEmpty(attributes))
-                    {
+                    if (string.IsNullOrEmpty(attributes)) {
                         attributes = "No attributes found.";
                     }
 
                     return ToolHelpers.ToJson(
-                        new
-                        {
+                        new {
                             file = syntaxRef.SyntaxTree.FilePath,
                             line = lineSpan.StartLinePosition.Line + 1,
                             attributes,
@@ -3176,14 +2870,12 @@ membersByKind;
                 }
 
                 // Write operation
-                if (!(node is MemberDeclarationSyntax memberDecl))
-                {
+                if (!(node is MemberDeclarationSyntax memberDecl)) {
                     throw new McpException("Target declaration is not a valid member declaration.");
                 }
 
                 SyntaxList<AttributeListSyntax> newAttributeLists;
-                try
-                {
+                try {
                     // Parse the attributes by wrapping in minimal valid syntax
                     var tempCode =
                         $"{(codeToWrite.Length == 0 ? "" : codeToWrite + "\n")}public class C {{ }}";
@@ -3194,9 +2886,7 @@ membersByKind;
                         .OfType<ClassDeclarationSyntax>()
                         .First()
                         .AttributeLists;
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     throw new McpException($"Failed to parse attributes: {ex.Message}");
                 }
 
@@ -3229,8 +2919,7 @@ membersByKind;
                     newMember.AttributeLists.ToFullString()
                 );
 
-                if (diffResult.Trim() == "// No changes detected.")
-                {
+                if (diffResult.Trim() == "// No changes detected.") {
                     return "Attribute update was successful but no difference was detected.";
                 }
 
@@ -3262,17 +2951,14 @@ membersByKind;
         [Description("The fully qualified name of the method/class, or project name to analyze")]
             string target,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 // Validate parameters
                 ErrorHandlingHelpers.ValidateStringParameter(scope, nameof(scope), logger);
                 ErrorHandlingHelpers.ValidateStringParameter(target, nameof(target), logger);
 
-                if (!sourceArray.Contains(scope.ToLower()))
-                {
+                if (!sourceArray.Contains(scope.ToLower())) {
                     throw new McpException(
                         $"Invalid scope '{scope}'. Must be 'method', 'class', or 'project'."
                     );
@@ -3290,8 +2976,7 @@ membersByKind;
                 var metrics = new Dictionary<string, object>();
                 var recommendations = new List<string>();
 
-                switch (scope.ToLower())
-                {
+                switch (scope.ToLower()) {
                     case "method":
                         var methodSymbol =
                             await ToolHelpers.GetRoslynSymbolOrThrowAsync(
@@ -3348,8 +3033,7 @@ membersByKind;
 
                 // Format the results nicely
                 return ToolHelpers.ToJson(
-                    new
-                    {
+                    new {
                         scope,
                         target,
                         metrics,
@@ -3382,11 +3066,9 @@ membersByKind;
         )]
             double similarityThreshold,
         CancellationToken cancellationToken
-    )
-    {
+    ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
-            async () =>
-            {
+            async () => {
                 await ToolHelpers.EnsureSolutionLoadedOrAutoLoadAsync(
                     solutionManager,
                     logger,
@@ -3399,8 +3081,7 @@ membersByKind;
                     similarityThreshold
                 );
 
-                if (similarityThreshold < 0.0 || similarityThreshold > 1.0)
-                {
+                if (similarityThreshold < 0.0 || similarityThreshold > 1.0) {
                     throw new McpException("Similarity threshold must be between 0.0 and 1.0.");
                 }
 
@@ -3414,8 +3095,7 @@ membersByKind;
                     cancellationToken
                 );
 
-                if (similarityResults.Count == 0)
-                {
+                if (similarityResults.Count == 0) {
                     return "No semantically similar method groups found with the given threshold.";
                 }
 
