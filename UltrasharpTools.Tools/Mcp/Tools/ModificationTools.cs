@@ -33,18 +33,18 @@ public static class ModificationTools {
         [Description("FQN of the parent type or method.")] string fullyQualifiedTargetName,
         [Description("The C# code to add.")] string codeSnippet,
         [Description(
-            "If the target is a partial type, specifies which file to add to. Set to 'auto' to determine automatically."
-        )]
-            string fileNameHint,
+        "If the target is a partial type, specifies which file to add to. Set to 'auto' to determine automatically."
+    )]
+    string fileNameHint,
         [Description(
-            "Suggest a line number to insert the member near. '-1' to determine automatically."
-        )]
-            int lineNumberHint,
+        "Suggest a line number to insert the member near. '-1' to determine automatically."
+    )]
+    int lineNumberHint,
         string commitMessage,
         [Description(
-            "Preview mode: if true, returns diff without applying changes (default: false)"
-        )]
-            bool preview = false,
+        "Preview mode: if true, returns diff without applying changes (default: false)"
+    )]
+    bool preview = false,
         CancellationToken cancellationToken = default
     ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
@@ -101,7 +101,7 @@ public static class ModificationTools {
                             }
                         );
                     } catch (Exception ex)
-                          when (ex is not McpException && ex is not OperationCanceledException) {
+                        when (ex is not McpException && ex is not OperationCanceledException) {
                         logger.LogError(
                             ex,
                             "Preview generation failed for {TargetName}",
@@ -151,6 +151,9 @@ public static class ModificationTools {
                     syntaxNode
                 );
 
+                // Save file path before changes - document ID may change after ApplyChangesAsync
+                var documentFilePath = document.FilePath;
+
                 if (targetSymbol is not INamedTypeSymbol typeSymbol) {
                     throw new McpException(
                         $"Target '{fullyQualifiedTargetName}' is not a type, cannot add member."
@@ -180,11 +183,11 @@ public static class ModificationTools {
                 if (!IsMemberAllowed(typeSymbol, memberSyntax, memberName, cancellationToken)) {
                     throw new McpException(
                         $"A member with the name '{memberName}' already exists in '{fullyQualifiedTargetName}'"
-                            + (
-                                memberSyntax is MethodDeclarationSyntax
-                                    ? " with the same parameter signature."
-                                    : "."
-                            )
+                        + (
+                            memberSyntax is MethodDeclarationSyntax
+                                ? " with the same parameter signature."
+                                : "."
+                        )
                     );
                 }
 
@@ -206,17 +209,26 @@ public static class ModificationTools {
                         finalCommitMessage
                     );
 
-                    // Check for compilation errors after adding the code
-                    var updatedDocument = solutionManager.CurrentSolution.GetDocument(document.Id);
-                    if (updatedDocument is null) {
-                        logger.LogError(
-                            "Updated document for {TargetName} is null after applying changes",
-                            fullyQualifiedTargetName
-                        );
-                        throw new McpException(
-                            $"Failed to retrieve updated document for {fullyQualifiedTargetName} after applying changes."
-                        );
+                    // Find document by file path after changes (ID may have changed)
+                    Document? updatedDocument = null;
+                    if (!string.IsNullOrEmpty(documentFilePath) && solutionManager.CurrentSolution != null) {
+                        var docIds = solutionManager.CurrentSolution.GetDocumentIdsWithFilePath(documentFilePath);
+                        updatedDocument = docIds.FirstOrDefault() is { } docId
+                            ? solutionManager.CurrentSolution.GetDocument(docId)
+                            : null;
                     }
+
+                    if (updatedDocument is null) {
+                        // Document not found, but changes were applied successfully - log warning and return success
+                        logger.LogWarning(
+                            "Could not retrieve updated document for {TargetName} after applying changes (file: {FilePath}). Skipping compilation check.",
+                            fullyQualifiedTargetName,
+                            documentFilePath
+                        );
+                        string lintOutput = LintingHelper.FormatLintingResults(lintingResult);
+                        return $"Successfully added member to {fullyQualifiedTargetName} in {documentFilePath ?? "unknown file"}.\n\nNote: Could not verify compilation - document not found in updated solution.{(string.IsNullOrWhiteSpace(lintOutput) ? "" : lintOutput)}";
+                    }
+
                     var (hasErrors, errorMessages) =
                         await ContextInjectors.CheckCompilationErrorsAsync(
                             solutionManager,
@@ -260,10 +272,10 @@ public static class ModificationTools {
                     }
 
                     // Add linting results to the response
-                    string lintOutput = LintingHelper.FormatLintingResults(lintingResult);
+                    string lintOutput2 = LintingHelper.FormatLintingResults(lintingResult);
 
                     string baseMessage =
-                        $"Successfully added member to {fullyQualifiedTargetName} in {document.FilePath ?? "unknown file"}.\n\n"
+                        $"Successfully added member to {fullyQualifiedTargetName} in {documentFilePath ?? "unknown file"}.\n\n"
                         + (
                             (!hasErrors)
                                 ? "<errorCheck>No compilation issues detected.</errorCheck>"
@@ -278,13 +290,13 @@ public static class ModificationTools {
                     if (!string.IsNullOrWhiteSpace(analysisResults)) {
                         finalMessage += $"\n\n{analysisResults}";
                     }
-                    if (!string.IsNullOrWhiteSpace(lintOutput)) {
-                        finalMessage += lintOutput;
+                    if (!string.IsNullOrWhiteSpace(lintOutput2)) {
+                        finalMessage += lintOutput2;
                     }
 
                     return finalMessage;
                 } catch (Exception ex)
-                      when (!(ex is McpException || ex is OperationCanceledException)) {
+                    when (!(ex is McpException || ex is OperationCanceledException)) {
                     logger.LogError(
                         ex,
                         "Failed to add member to {TypeName}",
@@ -300,7 +312,6 @@ public static class ModificationTools {
             cancellationToken
         );
     }
-
     private static string GetMemberName(MemberDeclarationSyntax memberSyntax) {
         return memberSyntax switch {
             MethodDeclarationSyntax method => method.Identifier.Text,
