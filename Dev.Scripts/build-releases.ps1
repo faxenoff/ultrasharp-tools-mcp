@@ -114,8 +114,13 @@ function Invoke-WslCommand {
         $result = wsl -d $script:WslDistro -- bash -c $Command 2>&1
         return $result
     } else {
-        wsl -d $script:WslDistro -- bash -c $Command
-        return $LASTEXITCODE -eq 0
+        $output = wsl -d $script:WslDistro -- bash -c $Command 2>&1
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -ne 0) {
+            Write-Err "WSL command failed with exit code $exitCode"
+            Write-Err $output
+        }
+        return $exitCode -eq 0
     }
 }
 
@@ -268,7 +273,9 @@ function Invoke-WslNativeAotBuild {
     Write-Info "Building in WSL: $wslProjectPath"
 
     # dotnet publish accepts full path to .csproj directly, no need to cd
-    $buildCommand = "dotnet publish '$wslProjectPath' -c Release -r $RuntimeId -o '$wslOutputPath' /p:PublishAot=true"
+    # StripSymbols=false needed for ARM64 cross-compilation (objcopy doesn't recognize ARM64 format)
+    $stripSymbols = if ($RuntimeId -eq "linux-arm64") { "/p:StripSymbols=false" } else { "" }
+    $buildCommand = "dotnet publish '$wslProjectPath' -c Release -r $RuntimeId -o '$wslOutputPath' /p:PublishAot=true $stripSymbols"
 
     $result = Invoke-WslCommand -Command $buildCommand
 
@@ -313,6 +320,28 @@ $ZipTempDir = Join-Path $ProjectRoot "Run.Publish.Zip"
 # ============================================================================
 # Build Comm (Cosmopolitan) once - works on all platforms
 # ============================================================================
+# Stop running processes that may lock files
+# ============================================================================
+$processesToStop = @("UltrasharpTools.Droid", "UltraSharpTools.VectorDB", "UltraSharp-tools")
+foreach ($procName in $processesToStop) {
+    $procs = Get-Process -Name $procName -ErrorAction SilentlyContinue
+    if ($procs) {
+        Write-Info "Stopping $($procs.Count) running $procName process(es)..."
+        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 500
+    }
+}
+
+# ============================================================================
+# Add vswhere.exe to PATH for Windows Native AOT builds
+# ============================================================================
+$vswhereDir = "C:\Program Files (x86)\Microsoft Visual Studio\Installer"
+if ((Test-Path "$vswhereDir\vswhere.exe") -and ($env:PATH -notlike "*$vswhereDir*")) {
+    $env:PATH = "$vswhereDir;$env:PATH"
+    Write-Info "Added vswhere.exe to PATH for Native AOT"
+}
+
+# ============================================================================
 Write-Header "Building Comm (Cosmopolitan - cross-platform)"
 
 $CommBuildScript = Join-Path $ProjectRoot "UltraSharpTools.Comm.C\build.ps1"
@@ -355,6 +384,7 @@ foreach ($Platform in $Platforms) {
 
     try {
         # Each platform builds to its own directory to avoid file locking
+        # Uses Run.Publish.{rid} in project root (NOT inside Run.Publish to avoid conflicts with dev Droid)
         $platformOutput = Join-Path $ProjectRoot "Run.Publish.$rid"
 
         # Clean platform-specific output
@@ -369,6 +399,7 @@ foreach ($Platform in $Platforms) {
         # - macOS/Other: Self-contained single-file (~130MB total)
         # - All components are single executable files - no shared runtime needed
         $useWindowsAot = $rid -like "win-*"
+        # Linux AOT via WSL (ARM64 requires gcc-aarch64-linux-gnu cross-compiler)
         $useLinuxAot = ($rid -like "linux-*") -and $UseWslForLinuxAot
         $useNativeAot = $useWindowsAot -or $useLinuxAot
 
@@ -380,15 +411,25 @@ foreach ($Platform in $Platforms) {
         if ($useLinuxAot) {
             Write-Info "Building VectorDB (Native AOT via WSL)..."
             $vectordbProject = "$ProjectRoot/UltraSharpTools.VectorDB/UltraSharpTools.VectorDB.csproj"
+
+            # Create output directory first (WSL may not create it on Windows path)
+            New-Item -ItemType Directory -Path $vectordbOutput -Force | Out-Null
+
             $success = Invoke-WslNativeAotBuild -ProjectPath $vectordbProject -RuntimeId $rid -OutputPath $vectordbOutput
             if (-not $success) { throw "VectorDB WSL build failed" }
+
+            # Verify output was created
+            $vectordbBinary = Get-ChildItem -Path $vectordbOutput -Filter "UltraSharpTools.VectorDB*" -ErrorAction SilentlyContinue
+            if (-not $vectordbBinary) {
+                throw "VectorDB binary not found in: $vectordbOutput (WSL build may have failed silently)"
+            }
         } elseif ($useWindowsAot) {
             Write-Info "Building VectorDB (Native AOT)..."
             dotnet publish "$ProjectRoot\UltraSharpTools.VectorDB\UltraSharpTools.VectorDB.csproj" `
                 -c Release `
                 -r $rid `
                 -o $vectordbOutput `
-                /p:PublishAot=true | Out-Null
+                -p:PublishAot=true | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "VectorDB build failed" }
         } else {
             Write-Info "Building VectorDB (self-contained single-file)..."
@@ -397,8 +438,8 @@ foreach ($Platform in $Platforms) {
                 -r $rid `
                 --self-contained true `
                 -o $vectordbOutput `
-                /p:PublishSingleFile=true `
-                /p:EnableCompressionInSingleFile=true | Out-Null
+                -p:PublishSingleFile=true `
+                -p:EnableCompressionInSingleFile=true | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "VectorDB build failed" }
         }
 
@@ -419,8 +460,8 @@ foreach ($Platform in $Platforms) {
                 -r $rid `
                 --self-contained true `
                 -o $droidOutput `
-                /p:PublishSingleFile=true `
-                /p:EnableCompressionInSingleFile=true | Out-Null
+                -p:PublishSingleFile=true `
+                -p:EnableCompressionInSingleFile=true | Out-Null
             if ($LASTEXITCODE -ne 0) { throw "Droid build failed" }
         }
 
@@ -435,7 +476,12 @@ foreach ($Platform in $Platforms) {
         }
 
         # Copy VectorDB to Droid folder
-        Copy-Item -Path (Join-Path $platformOutput "_temp_vectordb\*") -Destination $droidOutput -Recurse -Force
+        $vectordbTempPath = Join-Path $platformOutput "_temp_vectordb"
+        if (Test-Path $vectordbTempPath) {
+            Copy-Item -Path "$vectordbTempPath\*" -Destination $droidOutput -Recurse -Force
+        } else {
+            throw "VectorDB output not found at: $vectordbTempPath"
+        }
 
         # Copy Cosmopolitan Comm binary (already built once, works on all platforms)
         Copy-Item -Path $CommBinary -Destination $droidOutput -Force
@@ -462,7 +508,9 @@ foreach ($Platform in $Platforms) {
         }
 
         # Cleanup temp folders
-        Remove-Item (Join-Path $platformOutput "_temp_vectordb") -Recurse -Force
+        if (Test-Path $vectordbTempPath) {
+            Remove-Item $vectordbTempPath -Recurse -Force
+        }
 
         # Copy to archive temp directory
         Write-Info "Preparing archive..."

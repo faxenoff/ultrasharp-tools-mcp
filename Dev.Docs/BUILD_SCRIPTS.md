@@ -152,6 +152,39 @@ rmdir /s /q Run.Publish\VectorDB
 5. **semantic-config.json** должен быть в Config/ для semantic mode
 6. **BUILD_SCRIPTS.md** НЕ копируется в сборку (остаётся только в корне)
 
+## Native AOT Requirements
+
+### .NET 10 SDK
+Для сборки требуется .NET 10 SDK. Проверьте версию:
+```bash
+dotnet --version  # должно быть 10.0.x
+```
+
+### Windows Native AOT
+Требуется Visual Studio Build Tools с компонентами:
+- Desktop development with C++
+- Windows SDK
+
+### Linux Native AOT (WSL)
+
+**x64:**
+```bash
+sudo apt update
+sudo apt install -y clang zlib1g-dev make
+```
+
+**ARM64 (кросс-компиляция):**
+```bash
+sudo apt update
+sudo apt install -y clang zlib1g-dev make gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+```
+
+> **Примечание:** Без `gcc-aarch64-linux-gnu` и `binutils-aarch64-linux-gnu` сборка linux-arm64 с AOT невозможна.
+
+### macOS Native AOT
+Native AOT для macOS требует сборки на macOS машине (кросс-компиляция не поддерживается).
+В `build-releases.ps1` для macOS используется self-contained режим.
+
 ## Troubleshooting
 
 ### Ошибка: "vswhere.exe not found" при Native AOT
