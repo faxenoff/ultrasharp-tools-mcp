@@ -926,6 +926,46 @@ public static class Program
             // ConfigurationService всегда доступен
             builder.Services.AddSingleton<UltrasharpTools.Droid.Services.Hybrid.ConfigurationService>();
 
+            // Universal Semantic Mode - Phase 12 (local mode)
+            // Загружаем конфигурацию для Semantic Mode ПЕРВЫМ, чтобы использовать endpoint в AgentConfig
+            // LoggerFactory without console output for MCP compatibility
+            using var loggerFactory818 = LoggerFactory.Create(b => { /* No console logging */ });
+            var semanticConfigLoader =
+                new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
+                    loggerFactory818
+                        .CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>()
+                );
+            var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
+
+            // Определяем правильный embedding endpoint из semantic-config.json
+            string resolvedEmbeddingUrl;
+            string resolvedEmbeddingModel;
+            if (semanticConfig.Embedding != null)
+            {
+                if (semanticConfig.Embedding.Platform == "tei" && semanticConfig.Embedding.Tei != null)
+                {
+                    resolvedEmbeddingUrl = semanticConfig.Embedding.Tei.Endpoint;
+                    resolvedEmbeddingModel = semanticConfig.Embedding.Tei.SelectedModel ?? "jinaai/jina-embeddings-v2-base-code";
+                }
+                else if (semanticConfig.Embedding.Platform == "ollama" && semanticConfig.Embedding.Ollama != null)
+                {
+                    resolvedEmbeddingUrl = semanticConfig.Embedding.Ollama.Endpoint;
+                    resolvedEmbeddingModel = semanticConfig.Embedding.Ollama.SelectedModel ?? "nomic-embed-text";
+                }
+                else
+                {
+                    // Fallback на параметры командной строки или defaults
+                    resolvedEmbeddingUrl = embeddingUrl ?? "http://127.0.0.1:11434";
+                    resolvedEmbeddingModel = embeddingModel ?? "nomic-embed-text";
+                }
+            }
+            else
+            {
+                // Нет конфигурации - используем параметры командной строки или defaults
+                resolvedEmbeddingUrl = embeddingUrl ?? "http://127.0.0.1:11434";
+                resolvedEmbeddingModel = embeddingModel ?? "nomic-embed-text";
+            }
+
             // AgentConfig для local mode
             var projectName = !string.IsNullOrEmpty(solutionPath)
                 ? Path.GetFileNameWithoutExtension(solutionPath)
@@ -940,8 +980,8 @@ public static class Program
                 ProjectName = projectName,
                 RepositoryPath = repositoryPath,
                 ServerUrl = serverUrl ?? "",
-                EmbeddingUrl = embeddingUrl ?? "http://127.0.0.1:11434",
-                EmbeddingModel = embeddingModel ?? "nomic-embed-text",
+                EmbeddingUrl = resolvedEmbeddingUrl,
+                EmbeddingModel = resolvedEmbeddingModel,
             };
             builder.Services.AddSingleton(agentConfig);
 
@@ -967,17 +1007,6 @@ public static class Program
                 var config = sp.GetRequiredService<UltrasharpTools.Droid.Models.Hybrid.AgentConfig>();
                 return new UltrasharpTools.Droid.Services.Hybrid.EmbeddingService(client, logger, config);
             });
-
-            // Universal Semantic Mode - Phase 12 (local mode)
-            // Загружаем конфигурацию для Semantic Mode (Phase 12.4)
-            // LoggerFactory without console output for MCP compatibility
-            using var loggerFactory818 = LoggerFactory.Create(b => { /* No console logging */ });
-            var semanticConfigLoader =
-                new UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader(
-                    loggerFactory818
-                        .CreateLogger<UltrasharpTools.Droid.Services.Hybrid.SemanticModeConfigurationLoader>()
-                );
-            var semanticConfig = await semanticConfigLoader.LoadOrCreateAsync();
 
             // SemanticModeProvider (только локальный embedding если доступен)
             builder.Services.AddSingleton<ISemanticModeProvider>(sp =>

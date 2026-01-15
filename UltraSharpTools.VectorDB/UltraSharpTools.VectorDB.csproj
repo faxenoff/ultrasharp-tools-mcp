@@ -36,21 +36,17 @@
 
 <ItemGroup>
 <!-- Semantic indexing dependencies -->
-<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
-<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
-<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
-<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
-<PackageReference Include="System.IO.Hashing" Version="10.0.0" />
+<PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
+<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
+<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
+<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
+<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.2" />
+<PackageReference Include="System.IO.Hashing" Version="10.0.2" />
 </ItemGroup>
 
 <!-- Vectorlite native library -->
 <ItemGroup>
-<None
-Include="Native\vectorlite.dll"
-CopyToOutputDirectory="PreserveNewest"
-Link="vectorlite.dll"
-/>
+<None Include="Native\vectorlite.dll" CopyToOutputDirectory="PreserveNewest" Link="vectorlite.dll" />
 </ItemGroup>
 </Project>

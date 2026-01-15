@@ -34,34 +34,26 @@ public class FastHashBenchmarks
     }
 
     [Benchmark(Baseline = true)]
-    [Arguments("short")]
     public string ComputeHash_Short() => FastHash.ComputeHash(_shortString);
 
     [Benchmark]
-    [Arguments("medium")]
     public string ComputeHash_Medium() => FastHash.ComputeHash(_mediumString);
 
     [Benchmark]
-    [Arguments("long")]
     public string ComputeHash_Long() => FastHash.ComputeHash(_longString);
 
     [Benchmark]
-    [Arguments("verylong")]
     public string ComputeHash_VeryLong() => FastHash.ComputeHash(_veryLongString);
 
     [Benchmark]
-    [Arguments("short")]
     public string ComputeHash128_Short() => FastHash.ComputeHash128(_shortString);
 
     [Benchmark]
-    [Arguments("medium")]
     public string ComputeHash128_Medium() => FastHash.ComputeHash128(_mediumString);
 
     [Benchmark]
-    [Arguments("short")]
     public int ComputeHash32_Short() => FastHash.ComputeHash32(_shortString);
 
     [Benchmark]
-    [Arguments("medium")]
     public int ComputeHash32_Medium() => FastHash.ComputeHash32(_mediumString);
 }

@@ -4,7 +4,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.15.6" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -12,6 +12,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- x64 required for Microsoft.Z3 in Tools dependency -->
+    <PlatformTarget>x64</PlatformTarget>
 
     <!-- Отключение глобализации: только en-US, экономия ~5 MB + ускорение старта -->
     <InvariantGlobalization>true</InvariantGlobalization>

@@ -5,6 +5,8 @@
 
 using ModelContextProtocol;
 using UltrasharpTools.Tools.Infrastructure;
+using UltrasharpTools.Tools.Interfaces;
+using UltrasharpTools.Tools.Semantic;
 
 namespace UltrasharpTools.Tools.Mcp.Tools;
 
@@ -53,6 +55,8 @@ public static class SolutionTools {
         [Description("The absolute file path to the .sln solution file.")] string solutionPath,
         IClientIdProvider? clientIdProvider,
         IClientContextService? clientContextService,
+        ISemanticModeProvider? semanticModeProvider,
+        ISemanticSearchService? semanticSearchService,
         CancellationToken cancellationToken
     ) {
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(
@@ -163,6 +167,30 @@ public static class SolutionTools {
                     result.ProjectCount,
                     result.Source
                 );
+
+                // Auto-index for semantic search if semantic mode is available
+                if (semanticModeProvider != null && semanticSearchService != null) {
+                    try {
+                        var availability = await semanticModeProvider.CheckAvailabilityAsync(cancellationToken);
+                        if (availability.IsAvailable && !semanticSearchService.IsIndexed()) {
+                            logger.LogInformation(
+                                "Semantic mode available ({Source}), starting background indexing...",
+                                availability.Source
+                            );
+                            // Fire-and-forget background indexing
+                            _ = Task.Run(async () => {
+                                try {
+                                    await semanticSearchService.IndexCurrentSolutionAsync(CancellationToken.None);
+                                    logger.LogInformation("Background semantic indexing completed successfully");
+                                } catch (Exception ex) {
+                                    logger.LogWarning(ex, "Background semantic indexing failed (non-critical)");
+                                }
+                            }, CancellationToken.None);
+                        }
+                    } catch (Exception ex) {
+                        logger.LogDebug(ex, "Semantic mode check failed, skipping auto-indexing");
+                    }
+                }
 
                 try {
                     return await GetProjectStructure(solutionManager, logger, cancellationToken);
