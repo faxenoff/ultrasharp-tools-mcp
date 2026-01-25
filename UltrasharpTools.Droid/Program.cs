@@ -28,7 +28,7 @@ namespace UltrasharpTools.Droid;
 public static class Program
 {
     public const string ApplicationName = "UltrasharpToolsMcpDroid";
-    public const string ApplicationVersion = "3.6.9";
+    public const string ApplicationVersion = "3.7.0";
 
     private static readonly JsonSerializerOptions SemanticConfigJsonOptions =
         new()
@@ -195,13 +195,22 @@ public static class Program
         if (string.IsNullOrEmpty(solutionPath))
         {
             var currentDir = Directory.GetCurrentDirectory();
+
+            // Search for .sln files first
             var solutionFiles = Directory.GetFiles(currentDir, "*.sln");
-            if (solutionFiles.Length == 1)
+
+            // Also search for .slnx files (new XML-based solution format)
+            var slnxFiles = Directory.GetFiles(currentDir, "*.slnx");
+
+            // Combine both arrays
+            var allSolutionFiles = solutionFiles.Concat(slnxFiles).ToArray();
+
+            if (allSolutionFiles.Length == 1)
             {
-                solutionPath = solutionFiles[0];
+                solutionPath = allSolutionFiles[0];
                 // Console.WriteLine($"Auto-detected solution: {Path.GetFileName(solutionPath)}");
             }
-            else if (solutionFiles.Length > 1)
+            else if (allSolutionFiles.Length > 1)
             {
                 // Console.WriteLine(
                 //     $"Multiple solution files found in {currentDir}. Use --load-solution to specify which one to load."

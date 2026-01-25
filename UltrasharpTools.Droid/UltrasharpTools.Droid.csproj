@@ -17,7 +17,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>3.6.9</Version>
+    <Version>3.7.0</Version>
     <AssemblyName>UltrasharpTools.Droid</AssemblyName>
     <RootNamespace>UltrasharpTools.Droid</RootNamespace>
 
