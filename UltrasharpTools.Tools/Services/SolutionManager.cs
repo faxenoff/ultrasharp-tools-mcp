@@ -211,6 +211,11 @@ public sealed partial class SolutionManager : ISolutionManager {
             _currentSolutionPath = solutionPath;
 
             try {
+                // Ensure NuGet packages are restored before workspace creation.
+                // MSBuildWorkspace relies on pre-existing project.assets.json —
+                // without a fresh restore, design-time builds fail with NETSDK1064.
+                await RunDotnetRestoreAsync(solutionPath, cancellationToken);
+
                 LogCreatingWorkspace();
                 var properties = new Dictionary<string, string> { { "DesignTimeBuild", "true" } };
 
@@ -476,6 +481,9 @@ public sealed partial class SolutionManager : ISolutionManager {
         UnloadSolution();
 
         try {
+            // Ensure NuGet packages are restored before workspace creation
+            await RunDotnetRestoreAsync(projectPath, cancellationToken);
+
             LogCreatingWorkspaceForProject();
             var properties = new Dictionary<string, string> { { "DesignTimeBuild", "true" } };
 
@@ -547,6 +555,36 @@ public sealed partial class SolutionManager : ISolutionManager {
         );
     }
 
+    /// <summary>
+    /// Fallback for single-file/self-contained publish where RuntimeEnvironment.GetRuntimeDirectory()
+    /// returns a directory with only native DLLs. Searches for .NET shared framework on the system.
+    /// </summary>
+    private static string[] TryFindSharedFrameworkAssemblies() {
+        // Try DOTNET_ROOT first, then well-known paths
+        var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        if (string.IsNullOrEmpty(dotnetRoot)) {
+            dotnetRoot = OperatingSystem.IsWindows()
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet")
+                : "/usr/share/dotnet";
+        }
+
+        var sharedFxDir = Path.Combine(dotnetRoot, "shared", "Microsoft.NETCore.App");
+        if (!Directory.Exists(sharedFxDir))
+            return [];
+
+        // Pick the latest available version
+        var latestVersionDir = Directory.GetDirectories(sharedFxDir)
+            .OrderByDescending(Path.GetFileName)
+            .FirstOrDefault();
+
+        if (latestVersionDir == null)
+            return [];
+
+        return Directory.GetFiles(latestVersionDir, "*.dll")
+            .Where(IsRelevantAssembly)
+            .ToArray();
+    }
+
     // Мониторинг использования памяти
     private void LogMemoryUsage(string context) {
         var gcMemoryInfo = GC.GetGCMemoryInfo();
@@ -579,9 +617,22 @@ public sealed partial class SolutionManager : ISolutionManager {
 
         string[] runtimeAssemblies = allRuntimeAssemblies.Where(IsRelevantAssembly).ToArray();
 
+        // Fallback for single-file/self-contained publish: RuntimeEnvironment may return
+        // directory with only native DLLs. Try to find .NET shared framework on the system.
+        if (runtimeAssemblies.Length == 0) {
+            runtimeAssemblies = TryFindSharedFrameworkAssemblies();
+            if (runtimeAssemblies.Length > 0) {
+                _logger.LogInformation(
+                    "Fallback: found {Count} runtime assemblies from .NET shared framework",
+                    runtimeAssemblies.Length);
+            }
+        }
+
         LogFilteredAssemblies(
             runtimeAssemblies.Length,
-            100.0 * (allRuntimeAssemblies.Length - runtimeAssemblies.Length) / allRuntimeAssemblies.Length
+            allRuntimeAssemblies.Length > 0
+                ? 100.0 * (allRuntimeAssemblies.Length - runtimeAssemblies.Length) / allRuntimeAssemblies.Length
+                : 0
         );
 
         foreach (var assemblyPath in runtimeAssemblies) {
@@ -614,6 +665,12 @@ public sealed partial class SolutionManager : ISolutionManager {
 
         // Check cancellation before creating context
         cancellationToken.ThrowIfCancellationRequested();
+
+        // Guard: skip MetadataLoadContext if no assemblies found (prevents crash)
+        if (_assemblyPathsForReflection.Count == 0) {
+            _logger.LogWarning("No assemblies available for MetadataLoadContext, skipping reflection cache initialization");
+            return;
+        }
 
         _pathAssemblyResolver = new PathAssemblyResolver(_assemblyPathsForReflection);
         _metadataLoadContext = new MetadataLoadContext(_pathAssemblyResolver);
@@ -1748,6 +1805,56 @@ public sealed partial class SolutionManager : ISolutionManager {
             }
         } catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to run dotnet clean");
+        }
+    }
+
+    /// <summary>
+    /// Runs 'dotnet restore' to ensure project.assets.json is up-to-date
+    /// before MSBuildWorkspace loads the solution/project.
+    /// MSBuildWorkspace does NOT perform NuGet restore itself — it relies on
+    /// pre-existing restore artifacts. Stale or missing project.assets.json
+    /// causes NETSDK1064 errors and unresolved metadata references (CS0234/CS0246).
+    /// </summary>
+    private async Task RunDotnetRestoreAsync(string path, CancellationToken cancellationToken) {
+        try {
+            _logger.LogInformation("Running 'dotnet restore' to ensure NuGet packages are resolved...");
+
+            var args = $"restore \"{path}\"";
+            if (!string.IsNullOrEmpty(_buildConfiguration)) {
+                args += $" --configuration {_buildConfiguration}";
+            }
+
+            var psi = new System.Diagnostics.ProcessStartInfo {
+                FileName = "dotnet",
+                Arguments = args,
+                WorkingDirectory = Path.GetDirectoryName(path),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var restoreCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            restoreCts.CancelAfter(TimeSpan.FromSeconds(120));
+
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process != null) {
+                await process.WaitForExitAsync(restoreCts.Token);
+                if (process.ExitCode == 0) {
+                    _logger.LogInformation("dotnet restore completed successfully");
+                } else {
+                    var stderr = await process.StandardError.ReadToEndAsync(restoreCts.Token);
+                    _logger.LogWarning(
+                        "dotnet restore exited with code {ExitCode}: {Error}",
+                        process.ExitCode,
+                        stderr.Length > 500 ? stderr[..500] : stderr
+                    );
+                }
+            }
+        } catch (OperationCanceledException) {
+            _logger.LogWarning("dotnet restore timed out — continuing without restore");
+        } catch (Exception ex) {
+            _logger.LogWarning(ex, "Failed to run dotnet restore — continuing without restore");
         }
     }
 

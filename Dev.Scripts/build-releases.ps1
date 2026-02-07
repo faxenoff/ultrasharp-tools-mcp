@@ -465,14 +465,24 @@ foreach ($Platform in $Platforms) {
             if ($LASTEXITCODE -ne 0) { throw "Droid build failed" }
         }
 
-        # Copy BuildHost-netcore (required by MSBuildWorkspace for loading solutions)
-        $BuildHostSource = Join-Path $ProjectRoot "UltrasharpTools.Droid\bin\Release\net10.0\$rid\BuildHost-netcore"
-        if (-not (Test-Path $BuildHostSource)) {
-            $BuildHostSource = Join-Path $ProjectRoot "UltrasharpTools.Droid\bin\Release\net10.0\BuildHost-netcore"
-        }
-        if (Test-Path $BuildHostSource) {
-            Copy-Item -Path $BuildHostSource -Destination (Join-Path $droidOutput "BuildHost-netcore") -Recurse -Force
-            Write-Info "Copied BuildHost-netcore"
+        # Ensure BuildHost-netcore exists (required by MSBuildWorkspace for loading solutions)
+        # dotnet publish may already place it in output; if not, copy from bin
+        $BuildHostTarget = Join-Path $droidOutput "BuildHost-netcore"
+        $BuildHostDll = Join-Path $BuildHostTarget "Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll"
+        if (-not (Test-Path $BuildHostDll)) {
+            $BuildHostSource = Join-Path $ProjectRoot "UltrasharpTools.Droid\bin\Release\net10.0\$rid\BuildHost-netcore"
+            if (-not (Test-Path $BuildHostSource)) {
+                $BuildHostSource = Join-Path $ProjectRoot "UltrasharpTools.Droid\bin\Release\net10.0\BuildHost-netcore"
+            }
+            if (Test-Path $BuildHostSource) {
+                New-Item -ItemType Directory -Force -Path $BuildHostTarget | Out-Null
+                Copy-Item -Path "$BuildHostSource\*" -Destination $BuildHostTarget -Recurse -Force
+                Write-Info "Copied BuildHost-netcore"
+            } else {
+                Write-Warn "BuildHost-netcore not found in bin output - solution loading will fail!"
+            }
+        } else {
+            Write-Info "BuildHost-netcore already in publish output"
         }
 
         # Copy VectorDB to Droid folder
@@ -510,6 +520,12 @@ foreach ($Platform in $Platforms) {
         # Cleanup temp folders
         if (Test-Path $vectordbTempPath) {
             Remove-Item $vectordbTempPath -Recurse -Force
+        }
+
+        # Verify BuildHost-netcore is present (critical for solution loading)
+        $finalBuildHostDll = Join-Path $droidOutput "BuildHost-netcore\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll"
+        if (-not (Test-Path $finalBuildHostDll)) {
+            Write-Warn "WARNING: BuildHost-netcore missing from $rid output! Solution loading will not work."
         }
 
         # Copy to archive temp directory

@@ -7,7 +7,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- x64 required for Microsoft.Z3 native library -->
     <PlatformTarget>x64</PlatformTarget>
-    <Version>3.7.0</Version>
+    <Version>3.7.1</Version>
     <!-- Копирование всех зависимостей NuGet в выходную директорию -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <!-- Оптимизации производительности -->
@@ -37,7 +37,7 @@
     <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="10.0.2" />
     <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
     <PackageReference Include="Microsoft.Z3" Version="4.12.2" />
-    <PackageReference Include="ModelContextProtocol" Version="0.6.0-preview.1" />
+    <PackageReference Include="ModelContextProtocol" Version="0.8.0-preview.1" />
     <PackageReference Include="System.IO.Hashing" Version="10.0.2" />
     <PackageReference Include="System.Reflection.MetadataLoadContext" Version="10.0.2" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />

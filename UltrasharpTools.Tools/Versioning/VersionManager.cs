@@ -24,13 +24,12 @@ public sealed class VersionManager
         _gitService = gitService;
         _logger = logger ?? NullLogger<VersionManager>.Instance;
 
-        // Backup directory in solution root
-        var solutionDir =
-            Path.GetDirectoryName(
-                _solutionManager.CurrentSolution?.FilePath ?? Directory.GetCurrentDirectory()
-            ) ?? Directory.GetCurrentDirectory();
+        // Backup directory in solution root (lazy-created on first use)
+        var solutionFilePath = _solutionManager.CurrentSolution?.FilePath;
+        var solutionDir = solutionFilePath != null
+            ? Path.GetDirectoryName(solutionFilePath)!
+            : Directory.GetCurrentDirectory();
         _backupDir = Path.Combine(solutionDir, ".ultrasharp", "snapshots");
-        Directory.CreateDirectory(_backupDir);
     }
 
     /// <summary>
