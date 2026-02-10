@@ -2,8 +2,8 @@ apiVersion: v2
 name: ultrasharp-tools
 description: A Helm chart for UltrasharpTools MCP Remote Server
 type: application
-version: 3.7.1
-appVersion: "3.7.1"
+version: 3.7.2
+appVersion: "3.7.2"
 keywords:
   - mcp
   - csharp

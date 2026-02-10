@@ -37,6 +37,7 @@
 #include <libc/nt/synchronization.h>
 #include <libc/nt/process.h>
 #include <libc/nt/ipc.h>
+#include <libc/nt/events.h>
 #include <libc/nt/enum/accessmask.h>
 #include <libc/nt/enum/creationdisposition.h>
 #include <libc/nt/enum/fileflagandattributes.h>
@@ -45,14 +46,22 @@
 #include <libc/nt/struct/startupinfo.h>
 #include <libc/nt/struct/processinformation.h>
 
-#define VERSION "3.5.0"
+#define VERSION "3.6.0"
 #define APP_NAME "UltraSharpTools.Comm"
 #define BUFFER_SIZE 8192
 #define CONNECT_TIMEOUT_MS 2000
 #define STARTUP_TIMEOUT_MS 30000
+#define PIPE_ERROR_MAX_CONSECUTIVE 50  // ~500ms of errors before exit
 
 #define PIPE_PATH_WIN "\\\\.\\pipe\\UltraSharpTools_Droid"
 #define PIPE_PATH_UNIX "/tmp/UltraSharpTools_Droid.sock"
+#define WAKEUP_EVENT_WIN "UltraSharpTools_Droid_WakeUp"
+
+// NT error codes for pipe operations
+#define NT_ERROR_FILE_NOT_FOUND 2
+#define NT_ERROR_BROKEN_PIPE 109
+#define NT_ERROR_PIPE_BUSY 231
+#define NT_ERROR_PIPE_NOT_CONNECTED 233
 
 static volatile int g_running = 1;
 
@@ -143,7 +152,9 @@ static int win_start_droid(int argc, char **argv) {
     char cmd_line[4096];
     char16_t cmd_line_w[4096];
 
-    win_get_exe_dir(exe_path, sizeof(exe_path));
+    if (win_get_exe_dir(exe_path, sizeof(exe_path)) != 0) {
+        fprintf(stderr, "Comm: failed to determine exe directory\n");
+    }
 
     // Try same directory first
     snprintf(droid_path, sizeof(droid_path), "%s\\UltrasharpTools.Droid.exe", exe_path);
@@ -153,30 +164,25 @@ static int win_start_droid(int argc, char **argv) {
         snprintf(droid_path, sizeof(droid_path), "%s\\..\\Droid\\UltrasharpTools.Droid.exe", exe_path);
     }
 
-    // Build command line
-    snprintf(cmd_line, sizeof(cmd_line), "\"%s\" --pipe-server", droid_path);
-    for (int i = 1; i < argc; i++) {
-        strcat(cmd_line, " ");
-
+    // Build command line safely with snprintf
+    int pos = snprintf(cmd_line, sizeof(cmd_line), "\"%s\" --pipe-server", droid_path);
+    for (int i = 1; i < argc && pos < (int)sizeof(cmd_line) - 2; i++) {
         // Convert /D/path to D:\path for Windows if needed
         char arg_buf[1024];
         const char *arg = argv[i];
         if (arg[0] == '/' && arg[1] && arg[2] == '/') {
             snprintf(arg_buf, sizeof(arg_buf), "%c:%s", arg[1], arg + 2);
-            // Convert slashes
             for (char *p = arg_buf; *p; p++) {
                 if (*p == '/') *p = '\\';
             }
             arg = arg_buf;
         }
 
-        // Only quote if contains spaces
+        int remaining = (int)sizeof(cmd_line) - pos;
         if (strchr(arg, ' ') != NULL) {
-            strcat(cmd_line, "\"");
-            strcat(cmd_line, arg);
-            strcat(cmd_line, "\"");
+            pos += snprintf(cmd_line + pos, remaining, " \"%s\"", arg);
         } else {
-            strcat(cmd_line, arg);
+            pos += snprintf(cmd_line + pos, remaining, " %s", arg);
         }
     }
 
@@ -210,6 +216,10 @@ static int win_start_droid(int argc, char **argv) {
     return 0;
 }
 
+static bool win_is_pipe_dead(uint32_t err) {
+    return err == NT_ERROR_BROKEN_PIPE || err == NT_ERROR_PIPE_NOT_CONNECTED;
+}
+
 static int win_run_proxy(int64_t pipe) {
     char buf[BUFFER_SIZE];
     int64_t stdin_h = GetStdHandle(kNtStdInputHandle);
@@ -217,29 +227,100 @@ static int win_run_proxy(int64_t pipe) {
 
     uint32_t bytes_read, bytes_written;
     uint32_t bytes_avail;
+    int pipe_errors = 0;
+    int stdin_errors = 0;
 
     while (g_running) {
-        // Check if data available on pipe
-        if (PeekNamedPipe(pipe, NULL, 0, NULL, &bytes_avail, NULL) && bytes_avail > 0) {
-            if (ReadFile(pipe, buf, BUFFER_SIZE, &bytes_read, NULL) && bytes_read > 0) {
-                WriteFile(stdout_h, buf, bytes_read, &bytes_written, NULL);
+        bool had_activity = false;
+
+        // Pipe -> stdout (Droid -> Claude Code)
+        if (PeekNamedPipe(pipe, NULL, 0, NULL, &bytes_avail, NULL)) {
+            pipe_errors = 0;
+            if (bytes_avail > 0) {
+                had_activity = true;
+                if (ReadFile(pipe, buf, BUFFER_SIZE, &bytes_read, NULL) && bytes_read > 0) {
+                    if (!WriteFile(stdout_h, buf, bytes_read, &bytes_written, NULL)
+                        || bytes_written != bytes_read) {
+                        fprintf(stderr, "Comm: stdout write failed (err=%lu)\n",
+                                (unsigned long)GetLastError());
+                        break;
+                    }
+                }
+            }
+        } else {
+            uint32_t err = GetLastError();
+            if (win_is_pipe_dead(err)) {
+                fprintf(stderr, "Comm: Droid pipe disconnected (err=%lu)\n",
+                        (unsigned long)err);
+                break;
+            }
+            if (++pipe_errors >= PIPE_ERROR_MAX_CONSECUTIVE) {
+                fprintf(stderr, "Comm: Droid pipe unresponsive (%d errors, last=%lu)\n",
+                        pipe_errors, (unsigned long)err);
+                break;
             }
         }
 
-        // Check if data available on stdin
-        if (PeekNamedPipe(stdin_h, NULL, 0, NULL, &bytes_avail, NULL) && bytes_avail > 0) {
-            if (ReadFile(stdin_h, buf, BUFFER_SIZE, &bytes_read, NULL) && bytes_read > 0) {
-                WriteFile(pipe, buf, bytes_read, &bytes_written, NULL);
+        // Stdin -> pipe (Claude Code -> Droid)
+        if (PeekNamedPipe(stdin_h, NULL, 0, NULL, &bytes_avail, NULL)) {
+            stdin_errors = 0;
+            if (bytes_avail > 0) {
+                had_activity = true;
+                if (ReadFile(stdin_h, buf, BUFFER_SIZE, &bytes_read, NULL) && bytes_read > 0) {
+                    if (!WriteFile(pipe, buf, bytes_read, &bytes_written, NULL)
+                        || bytes_written != bytes_read) {
+                        fprintf(stderr, "Comm: pipe write failed (err=%lu)\n",
+                                (unsigned long)GetLastError());
+                        break;
+                    }
+                }
+            }
+        } else {
+            uint32_t err = GetLastError();
+            if (win_is_pipe_dead(err)) {
+                // stdin closed = Claude Code disconnected, normal exit
+                break;
+            }
+            if (++stdin_errors >= PIPE_ERROR_MAX_CONSECUTIVE) {
+                fprintf(stderr, "Comm: stdin unresponsive (%d errors, last=%lu)\n",
+                        stdin_errors, (unsigned long)err);
+                break;
             }
         }
 
-        Sleep(10);
+        if (!had_activity) {
+            Sleep(10);
+        }
     }
 
     return 0;
 }
 
+static void win_signal_wakeup(void) {
+    char16_t event_name_w[256];
+    ascii_to_utf16(WAKEUP_EVENT_WIN, event_name_w, 256);
+    // CreateEvent opens existing event if name matches (or creates new)
+    int64_t event = CreateEvent(NULL, true, false, event_name_w);
+    if (event) {
+        SetEvent(event);
+        CloseHandle(event);
+    }
+}
+
+static int64_t win_wait_for_pipe(long timeout_ms) {
+    long start = get_time_ms();
+    while (get_time_ms() - start < timeout_ms) {
+        int64_t pipe = win_try_connect_pipe();
+        if (pipe != -1) return pipe;
+        Sleep(200);
+    }
+    return -1;
+}
+
 static int win_main(int argc, char **argv) {
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+
     if (argc > 1) {
         if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
             print_help();
@@ -254,26 +335,37 @@ static int win_main(int argc, char **argv) {
     int64_t pipe = win_try_connect_pipe();
 
     if (pipe == -1) {
-        if (win_start_droid(argc, argv) != 0) {
-            fprintf(stderr, "Failed to start Droid\n");
-            return 1;
-        }
+        uint32_t connect_err = GetLastError();
 
-        long start = get_time_ms();
-        while (get_time_ms() - start < STARTUP_TIMEOUT_MS) {
-            pipe = win_try_connect_pipe();
-            if (pipe != -1) break;
-            Sleep(200);
+        if (connect_err == NT_ERROR_PIPE_BUSY) {
+            // Droid is running but all pipe instances are busy.
+            // Signal wakeup so Droid creates a new pipe instance.
+            win_signal_wakeup();
+            fprintf(stderr, "Comm: pipe busy, signaled wakeup, waiting...\n");
+
+            pipe = win_wait_for_pipe(STARTUP_TIMEOUT_MS);
+        } else {
+            // Pipe not found — Droid is not running, start it.
+            if (win_start_droid(argc, argv) != 0) {
+                fprintf(stderr, "Comm: failed to start Droid (err=%lu)\n",
+                        (unsigned long)GetLastError());
+                return 1;
+            }
+
+            pipe = win_wait_for_pipe(STARTUP_TIMEOUT_MS);
         }
 
         if (pipe == -1) {
-            fprintf(stderr, "Timeout waiting for Droid\n");
+            fprintf(stderr, "Comm: timeout waiting for Droid (initial err=%lu)\n",
+                    (unsigned long)connect_err);
             return 1;
         }
     }
 
+    fprintf(stderr, "Comm: connected to Droid\n");
     int result = win_run_proxy(pipe);
     CloseHandle(pipe);
+    fprintf(stderr, "Comm: proxy exited (code=%d)\n", result);
     return result;
 }
 

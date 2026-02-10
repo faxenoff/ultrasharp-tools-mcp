@@ -11,7 +11,7 @@ using UltraSharpTools.VectorDB.Semantic.GPU;
 
 public class Program {
     public const string ApplicationName = "UltraSharpTools.VectorDB";
-    public const string ApplicationVersion = "3.7.1";
+    public const string ApplicationVersion = "3.7.2";
 
     // VectorDB: отдельный процесс для векторизации и семантического поиска
     // Принимает запросы от Droid через Named Pipe IPC
