@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using UltrasharpTools.Droid.Models.Hybrid;
 using UltrasharpTools.Droid.Services.Hybrid;
+using UltrasharpTools.Tools.Interfaces;
 
 namespace UltrasharpTools.Test.Integration;
 

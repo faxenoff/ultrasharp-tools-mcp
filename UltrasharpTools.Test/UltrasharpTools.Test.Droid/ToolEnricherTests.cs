@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using UltrasharpTools.Droid.Models.Hybrid;
 using UltrasharpTools.Droid.Services.Hybrid;
+using UltrasharpTools.Tools.Interfaces;
 using Xunit;
 
 namespace UltrasharpTools.Test.Droid;
