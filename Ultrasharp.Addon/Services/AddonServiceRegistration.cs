@@ -27,7 +27,7 @@ public static class AddonServiceRegistration
             {
                 Enabled = true, // Use symbol cache for faster restarts
             },
-            lowMemoryMode: false
+            lowMemoryMode: true  // Addon: use SQLite for reflection type cache instead of FrozenDictionary (~200-500 MB savings)
         );
     }
 }

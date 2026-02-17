@@ -81,6 +81,14 @@ public sealed class AddonLifecycleService
                 "[Lifecycle] Phase 2 reached — solution loaded: {Path} ({ProjectCount} projects)",
                 result.SolutionPath, result.ProjectCount);
 
+            // Compact memory after indexing: clear compilation/semantic caches and reflection type cache.
+            // The Roslyn workspace stays loaded for on-demand queries (findReferences, etc.)
+            // but cached Compilations/SemanticModels are rebuilt on demand.
+            // Reflection type cache (200-500 MB) is not needed in addon mode.
+            var solutionManager = _services.GetRequiredService<ISolutionManager>();
+            solutionManager.CompactMemory(clearReflectionCache: true);
+            _logger.LogInformation("[Lifecycle] Post-indexing memory compacted.");
+
             // Notify TS via event
             await SendPhaseEventAsync(2);
             return true;

@@ -55,6 +55,12 @@ public interface ISolutionManager : IDisposable {
     Task ReloadSolutionFromDiskAsync(CancellationToken cancellationToken);
     void RefreshCurrentSolution();
 
+    /// <summary>
+    /// Compact memory by clearing caches. Call after indexing to reduce footprint.
+    /// Set clearReflectionCache=true to also release MetadataLoadContext (~200-500 MB).
+    /// </summary>
+    void CompactMemory(bool clearReflectionCache = false);
+
 
     /// <summary>
 

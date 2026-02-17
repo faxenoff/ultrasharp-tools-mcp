@@ -163,26 +163,29 @@ public sealed partial class SolutionManager : ISolutionManager {
         // Initialize incremental update queue (Phase 3)
         _incrementalUpdateQueue = new IncrementalUpdateQueue(_symbolIndex, null);
 
-        // Инициализация MemoryCache с ОПТИМИЗИРОВАННЫМИ ограничениями
-        // Compilation кэш: ~2-4 проекта одновременно, каждая компиляция ~50-100 MB
+        // MemoryCache limits: smaller for lowMemoryMode (addon), normal for Droid
+        var compilationCacheMB = _lowMemoryMode ? 80 : 150;
+        var semanticModelCacheMB = _lowMemoryMode ? 100 : 250;
+        var scanFrequency = _lowMemoryMode ? TimeSpan.FromSeconds(30) : TimeSpan.FromMinutes(2);
+        var compactionPct = _lowMemoryMode ? 0.50 : 0.30;
+
         _compilationCache = new MemoryCache(
         new MemoryCacheOptions {
-            SizeLimit = 150 * 1024 * 1024, // 150 MB лимит (было 500 MB)
-            ExpirationScanFrequency = TimeSpan.FromMinutes(2),
-            CompactionPercentage = 0.30, // Удалить 30% при достижении лимита
+            SizeLimit = compilationCacheMB * 1024L * 1024,
+            ExpirationScanFrequency = scanFrequency,
+            CompactionPercentage = compactionPct,
         }
         );
 
-        // SemanticModel кэш: ~20-30 документов, каждая модель ~10-20 MB
         _semanticModelCache = new MemoryCache(
         new MemoryCacheOptions {
-            SizeLimit = 250 * 1024 * 1024, // 250 MB лимит (было 1 GB!)
-            ExpirationScanFrequency = TimeSpan.FromMinutes(2),
-            CompactionPercentage = 0.30,
+            SizeLimit = semanticModelCacheMB * 1024L * 1024,
+            ExpirationScanFrequency = scanFrequency,
+            CompactionPercentage = compactionPct,
         }
         );
 
-        LogMemoryCacheInitialized(150, 250);
+        LogMemoryCacheInitialized(compilationCacheMB, semanticModelCacheMB);
     }
     public async Task LoadSolutionAsync(string solutionPath, CancellationToken cancellationToken) {
         if (!File.Exists(solutionPath)) {
@@ -1362,11 +1365,13 @@ public sealed partial class SolutionManager : ISolutionManager {
                 LastWriteTimeUtc = lastWriteTime,
             };
 
-            // Store with expiration and size settings (OPTIMIZED for lower memory)
+            // Store with expiration and size settings — shorter TTL in low memory mode
+            var smSlidingMin = _lowMemoryMode ? 3 : 10;
+            var smAbsoluteMin = _lowMemoryMode ? 10 : 30;
             var cacheEntryOptions = new MemoryCacheEntryOptions()
                 .SetSize(15 * 1024 * 1024) // Estimate: ~15 MB per semantic model
-                .SetSlidingExpiration(TimeSpan.FromMinutes(10)) // Reduced from 30 min
-                .SetAbsoluteExpiration(TimeSpan.FromMinutes(30)) // Reduced from 2 hours
+                .SetSlidingExpiration(TimeSpan.FromMinutes(smSlidingMin))
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(smAbsoluteMin))
                 .RegisterPostEvictionCallback(
                     (key, value, reason, state) => {
                         LogSemanticModelEvicted(key?.ToString() ?? "null", reason);
@@ -1463,11 +1468,13 @@ public sealed partial class SolutionManager : ISolutionManager {
                 DocumentIds = documentIds,
             };
 
-            // Store with expiration and size settings (OPTIMIZED for lower memory)
+            // Store with expiration and size settings — shorter TTL in low memory mode
+            var slidingMin = _lowMemoryMode ? 5 : 20;
+            var absoluteMin = _lowMemoryMode ? 15 : 60;
             var cacheEntryOptions = new MemoryCacheEntryOptions()
                 .SetSize(100 * 1024 * 1024) // Estimate: ~100 MB per compilation
-                .SetSlidingExpiration(TimeSpan.FromMinutes(20)) // Reduced from 60 min
-                .SetAbsoluteExpiration(TimeSpan.FromHours(1)) // Reduced from 4 hours
+                .SetSlidingExpiration(TimeSpan.FromMinutes(slidingMin))
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(absoluteMin))
                 .RegisterPostEvictionCallback(
                     (key, value, reason, state) => {
                         LogCompilationEvicted(key?.ToString() ?? "null", reason);
@@ -1533,6 +1540,42 @@ public sealed partial class SolutionManager : ISolutionManager {
             SemanticModelCacheMisses = _semanticModelCacheMisses,
             TotalMemoryBytes = totalMemory,
         };
+    }
+
+    /// <summary>
+    /// Compact memory by clearing caches and optionally the reflection type cache.
+    /// Call after indexing/enrichment is complete to reduce memory footprint.
+    /// The solution workspace remains loaded for on-demand queries.
+    /// </summary>
+    public void CompactMemory(bool clearReflectionCache = false) {
+        LogMemoryUsage("Before CompactMemory");
+
+        // Clear all cached Compilations and SemanticModels
+        _compilationCache.Compact(1.0);
+        _semanticModelCache.Compact(1.0);
+
+        if (clearReflectionCache) {
+            // Release MetadataLoadContext and reflection type cache (saves 200-500 MB)
+            // After this, FindReflectionTypeAsync/SearchReflectionTypesAsync won't work
+            _allLoadedReflectionTypesCache = FrozenDictionary<string, Type>.Empty;
+            _metadataLoadContext?.Dispose();
+            _metadataLoadContext = null;
+            _pathAssemblyResolver = null;
+            _assemblyPathsForReflection.Clear();
+
+            if (_sqliteReflectionTypeIndex != null) {
+                _sqliteReflectionTypeIndex.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                _sqliteReflectionTypeIndex = null;
+            }
+        }
+
+        // Background GC — don't block the caller
+        _ = Task.Run(() => {
+            GC.Collect(2, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+            GC.WaitForPendingFinalizers();
+        });
+
+        LogMemoryUsage("After CompactMemory");
     }
 
     /// <summary>
@@ -1798,10 +1841,16 @@ public sealed partial class SolutionManager : ISolutionManager {
                 CreateNoWindow = true
             };
 
+            using var cleanCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
             using var process = System.Diagnostics.Process.Start(psi);
             if (process != null) {
-                await process.WaitForExitAsync();
-                _logger.LogDebug("dotnet clean completed with exit code {ExitCode}", process.ExitCode);
+                try {
+                    await process.WaitForExitAsync(cleanCts.Token);
+                    _logger.LogDebug("dotnet clean completed with exit code {ExitCode}", process.ExitCode);
+                } catch (OperationCanceledException) {
+                    _logger.LogWarning("dotnet clean timed out, killing process tree (PID: {Pid})", process.Id);
+                    KillProcessTree(process);
+                }
             }
         } catch (Exception ex) {
             _logger.LogWarning(ex, "Failed to run dotnet clean");
@@ -1839,16 +1888,22 @@ public sealed partial class SolutionManager : ISolutionManager {
 
             using var process = System.Diagnostics.Process.Start(psi);
             if (process != null) {
-                await process.WaitForExitAsync(restoreCts.Token);
-                if (process.ExitCode == 0) {
-                    _logger.LogInformation("dotnet restore completed successfully");
-                } else {
-                    var stderr = await process.StandardError.ReadToEndAsync(restoreCts.Token);
-                    _logger.LogWarning(
-                        "dotnet restore exited with code {ExitCode}: {Error}",
-                        process.ExitCode,
-                        stderr.Length > 500 ? stderr[..500] : stderr
-                    );
+                try {
+                    await process.WaitForExitAsync(restoreCts.Token);
+                    if (process.ExitCode == 0) {
+                        _logger.LogInformation("dotnet restore completed successfully");
+                    } else {
+                        using var stderrCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                        var stderr = await process.StandardError.ReadToEndAsync(stderrCts.Token);
+                        _logger.LogWarning(
+                            "dotnet restore exited with code {ExitCode}: {Error}",
+                            process.ExitCode,
+                            stderr.Length > 500 ? stderr[..500] : stderr
+                        );
+                    }
+                } catch (OperationCanceledException) {
+                    _logger.LogWarning("dotnet restore timed out, killing process tree (PID: {Pid})", process.Id);
+                    KillProcessTree(process);
                 }
             }
         } catch (OperationCanceledException) {
@@ -1905,6 +1960,18 @@ public sealed partial class SolutionManager : ISolutionManager {
         _semanticModelCache?.Dispose();
 
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Kill a process and its entire process tree. Used to clean up hung dotnet/msbuild processes.
+    /// </summary>
+    private static void KillProcessTree(System.Diagnostics.Process process) {
+        try {
+            process.Kill(entireProcessTree: true);
+        } catch {
+            // Process may have already exited
+            try { process.Kill(); } catch { /* ignore */ }
+        }
     }
 
     private class ProgressReporter : IProgress<ProjectLoadProgress> {
